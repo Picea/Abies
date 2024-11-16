@@ -16,22 +16,20 @@ namespace Abies;
 /// </summary>
 public record Url
 {
-    public required Protocol Scheme { get; set; }
-    public required string Host { get; set; }
-    public required int? Port { get; set; }
-    public required string Path { get; set; }
-    public required string Query { get; set; }
-    public required string Fragment { get; set; }
+    public required Protocol Scheme { get; init; }
+    public required string Host { get; init; }
+    public required int Port { get; init; }
+    public required string Path { get; init; }
+    public required string Query { get; init; }
+    public required string Fragment { get; init; }
 
-    public override string ToString()
-      => ToString(this);
-    
+    public override string ToString() => ToString(this);
 
     public static Url FromSpan(ReadOnlySpan<char> input) =>
-        Parser.Url(input).Value;
+        FromSpanInternal(input);
 
     public static Url FromString(string input) =>
-        Parser.Url(input.AsSpan()).Value;
+        FromSpan(input.AsSpan());
 
     public static string ToString(Url url) =>
         new UriBuilder
@@ -43,17 +41,50 @@ public record Url
                 _ => throw new Exception("Unknown scheme")
             },
             Host = url.Host,
-            Port = url.Port ?? -1,
+            Port = url.Port,
             Path = url.Path,
             Query = url.Query,
             Fragment = url.Fragment
         }.Uri.ToString();
+
+    private static Url FromSpanInternal(ReadOnlySpan<char> input)
+    {
+        var result = Parser.Url(input);
+        if (!result.Success)
+        {
+            throw new FormatException("Invalid URL format.");
+        }
+
+        var parsedUrl = result.Value;
+
+        // Assign default ports if none are specified
+        int effectivePort = parsedUrl.Port == -1 
+        ? (parsedUrl.Scheme switch
+        {
+            Protocol.Http _ => 80,
+            Protocol.Https _ => 443,
+            _ => throw new Exception("Unknown scheme for default port assignment.")
+        }) 
+        : parsedUrl.Port;
+
+        // Normalize scheme and host to lowercase
+        return parsedUrl with
+        {
+            Scheme = parsedUrl.Scheme switch
+            {
+                Protocol.Http _ => new Protocol.Http(),
+                Protocol.Https _ => new Protocol.Https(),
+                _ => throw new Exception("Unknown scheme")
+            },
+            Host = parsedUrl.Host.ToLowerInvariant(),
+            Port = effectivePort
+        };
+    }
 }
 
 public interface Protocol
 {
     public sealed record Http : Protocol;
-
     public sealed record Https : Protocol;
 }
 
@@ -77,12 +108,12 @@ public static class Parser
     public static Parser<string> Scheme =>
         from schemeChars in Parse.Many1(LetterOrDigitOrPlus)
         from colon in Parse.Char(':')
-        select new string([.. schemeChars]);
+        select new string(schemeChars.ToArray());
 
     public static Parser<string> Host =>
         from slashes in Parse.String("//")
         from hostChars in Parse.Many1(Parse.Satisfy(c => c != ':' && c != '/' && c != '?' && c != '#'))
-        select new string([.. hostChars]);
+        select new string(hostChars.ToArray());
 
     public static Parser<int?> Port =>
         input =>
@@ -103,7 +134,7 @@ public static class Parser
 
     public static Parser<string> Path =>
         from pathChars in Parse.Many(Parse.Satisfy(c => c != '?' && c != '#'))
-        select new string([.. pathChars]);
+        select new string(pathChars.ToArray());
 
     public static Parser<string> Query =>
         input =>
@@ -113,7 +144,7 @@ public static class Parser
                 var queryParser =
                     from question in Parse.Char('?')
                     from queryChars in Parse.Many(Parse.Satisfy(c => c != '#'))
-                    select new string([.. queryChars]);
+                    select new string(queryChars.ToArray());
 
                 var result = queryParser(input);
                 if (result.Success)
@@ -155,7 +186,7 @@ public static class Parser
                 _ => throw new Exception("Unknown scheme")
             },
             Host = host,
-            Port = port,
+            Port = port ?? -1, // Temporary placeholder; actual port handled in FromSpanInternal
             Path = path,
             Query = query,
             Fragment = fragment

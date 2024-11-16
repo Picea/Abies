@@ -70,10 +70,10 @@ namespace Abies
             var urlRequesHandler = (string newUrlString) => 
             {
                 var currentUrlString = Interop.GetCurrentUrl();
-                var currentUrl = Url.FromString(newUrlString);
+                var currentUrl = Url.FromString(currentUrlString);
                 var newUrl = Url.FromString(newUrlString);
 
-                if(currentUrl.Scheme != newUrl.Scheme || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
+                if(currentUrl.Scheme.GetType() != newUrl.Scheme.GetType() || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
                 {
                     onUrlRequest(new UrlRequest.External(newUrlString));
                 }
