@@ -15,6 +15,17 @@ namespace Abies
 
     public delegate Subscription Subscriptions<TModel>(TModel model);
 
+    public delegate Command OnUrlChange(Url url);
+
+    public delegate Command OnUrlRequest(UrlRequest urlRequest);
+
+    public interface UrlRequest
+    {
+        public sealed record Internal(Url url) : UrlRequest;
+        public sealed record External(string url) : UrlRequest;
+    }
+
+ 
 
     public record Subscription
     {
@@ -23,10 +34,7 @@ namespace Abies
 
     public interface Command;
 
-    public record Application
-    {
-
-    }
+    public record Application;
 
     public static class Browser
     {
@@ -43,6 +51,48 @@ namespace Abies
                 View = view,
                 Subscriptions = subscriptions
             };
+        }
+
+        public static Program<TArguments, TModel> Application<TArguments, TModel>(
+            Initialize<TArguments, TModel> initialize,
+            View<TModel> view,
+            Update<TModel> update,
+            Subscriptions<TModel> subscriptions,
+            OnUrlRequest onUrlRequest,
+            OnUrlChange onUrlChanged)
+        {
+            // Register the URL change handler
+            Interop.OnUrlChange(newUrlString => {
+
+                onUrlChanged(Url.FromString(newUrlString));
+            });
+
+            var urlRequesHandler = (string newUrlString) => 
+            {
+                var currentUrlString = Interop.GetCurrentUrl();
+                var currentUrl = Url.FromString(newUrlString);
+                var newUrl = Url.FromString(newUrlString);
+
+                if(currentUrl.Scheme != newUrl.Scheme || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
+                {
+                    onUrlRequest(new UrlRequest.External(newUrlString));
+                }
+                else
+                {
+                    onUrlRequest(new UrlRequest.Internal(newUrl));
+                }
+            };
+
+            // On form submit a link click, dispatch the URL request
+            Interop.OnLinkClick(newUrlString => {
+                urlRequesHandler(newUrlString);
+            });
+
+            Interop.OnFormSubmit(newUrlString => {
+                urlRequesHandler(newUrlString);
+            });
+
+            return Document(initialize, view, update, subscriptions);
         }
     }
 
@@ -80,6 +130,18 @@ namespace Abies
 
         [JSImport("writeToConsole", "abies.js")]
         public static partial Task WriteToConsole(string message);
+
+        [JSImport("onUrlChange", "abies.js")]
+        public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
+
+        [JSImport("getCurrentUrl", "abies.js")]
+        public static partial string GetCurrentUrl();
+
+        [JSImport("onLinkClick", "abies.js")]
+        internal static partial void OnLinkClick([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
+
+        [JSImport("onFormSubmit", "abies.js")]
+        internal static partial void  OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
     }
 
     public static partial class Runtime
@@ -571,6 +633,9 @@ namespace Abies.Html
         public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
             => new(id.ToString(), tag, [Attributes.id(id.ToString()), .. attributes], children);
 
+        public static Node a(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+            => element("a", attributes, children, id);
+
         public static Node div(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
             => element("div", attributes, children, id);
 
@@ -590,6 +655,9 @@ namespace Abies.Html
 
         public static DOM.Attribute type(string value, [CallerLineNumber] int id = 0)
             => attribute("type", value, id);
+
+        public static DOM.Attribute href(string value, [CallerLineNumber] int id = 0)
+            => attribute("href", value, id);
     }
 
     public static class Events

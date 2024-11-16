@@ -168,17 +168,35 @@ setModuleImports('abies.js', {
     },
 
     // Expose functions to .NET via JS interop (if needed)
-    getCurrentUrl: async () => {
+    getCurrentUrl: () => {
         return window.location.href;
     },
 
-    navigateTo: async (url) => {
+    navigateTo: (url) => {
         history.pushState(null, "", url);
         window.dispatchEvent(new Event("popstate"));
     },
 
-    onUrlChange: async (callback) => {
+    onUrlChange: (callback) => {
         window.addEventListener("popstate", () => callback(getCurrentUrl()));
+    },
+
+    onFormSubmit: (callback) => {
+        document.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const form = event.target;
+            callback(form.action);
+        });
+    },
+
+    onLinkClick: (callback) => {
+        document.addEventListener("click", (event) => {
+            const link = event.target.closest("a");
+            if (link) {
+                event.preventDefault();
+                callback(link.href);
+            }
+        });
     }
 });
     
