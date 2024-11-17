@@ -1,13 +1,17 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Abies;
 
+[StructLayout(LayoutKind.Sequential)]
 public readonly ref struct ParseResult<T>
     {
-        public T Value { get; }
-        public ReadOnlySpan<char> Remaining { get; }
-        public bool Success { get; }
+        public readonly T Value { get; }
+        public readonly ReadOnlySpan<char> Remaining { get; }
+        public readonly bool Success { get; }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ParseResult(T value, ReadOnlySpan<char> remaining)
         {
             Value = value;
@@ -15,10 +19,13 @@ public readonly ref struct ParseResult<T>
             Success = true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ParseResult<T> Successful(T value, ReadOnlySpan<char> remaining)
             => new(value, remaining);
 
-        public static ParseResult<T> Failure => default;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ParseResult<T> Failure()
+            => default;
     }
 
     public delegate ParseResult<T> Parser<T>(ReadOnlySpan<char> input);
@@ -29,20 +36,20 @@ public readonly ref struct ParseResult<T>
             static input =>
                 !input.IsEmpty
                     ? ParseResult<char>.Successful(input[0], input.Slice(1))
-                    : ParseResult<char>.Failure;
+                    : ParseResult<char>.Failure();
 
 
         public static Parser<char> Satisfy(Func<char, bool> predicate) =>
             input =>
                 !input.IsEmpty && predicate(input[0])
                     ? ParseResult<char>.Successful(input[0], input.Slice(1))
-                    : ParseResult<char>.Failure;
+                    : ParseResult<char>.Failure();
 
         public static Parser<char> Char(char expected) =>
             input =>
                 !input.IsEmpty && input[0] == expected
                     ? ParseResult<char>.Successful(expected, input.Slice(1))
-                    : ParseResult<char>.Failure;
+                    : ParseResult<char>.Failure();
 
         public static Parser<char> Digit =>
             Satisfy(char.IsDigit);
@@ -71,7 +78,7 @@ public readonly ref struct ParseResult<T>
             {
                 var result = parser(input);
                 return !result.Success
-                    ? ParseResult<TResult>.Failure
+                    ? ParseResult<TResult>.Failure()
                     : binder(result.Value)(result.Remaining);
             };
 
@@ -99,7 +106,7 @@ public readonly ref struct ParseResult<T>
                 var expectedSpan = expected.AsSpan();
                 return input.StartsWith(expectedSpan)
                     ? ParseResult<string>.Successful(expected, input.Slice(expectedSpan.Length))
-                    : ParseResult<string>.Failure;
+                    : ParseResult<string>.Failure();
             };
 
         public static Parser<List<T>> Many<T>(this Parser<T> parser)
@@ -142,5 +149,5 @@ public readonly ref struct ParseResult<T>
         public static Parser<object> EndOfInput = static input =>
             input.IsEmpty
             ? ParseResult<object>.Successful(new(), input)
-            : ParseResult<object>.Failure;
+            : ParseResult<object>.Failure();
     }
