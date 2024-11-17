@@ -113,7 +113,7 @@ public static class Parser
     public static Parser<string> Host =>
         from slashes in Parse.String("//")
         from hostChars in Parse.Many1(Parse.Satisfy(c => c != ':' && c != '/' && c != '?' && c != '#'))
-        select new string(hostChars.ToArray());
+        select new string([.. hostChars]);
 
     public static Parser<int?> Port =>
         input =>
@@ -123,7 +123,7 @@ public static class Parser
                 var portParser =
                     from colon in Parse.Char(':')
                     from digits in Parse.Many1(Parse.Digit)
-                    select int.Parse(new string(digits.ToArray()));
+                    select int.Parse(new string([.. digits]));
 
                 var result = portParser(input);
                 if (result.Success)

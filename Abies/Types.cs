@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using Abies.DOM;
 using Abies.Html;
@@ -25,7 +26,7 @@ namespace Abies
         public sealed record External(string url) : UrlRequest;
     }
 
- 
+
 
     public record Subscription
     {
@@ -62,7 +63,7 @@ namespace Abies
             OnUrlChange onUrlChanged)
         {
             // Register the URL change handler
-            Interop.OnUrlChange(newUrlString => 
+            Interop.OnUrlChange(newUrlString =>
                 onUrlChanged(Url.FromString(newUrlString))
             );
 
@@ -83,11 +84,13 @@ namespace Abies
             }
 
             // On form submit a link click, dispatch the URL request
-            Interop.OnLinkClick(newUrlString => {
+            Interop.OnLinkClick(newUrlString =>
+            {
                 urlRequesHandler(newUrlString);
             });
 
-            Interop.OnFormSubmit(newUrlString => {
+            Interop.OnFormSubmit(newUrlString =>
+            {
                 urlRequesHandler(newUrlString);
             });
 
@@ -140,7 +143,7 @@ namespace Abies
         internal static partial void OnLinkClick([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
 
         [JSImport("onFormSubmit", "abies.js")]
-        internal static partial void  OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
+        internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
     }
 
     public static partial class Runtime
@@ -241,7 +244,7 @@ namespace Abies
                 {
                     if (attribute is Handler handler)
                     {
-                        if (!_handlers.TryAdd(handler.Id, handler.Command))
+                        if (!_handlers.TryAdd(handler.CommandId, handler.Command))
                         {
                             throw new InvalidOperationException("Command already exists");
                         }
@@ -293,7 +296,7 @@ namespace Abies
             {
                 if (patch is AddHandler addHandler)
                 {
-                    if (!_handlers.TryAdd(addHandler.Handler.Id, addHandler.Handler.Command))
+                    if (!_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
                     {
                         // todo: log
                         await Interop.WriteToConsole("Command already exists");
@@ -302,7 +305,7 @@ namespace Abies
                 }
                 else if (patch is RemoveHandler removeHandler)
                 {
-                    if (!_handlers.TryRemove(removeHandler.Handler.Id, out _))
+                    if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
                     {
                         // todo: log
                         await Interop.WriteToConsole("Command not found");
@@ -320,75 +323,77 @@ namespace Abies
 namespace Abies.DOM
 {
     public record Node(string Id);
-    public record Attribute(string Name, string Value);
+    public record Attribute(int Id, string Name, string Value);
 
     public record Element(string Id, string Tag, Attribute[] Attributes, Node[] Children) : Node(Id);
 
-    public record Handler(string Name, string Id, Command Command) : Attribute($"data-event-{Name}", Id);
+    public record Handler(string Name, string CommandId, Command Command, int Id) : Attribute(Id, $"data-event-{Name}", CommandId);
 
     public record Text(string Id, string Value) : Node(Id);
 
     public interface Patch { }
 
-    public readonly record struct AddRoot : Patch
+    public readonly struct AddRoot(Element element) : Patch
     {
-        public required Element Element { get; init; }
+        public readonly Element Element = element;
     }
 
-    public readonly record struct ReplaceChild : Patch
+    public readonly struct ReplaceChild(Element oldElement, Element newElement) : Patch
     {
-        public required Element OldElement { get; init; }
-        public required Element NewElement { get; init; }
+        public readonly Element OldElement = oldElement;
+        public readonly Element NewElement = newElement;
     }
 
-    public readonly record struct AddChild : Patch
+    public readonly struct AddChild(Element parent, Element child) : Patch
     {
-        public required Element Parent { get; init; }
-        public required Element Child { get; init; }
+        public readonly Element Parent = parent;
+        public readonly Element Child = child;
     }
 
-    public readonly record struct RemoveChild : Patch
+    public readonly struct RemoveChild(Element parent, Element child) : Patch
     {
-        public required Element Parent { get; init; }
-        public required Element Child { get; init; }
+        public readonly Element Parent = parent;
+        public readonly Element Child = child;
     }
 
-    public readonly record struct UpdateAttribute : Patch
+    public readonly struct UpdateAttribute(Element element, Attribute attribute, string value) : Patch
     {
-        public required Element Element { get; init; }
-        public required Attribute Attribute { get; init; }
-        public required string Value { get; init; }
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
+        public readonly string Value = value;
     }
 
-    public readonly record struct AddAttribute : Patch
+    public readonly struct AddAttribute(Element element, Attribute attribute) : Patch
     {
-        public required Element Element { get; init; }
-        public required Attribute Attribute { get; init; }
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
     }
 
-    public readonly record struct RemoveAttribute : Patch
+    public readonly struct RemoveAttribute(Element element, Attribute attribute) : Patch
     {
-        public required Element Element { get; init; }
-        public required Attribute Attribute { get; init; }
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
     }
 
-    public readonly record struct AddHandler : Patch
+    public readonly struct AddHandler(Element element, Handler handler) : Patch
     {
-        public required Element Element { get; init; }
-        public required Handler Handler { get; init; }
+        public readonly Element Element = element;
+        public readonly Handler Handler = handler;
     }
 
-    public readonly record struct RemoveHandler : Patch
+    public readonly struct RemoveHandler(Element element, Handler handler) : Patch
     {
-        public required Element Element { get; init; }
-        public required Handler Handler { get; init; }
+        public readonly Element Element = element;
+        public readonly Handler Handler = handler;
     }
 
-    public readonly record struct UpdateText : Patch
+    public readonly struct UpdateText(Text node, string text) : Patch
     {
-        public required Text Node { get; init; }
-        public required string Text { get; init; }
+        public readonly Text Node = node;
+        public readonly string Text = text;
     }
+
+
 
     public static class Render
     {
@@ -477,19 +482,29 @@ namespace Abies.DOM
             if (oldNode is null)
             {
                 // Generate patches to create the newNode from scratch
-                return [new AddRoot { Element = (Element)newNode }];
+                return [new AddRoot((Element)newNode)];
             }
 
-            List<Patch> patches = (oldNode, newNode) switch
+            List<Patch> patches;
+            if (oldNode is Text oldText && newNode is Text newText)
             {
-                (Text o, Text n) => o.Value == n.Value
+                patches = oldText.Value == newText.Value
                     ? []
-                    : [new UpdateText { Node = o, Text = n.Value }],
-                (Element o, Element n) when o.Tag != n.Tag => [new ReplaceChild { OldElement = o, NewElement = n }],
-                (Element o, Element n) => DiffElements(o, n),
+                    : [new UpdateText(oldText, newText.Value)];
+            }
+            else if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag != newElement.Tag)
+            {
+                patches = [new ReplaceChild(oldElement, newElement)];
+            }
+            else if (oldNode is Element o && newNode is Element n)
+            {
+                patches = DiffElements(o, n);
+            }
+            else
+            {
+                throw new Exception("Unknown node type");
+            }
 
-                _ => throw new Exception("Unknown node type")
-            };
             return patches;
         }
 
@@ -499,116 +514,93 @@ namespace Abies.DOM
 
             if (oldElement.Tag != newElement.Tag)
             {
-                return [new ReplaceChild { OldElement = oldElement, NewElement = newElement }];
+                return new List<Patch> { new ReplaceChild(oldElement, newElement) };
             }
 
-            // Compare Attributes
-            var oldAttributes = oldElement.Attributes.ToDictionary(a => a.Name);
-            var newAttributes = newElement.Attributes.ToDictionary(a => a.Name);
+            // Compare Attributes using Span<T>
+            var oldAttributes = oldElement.Attributes.AsSpan();
+            var newAttributes = newElement.Attributes.AsSpan();
 
-
-            foreach (var attr in newAttributes)
+            for (int i = 0; i < newAttributes.Length; i++)
             {
-                if (oldAttributes.TryGetValue(attr.Key, out var oldAttr))
+                ref var newAttr = ref newAttributes[i];
+                Attribute? oldAttr = null;
+
+                for (int j = 0; j < oldAttributes.Length; j++)
                 {
-                    if (!attr.Value.Equals(oldAttr))
+                    if (oldAttributes[j].Id == newAttr.Id)
                     {
-                        if (attr.Value is Handler handler)
+                        oldAttr = oldAttributes[j];
+                        break;
+                    }
+                }
+
+                if (oldAttr != null)
+                {
+                    if (!newAttr.Equals(oldAttr))
+                    {
+                        if (newAttr is Handler handler)
                         {
-                            patches.Add(new RemoveHandler
-                            {
-                                Element = oldElement,
-                                Handler = (Handler)oldAttr
-                            });
-                            patches.Add(new AddHandler
-                            {
-                                Element = oldElement,
-                                Handler = handler
-                            });
+                            patches.Add(new RemoveHandler(oldElement, (Handler)oldAttr));
+                            patches.Add(new AddHandler(newElement, handler));
                         }
                         else
                         {
-                            patches.Add(new UpdateAttribute
-                            {
-                                Element = oldElement,
-                                Attribute = attr.Value, // Use the attribute key
-                                Value = attr.Value.Value
-                            });
+                            patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
                         }
                     }
                 }
                 else
                 {
-                    // Handle attribute addition
-                    if (attr.Value is Handler handler)
-                    {
-                        patches.Add(new AddHandler
-                        {
-                            Element = oldElement,
-                            Handler = handler
-                        });
-                    }
-                    else
-                    {
-                        patches.Add(new AddAttribute
-                        {
-                            Element = oldElement,
-                            Attribute = attr.Value,
-                        });
-                    }
+                    patches.Add(new AddAttribute(oldElement, newAttr));
                 }
             }
 
-            // Handle attribute removals
-            foreach (var oldAttr in oldAttributes)
+            for (int i = 0; i < oldAttributes.Length; i++)
             {
-                if (!newAttributes.ContainsKey(oldAttr.Key))
+                var oldAttr = oldAttributes[i];
+                bool existsInNew = false;
+
+                for (int j = 0; j < newAttributes.Length; j++)
                 {
-                    if (oldAttr.Value is Handler handler)
+                    if (newAttributes[j].Id == oldAttr.Id)
                     {
-                        patches.Add(new RemoveHandler
-                        {
-                            Element = oldElement,
-                            Handler = handler
-                        });
+                        existsInNew = true;
+                        break;
                     }
-                    else
-                    {
-                        patches.Add(new RemoveAttribute
-                        {
-                            Element = oldElement,
-                            Attribute = oldAttr.Value
-                        });
-                    }
+                }
+
+                if (!existsInNew)
+                {
+                    patches.Add(new RemoveAttribute(oldElement, oldAttr));
                 }
             }
 
             // Compare Children
-            int maxChildren = Math.Max(oldElement.Children.Length, newElement.Children.Length);
-            for (int i = 0; i < maxChildren; i++)
+            var childPatches = DiffChildren(oldElement.Children, newElement.Children);
+            patches.AddRange(childPatches);
+
+            return patches;
+        }
+
+        private static List<Patch> DiffChildren(ReadOnlySpan<Node> children1, ReadOnlySpan<Node> children2)
+        {
+            var patches = new List<Patch>();
+
+            var length = Math.Max(children1.Length, children2.Length);
+            for (int i = 0; i < length; i++)
             {
-                var oldChild = i < oldElement.Children.Length ? oldElement.Children[i] : null;
-                var newChild = i < newElement.Children.Length ? newElement.Children[i] : null;
-
-                if (oldChild == null && newChild != null)
+                if (i < children1.Length && i < children2.Length)
                 {
-                    if (newChild is Element elementChild)
-                    {
-                        patches.Add(new AddChild { Parent = oldElement, Child = elementChild });
-                    }
-                    continue;
+                    patches.AddRange(Diff(children1[i], children2[i]));
                 }
-
-                if (newChild == null && oldChild != null)
+                else if (i < children1.Length)
                 {
-                    patches.Add(new RemoveChild { Parent = oldElement, Child = (Element)oldChild });
-                    continue;
+                    patches.Add(new RemoveChild((Element)children1[i - 1], (Element)children1[i]));
                 }
-
-                if (oldChild != null && newChild != null)
+                else if (i < children2.Length)
                 {
-                    var childPatches = Diff(oldChild, newChild);
-                    patches.AddRange(childPatches);
+                    patches.Add(new AddChild((Element)children2[i - 1], (Element)children2[i]));
                 }
             }
 
@@ -648,7 +640,7 @@ namespace Abies.Html
     public static class Attributes
     {
         public static DOM.Attribute attribute(string name, string value, [CallerLineNumber] int id = 0)
-            => new(name, value);
+            => new(id, name, value);
         public static DOM.Attribute id(string value, [CallerLineNumber] int id = 0)
             => attribute("id", value, id);
 
@@ -662,7 +654,7 @@ namespace Abies.Html
     public static class Events
     {
         public static Handler on(string name, Command command, [CallerLineNumber] int id = 0)
-            => new(name, id.ToString(), command);
+            => new(name, Guid.NewGuid().ToString(), command, id);
         public static Handler onclick(Command command, [CallerLineNumber] int id = 0)
             => on("click", command, id);
 
