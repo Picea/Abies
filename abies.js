@@ -72,13 +72,13 @@ setModuleImports('abies.js', {
     setTitle: async (title) => {
         document.title = title;
     },
-
+    
     /**
      * Removes a child element from the DOM.
      * @param {number} parentId - The ID of the parent element.
      * @param {number} childId - The ID of the child element to remove.
      */
-    removeChild: async (parentId, childId) => {
+    removeChild: async (parentId, childId) =>  {
         const parent = document.getElementById(parentId);
         const child = document.getElementById(childId);
         if (parent && child && parent.contains(child)) {
@@ -149,7 +149,7 @@ setModuleImports('abies.js', {
      * @param {number} nodeId - The ID of the node to update.
      * @param {string} propertyName - The name of the attribute/property to remove.
      */
-    removeAttribute: async (nodeId, propertyName) => {
+    removeAttribute: async (nodeId, propertyName) =>{
         const node = document.getElementById(nodeId);
         if (node) {
             node.removeAttribute(propertyName);
@@ -224,7 +224,7 @@ setModuleImports('abies.js', {
 
 
 });
-
+    
 const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 

@@ -33,7 +33,7 @@ public class UrlParsingBenchmarks
         foreach (var url in _testUrls)
         {
 #pragma warning disable CA1416 // Validate platform compatibility
-            Url.FromString(url);
+            Url.Create(new (url));
 #pragma warning restore CA1416 // Validate platform compatibility
                               // Perform operations if necessary
         }

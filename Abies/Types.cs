@@ -1,31 +1,37 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using Abies;
 using Abies.DOM;
-using Abies.Html;
+using static Abies.Url;
 
 namespace Abies
 {
-
-    public delegate TModel Update<TModel>(Command command, TModel model);
-
-    public delegate TModel Initialize<TArguments, TModel>(TArguments arguments);
-
-    public delegate Document View<TModel>(TModel model);
-
-    public delegate Subscription Subscriptions<TModel>(TModel model);
-
-    public delegate Command OnUrlChange(Url url);
-
-    public delegate Command OnUrlRequest(UrlRequest urlRequest);
-
-    public interface UrlRequest
+    public interface Element<TModel, TArgument>
     {
-        public sealed record Internal(Url url) : UrlRequest;
-        public sealed record External(string url) : UrlRequest;
+        public static abstract Node View(TModel model);
+        public static abstract (TModel model, IEnumerable<Command> commands) Update(Message message, TModel model);
+        public static abstract TModel Initialize(TArgument argument);
+        public static abstract Subscription Subscriptions(TModel model);
     }
 
+    public interface Application<TModel, TArgument> 
+    {
+        public static abstract TModel Initialize(Url url, TArgument argument);
+        public static abstract (TModel model, IEnumerable<Command> commands) Update(Message message, TModel model);
+        public static abstract Document View(TModel model);
+        public static abstract Message OnUrlChanged(Url url);
+        public static abstract Message OnLinkClicked(UrlRequest urlRequest);
+        public static abstract Subscription Subscriptions(TModel model);
+    }
+
+    public interface UrlRequest : Message
+    {
+        public sealed record Internal(Url Url) : UrlRequest;
+        public sealed record External(string Url) : UrlRequest;
+    }
 
 
     public record Subscription
@@ -33,125 +39,102 @@ namespace Abies
 
     }
 
-    public interface Command;
+    public interface Message;
 
-    public record Application;
+    public interface Command
+    {
+        public record struct None : Command;
+
+                
+    }
+
+    public static class Commands
+    {
+        public static Command.None None = new(); 
+    }
 
     public static class Browser
     {
-        public static Program<TArguments, TModel> Document<TArguments, TModel>(
-            Initialize<TArguments, TModel> initialize,
-            View<TModel> view,
-            Update<TModel> update,
-            Subscriptions<TModel> subscriptions)
+        public static Program<TApplication, TArguments, TModel> Application<TApplication, TArguments, TModel>()
+            where TApplication : Application<TModel, TArguments>
         {
-            return new Program<TArguments, TModel>
-            {
-                Update = update,
-                Initialize = initialize,
-                View = view,
-                Subscriptions = subscriptions
-            };
-        }
+            var currentUrl = Url.Create(new(Interop.GetCurrentUrl()));
 
-        public static Program<TArguments, TModel> Application<TArguments, TModel>(
-            Initialize<TArguments, TModel> initialize,
-            View<TModel> view,
-            Update<TModel> update,
-            Subscriptions<TModel> subscriptions,
-            OnUrlRequest onUrlRequest,
-            OnUrlChange onUrlChanged)
-        {
+            var program = new Program<TApplication, TArguments, TModel>();
+
             // Register the URL change handler
-            Interop.OnUrlChange(newUrlString =>
-                onUrlChanged(Url.FromString(newUrlString))
-            );
+            Interop.OnUrlChange(async newUrlString =>
+            {
+                var newUrl = Url.Create(new(newUrlString));
+                var message = TApplication.OnUrlChanged(newUrl);
+                await program.Dispatch(message);
+            });
 
-            void urlRequesHandler(string newUrlString)
+            // Handler for link clicks and form submissions
+            async void linkClickedHandler(Decoded.String newUrlString)
             {
                 var currentUrlString = Interop.GetCurrentUrl();
-                var currentUrl = Url.FromString(currentUrlString);
-                var newUrl = Url.FromString(newUrlString);
+                var currentUrl = Url.Create(new(currentUrlString));
+                var newUrl = Url.Create(newUrlString);
+                Message message;
 
-                if (currentUrl.Scheme.GetType() != newUrl.Scheme.GetType() || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
+                if (!AreSameOrigin(currentUrl, newUrl))
                 {
-                    onUrlRequest(new UrlRequest.External(newUrlString));
+                    message = TApplication.OnLinkClicked(new UrlRequest.External(newUrlString.Value));
                 }
                 else
                 {
-                    onUrlRequest(new UrlRequest.Internal(newUrl));
+                    message = TApplication.OnLinkClicked(new UrlRequest.Internal(newUrl));
                 }
+
+                await program.Dispatch(message);
             }
 
-            // On form submit a link click, dispatch the URL request
+            // Register link click and form submit handlers
             Interop.OnLinkClick(newUrlString =>
             {
-                urlRequesHandler(newUrlString);
+                linkClickedHandler(new(newUrlString));
             });
 
             Interop.OnFormSubmit(newUrlString =>
             {
-                urlRequesHandler(newUrlString);
+                linkClickedHandler(new(newUrlString));
             });
 
-            return Document(initialize, view, update, subscriptions);
+            return program;
+        }
+
+        private static bool AreSameOrigin(Url currentUrl, Url newUrl)
+        {
+            return currentUrl.Scheme.GetType() == newUrl.Scheme.GetType()
+                && currentUrl.Host == newUrl.Host
+                && currentUrl.Port == newUrl.Port;
         }
     }
+}
 
     public record Document(string Title, Node Body);
 
-    internal static partial class Interop
-    {
-
-        [JSImport("setAppContent", "abies.js")]
-        public static partial Task SetAppContent(string html);
-
-        [JSImport("addChildHtml", "abies.js")]
-        public static partial Task AddChildHtml(string parentId, string childHtml);
-
-        [JSImport("removeChild", "abies.js")]
-        public static partial Task RemoveChild(string parentId, string childId);
-
-        [JSImport("replaceChildHtml", "abies.js")]
-        public static partial Task ReplaceChildHtml(string oldNodeId, string newHtml);
-
-        [JSImport("updateTextContent", "abies.js")]
-        public static partial Task UpdateTextContent(string nodeId, string newText);
-
-        [JSImport("updateAttribute", "abies.js")]
-        public static partial Task UpdateAttribute(string id, string name, string value);
-
-        [JSImport("addAttribute", "abies.js")]
-        public static partial Task AddAttribute(string id, string name, string value);
-
-        [JSImport("removeAttribute", "abies.js")]
-        public static partial Task RemoveAttribute(string id, string name);
-
-        [JSImport("setTitle", "abies.js")]
-        public static partial Task SetTitle(string title);
-
-        [JSImport("writeToConsole", "abies.js")]
-        public static partial Task WriteToConsole(string message);
-
-        [JSImport("onUrlChange", "abies.js")]
-        public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
-
-        [JSImport("getCurrentUrl", "abies.js")]
-        public static partial string GetCurrentUrl();
-
-        [JSImport("onLinkClick", "abies.js")]
-        internal static partial void OnLinkClick([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
-
-        [JSImport("onFormSubmit", "abies.js")]
-        internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
-    }
-
+    /// <summary>
+    /// The runtime for the Abies framework
+    /// </summary>
+    /// <remarks>
+    /// The runtime is responsible for running the program and dispatching commands
+    /// This can not be a generic class because it needs to be called from JavaScript
+    /// </remarks>
     public static partial class Runtime
     {
+        /// <summary>
+        /// The current program
+        /// </summary>
+        /// <remarks>
+        /// This can not be a generic field because it needs to be called from JavaScript
+        /// </remarks>
         private static Program? _program;
 
-        public static async Task Run<TArguments, TModel>(TArguments arguments, Program<TArguments, TModel> program)
-        {
+        public static async Task Run<TApplication, TArguments, TModel>(Program<TApplication, TArguments, TModel> program, TArguments arguments)
+            where TApplication : Application<TModel, TArguments>
+    {
             _program = program;
             await program.Run(arguments);
         }
@@ -166,63 +149,32 @@ namespace Abies
             Interop.WriteToConsole($"Command {commandId} arrived");
             _program.Dispatch(commandId);
         }
-
-        public static string RenderToHtml(Node node)
-        {
-            var sb = new System.Text.StringBuilder();
-            RenderNode(node, sb);
-            return sb.ToString();
-        }
-
-        private static void RenderNode(Node node, System.Text.StringBuilder sb)
-        {
-            switch (node)
-            {
-                case Element element:
-                    sb.Append($"<{element.Tag}");
-                    foreach (var attr in element.Attributes)
-                    {
-                        sb.Append($" {attr.Name}=\"{System.Web.HttpUtility.HtmlEncode(attr.Value)}\"");
-                    }
-                    sb.Append('>');
-                    foreach (var child in element.Children)
-                    {
-                        RenderNode(child, sb);
-                    }
-                    sb.Append($"</{element.Tag}>");
-                    break;
-                case Text text:
-                    sb.Append($"<span id={text.Id} {System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
-                    break;
-                // Handle other node types if necessary
-                default:
-                    break;
-            }
-        }
     }
 
     public interface Program
     {
-        public Task Dispatch(string commandId);
+        public Task Dispatch(string messageId);
+
+        public Task Dispatch(Message message);
     }
 
-    public record Program<TArguments, TModel> : Program
+    public record Program<TApplication, TArguments, TModel> : Program
+        where TApplication : Application<TModel, TArguments>
     {
         private TModel? model;
         private Node? _dom;
-        private readonly ConcurrentDictionary<string, Command> _handlers = new();
-        public required Update<TModel> Update { get; init; }
-        public required Initialize<TArguments, TModel> Initialize { get; init; }
-        public required View<TModel> View { get; init; }
-        public required Subscriptions<TModel> Subscriptions { get; init; }
+        // todo: clean up handlers when they are no longer needed
+        private readonly ConcurrentDictionary<string, Message> _handlers = new();
 
         public async Task Run(TArguments arguments)
         {
+            var currentUrl = Url.Create(new(Interop.GetCurrentUrl()));
+
             // Initialize the state
-            var initialModel = Initialize(arguments);
+            var initialModel = TApplication.Initialize(currentUrl, arguments);
 
             // Generate the virtual DOM
-            var document = View(initialModel);
+            var document = TApplication.View(initialModel);
 
             var html = Render.Html(document.Body);
 
@@ -259,14 +211,8 @@ namespace Abies
             }
         }
 
-        public async Task Dispatch(string commandId)
+        public async Task Dispatch(Message message)
         {
-            if (!_handlers.TryGetValue(commandId, out var command))
-            {
-                await Interop.WriteToConsole($"Command {commandId} not found");
-                throw new InvalidOperationException("Command not found");
-            }
-
             if (model is null)
             {
                 await Interop.WriteToConsole("Model not initialized");
@@ -279,17 +225,14 @@ namespace Abies
                 throw new InvalidOperationException("DOM not initialized");
             }
 
-            await Interop.WriteToConsole($"Command {commandId} dispatched");
-            await Interop.WriteToConsole($"Command {command} found");
-
-            // Update the state
-            model = Update(command, model);
+            // Update the state with the new message
+            var (newModel, commands) = TApplication.Update(message, model);
 
             // Generate new virtual DOM
-            var newDom = View(model);
+            var newDocument = TApplication.View(newModel);
 
             // Compute the patches
-            var patches = Operations.Diff(_dom, newDom.Body);
+            var patches = Operations.Diff(_dom, newDocument.Body);
 
             // Apply patches and (de)register handlers
             foreach (var patch in patches)
@@ -298,7 +241,6 @@ namespace Abies
                 {
                     if (!_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
                     {
-                        // todo: log
                         await Interop.WriteToConsole("Command already exists");
                     }
                     await Interop.WriteToConsole($"Command {addHandler.Handler.Id} added");
@@ -307,18 +249,49 @@ namespace Abies
                 {
                     if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
                     {
-                        // todo: log
                         await Interop.WriteToConsole("Command not found");
                     }
                 }
                 await Operations.Apply(patch);
             }
+
             // Update the current virtual DOM
-            _dom = newDom.Body;
-            await Interop.SetTitle(newDom.Title);
+            _dom = newDocument.Body;
+            await Interop.SetTitle(newDocument.Title);
+
+            foreach (var command in commands)
+            {
+                await HandleCommand(command);
+            }
+        }
+
+        private static async Task HandleCommand(Command command)
+        {
+            switch(command)
+            {
+                case Navigation.Command.PushState pushState:
+                    await Interop.PushState(pushState.Url.ToString());
+                    break;
+                case Navigation.Command.Load load:
+                    await Interop.Load(load.Url.ToString());
+                    break;
+                default:
+                    throw new InvalidOperationException("Unknown command");
+            };
+        }
+
+        public async Task Dispatch(string messageId)
+        {
+            if (!_handlers.TryGetValue(messageId, out var message))
+            {
+                await Interop.WriteToConsole($"Command {messageId} not found");
+                throw new InvalidOperationException("Command not found");
+            }
+
+            await Dispatch(message);
         }
     }
-}
+
 
 namespace Abies.DOM
 {
@@ -327,7 +300,7 @@ namespace Abies.DOM
 
     public record Element(string Id, string Tag, Attribute[] Attributes, Node[] Children) : Node(Id);
 
-    public record Handler(string Name, string CommandId, Command Command, int Id) : Attribute(Id, $"data-event-{Name}", CommandId);
+    public record Handler(string Name, string CommandId, Message Command, int Id) : Attribute(Id, $"data-event-{Name}", CommandId);
 
     public record Text(string Id, string Value) : Node(Id);
 
@@ -635,6 +608,12 @@ namespace Abies.Html
 
         public static Node text(string value, [CallerLineNumber] int id = 0)
             => new Text(id.ToString(), value);
+
+        public static Node h1(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+            => element("h1", attributes, children, id);
+
+        public static Node h2(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+            => element("h2", attributes, children, id);
     }
 
     public static class Attributes
@@ -653,12 +632,12 @@ namespace Abies.Html
 
     public static class Events
     {
-        public static Handler on(string name, Command command, [CallerLineNumber] int id = 0)
+        public static Handler on(string name, Message command, [CallerLineNumber] int id = 0)
             => new(name, Guid.NewGuid().ToString(), command, id);
-        public static Handler onclick(Command command, [CallerLineNumber] int id = 0)
+        public static Handler onclick(Message command, [CallerLineNumber] int id = 0)
             => on("click", command, id);
 
-        public static Handler onchange(Command command, [CallerLineNumber] int id = 0)
+        public static Handler onchange(Message command, [CallerLineNumber] int id = 0)
             => on("change", command, id);
     }
 }
