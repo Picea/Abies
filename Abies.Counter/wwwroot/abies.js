@@ -1,5 +1,3 @@
-// wwwroot/js/pine.js
-
 import { dotnet } from './_framework/dotnet.js';
 
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet

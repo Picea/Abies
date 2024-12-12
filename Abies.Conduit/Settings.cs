@@ -30,5 +30,5 @@ public class Page : Element<Model, Message>
         };
 
     public static Node View(Model model)
-         => h1([], [text("Settngs")]);
+         => h1([], [text("Settings")]);
 }
