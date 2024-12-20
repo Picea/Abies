@@ -1,12 +1,12 @@
-using Abies.Conduit.Routing;
+﻿using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
 
-namespace Abies.Conduit.Login;
+namespace Abies.Conduit.Page.Editor;
 
 public interface Message : Abies.Message
 {
-        
+
 }
 
 public record Model;
@@ -30,5 +30,5 @@ public class Page : Element<Model, Message>
         };
 
     public static Node View(Model model)
-         => h1([], [text("Login")]);
+         => h1([], [text("Editor")]);
 }

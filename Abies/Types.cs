@@ -304,6 +304,8 @@ namespace Abies.DOM
 
     public record Text(string Id, string Value) : Node(Id);
 
+    public record Empty() : Node("");
+
     public interface Patch { }
 
     public readonly struct AddRoot(Element element) : Patch
