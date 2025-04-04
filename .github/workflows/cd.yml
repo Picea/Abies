@@ -18,7 +18,7 @@ jobs:
     - name: Install WASM experimental workload
       run: dotnet workload install wasm-experimental
     - name: Install WASM tools workload
-      run: dotnet workload install wasm-tools-net9
+      run: dotnet workload install wasm-tools
     - uses: actions/checkout@v4.2.2
       with:
           fetch-depth: 0
