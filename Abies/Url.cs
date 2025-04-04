@@ -138,7 +138,7 @@ public record Url
             },
             Host = new(host),
             Port = port is not null ? new Port(port.Value) : null,
-            Path = new(Uri.UnescapeDataString(path)),
+            Path = new(Uri.UnescapeDataString(path).ToLowerInvariant()),
             Query = new(query),
             Fragment = new(fragment)
         };
@@ -285,7 +285,7 @@ public record Url
         {
             public static Parser<string> String(string segment) =>
                 from slash in Abies.Parse.Char('/')
-                from @string in Abies.ParserExtensions.String(segment)
+                from @string in Abies.Parse.String(segment)
                 select @string;
 
             /// <summary>

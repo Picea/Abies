@@ -1,8 +1,10 @@
 <Project>
     <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+
       <!-- Example: Set the C# language version to 9.0 for all projects -->
       <LangVersion>latest</LangVersion>
-      
+      <ImplicitUsings>enable</ImplicitUsings>
       <!-- Example: Enable nullable reference types for all projects -->
       <Nullable>enable</Nullable>
       
