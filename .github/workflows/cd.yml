@@ -18,15 +18,15 @@ jobs:
     - name: Install WASM experimental workload
       run: dotnet workload install wasm-experimental
     - name: Install WASM tools workload
-      run: dotnet workload install wasm-tools
+      run: dotnet workload install wasm-tools-net9
     - uses: actions/checkout@v4.2.2
       with:
           fetch-depth: 0
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 10.0.x
-        include-prerelease: true
+        dotnet-version: 9.0.x
+        # include-prerelease: true
     - name: Install GitVersioning
       run: dotnet tool install --global nbgv
     - name: Set version
