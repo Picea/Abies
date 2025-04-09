@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using Abies;
 using Abies.DOM;
-using static Abies.Url;
 
 namespace Abies
 {
@@ -58,7 +57,7 @@ namespace Abies
         public static Program<TApplication, TArguments, TModel> Application<TApplication, TArguments, TModel>()
             where TApplication : Application<TModel, TArguments>
         {
-            var currentUrl = Url.Create(new(Interop.GetCurrentUrl()));
+            var currentUrl = Url.Create(Interop.GetCurrentUrl());
 
             var program = new Program<TApplication, TArguments, TModel>();
 
@@ -71,16 +70,15 @@ namespace Abies
             });
 
             // Handler for link clicks and form submissions
-            async void linkClickedHandler(Decoded.String newUrlString)
+            async void linkClickedHandler(string newUrlString)
             {
-                var currentUrlString = Interop.GetCurrentUrl();
-                var currentUrl = Url.Create(new(currentUrlString));
+                var currentUrl = Url.Create(Interop.GetCurrentUrl());
                 var newUrl = Url.Create(newUrlString);
                 Message message;
 
                 if (!AreSameOrigin(currentUrl, newUrl))
                 {
-                    message = TApplication.OnLinkClicked(new UrlRequest.External(newUrlString.Value));
+                    message = TApplication.OnLinkClicked(new UrlRequest.External(newUrlString));
                 }
                 else
                 {
@@ -89,6 +87,7 @@ namespace Abies
 
                 await program.Dispatch(message);
             }
+
 
             // Register link click and form submit handlers
             Interop.OnLinkClick(newUrlString =>

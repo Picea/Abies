@@ -1,8 +1,5 @@
 using Abies.Conduit.Main;
-using System;
-using static Abies.Parse;
-using static Abies.Url.Parse.Segment;
-using static Abies.Url.Parse;
+using static Abies.Route.Parse;
 
 namespace Abies.Conduit.Routing;
 
@@ -42,11 +39,11 @@ public abstract record Route
     /// </summary>
     public static Parser<Route> Match =>
         // match the path /profile/{username} where {username} is a string
-        (Segment.String("profile") / Url.Parse.String).Map(Handlers.Profile)
+        (Segment.String("profile") / Abies.Route.Parse.String).Map(Handlers.Profile)
         // match the path /article/{slug} where {slug} is a string
-        | (Segment.String("article") / Url.Parse.String).Map(Handlers.Article)
+        | (Segment.String("article") / Abies.Route.Parse.String).Map(Handlers.Article)
         // match the path /editor/{slug} where {slug} is a string
-        | (Segment.String("editor") / Url.Parse.String).Map(Handlers.EditArticle)
+        | (Segment.String("editor") / Abies.Route.Parse.String).Map(Handlers.EditArticle)
         // match the path /editor
         | Segment.String("editor").Map(Handlers.NewArticle)
         // match the path /home

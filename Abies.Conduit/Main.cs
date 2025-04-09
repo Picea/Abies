@@ -1,17 +1,7 @@
-using System;
-using System.Diagnostics;
 using Abies.Conduit.Routing;
-using Abies;
-using static Abies.Option.Extensions;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
-using Abies.Html;
 using static Abies.Conduit.Main.Message.Event;
 using static Abies.UrlRequest;
-using static Abies.Url;
 using static Abies.Navigation.Command;
-using System.Collections.Generic;
 
 namespace Abies.Conduit.Main;
 
@@ -20,13 +10,13 @@ public record struct UserName(string Value);
 
 public record struct Slug(string Value);
 
-public record Model(Page Page, Route CurrentRoute);
+public record Model(Page Page, Routing.Route CurrentRoute);
 
 public interface Message : Abies.Message
 {
     public interface Command : Message
     {
-        public sealed record ChangeRoute(Route? Route) : Command;
+        public sealed record ChangeRoute(Routing.Route? Route) : Command;
     }
 
     public interface Event : Message
@@ -66,17 +56,17 @@ public class Application : Application<Model, Arguments>
     /// <returns>The next model.</returns>
     private static Model GetNextModel(Url url)
     {
-        Route currentRoute = Route.FromUrl(Route.Match, url);
+        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
         return currentRoute switch
         {
-            Route.Home => new(new Page.Home(new Conduit.Page.Home.Model()), currentRoute),
-            Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute),
-            Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute),
-            Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute),
-            Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute),
-            Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute),
-            Route.Redirect => new(new Page.Redirect(), currentRoute),
-            Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Article.Model(new Slug(""))), currentRoute),
+            Routing.Route.Home => new(new Page.Home(new Conduit.Page.Home.Model()), currentRoute),
+            Routing.Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute),
+            Routing.Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute),
+            Routing.Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute),
+            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute),
+            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute),
+            Routing.Route.Redirect => new(new Page.Redirect(), currentRoute),
+            Routing.Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Article.Model(new Slug(""))), currentRoute),
             _ => new(new Page.NotFound(), currentRoute),
         };
     }
@@ -101,8 +91,8 @@ public class Application : Application<Model, Arguments>
     private static (Model model, IEnumerable<Command>) HandleLinkClicked(UrlRequest urlRequest, Model model)
         => urlRequest switch
         {
-            Internal @internal => (model with { CurrentRoute = Route.FromUrl(Route.Match, @internal.Url) }, new List<Command> { new PushState(@internal.Url) }),
-            External externalUrl => (model, new List<Command> { new Load(Create(new Decoded.String(externalUrl.Url))) }),
+            Internal @internal => (model with { CurrentRoute = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, @internal.Url) }, new List<Command> { new PushState(@internal.Url) }),
+            External externalUrl => (model, new List<Command> { new Load(Url.Create(externalUrl.Url)) }),
             _ => (model, new List<Command>())
         };
 
