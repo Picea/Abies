@@ -4,6 +4,16 @@
     <TargetFramework>net9.0</TargetFramework>
     <!-- needed to support JS interop -->    
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Package metadata -->
+    <Authors>Maurice CGP Peters</Authors>
+    <Description>Abies - A WebAssembly library for building MVP style web applications with .NET</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>webassembly;wasm;dotnet;web</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
