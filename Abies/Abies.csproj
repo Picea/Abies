@@ -18,8 +18,8 @@
 
   <ItemGroup>
     <!-- For README -->
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+
     <Content Include="wwwroot\abies.js">
       <Pack>true</Pack>
       <PackagePath>contentFiles\any\any\wwwroot</PackagePath>
