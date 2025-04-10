@@ -1,0 +1,6 @@
+<Project>
+    <Target Name="CopyAbiesJs" BeforeTargets="Build">
+      <Copy SourceFiles="$(MSBuildThisFileDirectory)..\contentFiles\any\any\wwwroot\abies.js" 
+            DestinationFolder="$(ProjectDir)wwwroot\" />
+    </Target>
+  </Project>
