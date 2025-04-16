@@ -299,11 +299,15 @@ namespace Abies.DOM
     public record Node(string Id);
     public record Attribute(int Id, string Name, string Value);
 
-    public record Element(string Id, string Tag, Attribute[] Attributes, Node[] Children) : Node(Id);
+    public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
     public record Handler(string Name, string CommandId, Message Command, int Id) : Attribute(Id, $"data-event-{Name}", CommandId);
 
-    public record Text(string Id, string Value) : Node(Id);
+    public record Text(string Id, string Value) : Node(Id)
+    {
+        public static implicit operator string(Text text) => text.Value;
+        public static implicit operator Text(string text) => new(text, text);
+    };
 
     public record Empty() : Node("");
 
@@ -582,65 +586,5 @@ namespace Abies.DOM
 
             return patches;
         }
-    }
-}
-
-
-
-
-
-
-
-namespace Abies.Html
-{
-
-
-    public static class Elements
-    {
-        public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => new(id.ToString(), tag, [Attributes.id(id.ToString()), .. attributes], children);
-
-        public static Node a(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => element("a", attributes, children, id);
-
-        public static Node div(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => element("div", attributes, children, id);
-
-        public static Node button(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => element("button", attributes, children, id);
-
-        public static Node text(string value, [CallerLineNumber] int id = 0)
-            => new Text(id.ToString(), value);
-
-        public static Node h1(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => element("h1", attributes, children, id);
-
-        public static Node h2(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-            => element("h2", attributes, children, id);
-    }
-
-    public static class Attributes
-    {
-        public static DOM.Attribute attribute(string name, string value, [CallerLineNumber] int id = 0)
-            => new(id, name, value);
-        public static DOM.Attribute id(string value, [CallerLineNumber] int id = 0)
-            => attribute("id", value, id);
-
-        public static DOM.Attribute type(string value, [CallerLineNumber] int id = 0)
-            => attribute("type", value, id);
-
-        public static DOM.Attribute href(string value, [CallerLineNumber] int id = 0)
-            => attribute("href", value, id);
-    }
-
-    public static class Events
-    {
-        public static Handler on(string name, Message command, [CallerLineNumber] int id = 0)
-            => new(name, Guid.NewGuid().ToString(), command, id);
-        public static Handler onclick(Message command, [CallerLineNumber] int id = 0)
-            => on("click", command, id);
-
-        public static Handler onchange(Message command, [CallerLineNumber] int id = 0)
-            => on("change", command, id);
     }
 }
