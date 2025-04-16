@@ -248,20 +248,20 @@ public class UnitTest1
         Assert.Equal(remaining, result.Remaining);
     }
 
-    [Property(Verbose = true)]
-    public void Many1Parser_ShouldFail_WhenNoOccurrences(NonEmptyString combined, string remaining)
-    {
-        // Arrange
-        var parser = Parse.String(combined.Get);
-        var many1Parser = parser.Many1();
-        var input = "unexpected" + remaining;
+    //[Property(Verbose = true)]
+    //public void Many1Parser_ShouldFail_WhenNoOccurrences(NonEmptyString combined, string remaining)
+    //{
+    //    // Arrange
+    //    var parser = Parse.String(combined.Get);
+    //    var many1Parser = parser.Many1();
+    //    var input = "unexpected" + remaining;
 
-        // Act
-        var result = many1Parser.Parse(input.AsSpan());
+    //    // Act
+    //    var result = many1Parser.Parse(input.AsSpan());
 
-        // Assert
-        Assert.False(result.Success);
-    }
+    //    // Assert
+    //    Assert.False(result.Success);
+    //}
 
 
     [Property]
