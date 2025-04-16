@@ -19,6 +19,7 @@
   <ItemGroup>
     <!-- For README -->
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath=""/>
 
     <Content Include="wwwroot\abies.js">
       <Pack>true</Pack>
@@ -31,7 +32,6 @@
   
   <PropertyGroup>
     <ContentTargetFolders>contentFiles</ContentTargetFolders>
-    <BuildOutputTargetFolder>build</BuildOutputTargetFolder>
   </PropertyGroup>
   
   <ItemGroup>
