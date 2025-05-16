@@ -1,0 +1,127 @@
+@host = http://localhost:5168
+
+### Health Check
+GET {{host}}/api/ping
+Accept: application/json
+
+### Register a new user
+POST {{host}}/api/users
+Content-Type: application/json
+
+{
+  "user": {
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "johnsecret"
+  }
+}
+
+### Login
+POST {{host}}/api/users/login
+Content-Type: application/json
+
+{
+  "user": {
+    "email": "john@example.com",
+    "password": "johnsecret"
+  }
+}
+
+### Get current user
+# @name currentUser
+GET {{host}}/api/user
+Authorization: Token john@example.com
+
+### Update user
+PUT {{host}}/api/user
+Authorization: Token john@example.com
+Content-Type: application/json
+
+{
+  "user": {
+    "bio": "I like to code",
+    "image": "https://i.imgur.com/Qr71crq.jpg"
+  }
+}
+
+### Get profile
+GET {{host}}/api/profiles/johndoe
+Authorization: Token john@example.com
+
+### Create article
+# @name createArticle
+POST {{host}}/api/articles
+Authorization: Token john@example.com
+Content-Type: application/json
+
+{
+  "article": {
+    "title": "How to build a RESTful API",
+    "description": "Building modern APIs with best practices",
+    "body": "This is a comprehensive guide to building RESTful APIs following best practices.",
+    "tagList": ["api", "rest", "programming"]
+  }
+}
+
+### Get articles
+GET {{host}}/api/articles?limit=10&offset=0
+Authorization: Token john@example.com
+
+### Get article by slug
+@articleSlug = {{createArticle.response.body.article.slug}}
+GET {{host}}/api/articles/{{articleSlug}}
+Authorization: Token john@example.com
+
+### Update article
+PUT {{host}}/api/articles/{{articleSlug}}
+Authorization: Token john@example.com
+Content-Type: application/json
+
+{
+  "article": {
+    "title": "Updated: How to build a RESTful API",
+    "body": "This is an updated guide to building RESTful APIs."
+  }
+}
+
+### Add comment
+POST {{host}}/api/articles/{{articleSlug}}/comments
+Authorization: Token john@example.com
+Content-Type: application/json
+
+{
+  "comment": {
+    "body": "Great article!"
+  }
+}
+
+### Get comments
+GET {{host}}/api/articles/{{articleSlug}}/comments
+Authorization: Token john@example.com
+
+### Favorite article
+POST {{host}}/api/articles/{{articleSlug}}/favorite
+Authorization: Token john@example.com
+
+### Unfavorite article
+DELETE {{host}}/api/articles/{{articleSlug}}/favorite
+Authorization: Token john@example.com
+
+### Get tags
+GET {{host}}/api/tags
+
+### Get your feed
+GET {{host}}/api/articles/feed
+Authorization: Token john@example.com
+
+### Follow user
+POST {{host}}/api/profiles/another-user/follow
+Authorization: Token john@example.com
+
+### Unfollow user
+DELETE {{host}}/api/profiles/another-user/follow
+Authorization: Token john@example.com
+
+### Delete article
+DELETE {{host}}/api/articles/{{articleSlug}}
+Authorization: Token john@example.com
