@@ -222,23 +222,31 @@ public class Application : Application<Model, Arguments>
         }
         
     }
-
-
+    private static Node WithLayout(Node page, Model model) =>
+        div([], [
+            Navigation.View(model),
+            page
+        ]);
 
     public static Document View(Model model)
         => model.Page switch
         {
-            Page.Redirect => new Document(string.Format(Title, "Redirect"), h1([], [text("Redirecting...")])),
-            Page.NotFound => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")])),
-            Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), Conduit.Page.Home.Page.View(home.Model)),
-            Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), Conduit.Page.Settings.Page.View(settings.Model)),
-            Page.Login login => new Document(string.Format(Title, nameof(Conduit.Page.Login)), Conduit.Page.Login.Page.View(login.Model)),
-            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
-            Page.ProfileFavorites profileFavorites => new Document(string.Format(Title, "Profile Favorites"), Conduit.Page.Profile.Page.View(profileFavorites.Model)),
-            Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(article.Model)),
-            Page.NewArticle newArticle => new Document(string.Format(Title, "New Article"), Conduit.Page.Editor.Page.View(newArticle.Model)),
-            _ => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")]))
+            Page.Redirect => new Document(string.Format(Title, "Redirect"), WithLayout(h1([], [text("Redirecting...")]), model)),
+            Page.NotFound => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model)),
+            Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), WithLayout(Conduit.Page.Home.Page.View(home.Model), model)),
+            Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), WithLayout(Conduit.Page.Settings.Page.View(settings.Model), model)),
+            Page.Login login => new Document(string.Format(Title, nameof(Conduit.Page.Login)), WithLayout(Conduit.Page.Login.Page.View(login.Model), model)),
+            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), WithLayout(Conduit.Page.Register.Page.View(register.Model), model)),
+            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), WithLayout(Conduit.Page.Profile.Page.View(profile.Model), model)),
+            Page.ProfileFavorites profileFavorites => new Document(string.Format(Title, "Profile Favorites"), WithLayout(Conduit.Page.Profile.Page.View(profileFavorites.Model), model)),
+            Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), WithLayout(Conduit.Page.Article.Page.View(article.Model), model)),
+            Page.NewArticle newArticle => new Document(string.Format(Title, "New Article"), WithLayout(Conduit.Page.Editor.Page.View(newArticle.Model), model)),
+            _ => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model))
         };
+
+
+
+    
 
     public static Abies.Message OnUrlChanged(Url url)
         => new UrlChanged(url);
