@@ -44,6 +44,7 @@ public interface Page
     public sealed record Settings(Conduit.Page.Settings.Model Model) : Page;
     public sealed record Login(Conduit.Page.Login.Model Model) : Page;
     public sealed record Register(Conduit.Page.Register.Model Model) : Page;    public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
+    public sealed record ProfileFavorites(Conduit.Page.Profile.Model Model) : Page;
     public sealed record Article(Conduit.Page.Article.Model Model) : Page;
     public sealed record NewArticle(Conduit.Page.Editor.Model Model) : Page;
 }
@@ -74,7 +75,9 @@ public class Application : Application<Model, Arguments>
             Routing.Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute, currentUser),
             Routing.Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute, currentUser),
             Routing.Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute, currentUser),
-            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser),            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser),
+            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser),
+            Routing.Route.ProfileFavorites profileFavorites => new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles)), currentRoute, currentUser),
+            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser),
             Routing.Route.Redirect => new(new Page.Redirect(), currentRoute, currentUser),
             Routing.Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Editor.Model()), currentRoute, currentUser),
             _ => new(new Page.NotFound(), currentRoute, currentUser),
@@ -145,14 +148,20 @@ public class Application : Application<Model, Arguments>
                         await new LoadArticleCommand(article.Model.Slug.Value).ExecuteAsync();
                         await new LoadCommentsCommand(article.Model.Slug.Value).ExecuteAsync();
                     });
-                }
-                else if (nextModel.model.Page is Page.Profile profile)
+                }                else if (nextModel.model.Page is Page.Profile profile)
                 {
                     Task.Run(async () => {
                         await new LoadProfileCommand(profile.Model.UserName.Value).ExecuteAsync();
                         await new LoadArticlesCommand(author: profile.Model.UserName.Value).ExecuteAsync();
                     });
-                }                
+                }
+                else if (nextModel.model.Page is Page.ProfileFavorites profileFavorites)
+                {
+                    Task.Run(async () => {
+                        await new LoadProfileCommand(profileFavorites.Model.UserName.Value).ExecuteAsync();
+                        await new LoadArticlesCommand(favoritedBy: profileFavorites.Model.UserName.Value).ExecuteAsync();
+                    });
+                }
                 return nextModel;
             case LinkClicked linkClicked:
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
@@ -188,11 +197,15 @@ public class Application : Application<Model, Arguments>
                 {
                     var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(settingsMsg, settings.Model);
                     return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
-                }
-                else if (message is Conduit.Page.Profile.Message profileMsg && model.Page is Page.Profile profile)
+                }                else if (message is Conduit.Page.Profile.Message profileMsg && model.Page is Page.Profile profile)
                 {
                     var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(profileMsg, profile.Model);
                     return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
+                }
+                else if (message is Conduit.Page.Profile.Message profileFavoritesMsg && model.Page is Page.ProfileFavorites profileFavorites)
+                {
+                    var (nextProfileFavoritesModel, nextProfileFavoritesCommand) = Conduit.Page.Profile.Page.Update(profileFavoritesMsg, profileFavorites.Model);
+                    return (model with { Page = new Page.ProfileFavorites(nextProfileFavoritesModel) }, nextProfileFavoritesCommand);
                 }
                 else if (message is Conduit.Page.Article.Message articleMsg && model.Page is Page.Article article)
                 {
@@ -220,8 +233,8 @@ public class Application : Application<Model, Arguments>
             Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), Conduit.Page.Home.Page.View(home.Model)),
             Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), Conduit.Page.Settings.Page.View(settings.Model)),
             Page.Login login => new Document(string.Format(Title, nameof(Conduit.Page.Login)), Conduit.Page.Login.Page.View(login.Model)),
-            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),
-            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
+            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
+            Page.ProfileFavorites profileFavorites => new Document(string.Format(Title, "Profile Favorites"), Conduit.Page.Profile.Page.View(profileFavorites.Model)),
             Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(article.Model)),
             Page.NewArticle newArticle => new Document(string.Format(Title, "New Article"), Conduit.Page.Editor.Page.View(newArticle.Model)),
             _ => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")]))

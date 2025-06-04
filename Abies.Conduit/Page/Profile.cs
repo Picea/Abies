@@ -4,6 +4,7 @@ using Abies.DOM;
 using System.Collections.Generic;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
+using Abies.Conduit;
 
 namespace Abies.Conduit.Page.Profile;
 
@@ -69,36 +70,37 @@ public class Page : Element<Model, Message>
                     ArticlesCount = favoritedArticlesLoaded.ArticlesCount
                 },
                 []
-            ),
-            Message.ToggleTab toggleTab => (
+            ),            Message.ToggleTab toggleTab => (
                 model with { ActiveTab = toggleTab.Tab },
-                []
+                toggleTab.Tab == ProfileTab.FavoritedArticles 
+                    ? [new LoadArticlesCommand(favoritedBy: model.UserName.Value)]
+                    : [new LoadArticlesCommand(author: model.UserName.Value)]
             ),
             Message.ToggleFollow => (model, []),
             _ => (model, [])
         };
 
     private static Node UserInfo(Model model, bool isCurrentUser) =>
-        div([@class("user-info")], [
-            div([@class("container")], [
-                div([@class("row")], [
-                    div([@class("col-xs-12 col-md-10 offset-md-1")], [
-                        img([@class("user-img"), src(model.Profile?.Image ?? "")]),
+        div([class_("user-info")], [
+            div([class_("container")], [
+                div([class_("row")], [
+                    div([class_("col-xs-12 col-md-10 offset-md-1")], [
+                        img([class_("user-img"), src(model.Profile?.Image ?? "")]),
                         h4([], [text(model.UserName.Value)]),
                         p([], [text(model.Profile?.Bio ?? "")]),
                         isCurrentUser
-                            ? a([@class("btn btn-sm btn-outline-secondary action-btn"),
+                            ? a([class_("btn btn-sm btn-outline-secondary action-btn"),
                                 href("/settings")],[
                                 
-                                    i([@class("ion-gear-a")], []),
+                                    i([class_("ion-gear-a")], []),
                                     text(" Edit Profile Settings")
                                 ])
-                            : button([@class(model.Profile?.Following ?? false 
+                            : button([class_(model.Profile?.Following ?? false 
                                 ? "btn btn-sm btn-secondary action-btn" 
                                 : "btn btn-sm btn-outline-secondary action-btn"),
                                 onclick(new Message.ToggleFollow())],[
                                 
-                                    i([@class("ion-plus-round")], []),
+                                    i([class_("ion-plus-round")], []),
                                     text(model.Profile?.Following ?? false 
                                         ? $" Unfollow {model.UserName.Value}" 
                                         : $" Follow {model.UserName.Value}")
@@ -106,53 +108,49 @@ public class Page : Element<Model, Message>
                     ])
                 ])
             ])
-        ]);
-
-    private static Node ArticleToggle(Model model) =>
-        div([@class("articles-toggle")], [
-            ul([@class("nav nav-pills outline-active")], [
-                li([@class("nav-item")], [
-                    a([@class(model.ActiveTab == ProfileTab.MyArticles 
+        ]);    private static Node ArticleToggle(Model model) =>
+        div([class_("articles-toggle")], [
+            ul([class_("nav nav-pills outline-active")], [
+                li([class_("nav-item")], [
+                    a([class_(model.ActiveTab == ProfileTab.MyArticles 
                         ? "nav-link active" 
                         : "nav-link"),
-                      href(""),
-                      onclick(new Message.ToggleTab(ProfileTab.MyArticles))],
+                      href($"/profile/{model.UserName.Value}")],
                       [text("My Articles")])
                 ]),
-                li([@class("nav-item")], [
-                    a([@class(model.ActiveTab == ProfileTab.FavoritedArticles 
+                li([class_("nav-item")], [
+                    a([class_(model.ActiveTab == ProfileTab.FavoritedArticles 
                         ? "nav-link active" 
                         : "nav-link"),
-                      href(""),
-                      onclick(new Message.ToggleTab(ProfileTab.FavoritedArticles))],
+                      href($"/profile/{model.UserName.Value}/favorites")],
                       [text("Favorited Articles")])
                 ])
             ])
         ]);
 
     private static Node ArticlePreview(Home.Article article) =>
-        div([@class("article-preview")], [
-            div([@class("article-meta")], [
+        div([class_("article-preview")], [
+            div([class_("article-meta")], [
                 a([href($"/profile/{article.Author.Username}")], [
                     img([src(article.Author.Image)])
                 ]),
-                div([@class("info")], [
-                    a([@class("author"), href($"/profile/{article.Author.Username}")], [
+                div([class_("info")], [
+                    a([class_("author"), href($"/profile/{article.Author.Username}")], [
                         text(article.Author.Username)
                     ]),
-                    span([@class("date")], [text(article.CreatedAt)])
+                    span([class_("date")], [text(article.CreatedAt)])
                 ]),
-                div([@class("pull-xs-right")], [
-                    button([@class(article.Favorited 
+                div([class_("pull-xs-right")], [
+                    button([class_(article.Favorited 
                             ? "btn btn-primary btn-sm pull-xs-right" 
                             : "btn btn-outline-primary btn-sm pull-xs-right")],
                     [
-                        i([@class("ion-heart")], []),
+                        i([class_("ion-heart")], []),
                         text($" {article.FavoritesCount}")
                     ])
                 ])
             ]),
-            a([@class("preview-link"), href($"/article/{article.Slug}")], [
+            a([class_("preview-link"), href($"/article/{article.Slug}")], [
                 h1([], [text(article.Title)]),
                 p([], [text(article.Description)]),
                 span([], [text("Read more...")])
@@ -161,25 +159,25 @@ public class Page : Element<Model, Message>
 
     private static Node ArticleList(Model model) =>
         model.Articles == null || model.Articles.Count == 0
-            ? div([@class("article-preview")], [text("No articles are here... yet.")])
+            ? div([class_("article-preview")], [text("No articles are here... yet.")])
             : div([], [ ..model.Articles.ConvertAll(article => ArticlePreview(article)) ]);
 
     public static Node View(Model model) =>
         model.IsLoading
-            ? div([@class("profile-page")], [
-                div([@class("container")], [
-                    div([@class("row")], [
-                        div([@class("col-xs-12 col-md-10 offset-md-1")], [
+            ? div([class_("profile-page")], [
+                div([class_("container")], [
+                    div([class_("row")], [
+                        div([class_("col-xs-12 col-md-10 offset-md-1")], [
                             text("Loading profile...")
                         ])
                     ])
                 ])
               ])
-            : div([@class("profile-page")], [
+            : div([class_("profile-page")], [
                 UserInfo(model, false),
-                div([@class("container")], [
-                    div([@class("row")], [
-                        div([@class("col-xs-12 col-md-10 offset-md-1")], [
+                div([class_("container")], [
+                    div([class_("row")], [
+                        div([class_("col-xs-12 col-md-10 offset-md-1")], [
                             ArticleToggle(model),
                             ArticleList(model)
                         ])
