@@ -340,11 +340,11 @@ namespace Abies
 namespace Abies.DOM
 {
     public record Node(string Id);
-    public record Attribute(int Id, string Name, string Value);
+    public record Attribute(string Id, string Name, string Value);
 
     public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
-    public record Handler(string Name, string CommandId, Message Command, int Id) : Attribute(Id, $"data-event-{Name}", CommandId);
+    public record Handler(string Name, string CommandId, Message Command, string Id) : Attribute(Id, $"data-event-{Name}", CommandId);
 
     public record Text(string Id, string Value) : Node(Id)
     {

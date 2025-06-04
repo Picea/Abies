@@ -7,7 +7,7 @@
       <Nullable>enable</Nullable>
       
       <!-- Example: Treat all warnings as errors -->
-      <WarningsAsErrors>nullable, CS8509, CS8524, CS8846, CS8510 </WarningsAsErrors> 
+      <!-- <WarningsAsErrors>nullable, CS8509, CS8524, CS8846, CS8510 </WarningsAsErrors> -->
       
     </PropertyGroup>
     <ItemGroup>

@@ -16,13 +16,15 @@
     <PackageTags>webassembly;wasm;dotnet;web</PackageTags>
     <!-- support voor sourcelink -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- For README -->
     <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath=""/>
+    <None Include="..\LICENSE" Pack="true" PackagePath="" />
 
     <Content Include="wwwroot\abies.js">
       <Pack>true</Pack>
@@ -39,6 +41,10 @@
   
   <ItemGroup>
     <None Include="build\Abies.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Praefixum" Version="1.1.3-tags-v1-1-2.1" />
   </ItemGroup>
 
 </Project>

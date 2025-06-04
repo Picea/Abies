@@ -69,19 +69,19 @@ public class Page : Element<Model, Message>
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")
-            : ul([@class("error-messages")], 
+            : ul([class_("error-messages")], 
                 [..errors.SelectMany(e => e.Value.Select(msg => 
                     li([], [text($"{e.Key} {msg}")])
                 ))]
             );
 
     public static Node View(Model model) =>
-        div([@class("auth-page")], [
-            div([@class("container page")], [
-                div([@class("row")], [
-                    div([@class("col-md-6 offset-md-3 col-xs-12")], [
-                        h1([@class("text-xs-center")], [text("Sign in")]),
-                        p([@class("text-xs-center")], [
+        div([class_("auth-page")], [
+            div([class_("container page")], [
+                div([class_("row")], [
+                    div([class_("col-md-6 offset-md-3 col-xs-12")], [
+                        h1([class_("text-xs-center")], [text("Sign in")]),
+                        p([class_("text-xs-center")], [
                             a([href("/register")], [text("Need an account?")])
                         ]),
                         
@@ -89,8 +89,8 @@ public class Page : Element<Model, Message>
 
                         form([], [
                             fieldset([], [
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
@@ -98,8 +98,8 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
@@ -107,7 +107,7 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                button([@class("btn btn-lg btn-primary pull-xs-right"),
+                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
                                     disabled((model.IsSubmitting || 
                                              string.IsNullOrWhiteSpace(model.Email) || 

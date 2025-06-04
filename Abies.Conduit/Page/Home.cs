@@ -118,19 +118,19 @@ public class Page : Element<Model, Message>
     }
 
     private static Node Banner() => 
-        div([@class("banner")], [
-            div([@class("container")], [
-                h1([@class("logo-font")], [text("conduit")]),
+        div([class_("banner")], [
+            div([class_("container")], [
+                h1([class_("logo-font")], [text("conduit")]),
                 p([], [text("A place to share your knowledge.")])
             ])
         ]);
 
     private static Node FeedToggle(Model model, User? currentUser) =>
-        div([@class("feed-toggle")], [
-            ul([@class("nav nav-pills outline-active")], [
+        div([class_("feed-toggle")], [
+            ul([class_("nav nav-pills outline-active")], [
                 currentUser != null
-                    ? li([@class("nav-item")], [
-                        a([@class(model.ActiveTab == FeedTab.YourFeed 
+                    ? li([class_("nav-item")], [
+                        a([class_(model.ActiveTab == FeedTab.YourFeed 
                             ? "nav-link active" 
                             : "nav-link"),
                           onclick(new Message.ToggleFeedTab(FeedTab.YourFeed)),
@@ -138,8 +138,8 @@ public class Page : Element<Model, Message>
                           [text("Your Feed")])
                       ])
                     : text(""),
-                li([@class("nav-item")], [
-                    a([@class(model.ActiveTab == FeedTab.Global 
+                li([class_("nav-item")], [
+                    a([class_(model.ActiveTab == FeedTab.Global 
                         ? "nav-link active" 
                         : "nav-link"),
                       onclick(new Message.ToggleFeedTab(FeedTab.Global)),
@@ -147,8 +147,8 @@ public class Page : Element<Model, Message>
                       [text("Global Feed")])
                 ]),
                 model.ActiveTab == FeedTab.Tag
-                    ? li([@class("nav-item")], [
-                        a([@class("nav-link active"), 
+                    ? li([class_("nav-item")], [
+                        a([class_("nav-link active"), 
                           href("")], 
                           [text($"# {model.ActiveTag}")])
                       ])
@@ -157,33 +157,33 @@ public class Page : Element<Model, Message>
         ]);
 
     private static Node ArticlePreview(Article article) =>
-        div([@class("article-preview")], [
-            div([@class("article-meta")], [
+        div([class_("article-preview")], [
+            div([class_("article-meta")], [
                 a([href($"/profile/{article.Author.Username}")], [
                     img([src(article.Author.Image)])
                 ]),
-                div([@class("info")], [
-                    a([@class("author"), href($"/profile/{article.Author.Username}")], [
+                div([class_("info")], [
+                    a([class_("author"), href($"/profile/{article.Author.Username}")], [
                         text(article.Author.Username)
                     ]),
-                    span([@class("date")], [text(article.CreatedAt)])
+                    span([class_("date")], [text(article.CreatedAt)])
                 ]),
-                div([@class("pull-xs-right")], [
-                    button([@class(article.Favorited 
+                div([class_("pull-xs-right")], [
+                    button([class_(article.Favorited 
                         ? "btn btn-primary btn-sm pull-xs-right" 
                         : "btn btn-outline-primary btn-sm pull-xs-right")],
                     [
-                        i([@class("ion-heart")], []),
+                        i([class_("ion-heart")], []),
                         text($" {article.FavoritesCount}")
                     ])
                 ])
             ]),
-            a([@class("preview-link"), href($"/article/{article.Slug}")], [
+            a([class_("preview-link"), href($"/article/{article.Slug}")], [
                 h1([], [text(article.Title)]),
                 p([], [text(article.Description)]),
                 span([], [text("Read more...")]),
-                ul([@class("tag-list")], [..article.TagList.ConvertAll(tag => 
-                    li([@class("tag-default tag-pill tag-outline")], [
+                ul([class_("tag-list")], [..article.TagList.ConvertAll(tag => 
+                    li([class_("tag-default tag-pill tag-outline")], [
                         text(tag)
                     ])
                 )])
@@ -192,18 +192,18 @@ public class Page : Element<Model, Message>
 
     private static Node ArticleList(Model model) =>
         model.IsLoading
-            ? div([@class("article-preview")], [text("Loading articles...")])
+            ? div([class_("article-preview")], [text("Loading articles...")])
             : model.Articles == null || model.Articles.Count == 0
-                ? div([@class("article-preview")], [text("No articles are here... yet.")])
+                ? div([class_("article-preview")], [text("No articles are here... yet.")])
                 : div([], [..model.Articles.ConvertAll(article => ArticlePreview(article))]);
 
     private static Node TagCloud(Model model) =>
-        div([@class("sidebar")], [
+        div([class_("sidebar")], [
             p([], [text("Popular Tags")]),
-            div([@class("tag-list")], [ .. model.Tags == null
+            div([class_("tag-list")], [ .. model.Tags == null
                 ? [text("Loading tags...")]
                 : model.Tags.ConvertAll(tag =>
-                    a([@class("tag-pill tag-default"),
+                    a([class_("tag-pill tag-default"),
                       href(""),
                       onclick(new Message.TagSelected(tag))],
                       [text(tag)]
@@ -212,15 +212,15 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-        div([@class("home-page")], [
+        div([class_("home-page")], [
             Banner(),
-            div([@class("container page")], [
-                div([@class("row")], [
-                    div([@class("col-md-9")], [
+            div([class_("container page")], [
+                div([class_("row")], [
+                    div([class_("col-md-9")], [
                         FeedToggle(model, null),
                         ArticleList(model)
                     ]),
-                    div([@class("col-md-3")], [
+                    div([class_("col-md-3")], [
                         TagCloud(model)
                     ])
                 ])

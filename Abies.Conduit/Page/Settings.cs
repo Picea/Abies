@@ -82,24 +82,24 @@ public class Page : Element<Model, Message>
         };    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")
-            : ul([@class("error-messages")], 
+            : ul([class_("error-messages")], 
                 [..errors.SelectMany(e => e.Value.Select(msg => 
                     li([], [text($"{e.Key} {msg}")])
                 ))]
             );
 
     public static Node View(Model model) =>
-        div([@class("settings-page")], [
-            div([@class("container page")], [
-                div([@class("row")], [
-                    div([@class("col-md-6 offset-md-3 col-xs-12")], [
-                        h1([@class("text-xs-center")], [text("Your Settings")]),
+        div([class_("settings-page")], [
+            div([class_("container page")], [
+                div([class_("row")], [
+                    div([class_("col-md-6 offset-md-3 col-xs-12")], [
+                        h1([class_("text-xs-center")], [text("Your Settings")]),
                         
                         ErrorList(model.Errors),
                           form([], [
                             fieldset([], [
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control"),
                                         type("text"),
                                         placeholder("URL of profile picture"),
                                         value(model.ImageUrl),
@@ -107,16 +107,16 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Your Name"),
                                         value(model.Username),
                                         oninput(new Message.UsernameChanged(model.Username)),
                                         disabled(model.IsSubmitting.ToString())]
                                     )
-                                ]),                                fieldset([@class("form-group")], [
-                                    textarea([@class("form-control form-control-lg"),
+                                ]),                                fieldset([class_("form-group")], [
+                                    textarea([class_("form-control form-control-lg"),
                                         rows("8"),
                                         placeholder("Short bio about you"),
                                         value(model.Bio),
@@ -125,8 +125,8 @@ public class Page : Element<Model, Message>
                                         []
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
@@ -134,15 +134,15 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(new Message.PasswordChanged(model.Password)),
                                         disabled(model.IsSubmitting.ToString())]
                                     )
-                                ]),                                button([@class("btn btn-lg btn-primary pull-xs-right"),
+                                ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
                                     disabled((model.IsSubmitting || 
                                              string.IsNullOrWhiteSpace(model.Username) || 
@@ -152,8 +152,8 @@ public class Page : Element<Model, Message>
                                 )
                             ])
                         ]),
-                        hr([@class("my-4")]),
-                        button([@class("btn btn-outline-danger"),
+                        hr([class_("my-4")]),
+                        button([class_("btn btn-outline-danger"),
                             onclick(new Message.LogoutRequested())],
                             [text("Or click here to logout.")]
                         )
