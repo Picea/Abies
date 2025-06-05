@@ -33,7 +33,7 @@ function eventHandler(event) {
 
         if (commandId) {
             console.log(`Dispatching command ${commandId}`);
-            exports.Runtime.Dispatch(commandId);
+            exports.Abies.Runtime.Dispatch(commandId);
             event.preventDefault();
         } else {
             console.error("No command id found in data-event-click attribute.");
