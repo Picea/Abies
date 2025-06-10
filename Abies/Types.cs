@@ -3,6 +3,7 @@ using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using System.Threading;
 using Abies;
 using Abies.DOM;
 
@@ -164,6 +165,7 @@ namespace Abies
         private Node? _dom;
         // todo: clean up handlers when they are no longer needed
         private readonly ConcurrentDictionary<string, Message> _handlers = new();
+        private readonly SemaphoreSlim _dispatchLock = new(1, 1);
 
         public async Task Run(TArguments arguments)
         {
@@ -212,6 +214,9 @@ namespace Abies
 
         public async Task Dispatch(Message message)
         {
+            await _dispatchLock.WaitAsync();
+            try
+            {
             if (model is null)
             {
                 await Interop.WriteToConsole("Model not initialized");
@@ -264,7 +269,14 @@ namespace Abies
             {
                 await HandleCommand(command);
             }
-        }        private static async Task HandleCommand(Command command)
+        }
+        finally
+        {
+            _dispatchLock.Release();
+        }
+    }
+
+        private static async Task HandleCommand(Command command)
         {
             switch(command)
             {                
