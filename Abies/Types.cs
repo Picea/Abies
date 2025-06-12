@@ -220,19 +220,23 @@ namespace Abies
         {
             if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag == newElement.Tag)
             {
+                // Preserve attribute IDs so DiffAttributes can emit UpdateAttribute
+                // instead of a remove/add pair. This avoids wiping attributes when
+                // remove is processed after add.
                 var attrs = new Abies.DOM.Attribute[newElement.Attributes.Length];
                 for (int i = 0; i < newElement.Attributes.Length; i++)
                 {
                     var attr = newElement.Attributes[i];
+                    var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == attr.Name);
+                    var attrId = oldAttr?.Id ?? attr.Id;
+
                     if (attr.Name == "id")
                     {
-                        var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == "id");
-                        var attrId = oldAttr?.Id ?? attr.Id;
                         attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
                     }
                     else
                     {
-                        attrs[i] = attr;
+                        attrs[i] = attr with { Id = attrId };
                     }
                 }
 
