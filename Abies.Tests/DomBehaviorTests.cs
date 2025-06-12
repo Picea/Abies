@@ -87,6 +87,51 @@ public class DomBehaviorTests
         Assert.Contains("id=\"child\"", html);
     }
 
+    [Fact]
+    public void TextUpdate_ShouldUpdateTextContent()
+    {
+        var oldDom = new Element("1", "h1", System.Array.Empty<DOMAttribute>(),
+            new Text("2", "Sign up"));
+
+        var newDom = new Element("1", "h1", System.Array.Empty<DOMAttribute>(),
+            new Text("3", "Sign in"));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.Equal(Render.Html(newDom), Render.Html(result));
+
+        // Verify that an UpdateText patch was generated
+        Assert.Contains(patches, p => p is UpdateText);
+        var textPatch = patches.OfType<UpdateText>().First();
+        Assert.Equal("Sign in", textPatch.Text);
+    }
+
+    [Fact]
+    public void TextUpdate_WithPreservedIds_ShouldUpdateTextContent()
+    {
+        // Simulate the ID preservation scenario
+        var oldDom = new Element("1", "h1", System.Array.Empty<DOMAttribute>(),
+            new Text("2", "Sign up"));
+
+        var newDomBeforePreservation = new Element("1", "h1", System.Array.Empty<DOMAttribute>(),
+            new Text("3", "Sign in"));
+
+        // Simulate what PreserveIds does - preserve the old text ID but use new text content
+        var newDomAfterPreservation = new Element("1", "h1", System.Array.Empty<DOMAttribute>(),
+            new Text("2", "Sign in")); // Same ID as old, new content
+
+        var patches = Operations.Diff(oldDom, newDomAfterPreservation);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.Equal(Render.Html(newDomAfterPreservation), Render.Html(result));
+
+        // Verify that an UpdateText patch was generated
+        Assert.Contains(patches, p => p is UpdateText);
+        var textPatch = patches.OfType<UpdateText>().First();
+        Assert.Equal("Sign in", textPatch.Text);
+        Assert.Equal("2", textPatch.Node.Id); // Should use the preserved ID
+    }
 
     private static Node? ApplyPatches(Node? root, IEnumerable<Patch> patches, Node? initialRoot)
     {
