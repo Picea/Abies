@@ -94,9 +94,7 @@ public class Application : Application<Model, Arguments>
     private static (Model model, IEnumerable<Command>) HandleUrlChanged(Url url, Model model)
     {
         return (GetNextModel(url, model.CurrentUser), new List<Command> { new Command.None() });
-    }
-
-    /// <summary>
+    }    /// <summary>
     /// Handles the link clicked event.
     /// </summary>
     /// <param name="urlRequest">The URL request.</param>
@@ -105,7 +103,7 @@ public class Application : Application<Model, Arguments>
     private static (Model model, IEnumerable<Command>) HandleLinkClicked(UrlRequest urlRequest, Model model)
         => urlRequest switch
         {
-            Internal @internal => (model with { CurrentRoute = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, @internal.Url), CurrentUser = model.CurrentUser }, new List<Command> { new PushState(@internal.Url) }),
+            Internal @internal => (GetNextModel(@internal.Url, model.CurrentUser), new List<Command> { new PushState(@internal.Url) }),
             _ => (model, new List<Command> { new Command.None() })
         };
 
