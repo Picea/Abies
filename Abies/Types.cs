@@ -3,6 +3,7 @@ using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using System.Threading;
 using Abies;
 using Abies.DOM;
 
@@ -164,6 +165,11 @@ namespace Abies
         private Node? _dom;
         // todo: clean up handlers when they are no longer needed
         private readonly ConcurrentDictionary<string, Message> _handlers = new();
+        // Dispatch may be triggered from multiple threads (JavaScript events or
+        // asynchronous API commands). DOM updates must run sequentially to keep
+        // patches in order, otherwise operations like add/remove attribute can
+        // target missing nodes.
+        private readonly SemaphoreSlim _dispatchLock = new(1, 1);
 
         public async Task Run(TArguments arguments)
         {
@@ -210,8 +216,57 @@ namespace Abies
             }
         }
 
+        private static Node PreserveIds(Node? oldNode, Node newNode)
+        {
+            if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag == newElement.Tag)
+            {
+                // Preserve attribute IDs so DiffAttributes can emit UpdateAttribute
+                // instead of a remove/add pair. This avoids wiping attributes when
+                // remove is processed after add.
+                var attrs = new Abies.DOM.Attribute[newElement.Attributes.Length];
+                for (int i = 0; i < newElement.Attributes.Length; i++)
+                {
+                    var attr = newElement.Attributes[i];
+                    var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == attr.Name);
+                    var attrId = oldAttr?.Id ?? attr.Id;
+
+                    if (attr.Name == "id")
+                    {
+                        attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
+                    }
+                    else
+                    {
+                        attrs[i] = attr with { Id = attrId };
+                    }
+                }
+
+                var children = new Node[newElement.Children.Length];
+                for (int i = 0; i < newElement.Children.Length; i++)
+                {
+                    var oldChild = i < oldElement.Children.Length ? oldElement.Children[i] : null;
+                    children[i] = PreserveIds(oldChild, newElement.Children[i]);
+                }
+
+                return new Element(oldElement.Id, newElement.Tag, attrs, children);
+            }
+            else if (newNode is Element newElem)
+            {
+                var children = new Node[newElem.Children.Length];
+                for (int i = 0; i < newElem.Children.Length; i++)
+                {
+                    children[i] = PreserveIds(null, newElem.Children[i]);
+                }
+                return new Element(newElem.Id, newElem.Tag, newElem.Attributes, children);
+            }
+
+            return newNode;
+        }
+
         public async Task Dispatch(Message message)
         {
+            await _dispatchLock.WaitAsync();
+            try
+            {
             if (model is null)
             {
                 await Interop.WriteToConsole("Model not initialized");
@@ -232,8 +287,10 @@ namespace Abies
             // Generate new virtual DOM
             var newDocument = TApplication.View(newModel);
 
+            var alignedBody = PreserveIds(_dom, newDocument.Body);
+
             // Compute the patches
-            var patches = Operations.Diff(_dom, newDocument.Body);
+            var patches = Operations.Diff(_dom, alignedBody);
 
             // Apply patches and (de)register handlers
             foreach (var patch in patches)
@@ -257,14 +314,21 @@ namespace Abies
             }
 
             // Update the current virtual DOM
-            _dom = newDocument.Body;
+            _dom = alignedBody;
             await Interop.SetTitle(newDocument.Title);
 
             foreach (var command in commands)
             {
                 await HandleCommand(command);
             }
-        }        private static async Task HandleCommand(Command command)
+        }
+        finally
+        {
+            _dispatchLock.Release();
+        }
+    }
+
+        private static async Task HandleCommand(Command command)
         {
             switch(command)
             {                
@@ -432,7 +496,7 @@ namespace Abies.DOM
             switch (node)
             {
                 case Element element:
-                    sb.Append($"<{element.Tag}");
+                    sb.Append($"<{element.Tag} id=\"{element.Id}\"");
                     foreach (var attr in element.Attributes)
                     {
                         if (attr is Handler handler)
@@ -450,7 +514,7 @@ namespace Abies.DOM
                     sb.Append($"</{element.Tag}>");
                     break;
                 case Text text:
-                    sb.Append($"<span id={text.Id}>{System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
+                    sb.Append($"<span id=\"{text.Id}\">{System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
                     break;
                 // Handle other node types if necessary
                 default:
