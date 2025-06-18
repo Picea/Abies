@@ -72,7 +72,7 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
     {
 
             return message switch
@@ -84,11 +84,11 @@ public class Page : Element<Model, Message>
                         ArticlesCount = articlesLoaded.ArticlesCount,
                         IsLoading = false
                     },
-                    []
+                    Commands.None
                 ),
                 Message.TagsLoaded tagsLoaded => (
                     model with { Tags = tagsLoaded.Tags },
-                    []
+                    Commands.None
                 ),
                 Message.ToggleFeedTab toggleFeed => (
                     model with
@@ -99,9 +99,9 @@ public class Page : Element<Model, Message>
                     },
                     toggleFeed.Tab switch
                     {
-                        FeedTab.YourFeed => [new LoadFeedCommand()],
-                        FeedTab.Tag => [new LoadArticlesCommand(tag: model.ActiveTag)],
-                        _ => [new LoadArticlesCommand()]
+                        FeedTab.YourFeed => new LoadFeedCommand(),
+                        FeedTab.Tag => new LoadArticlesCommand(tag: model.ActiveTag),
+                        _ => new LoadArticlesCommand()
                     }
                 ),
                 Message.TagSelected tagSelected => (
@@ -111,9 +111,9 @@ public class Page : Element<Model, Message>
                         ActiveTag = tagSelected.Tag,
                         IsLoading = true
                     },
-                    [new LoadArticlesCommand(tag: tagSelected.Tag)]
+                    new LoadArticlesCommand(tag: tagSelected.Tag)
                 ),
-                _ => (model, [])
+                _ => (model, Commands.None)
             };
     }
 

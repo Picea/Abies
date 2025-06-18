@@ -1,21 +1,14 @@
-using System;
 using Abies;
 using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
-using static Abies.Browser;
-using static Abies.Counter.Fluent;
-using System.Diagnostics.Metrics;
-using Abies.Counter;
 using System.Runtime.InteropServices.JavaScript;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+using Abies.DOM;
 
 Console.WriteLine("Bootstrapping...");
 
-var counter = Browser.Application<Counter, Arguments, Model>();
 
-await Runtime.Run(counter, new Arguments());
+await Runtime.Run<Counter, Arguments, Model>(new Arguments());
 
 public static partial class Interop
 {
@@ -32,12 +25,12 @@ public record Increment : Message;
 
 public record Decrement : Message;
 
-public class Counter : Application<Model, Arguments>
+public class Counter : Program<Model, Arguments>
 {
-    public static Model Initialize(Url url, Arguments argument)
+    public static (Model, Command) Initialize(Url url, Arguments argument)
     {
         Interop.WriteToConsole($"initialized");
-        return new Model(0);
+        return (new Model(0), Commands.None);
     }
 
     public static Message OnLinkClicked(UrlRequest urlRequest)
@@ -55,7 +48,9 @@ public class Counter : Application<Model, Arguments>
     public static Subscription Subscriptions(Model model)
         => new();
 
-    public static (Model model, IEnumerable<Command> commands) Update(Message message, Model model)
+    public static Task HandleCommand(Command command, Func<Message, Unit> dispatch) => Task.CompletedTask;
+
+    public static (Model model, Command command) Update(Message message, Model model)
     {
         switch (message)
         {
@@ -63,12 +58,12 @@ public class Counter : Application<Model, Arguments>
                 Interop.WriteToConsole($"increment received");
                 model = model with { Count = model.Count + 1 };
                 Interop.WriteToConsole($"model count : {model.Count.ToString()}");
-                return (model, Array.Empty<Command>());
+                return (model, Commands.None);
             case Decrement _:
                 Interop.WriteToConsole($"decrement received");
                 model = model with { Count = model.Count - 1 };
                 Interop.WriteToConsole($"model count : {model.Count.ToString()}");
-                return (model, Array.Empty<Command>());
+                return (model, Commands.None);
             default:
                 throw new NotImplementedException();
         }

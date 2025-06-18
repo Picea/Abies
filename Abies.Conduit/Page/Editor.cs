@@ -34,7 +34,7 @@ public record Model(
     Dictionary<string, string[]>? Errors = null
 )
 {
-    public Model() : this("", "", "", "", new List<string>()) { }
+    public Model() : this("", "", "", "", []) { }
 }
 
 public class Page : Element<Model, Message>
@@ -49,24 +49,24 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.TitleChanged titleChanged => (
                 model with { Title = titleChanged.Value },
-                []
+                Commands.None
             ),
             Message.DescriptionChanged descriptionChanged => (
                 model with { Description = descriptionChanged.Value },
-                []
+                Commands.None
             ),
             Message.BodyChanged bodyChanged => (
                 model with { Body = bodyChanged.Value },
-                []
+                Commands.None
             ),
             Message.TagInputChanged tagInputChanged => (
                 model with { TagInput = tagInputChanged.Value },
-                []
+                Commands.None
             ),
             Message.AddTag => (
                 !string.IsNullOrWhiteSpace(model.TagInput) && model.TagList != null && !model.TagList.Contains(model.TagInput)
@@ -76,25 +76,25 @@ public class Page : Element<Model, Message>
                         TagInput = ""
                     }
                     : model,
-                []
+                Commands.None
             ),
             Message.RemoveTag removeTag => (
                 model with { TagList = model.TagList?.FindAll(t => t != removeTag.Tag) },
-                []
+                Commands.None
             ),
             Message.ArticleSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
                 model.Slug == null
-                    ? [ new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? new List<string>()) ]
-                    : [ new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body) ]
+                    ?  new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? new List<string>()) 
+                    :  new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body) 
             ),
             Message.ArticleSubmitSuccess slug => (
                 model with { IsSubmitting = false, Errors = null, Slug = slug.Slug },
-                []
+                Commands.None
             ),
             Message.ArticleSubmitError errors => (
                 model with { IsSubmitting = false, Errors = errors.Errors },
-                []
+                Commands.None
             ),
             Message.ArticleLoaded article => (
                 model with 
@@ -106,9 +106,9 @@ public class Page : Element<Model, Message>
                     Slug = article.Article.Slug,
                     IsLoading = false
                 },
-                []
+                Commands.None
             ),
-            _ => (model, [])
+            _ => (model, Commands.None)
         };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>

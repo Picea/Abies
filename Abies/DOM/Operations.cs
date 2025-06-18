@@ -4,6 +4,128 @@ using System.Collections.Concurrent;
 
 namespace Abies.DOM
 {
+    public record Document(string Title, Node Body);
+    
+    public record Node(string Id);
+    public record Attribute(string Id, string Name, string Value);
+
+    public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
+
+    public record Handler(string Name, string CommandId, Message Command, string Id) : Attribute(Id, $"data-event-{Name}", CommandId);
+
+    public record Text(string Id, string Value) : Node(Id)
+    {
+        public static implicit operator string(Text text) => text.Value;
+        public static implicit operator Text(string text) => new(text, text);
+    };
+
+    public record Empty() : Node("");
+
+    public interface Patch { }
+
+    public readonly struct AddRoot(Element element) : Patch
+    {
+        public readonly Element Element = element;
+    }
+
+    public readonly struct ReplaceChild(Element oldElement, Element newElement) : Patch
+    {
+        public readonly Element OldElement = oldElement;
+        public readonly Element NewElement = newElement;
+    }
+
+    public readonly struct AddChild(Element parent, Element child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly Element Child = child;
+    }
+
+    public readonly struct RemoveChild(Element parent, Element child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly Element Child = child;
+    }
+
+    public readonly struct UpdateAttribute(Element element, Attribute attribute, string value) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
+        public readonly string Value = value;
+    }
+
+    public readonly struct AddAttribute(Element element, Attribute attribute) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
+    }
+
+    public readonly struct RemoveAttribute(Element element, Attribute attribute) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Attribute Attribute = attribute;
+    }
+
+    public readonly struct AddHandler(Element element, Handler handler) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Handler Handler = handler;
+    }
+
+    public readonly struct RemoveHandler(Element element, Handler handler) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Handler Handler = handler;
+    }
+
+    public readonly struct UpdateText(Text node, string text) : Patch
+    {
+        public readonly Text Node = node;
+        public readonly string Text = text;
+    }
+
+
+
+    public static class Render
+    {
+        public static string Html(Node node)
+        {
+            var sb = new System.Text.StringBuilder();
+            RenderNode(node, sb);
+            return sb.ToString();
+        }
+
+        private static void RenderNode(Node node, System.Text.StringBuilder sb)
+        {
+            switch (node)
+            {
+                case Element element:
+                    sb.Append($"<{element.Tag} id=\"{element.Id}\"");
+                    foreach (var attr in element.Attributes)
+                    {
+                        if (attr is Handler handler)
+                        {
+                            sb.Append($" {handler.Name}=\"{handler.Value}\"");
+                        }
+
+                        sb.Append($" {attr.Name}=\"{System.Web.HttpUtility.HtmlEncode(attr.Value)}\"");
+                    }
+                    sb.Append('>');
+                    foreach (var child in element.Children)
+                    {
+                        RenderNode(child, sb);
+                    }
+                    sb.Append($"</{element.Tag}>");
+                    break;
+                case Text text:
+                    sb.Append($"<span id=\"{text.Id}\">{System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
+                    break;
+                // Handle other node types if necessary
+                default:
+                    break;
+            }
+        }
+    }
+    
     /// <summary>
     /// Provides diffing and patching utilities for the virtual DOM.
     /// The implementation is inspired by Elm's VirtualDom diff algorithm

@@ -1,3 +1,5 @@
+// wwwroot/js/pine.js
+
 import { dotnet } from './_framework/dotnet.js';
 
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet
@@ -27,14 +29,14 @@ function eventHandler(event) {
     const target = event.target.closest('[data-event-click]');
     console.log(`Event target: ${target}`);
     if (target) {
-        const commandId = target.getAttribute('data-event-click');
+        const message = target.getAttribute('data-event-click');
 
-        if (commandId) {
-            console.log(`Dispatching command ${commandId}`);
-            exports.Abies.Runtime.Dispatch(commandId);
+        if (message) {
+            console.log(`Dispatching message ${message}`);
+            exports.Abies.Runtime.Dispatch(message);
             event.preventDefault();
         } else {
-            console.error("No command id found in data-event-click attribute.");
+            console.error("No message id found in data-event-click attribute.");
         }
     }
 }
@@ -76,7 +78,7 @@ setModuleImports('abies.js', {
      * @param {number} parentId - The ID of the parent element.
      * @param {number} childId - The ID of the child element to remove.
      */
-    removeChild: async (parentId, childId) => {
+    removeChild: async (parentId, childId) =>  {
         const parent = document.getElementById(parentId);
         const child = document.getElementById(childId);
         if (parent && child && parent.contains(child)) {
@@ -147,7 +149,7 @@ setModuleImports('abies.js', {
      * @param {number} nodeId - The ID of the node to update.
      * @param {string} propertyName - The name of the attribute/property to remove.
      */
-    removeAttribute: async (nodeId, propertyName) => {
+    removeAttribute: async (nodeId, propertyName) =>{
         const node = document.getElementById(nodeId);
         if (node) {
             node.removeAttribute(propertyName);
