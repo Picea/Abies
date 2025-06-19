@@ -12,48 +12,39 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
     })
     .create();
 
-/**
- * Adds event listeners to the document body for interactive elements.
- */
+const registeredEvents = new Set();
+
+function ensureEventListener(eventName) {
+    if (registeredEvents.has(eventName)) return;
+    document.body.addEventListener(eventName, genericEventHandler);
+    registeredEvents.add(eventName);
+}
+
+function genericEventHandler(event) {
+    const name = event.type;
+    const target = event.target.closest(`[data-event-${name}]`);
+    if (target) {
+        const message = target.getAttribute(`data-event-${name}`);
+        if (message) {
+            exports.Abies.Runtime.Dispatch(message);
+            if (name === 'click') {
+                event.preventDefault();
+            }
+        } else {
+            console.error(`No message id found in data-event-${name} attribute.`);
+        }
+    }
+}
+
 function addEventListeners() {
-    // Remove existing event listeners to prevent duplicates
-    document.body.removeEventListener('click', clickHandler);
-    document.body.addEventListener('click', clickHandler);
-    document.body.removeEventListener('input', inputHandler);
-    document.body.addEventListener('input', inputHandler);
-}
-
-/**
- * Event handler for click events on elements with data-event-* attributes.
- * @param {Event} event - The DOM event.
- */
-function clickHandler(event) {
-    const target = event.target.closest('[data-event-click]');
-    console.log(`Event target: ${target}`);
-    if (target) {
-        const message = target.getAttribute('data-event-click');
-
-        if (message) {
-            console.log(`Dispatching message ${message}`);
-            exports.Abies.Runtime.Dispatch(message);
-            event.preventDefault();
-        } else {
-            console.error("No message id found in data-event-click attribute.");
+    document.querySelectorAll('*').forEach(el => {
+        for (const attr of el.attributes) {
+            if (attr.name.startsWith('data-event-')) {
+                const name = attr.name.substring('data-event-'.length);
+                ensureEventListener(name);
+            }
         }
-    }
-}
-
-function inputHandler(event) {
-    const target = event.target.closest('[data-event-input]');
-    if (target) {
-        const message = target.getAttribute('data-event-input');
-
-        if (message) {
-            exports.Abies.Runtime.Dispatch(message);
-        } else {
-            console.error("No message id found in data-event-input attribute.");
-        }
-    }
+    });
 }
 
 setModuleImports('abies.js', {
@@ -145,6 +136,10 @@ setModuleImports('abies.js', {
         const node = document.getElementById(nodeId);
         if (node) {
             node.setAttribute(propertyName, propertyValue);
+            if (propertyName.startsWith('data-event-')) {
+                const name = propertyName.substring('data-event-'.length);
+                ensureEventListener(name);
+            }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
@@ -154,6 +149,10 @@ setModuleImports('abies.js', {
         const node = document.getElementById(nodeId);
         if (node) {
             node.setAttribute(propertyName, propertyValue);
+            if (propertyName.startsWith('data-event-')) {
+                const name = propertyName.substring('data-event-'.length);
+                ensureEventListener(name);
+            }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
