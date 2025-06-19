@@ -2,6 +2,7 @@ using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.Conduit.Services;
 using Abies.DOM;
+using Abies;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using static Abies.Html.Attributes;
@@ -42,11 +43,11 @@ public class Page : Element<Model, Message>
         => message switch
         {
             Message.EmailChanged emailChanged => (
-                model with { Email = emailChanged.Value },
+                model with { Email = Interop.GetValue(emailChanged.Value) ?? "" },
                 Commands.None
             ),
             Message.PasswordChanged passwordChanged => (
-                model with { Password = passwordChanged.Value },
+                model with { Password = Interop.GetValue(passwordChanged.Value) ?? "" },
                 Commands.None
             ),            Message.LoginSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
@@ -96,8 +97,10 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(new Message.EmailChanged(model.Email)),
-                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
+                                        oninput(new Message.EmailChanged("login-email")),
+                                        id("login-email"),
+                                        oninput(new Message.PasswordChanged("login-password")),
+                                        id("login-password"),
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [

@@ -49,6 +49,9 @@ namespace Abies
         [JSImport("removeAttribute", "abies.js")]
         public static partial Task RemoveAttribute(string id, string name);
 
+        [JSImport("getValue", "abies.js")]
+        public static partial string? GetValue(string id);
+
         [JSImport("setLocalStorage", "abies.js")]
         public static partial Task SetLocalStorage(string key, string value);
 

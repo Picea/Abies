@@ -2,6 +2,7 @@ using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.Conduit;
 using Abies.DOM;
+using Abies;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
@@ -45,15 +46,15 @@ public class Page : Element<Model, Message>
         => message switch
         {
             Message.UsernameChanged usernameChanged => (
-                model with { Username = usernameChanged.Value },
+                model with { Username = Interop.GetValue(usernameChanged.Value) ?? "" },
                 Commands.None
             ),
             Message.EmailChanged emailChanged => (
-                model with { Email = emailChanged.Value },
+                model with { Email = Interop.GetValue(emailChanged.Value) ?? "" },
                 Commands.None
             ),
-                        Message.PasswordChanged passwordChanged => (
-                model with { Password = passwordChanged.Value },
+            Message.PasswordChanged passwordChanged => (
+                model with { Password = Interop.GetValue(passwordChanged.Value) ?? "" },
                 Commands.None
             ),            Message.RegisterSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
@@ -94,14 +95,17 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Username"),
                                         value(model.Username),
-                                        oninput(new Message.UsernameChanged(model.Username)),
-                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
+                                        oninput(new Message.UsernameChanged("reg-username")),
+                                        id("reg-username"),
+                                        oninput(new Message.EmailChanged("reg-email")),
+                                        id("reg-email"),
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
                                     input([
                                         class_("form-control form-control-lg"),
-                                        type("text"),
+                                        oninput(new Message.PasswordChanged("reg-password")),
+                                        id("reg-password"),
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(new Message.EmailChanged(model.Email)),

@@ -193,6 +193,11 @@ setModuleImports('abies.js', {
         localStorage.removeItem(key);
     },
 
+    getValue: (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : null;
+    },
+
     /**
      * Sets the inner HTML of the 'app' div.
      * @param {string} html - The HTML content to set.
