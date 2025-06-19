@@ -3,7 +3,6 @@ using Abies.Conduit.Routing;
 using Abies.Conduit;
 using Abies.DOM;
 using Abies;
-using Praefixum;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
@@ -36,9 +35,6 @@ public record Model(
 
 public class Page : Element<Model, Message>
 {
-    private static readonly string UsernameInputId = UniqueId.HtmlId();
-    private static readonly string EmailInputId = UniqueId.HtmlId();
-    private static readonly string PasswordInputId = UniqueId.HtmlId();
     public static Model Initialize(Message argument)
     {
         return new Model();
@@ -103,8 +99,8 @@ public class Page : Element<Model, Message>
                                         placeholder("Username"),
                                         value(model.Username),
                                         oninput(d => new Message.UsernameChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
-                                    ], UsernameInputId)
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
                                     input([
@@ -113,8 +109,8 @@ public class Page : Element<Model, Message>
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(d => new Message.EmailChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
-                                    ], EmailInputId)
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
                                     input([
@@ -123,16 +119,16 @@ public class Page : Element<Model, Message>
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(d => new Message.PasswordChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
-                                    ], PasswordInputId)
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                    ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
                                     ..((model.IsSubmitting ||
                                              string.IsNullOrWhiteSpace(model.Username) ||
                                              string.IsNullOrWhiteSpace(model.Email) ||
                                              string.IsNullOrWhiteSpace(model.Password))
-                                        ? [disabled()]
-                                        : []),
+                                        ? new[] { disabled() }
+                                        : System.Array.Empty<DOM.Attribute>()),
                                     onclick(new Message.RegisterSubmitted())],
                                     [text(model.IsSubmitting ? "Signing up..." : "Sign up")]
                                 )

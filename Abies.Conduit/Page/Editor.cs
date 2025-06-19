@@ -147,7 +147,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Article Title"),
                                         value(model.Title),
                                         oninput(new Message.TitleChanged(model.Title)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -157,7 +157,7 @@ public class Page : Element<Model, Message>
                                         placeholder("What's this article about?"),
                                         value(model.Description),
                                         oninput(new Message.DescriptionChanged(model.Description)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -167,7 +167,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Write your article (in markdown)"),
                                         value(model.Body),
                                         oninput(new Message.BodyChanged(model.Body)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ],[])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -177,8 +177,8 @@ public class Page : Element<Model, Message>
                                         placeholder("Enter tags"),
                                         value(model.TagInput),
                                         oninput(new Message.TagInputChanged(model.TagInput)),
-                                        onkeypress(new Message.AddTag()),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                          onkeypress(new Message.AddTag()),
+                                          ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ]),
                                     div([class_("tag-list")], [
                                         TagInputSection(model)
@@ -191,8 +191,8 @@ public class Page : Element<Model, Message>
                                              string.IsNullOrWhiteSpace(model.Title) ||
                                              string.IsNullOrWhiteSpace(model.Description) ||
                                              string.IsNullOrWhiteSpace(model.Body))
-                                        ? [disabled()]
-                                        : []),
+                                          ? new[] { disabled() }
+                                          : System.Array.Empty<DOM.Attribute>()),
                                     onclick(new Message.ArticleSubmitted())],
                                     [text(model.IsSubmitting 
                                         ? "Publishing Article..." 
