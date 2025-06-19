@@ -20,22 +20,22 @@ public class CommentTests
 
         // register and login
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "commenter");
-        await page.FillAsync("input[placeholder=Email]", email);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "commenter");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         // create article
         await page.ClickAsync("text=New Article");
-        await page.FillAsync("input[placeholder=Article Title]", "Comment Article");
-        await page.FillAsync("input[placeholder='What\'s this article about?']", "Comments");
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Article Title]", "Comment Article");
+        await page.TypeAsync("input[placeholder='What\'s this article about?']", "Comments");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
+        await page.ClickAsync("button:has-text('Publish Article')");
         await page.WaitForSelectorAsync("text=Edit Article");
 
         // add comment
-        await page.FillAsync("textarea[placeholder='Write a comment...']", "First!");
+        await page.TypeAsync("textarea[placeholder='Write a comment...']", "First!");
         await page.ClickAsync("button:has-text('Post Comment')");
         await page.WaitForSelectorAsync("text=First!");
 

@@ -21,25 +21,25 @@ public class ProfileTests
 
         // register user B and create an article
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "userb");
-        await page.FillAsync("input[placeholder=Email]", userB);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "userb");
+        await page.TypeAsync("input[placeholder=Email]", userB);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
         await page.ClickAsync("text=New Article");
-        await page.FillAsync("input[placeholder=Article Title]", "UserB Article");
-        await page.FillAsync("input[placeholder='What\'s this article about?']", "Following");
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Content");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Article Title]", "UserB Article");
+        await page.TypeAsync("input[placeholder='What\'s this article about?']", "Following");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Content");
+        await page.ClickAsync("button:has-text('Publish Article')");
         await page.WaitForSelectorAsync("text=Edit Article");
         await page.ClickAsync("text=Sign out");
 
         // register user A
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "usera");
-        await page.FillAsync("input[placeholder=Email]", userA);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "usera");
+        await page.TypeAsync("input[placeholder=Email]", userA);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         await page.GotoAsync("http://localhost:5209/profile/userb");

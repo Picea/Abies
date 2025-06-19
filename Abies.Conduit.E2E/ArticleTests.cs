@@ -16,21 +16,32 @@ public class ArticleTests
         var context = await browser.NewContextAsync();
         var page = await context.NewPageAsync();
 
-        // login as demo user
+        // register and login
+        await page.GotoAsync("http://localhost:5209/register");
+        var email = $"e2e{System.Guid.NewGuid():N}@example.com";
+        await page.TypeAsync("input[placeholder=Username]", "articleuser");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
+        await page.WaitForSelectorAsync("text=Your Feed");
+
+        // logout to verify login as existing user works
+        await page.ClickAsync("text=Settings");
+        await page.ClickAsync("text=Or click here to logout");
         await page.GotoAsync("http://localhost:5209/login");
-        await page.FillAsync("input[placeholder=Email]", "demo@example.com");
-        await page.FillAsync("input[placeholder=Password]", "demo");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign in')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         await page.ClickAsync("text=New Article");
-        await page.FillAsync("input[placeholder=Article Title]", "E2E Article");
-        await page.FillAsync("input[placeholder='What\'s this article about?']", "Testing");
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Hello World");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Article Title]", "E2E Article");
+        await page.TypeAsync("input[placeholder='What\'s this article about?']", "Testing");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Hello World");
+        await page.ClickAsync("button:has-text('Publish Article')");
         await page.WaitForSelectorAsync("text=Edit Article");
 
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Updated");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Updated");
         await page.ClickAsync("text=Publish Article");
         await page.WaitForSelectorAsync("text=Updated");
 
