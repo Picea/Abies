@@ -141,51 +141,58 @@ public class Page : Element<Model, Message>
                         form([], [
                             fieldset([], [
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Article Title"),
                                         value(model.Title),
                                         oninput(new Message.TitleChanged(model.Title)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control"),
+                                    input([
+                                        class_("form-control"),
                                         type("text"),
                                         placeholder("What's this article about?"),
                                         value(model.Description),
                                         oninput(new Message.DescriptionChanged(model.Description)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    textarea([class_("form-control"),
+                                    textarea([
+                                        class_("form-control"),
                                         rows("8"),
                                         placeholder("Write your article (in markdown)"),
                                         value(model.Body),
                                         oninput(new Message.BodyChanged(model.Body)),
-                                        disabled(model.IsSubmitting.ToString())],[]
-                                    )
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ],[])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control"),
+                                    input([
+                                        class_("form-control"),
                                         type("text"),
                                         placeholder("Enter tags"),
                                         value(model.TagInput),
                                         oninput(new Message.TagInputChanged(model.TagInput)),
                                         onkeypress(new Message.AddTag()),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    ),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ]),
                                     div([class_("tag-list")], [
                                         TagInputSection(model)
                                     ])
                                 ]),
-                                button([class_("btn btn-lg pull-xs-right btn-primary"),
+                                button([
+                                    class_("btn btn-lg pull-xs-right btn-primary"),
                                     type("button"),
-                                    disabled((model.IsSubmitting || 
-                                             string.IsNullOrWhiteSpace(model.Title) || 
+                                    ..((model.IsSubmitting ||
+                                             string.IsNullOrWhiteSpace(model.Title) ||
                                              string.IsNullOrWhiteSpace(model.Description) ||
-                                             string.IsNullOrWhiteSpace(model.Body)).ToString()),
+                                             string.IsNullOrWhiteSpace(model.Body))
+                                        ? [disabled()]
+                                        : []),
                                     onclick(new Message.ArticleSubmitted())],
                                     [text(model.IsSubmitting 
                                         ? "Publishing Article..." 

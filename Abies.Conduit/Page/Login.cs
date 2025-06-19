@@ -91,28 +91,32 @@ public class Page : Element<Model, Message>
                         form([], [
                             fieldset([], [
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(new Message.EmailChanged(model.Email)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(new Message.PasswordChanged(model.Password)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
-                                    disabled((model.IsSubmitting || 
-                                             string.IsNullOrWhiteSpace(model.Email) || 
-                                             string.IsNullOrWhiteSpace(model.Password)).ToString()),
+                                    ..((model.IsSubmitting ||
+                                             string.IsNullOrWhiteSpace(model.Email) ||
+                                             string.IsNullOrWhiteSpace(model.Password))
+                                        ? [disabled()]
+                                        : []),
                                     onclick(new Message.LoginSubmitted())],
                                     [text(model.IsSubmitting ? "Signing in..." : "Sign in")]
                                 )
