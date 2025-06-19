@@ -26,8 +26,8 @@ function genericEventHandler(event) {
     if (target) {
         const message = target.getAttribute(`data-event-${name}`);
         if (message) {
-            const value = target.value ?? null;
-            exports.Abies.Runtime.DispatchValue(message, value);
+            const data = buildEventData(event, target);
+            exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
             if (name === 'click') {
                 event.preventDefault();
             }
@@ -37,6 +37,27 @@ function genericEventHandler(event) {
     }
 }
 
+function buildEventData(event, target) {
+    const data = {};
+    if (target && 'value' in target) data.value = target.value;
+    if (target && 'checked' in target) data.checked = target.checked;
+    if ('key' in event) {
+        data.key = event.key;
+        data.altKey = event.altKey;
+        data.ctrlKey = event.ctrlKey;
+        data.shiftKey = event.shiftKey;
+    }
+    if ('clientX' in event) {
+        data.clientX = event.clientX;
+        data.clientY = event.clientY;
+        data.button = event.button;
+    }
+    return data;
+}
+
+/**
+ * Adds event listeners to the document body for interactive elements.
+ */
 function addEventListeners() {
     document.querySelectorAll('*').forEach(el => {
         for (const attr of el.attributes) {
@@ -47,6 +68,12 @@ function addEventListeners() {
         }
     });
 }
+
+/**
+ * Event handler for click events on elements with data-event-* attributes.
+ * @param {Event} event - The DOM event.
+ */
+
 
 setModuleImports('abies.js', {
 
@@ -79,7 +106,7 @@ setModuleImports('abies.js', {
     setTitle: async (title) => {
         document.title = title;
     },
-
+    
     /**
      * Removes a child element from the DOM.
      * @param {number} parentId - The ID of the parent element.
@@ -173,6 +200,18 @@ setModuleImports('abies.js', {
         }
     },
 
+    setLocalStorage: async (key, value) => {
+        localStorage.setItem(key, value);
+    },
+
+    getLocalStorage: (key) => {
+        return localStorage.getItem(key);
+    },
+
+    removeLocalStorage: async (key) => {
+        localStorage.removeItem(key);
+    },
+
     getValue: (id) => {
         const el = document.getElementById(id);
         return el ? el.value : null;
@@ -244,7 +283,7 @@ setModuleImports('abies.js', {
 
 
 });
-
+    
 const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 
