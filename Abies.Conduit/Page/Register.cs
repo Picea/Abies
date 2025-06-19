@@ -95,7 +95,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Username"),
                                         value(model.Username),
                                         oninput(new Message.UsernameChanged(model.Username)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -105,7 +105,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(new Message.EmailChanged(model.Email)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -115,7 +115,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(new Message.PasswordChanged(model.Password)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
@@ -124,7 +124,7 @@ public class Page : Element<Model, Message>
                                              string.IsNullOrWhiteSpace(model.Email) ||
                                              string.IsNullOrWhiteSpace(model.Password))
                                         ? [disabled()]
-                                        : []),
+                                        : Array.Empty<Abies.DOM.Attribute>()),
                                     onclick(new Message.RegisterSubmitted())],
                                     [text(model.IsSubmitting ? "Signing up..." : "Sign up")]
                                 )

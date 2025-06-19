@@ -97,7 +97,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(new Message.EmailChanged(model.Email)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -107,7 +107,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(new Message.PasswordChanged(model.Password)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),
                                 button([class_("btn btn-lg btn-primary pull-xs-right"),
@@ -116,7 +116,7 @@ public class Page : Element<Model, Message>
                                              string.IsNullOrWhiteSpace(model.Email) ||
                                              string.IsNullOrWhiteSpace(model.Password))
                                         ? [disabled()]
-                                        : []),
+                                        : Array.Empty<Abies.DOM.Attribute>()),
                                     onclick(new Message.LoginSubmitted())],
                                     [text(model.IsSubmitting ? "Signing in..." : "Sign in")]
                                 )
