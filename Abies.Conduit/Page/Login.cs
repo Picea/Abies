@@ -103,7 +103,7 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(v => new Message.EmailChanged(v)),
+                                        oninput(d => new Message.EmailChanged(d?.Value)),
                                         ..(model.IsSubmitting ? [disabled()] : [])
                                     ], EmailInputId)
                                 ]),
@@ -113,7 +113,7 @@ public class Page : Element<Model, Message>
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(v => new Message.PasswordChanged(v)),
+                                        oninput(d => new Message.PasswordChanged(d?.Value)),
                                         ..(model.IsSubmitting ? [disabled()] : [])
                                     ], PasswordInputId)
                                 ]),

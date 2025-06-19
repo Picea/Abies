@@ -26,8 +26,8 @@ function genericEventHandler(event) {
     if (target) {
         const message = target.getAttribute(`data-event-${name}`);
         if (message) {
-            const value = target.value ?? null;
-            exports.Abies.Runtime.DispatchValue(message, value);
+            const data = buildEventData(event, target);
+            exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
             if (name === 'click') {
                 event.preventDefault();
             }
@@ -35,6 +35,24 @@ function genericEventHandler(event) {
             console.error(`No message id found in data-event-${name} attribute.`);
         }
     }
+}
+
+function buildEventData(event, target) {
+    const data = {};
+    if (target && 'value' in target) data.value = target.value;
+    if (target && 'checked' in target) data.checked = target.checked;
+    if ('key' in event) {
+        data.key = event.key;
+        data.altKey = event.altKey;
+        data.ctrlKey = event.ctrlKey;
+        data.shiftKey = event.shiftKey;
+    }
+    if ('clientX' in event) {
+        data.clientX = event.clientX;
+        data.clientY = event.clientY;
+        data.button = event.button;
+    }
+    return data;
 }
 
 /**

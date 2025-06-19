@@ -140,10 +140,16 @@ public static class Events
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => new(name, Guid.NewGuid().ToString(), command, id);
 
+    public static Handler on<T>(string name, Func<T?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => new(name, Guid.NewGuid().ToString(), null, id, o => factory((T?)o), typeof(T));
+
     public static Handler on(string name, Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, Guid.NewGuid().ToString(), null, id, factory);
+        => on<string?>(name, factory, id);
     public static Handler onclick(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("click", command, id);
+
+    public static Handler onclick(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("click", factory, id);
 
     public static Handler onchange(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("change", command, id);
@@ -157,38 +163,68 @@ public static class Events
     public static Handler oninput(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("input", command, id);
 
-    public static Handler oninput(Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+    public static Handler oninput(Func<InputEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("input", factory, id);
 
     public static Handler onkeydown(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("keydown", command, id);
 
+    public static Handler onkeydown(Func<KeyEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("keydown", factory, id);
+
     public static Handler onkeypress(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("keypress", command, id);
+
+    public static Handler onkeypress(Func<KeyEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("keypress", factory, id);
 
     public static Handler onkeyup(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("keyup", command, id);
 
+    public static Handler onkeyup(Func<KeyEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("keyup", factory, id);
+
     public static Handler onmousedown(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mousedown", command, id);
+
+    public static Handler onmousedown(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mousedown", factory, id);
 
     public static Handler onmouseup(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mouseup", command, id);
 
+    public static Handler onmouseup(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mouseup", factory, id);
+
     public static Handler onmouseover(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mouseover", command, id);
+
+    public static Handler onmouseover(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mouseover", factory, id);
 
     public static Handler onmouseout(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mouseout", command, id);
 
+    public static Handler onmouseout(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mouseout", factory, id);
+
     public static Handler onmouseenter(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mouseenter", command, id);
+
+    public static Handler onmouseenter(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mouseenter", factory, id);
 
     public static Handler onmouseleave(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mouseleave", command, id);
 
+    public static Handler onmouseleave(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mouseleave", factory, id);
+
     public static Handler onmousemove(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("mousemove", command, id);
+
+    public static Handler onmousemove(Func<PointerEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("mousemove", factory, id);
 
     public static Handler onwheel(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("wheel", command, id);

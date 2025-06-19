@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+using System;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Channels;
 using Abies.DOM;
@@ -9,7 +10,7 @@ public static partial class Runtime
 {
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
-    private static readonly ConcurrentDictionary<string, Func<string?, Message>> _valueHandlers = new();
+    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
     
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
@@ -60,9 +61,9 @@ public static partial class Runtime
                     {
                         await Interop.WriteToConsole("Command already exists");
                     }
-                    if (addHandler.Handler.WithValue is not null)
+                    if (addHandler.Handler.WithData is not null)
                     {
-                        _valueHandlers[addHandler.Handler.CommandId] = addHandler.Handler.WithValue;
+                        _dataHandlers[addHandler.Handler.CommandId] = (addHandler.Handler.WithData, addHandler.Handler.DataType ?? typeof(object));
                     }
                     await Interop.WriteToConsole($"Command {addHandler.Handler.Id} added");
                 }
@@ -75,9 +76,9 @@ public static partial class Runtime
                             await Interop.WriteToConsole("Command not found");
                         }
                     }
-                    if (removeHandler.Handler.WithValue is not null)
+                    if (removeHandler.Handler.WithData is not null)
                     {
-                        _valueHandlers.TryRemove(removeHandler.Handler.CommandId, out _);
+                        _dataHandlers.TryRemove(removeHandler.Handler.CommandId, out _);
                     }
                 }
                 await Operations.Apply(patch);
@@ -216,9 +217,9 @@ public static partial class Runtime
                     {
                         throw new InvalidOperationException("Command already exists");
                     }
-                    if (handler.WithValue is not null)
+                    if (handler.WithData is not null)
                     {
-                        _valueHandlers[handler.CommandId] = handler.WithValue;
+                        _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
                     }
                     Interop.WriteToConsole($"Command {handler.Id} added");
                 }
@@ -249,11 +250,12 @@ public static partial class Runtime
     }
 
     [JSExport]
-    public static void DispatchValue(string messageId, string? value)
+    public static void DispatchData(string messageId, string? json)
     {
-        if (_valueHandlers.TryGetValue(messageId, out var factory))
+        if (_dataHandlers.TryGetValue(messageId, out var entry))
         {
-            var message = factory(value);
+            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            var message = entry.handler(data);
             Dispatch(message);
             return;
         }
