@@ -17,15 +17,17 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
  */
 function addEventListeners() {
     // Remove existing event listeners to prevent duplicates
-    document.body.removeEventListener('click', eventHandler);
-    document.body.addEventListener('click', eventHandler);
+    document.body.removeEventListener('click', clickHandler);
+    document.body.addEventListener('click', clickHandler);
+    document.body.removeEventListener('input', inputHandler);
+    document.body.addEventListener('input', inputHandler);
 }
 
 /**
  * Event handler for click events on elements with data-event-* attributes.
  * @param {Event} event - The DOM event.
  */
-function eventHandler(event) {
+function clickHandler(event) {
     const target = event.target.closest('[data-event-click]');
     console.log(`Event target: ${target}`);
     if (target) {
@@ -37,6 +39,19 @@ function eventHandler(event) {
             event.preventDefault();
         } else {
             console.error("No message id found in data-event-click attribute.");
+        }
+    }
+}
+
+function inputHandler(event) {
+    const target = event.target.closest('[data-event-input]');
+    if (target) {
+        const message = target.getAttribute('data-event-input');
+
+        if (message) {
+            exports.Abies.Runtime.Dispatch(message);
+        } else {
+            console.error("No message id found in data-event-input attribute.");
         }
     }
 }
