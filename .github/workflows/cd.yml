@@ -19,10 +19,15 @@ jobs:
     - uses: actions/checkout@v4.2.2
       with:
           fetch-depth: 0
-    - name: Setup .NET
+    - name: Setup .NET 9
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
+
+    - name: Setup .NET 10 Preview
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
         dotnet-quality: 'preview'
     - name: Install WASM experimental workload
       run: dotnet workload install wasm-experimental wasm-tools
@@ -37,9 +42,9 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
-      - name: Pack Abies Only
-        if: github.event_name != 'pull_request'
-        run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-      - name: Publish to NuGet
-        if: github.event_name != 'pull_request'
-        run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+    - name: Pack Abies Only
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Publish to NuGet
+      if: github.event_name != 'pull_request'
+      run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
