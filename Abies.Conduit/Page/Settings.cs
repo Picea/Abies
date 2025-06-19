@@ -108,7 +108,7 @@ public class Page : Element<Model, Message>
                                         placeholder("URL of profile picture"),
                                         value(model.ImageUrl),
                                         oninput(new Message.ImageUrlChanged(model.ImageUrl)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -118,7 +118,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Your Name"),
                                         value(model.Username),
                                         oninput(new Message.UsernameChanged(model.Username)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ])
                                 ]),                                fieldset([class_("form-group")], [
                                     textarea([
@@ -127,7 +127,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Short bio about you"),
                                         value(model.Bio),
                                         oninput(new Message.BioChanged(model.Bio)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? [disabled()] : Array.Empty<Abies.DOM.Attribute>())
                                     ],
                                         []
                                     )
