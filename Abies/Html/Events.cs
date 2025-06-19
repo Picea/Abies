@@ -139,6 +139,9 @@ public static class Events
 
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => new(name, Guid.NewGuid().ToString(), command, id);
+
+    public static Handler on(string name, Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => new(name, Guid.NewGuid().ToString(), null, id, factory);
     public static Handler onclick(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("click", command, id);
 
@@ -153,6 +156,9 @@ public static class Events
 
     public static Handler oninput(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("input", command, id);
+
+    public static Handler oninput(Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("input", factory, id);
 
     public static Handler onkeydown(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("keydown", command, id);

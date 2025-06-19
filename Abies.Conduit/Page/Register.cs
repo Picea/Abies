@@ -2,6 +2,8 @@ using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.Conduit;
 using Abies.DOM;
+using Abies;
+using Praefixum;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
@@ -25,11 +27,18 @@ public record Model(
     string Email = "",
     string Password = "",
     bool IsSubmitting = false,
-    Dictionary<string, string[]>? Errors = null
-);
+    Dictionary<string, string[]>? Errors = null,
+    User? CurrentUser = null
+)
+{
+    public Model() : this("", "", "", false, null) { }
+}
 
 public class Page : Element<Model, Message>
 {
+    private static readonly string UsernameInputId = UniqueId.HtmlId();
+    private static readonly string EmailInputId = UniqueId.HtmlId();
+    private static readonly string PasswordInputId = UniqueId.HtmlId();
     public static Model Initialize(Message argument)
     {
         return new Model();
@@ -51,7 +60,7 @@ public class Page : Element<Model, Message>
                 model with { Email = emailChanged.Value },
                 Commands.None
             ),
-                        Message.PasswordChanged passwordChanged => (
+            Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
                 Commands.None
             ),            Message.RegisterSubmitted => (
@@ -88,37 +97,42 @@ public class Page : Element<Model, Message>
 
                         form([], [
                             fieldset([], [                                fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Username"),
                                         value(model.Username),
-                                        oninput(new Message.UsernameChanged(model.Username)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.UsernameChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ], UsernameInputId)
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(new Message.EmailChanged(model.Email)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.EmailChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ], EmailInputId)
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(new Message.PasswordChanged(model.Password)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.PasswordChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ], PasswordInputId)
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
-                                    disabled((model.IsSubmitting || 
-                                             string.IsNullOrWhiteSpace(model.Username) || 
-                                             string.IsNullOrWhiteSpace(model.Email) || 
-                                             string.IsNullOrWhiteSpace(model.Password)).ToString()),
+                                    ..((model.IsSubmitting ||
+                                             string.IsNullOrWhiteSpace(model.Username) ||
+                                             string.IsNullOrWhiteSpace(model.Email) ||
+                                             string.IsNullOrWhiteSpace(model.Password))
+                                        ? [disabled()]
+                                        : []),
                                     onclick(new Message.RegisterSubmitted())],
                                     [text(model.IsSubmitting ? "Signing up..." : "Sign up")]
                                 )
