@@ -31,7 +31,8 @@ public record Model(
     bool IsSubmitting = false,
     bool IsLoading = false,
     string? Slug = null,
-    Dictionary<string, string[]>? Errors = null
+    Dictionary<string, string[]>? Errors = null,
+    User? CurrentUser = null
 )
 {
     public Model() : this("", "", "", "", []) { }

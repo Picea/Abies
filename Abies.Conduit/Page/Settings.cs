@@ -27,7 +27,8 @@ public record Model(
     string Email = "",
     string Password = "",
     bool IsSubmitting = false,
-    Dictionary<string, string[]>? Errors = null
+    Dictionary<string, string[]>? Errors = null,
+    User? CurrentUser = null
 );
 
 public class Page : Element<Model, Message>

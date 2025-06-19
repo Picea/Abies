@@ -158,6 +158,18 @@ setModuleImports('abies.js', {
         }
     },
 
+    setLocalStorage: async (key, value) => {
+        localStorage.setItem(key, value);
+    },
+
+    getLocalStorage: (key) => {
+        return localStorage.getItem(key);
+    },
+
+    removeLocalStorage: async (key) => {
+        localStorage.removeItem(key);
+    },
+
     /**
      * Sets the inner HTML of the 'app' div.
      * @param {string} html - The HTML content to set.

@@ -215,10 +215,10 @@ public static partial class Runtime
         }
     }
     
-    private static Unit Dispatch(Message message)
+    private static System.ValueTuple Dispatch(Message message)
     {
         _messageChannel.Writer.TryWrite(message);
-        return new ();
+        return new();
     }
     
     [JSExport]
