@@ -321,9 +321,9 @@ namespace Abies.DOM
                 {
                     patches.Add(new ReplaceChild(oe, ne));
                 }
-                else if (oldNode is RawHtml oldRaw && newNode is RawHtml newRaw)
+                else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
                 {
-                    patches.Add(new ReplaceRaw(oldRaw, newRaw));
+                    patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
                 }
                 else if (oldNode is RawHtml r && newNode is Element ne2)
                 {
