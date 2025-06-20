@@ -1,5 +1,7 @@
 # Abies (/ˈa.bi.eːs/)
 
+A WebAssembly library for building MVP style web applications with .NET
+
 ## The name
 
 Abies is a latin name which means "fir tree"
