@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	  <PublishTrimmed>false</PublishTrimmed>
+    <PublishTrimmed>false</PublishTrimmed>
     <TargetFramework>net9.0</TargetFramework>
+    <!-- Disable auto-generated assembly attributes to avoid duplicates -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Prevent duplicate TargetFrameworkAttribute -->
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />

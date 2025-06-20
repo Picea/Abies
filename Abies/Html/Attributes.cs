@@ -301,7 +301,7 @@ public static class Attributes
         => attribute("href", value, id);
 
 
-    public static DOM.Attribute className(string value, [CallerLineNumber] int id = 0)
+    public static DOM.Attribute @class(string value, [CallerLineNumber] int id = 0)
         => attribute("class", value, id);
 
     public static DOM.Attribute style(string value, [CallerLineNumber] int id = 0)

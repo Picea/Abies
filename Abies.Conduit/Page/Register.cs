@@ -1,34 +1,131 @@
+using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
+using Abies.Conduit;
 using Abies.DOM;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
+using static Abies.Html.Attributes;
+using static Abies.Html.Events;
 
 namespace Abies.Conduit.Page.Register;
 
 public interface Message : Abies.Message
 {
-
+    public record RegisterSuccess(User User) : Message;
+    public record UsernameChanged(string Value) : Message;
+    public record EmailChanged(string Value) : Message;
+    public record PasswordChanged(string Value) : Message;
+    public record RegisterSubmitted : Message;
+    public record RegisterError(Dictionary<string, string[]> Errors) : Message;
 }
 
-public record Model;
+public record Model(
+    string Username = "",
+    string Email = "",
+    string Password = "",
+    bool IsSubmitting = false,
+    Dictionary<string, string[]>? Errors = null
+);
 
 public class Page : Element<Model, Message>
 {
     public static Model Initialize(Message argument)
     {
-        throw new System.NotImplementedException();
+        return new Model();
     }
 
     public static Subscription Subscriptions(Model model)
     {
-        throw new System.NotImplementedException();
+        return new Subscription();
     }
 
     public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
         => message switch
         {
+            Message.UsernameChanged usernameChanged => (
+                model with { Username = usernameChanged.Value },
+                []
+            ),
+            Message.EmailChanged emailChanged => (
+                model with { Email = emailChanged.Value },
+                []
+            ),
+                        Message.PasswordChanged passwordChanged => (
+                model with { Password = passwordChanged.Value },
+                []
+            ),            Message.RegisterSubmitted => (
+                model with { IsSubmitting = true, Errors = null },
+                [new Abies.Conduit.RegisterCommand(model.Username, model.Email, model.Password)]
+            ),
+            Message.RegisterSuccess registerSuccess => (
+                model with { IsSubmitting = false, Errors = null },
+                []
+            ),
+            Message.RegisterError errors => (
+                model with { IsSubmitting = false, Errors = errors.Errors },
+                []
+            ),
             _ => (model, [])
-        };
+        };    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
+        errors == null
+            ? text("")
+            : ul([@class("error-messages")], 
+                [..errors.SelectMany(e => e.Value.Select(msg => 
+                    li([], [text($"{e.Key} {msg}")])
+                ))]
+            );    public static Node View(Model model) =>
+        div([@class("auth-page")], [
+            div([@class("container page")], [
+                div([@class("row")], [
+                    div([@class("col-md-6 offset-md-3 col-xs-12")], [
+                        h1([@class("text-xs-center")], [text("Sign up")]),
+                        p([@class("text-xs-center")], [
+                            a([href("/login")], [text("Have an account?")])
+                        ]),
+                        
+                        ErrorList(model.Errors),
 
-    public static Node View(Model model)
-         => h1([], [text("Register")]);
+                        form([], [
+                            fieldset([], [                                fieldset([@class("form-group")], [
+                                    input([@class("form-control form-control-lg"),
+                                        type("text"),
+                                        placeholder("Username"),
+                                        value(model.Username),
+                                        oninput(new Message.UsernameChanged(model.Username)),
+                                        disabled(model.IsSubmitting.ToString())]
+                                    )
+                                ]),
+                                fieldset([@class("form-group")], [
+                                    input([@class("form-control form-control-lg"),
+                                        type("text"),
+                                        placeholder("Email"),
+                                        value(model.Email),
+                                        oninput(new Message.EmailChanged(model.Email)),
+                                        disabled(model.IsSubmitting.ToString())]
+                                    )
+                                ]),
+                                fieldset([@class("form-group")], [
+                                    input([@class("form-control form-control-lg"),
+                                        type("password"),
+                                        placeholder("Password"),
+                                        value(model.Password),
+                                        oninput(new Message.PasswordChanged(model.Password)),
+                                        disabled(model.IsSubmitting.ToString())]
+                                    )
+                                ]),                                button([@class("btn btn-lg btn-primary pull-xs-right"),
+                                    type("button"),
+                                    disabled((model.IsSubmitting || 
+                                             string.IsNullOrWhiteSpace(model.Username) || 
+                                             string.IsNullOrWhiteSpace(model.Email) || 
+                                             string.IsNullOrWhiteSpace(model.Password)).ToString()),
+                                    onclick(new Message.RegisterSubmitted())],
+                                    [text(model.IsSubmitting ? "Signing up..." : "Sign up")]
+                                )
+                            ])
+                        ])
+                    ])
+                ])
+            ])
+        ]);
 }

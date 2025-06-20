@@ -1,28 +1,38 @@
 using Abies.Conduit.Routing;
+using Abies.Conduit.Services;
+using System.Threading.Tasks;
 using static Abies.Conduit.Main.Message.Event;
 using static Abies.UrlRequest;
 using static Abies.Navigation.Command;
 
 namespace Abies.Conduit.Main;
 
-
 public record struct UserName(string Value);
 
 public record struct Slug(string Value);
 
-public record Model(Page Page, Routing.Route CurrentRoute);
+public record struct Email(string Value);
+
+public record struct Token(string Value);
+
+public record User(UserName Username, Email Email, Token Token);
+
+public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = null);
 
 public interface Message : Abies.Message
 {
     public interface Command : Message
     {
-        public sealed record ChangeRoute(Routing.Route? Route) : Command;
+        public sealed record ChangeRoute(Routing.Route? Route) : Abies.Command;
+        public sealed record LoadCurrentUser : Abies.Command;
     }
 
     public interface Event : Message
     {
         public sealed record UrlChanged(Url Url) : Event;
         public sealed record LinkClicked(UrlRequest UrlRequest) : Event;
+        public sealed record UserLoggedIn(User User) : Event;
+        public sealed record UserLoggedOut : Event;
     }
 }
 
@@ -33,10 +43,9 @@ public interface Page
     public sealed record Home(Conduit.Page.Home.Model Model) : Page;
     public sealed record Settings(Conduit.Page.Settings.Model Model) : Page;
     public sealed record Login(Conduit.Page.Login.Model Model) : Page;
-    public sealed record Register(Conduit.Page.Register.Model Model) : Page;
-    public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
+    public sealed record Register(Conduit.Page.Register.Model Model) : Page;    public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
     public sealed record Article(Conduit.Page.Article.Model Model) : Page;
-    public sealed record NewArticle(Conduit.Page.Article.Model Model) : Page;
+    public sealed record NewArticle(Conduit.Page.Editor.Model Model) : Page;
 }
 
 /// <summary>
@@ -49,25 +58,26 @@ public record Arguments;
 /// </summary>
 public class Application : Application<Model, Arguments>
 {
+    private static string Title = "Conduit - {0}";
+
     /// <summary>
     /// Determines the next model based on the given URL.
     /// </summary>
     /// <param name="url">The URL to process.</param>
     /// <returns>The next model.</returns>
-    private static Model GetNextModel(Url url)
-    {
-        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
+    private static Model GetNextModel(Url url, User? currentUser = null)
+    {        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
         return currentRoute switch
         {
-            Routing.Route.Home => new(new Page.Home(new Conduit.Page.Home.Model()), currentRoute),
-            Routing.Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute),
-            Routing.Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute),
-            Routing.Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute),
-            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute),
-            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute),
-            Routing.Route.Redirect => new(new Page.Redirect(), currentRoute),
-            Routing.Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Article.Model(new Slug(""))), currentRoute),
-            _ => new(new Page.NotFound(), currentRoute),
+            Routing.Route.Home => new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true)), currentRoute, currentUser),
+            Routing.Route.NotFound => new(new Page.NotFound(), currentRoute, currentUser),
+            Routing.Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute, currentUser),
+            Routing.Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute, currentUser),
+            Routing.Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute, currentUser),
+            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser),            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser),
+            Routing.Route.Redirect => new(new Page.Redirect(), currentRoute, currentUser),
+            Routing.Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Editor.Model()), currentRoute, currentUser),
+            _ => new(new Page.NotFound(), currentRoute, currentUser),
         };
     }
 
@@ -79,7 +89,7 @@ public class Application : Application<Model, Arguments>
     /// <returns>The updated model and commands.</returns>
     private static (Model model, IEnumerable<Command>) HandleUrlChanged(Url url, Model model)
     {
-        return (GetNextModel(url), new List<Command> { new Command.None() });
+        return (GetNextModel(url, model.CurrentUser), new List<Command> { new Command.None() });
     }
 
     /// <summary>
@@ -91,9 +101,8 @@ public class Application : Application<Model, Arguments>
     private static (Model model, IEnumerable<Command>) HandleLinkClicked(UrlRequest urlRequest, Model model)
         => urlRequest switch
         {
-            Internal @internal => (model with { CurrentRoute = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, @internal.Url) }, new List<Command> { new PushState(@internal.Url) }),
-            External externalUrl => (model, new List<Command> { new Load(Url.Create(externalUrl.Url)) }),
-            _ => (model, new List<Command>())
+            Internal @internal => (model with { CurrentRoute = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, @internal.Url), CurrentUser = model.CurrentUser }, new List<Command> { new PushState(@internal.Url) }),
+            _ => (model, new List<Command> { new Command.None() })
         };
 
     /// <summary>
@@ -109,47 +118,99 @@ public class Application : Application<Model, Arguments>
     /// <param name="url">The initial URL.</param>
     /// <param name="argument">The arguments.</param>
     /// <returns>The initial model.</returns>
-    public static Model Initialize(Url url, Arguments argument) => GetNextModel(url);
-
-    /// <summary>
-    /// Updates the model based on the given message.
-    /// </summary>
-    /// <param name="message">The message to process.</param>
-    /// <param name="model">The current model.</param>
-    /// <returns>The updated model and commands.</returns>
+    public static Model Initialize(Url url, Arguments argument) => GetNextModel(url, null);    /// <summary>
+                                                                                               /// Updates the model based on the given message.
+                                                                                               /// </summary>
+                                                                                               /// <param name="message">The message to process.</param>
+                                                                                               /// <param name="model">The current model.</param>
+                                                                                               /// <returns>The updated model and commands.</returns>
     public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
-    {
-        switch(message, model.Page)
+    {    
+    switch   (message)
         {
-            case (UrlChanged urlChanged, _):
-                return HandleUrlChanged(urlChanged.Url, model);
-            case (LinkClicked linkClicked, _):
+            case UrlChanged urlChanged:
+                var nextModel = HandleUrlChanged(urlChanged.Url, model);
+                
+                // Send initialization messages based on route type
+                if (nextModel.model.Page is Page.Home)
+                {
+                    Task.Run(async () => {
+                        await new LoadArticlesCommand().ExecuteAsync();
+                        await new LoadTagsCommand().ExecuteAsync();
+                    });
+                }
+                else if (nextModel.model.Page is Page.Article article)
+                {
+                    Task.Run(async () => {
+                        await new LoadArticleCommand(article.Model.Slug.Value).ExecuteAsync();
+                        await new LoadCommentsCommand(article.Model.Slug.Value).ExecuteAsync();
+                    });
+                }
+                else if (nextModel.model.Page is Page.Profile profile)
+                {
+                    Task.Run(async () => {
+                        await new LoadProfileCommand(profile.Model.UserName.Value).ExecuteAsync();
+                        await new LoadArticlesCommand(author: profile.Model.UserName.Value).ExecuteAsync();
+                    });
+                }                
+                return nextModel;
+            case LinkClicked linkClicked:
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
-            case (Conduit.Page.Login.Message msg, Page.Login login):
-                var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(msg, login.Model);
-                return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);  
-            case (Conduit.Page.Register.Message msg, Page.Register register):
-                var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(msg, register.Model);
-                return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
-            case (Conduit.Page.Home.Message msg, Page.Home home):
-                var (nextHomeModel, nextHomeCommand) = Conduit.Page.Home.Page.Update(msg, home.Model);
-                return (model with { Page = new Page.Home(nextHomeModel) }, nextHomeCommand);
-            case (Conduit.Page.Settings.Message msg, Page.Settings settings):
-                var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(msg, settings.Model);
-                return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
-            case (Conduit.Page.Profile.Message msg, Page.Profile profile):
-                var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(msg, profile.Model);
-                return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
-            case (Conduit.Page.Article.Message msg, Page.Article article):
-                var (nextArticleModel, nextArticleCommand) = Conduit.Page.Article.Page.Update(msg, article.Model);
-                return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
+            case UserLoggedIn userLoggedIn:
+                return (model with { CurrentUser = userLoggedIn.User }, new List<Command> { new Command.None() });
+            case UserLoggedOut:
+                AuthService.Logout();
+                return (model with { CurrentUser = null }, new List<Command> { new Command.None() });
             default:
-                return (model, []);
+                // Check page-specific messages based on current page type
+                if (message is Conduit.Page.Login.Message loginMsg && model.Page is Page.Login login)
+                {
+                    if (loginMsg is Conduit.Page.Login.Message.LoginSuccess loginSuccess)
+                        return (model with { CurrentUser = loginSuccess.User }, new List<Command> { new Command.None() });
+                    
+                    var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(loginMsg, login.Model);
+                    return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);
+                }
+                else if (message is Conduit.Page.Register.Message registerMsg && model.Page is Page.Register register)
+                {
+                    if (registerMsg is Conduit.Page.Register.Message.RegisterSuccess registerSuccess)
+                        return (model with { CurrentUser = registerSuccess.User }, new List<Command> { new Command.None() });
+                    
+                    var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(registerMsg, register.Model);
+                    return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
+                }
+                else if (message is Conduit.Page.Home.Message homeMsg && model.Page is Page.Home home)
+                {
+                    var (nextHomeModel, nextHomeCommand) = Conduit.Page.Home.Page.Update(homeMsg, home.Model);
+                    return (model with { Page = new Page.Home(nextHomeModel) }, nextHomeCommand);
+                }
+                else if (message is Conduit.Page.Settings.Message settingsMsg && model.Page is Page.Settings settings)
+                {
+                    var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(settingsMsg, settings.Model);
+                    return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
+                }
+                else if (message is Conduit.Page.Profile.Message profileMsg && model.Page is Page.Profile profile)
+                {
+                    var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(profileMsg, profile.Model);
+                    return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
+                }
+                else if (message is Conduit.Page.Article.Message articleMsg && model.Page is Page.Article article)
+                {
+                    var (nextArticleModel, nextArticleCommand) = Conduit.Page.Article.Page.Update(articleMsg, article.Model);
+                    return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
+                }
+                else if (message is Conduit.Page.Editor.Message editorMsg && model.Page is Page.NewArticle newArticle)
+                {
+                    var (nextEditorModel, nextEditorCommand) = Conduit.Page.Editor.Page.Update(editorMsg, newArticle.Model);
+                    return (model with { Page = new Page.NewArticle(nextEditorModel) }, nextEditorCommand);
+                }
+                
+                return (model, new List<Command>());
         }
-
+        
     }
 
-    private static string Title = "Conduit - {0}";
+
 
     public static Document View(Model model)
         => model.Page switch
@@ -162,8 +223,7 @@ public class Application : Application<Model, Arguments>
             Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),
             Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
             Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(article.Model)),
-            Page.NewArticle newArticle => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(newArticle.Model)),
-
+            Page.NewArticle newArticle => new Document(string.Format(Title, "New Article"), Conduit.Page.Editor.Page.View(newArticle.Model)),
             _ => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")]))
         };
 
@@ -172,6 +232,4 @@ public class Application : Application<Model, Arguments>
 
     public static Abies.Message OnLinkClicked(UrlRequest urlRequest)
         => new LinkClicked(urlRequest);
-
-
 }

@@ -264,12 +264,10 @@ namespace Abies
             {
                 await HandleCommand(command);
             }
-        }
-
-        private static async Task HandleCommand(Command command)
+        }        private static async Task HandleCommand(Command command)
         {
             switch(command)
-            {
+            {                
                 case Navigation.Command.PushState pushState:
                     await Interop.PushState(pushState.Url.ToString());
                     break;
@@ -277,8 +275,53 @@ namespace Abies
                     await Interop.Load(load.Url.ToString());
                     break;
                 default:
-                    throw new InvalidOperationException("Unknown command");
-            };
+                    // Check if the command has an ExecuteAsync method
+                    var commandType = command.GetType();
+                    var executeMethod = commandType.GetMethod("ExecuteAsync");
+                    if (executeMethod != null)
+                    {
+                        try
+                        {                            var result = executeMethod.Invoke(command, null);
+                            if (result is Task<Message> messageTask)
+                            {
+                                var message = await messageTask;
+                                // We can't directly access Runtime._program here, so just use reflection
+                                await Interop.WriteToConsole($"Command executed: {command.GetType().Name}");
+                                var programField = typeof(Runtime).GetField("_program", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                                if (programField == null)
+                                {
+                                    await Interop.WriteToConsole("Program field not found");
+                                    throw new InvalidOperationException("Program field not found in Runtime class");
+                                }
+                                
+                                var program = programField.GetValue(null);
+                                if (program == null)
+                                {
+                                    await Interop.WriteToConsole("Program not initialized");
+                                    throw new InvalidOperationException("Program not initialized");
+                                }
+                                var dispatchMethod = program.GetType().GetMethod("Dispatch", new[] { typeof(Message) });
+                                if (dispatchMethod == null)
+                                {
+                                    await Interop.WriteToConsole("Dispatch method not found");
+                                    throw new InvalidOperationException("Dispatch method not found");
+                                }
+                                
+                                var dispatchResult = dispatchMethod.Invoke(program, new object[] { message });
+                                if (dispatchResult is Task task)
+                                {
+                                    await task;
+                                }
+                                return;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await Interop.WriteToConsole($"Error handling command: {ex.Message}");
+                            return;
+                        }
+                    }                    throw new InvalidOperationException($"Unknown command: {command.GetType().Name}");
+            }
         }
 
         public async Task Dispatch(string messageId)
