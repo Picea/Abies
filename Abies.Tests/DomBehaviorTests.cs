@@ -48,7 +48,7 @@ public class DomBehaviorTests
             new DOMAttribute[]
             {
                 new DOMAttribute("a1", "class", "btn-primary"),
-                new Handler("click", "cmd1", new DummyMessage(), "h1", null)
+                new Handler("click", "cmd1", new DummyMessage(), "h1")
             },
             System.Array.Empty<Node>());
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
@@ -12,7 +13,13 @@ namespace Abies.DOM
 
     public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
-    public record Handler(string Name, string CommandId, Message? Command, string Id, Func<string?, Message>? WithValue = null)
+    public record Handler(
+        string Name,
+        string CommandId,
+        Message? Command,
+        string Id,
+        Func<object?, Message>? WithData = null,
+        Type? DataType = null)
         : Attribute(Id, $"data-event-{Name}", CommandId);
 
     public record Text(string Id, string Value) : Node(Id)
