@@ -58,6 +58,35 @@ public class DomBehaviorTests
         Assert.Equal(Render.Html(newDom), Render.Html(result));
     }
 
+    [Fact]
+    public void AttributeIdChange_ShouldNotRemoveAttribute()
+    {
+        var oldDom = new Element("1", "div",
+            new DOMAttribute[] { new DOMAttribute("a1", "class", "foo") },
+            System.Array.Empty<Node>());
+
+        var newDom = new Element("1", "div",
+            new DOMAttribute[] { new DOMAttribute("a2", "class", "foo") },
+            System.Array.Empty<Node>());
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.Equal(Render.Html(newDom), Render.Html(result));
+    }
+
+    [Fact]
+    public void Render_ShouldIncludeElementIds()
+    {
+        var dom = new Element("el1", "div", System.Array.Empty<DOMAttribute>(),
+            new Element("child", "span", System.Array.Empty<DOMAttribute>(), new Text("t", "hi")));
+
+        var html = Render.Html(dom);
+
+        Assert.Contains("id=\"el1\"", html);
+        Assert.Contains("id=\"child\"", html);
+    }
+
 
     private static Node? ApplyPatches(Node? root, IEnumerable<Patch> patches, Node? initialRoot)
     {
