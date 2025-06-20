@@ -1,5 +1,5 @@
 <Project>
-    <Target Name="CopyAbiesJs" BeforeTargets="Build">
+    <Target Name="CopyAbiesJs" BeforeTargets="Build" Condition="!Exists('$(ProjectDir)wwwroot\abies.js')">
       <Copy SourceFiles="$(MSBuildThisFileDirectory)..\contentFiles\any\any\wwwroot\abies.js" 
             DestinationFolder="$(ProjectDir)wwwroot\" />
     </Target>
