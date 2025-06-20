@@ -44,9 +44,9 @@ public abstract record Route
         // match the path /profile/{username} where {username} is a string
         (Segment.String("profile") / Url.Parse.String).Map(Handlers.Profile)
         // match the path /article/{slug} where {slug} is a string
-        | ("article" / Url.Parse.String).Map(Handlers.Article)
+        | (Segment.String("article") / Url.Parse.String).Map(Handlers.Article)
         // match the path /editor/{slug} where {slug} is a string
-        | ("editor" / Url.Parse.String).Map(Handlers.EditArticle)
+        | (Segment.String("editor") / Url.Parse.String).Map(Handlers.EditArticle)
         // match the path /editor
         | Segment.String("editor").Map(Handlers.NewArticle)
         // match the path /home

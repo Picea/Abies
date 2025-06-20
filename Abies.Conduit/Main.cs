@@ -44,7 +44,7 @@ public interface Page
     public sealed record Settings(Conduit.Settings.Model Model) : Page;
     public sealed record Login(Conduit.Login.Model Model) : Page;
     public sealed record Register(Conduit.Register.Model Model) : Page;
-    public sealed record Profile(UserName UserName, Conduit.Profile.Model Model) : Page;
+    public sealed record Profile(Conduit.Profile.Model Model) : Page;
     public sealed record Article(Conduit.Article.Model Model) : Page;
 }
 
@@ -66,13 +66,13 @@ public class Application : Application<Model, Arguments>
             case Route.Register:
                 return new(new Page.Register(new Register.Model()), currentRoute);
             case Route.Profile profile:
-                return new (new Page.Profile(profile.UserName, new Profile.Model()), currentRoute);
+                return new (new Page.Profile(new Profile.Model(profile.UserName)), currentRoute);
             case Route.Article article:
-                return new(new Page.Article(new Article.Model()), currentRoute);
-            case Route.NewArticle:
-                return new(new Page.Article(new Article.Model()), currentRoute);
-            case Route.EditArticle article:
-                return new(new Page.Article(new Article.Model()), currentRoute);
+                return new(new Page.Article(new Article.Model(article.Slug)), currentRoute);
+            //case Route.NewArticle:
+            //    return new(new Page.Article(new Article.Model()), currentRoute);
+            //case Route.EditArticle article:
+            //    return new(new Page.Article(new Article.Model()), currentRoute);
             case Route.Redirect:
                 return new(new Page.Redirect(), currentRoute);
             default:
@@ -124,7 +124,7 @@ public class Application : Application<Model, Arguments>
                 return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
             case (Profile.Message msg, Page.Profile profile):
                 var (nextProfileModel, nextProfileCommand) = Profile.Page.Update(msg, profile.Model);
-                return (model with { Page = new Page.Profile(profile.UserName, nextProfileModel) }, nextProfileCommand);
+                return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
             case (Article.Message msg, Page.Article article):
                 var (nextArticleModel, nextArticleCommand) = Article.Page.Update(msg, article.Model);
                 return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
