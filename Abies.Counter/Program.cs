@@ -48,7 +48,7 @@ public class Counter : Program<Model, Arguments>
     public static Subscription Subscriptions(Model model)
         => new();
 
-    public static Task HandleCommand(Command command, Func<Message, Unit> dispatch) => Task.CompletedTask;
+    public static Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch) => Task.CompletedTask;
 
     public static (Model model, Command command) Update(Message message, Model model)
     {

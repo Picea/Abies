@@ -48,7 +48,7 @@ public class DomBehaviorTests
             new DOMAttribute[]
             {
                 new DOMAttribute("a1", "class", "btn-primary"),
-                new Handler("click", "cmd1", new DummyMessage(), "h1")
+                new Handler("click", "cmd1", new DummyMessage(), "h1", null)
             },
             System.Array.Empty<Node>());
 
@@ -156,7 +156,7 @@ public class DomBehaviorTests
             RemoveAttribute ra => UpdateElement(root!, ra.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Id != ra.Attribute.Id).ToArray() }),
             AddHandler ah => UpdateElement(root!, ah.Element.Id, e => e with { Attributes = e.Attributes.Append(ah.Handler).ToArray() }),
             RemoveHandler rh => UpdateElement(root!, rh.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Id != rh.Handler.Id).ToArray() }),
-            UpdateText ut => ReplaceNode(root!, ut.Node, new Text(ut.Node.Id, ut.Text)),
+            UpdateText ut => ReplaceNode(root!, ut.Node, new Text(ut.NewId, ut.Text)),
             _ => root
         };
     }

@@ -9,6 +9,7 @@ public static partial class Runtime
 {
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
+    private static readonly ConcurrentDictionary<string, Func<string?, Message>> _valueHandlers = new();
     
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
@@ -55,17 +56,28 @@ public static partial class Runtime
             {
                 if (patch is AddHandler addHandler)
                 {
-                    if (!_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
+                    if (addHandler.Handler.Command is not null && !_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
                     {
                         await Interop.WriteToConsole("Command already exists");
+                    }
+                    if (addHandler.Handler.WithValue is not null)
+                    {
+                        _valueHandlers[addHandler.Handler.CommandId] = addHandler.Handler.WithValue;
                     }
                     await Interop.WriteToConsole($"Command {addHandler.Handler.Id} added");
                 }
                 else if (patch is RemoveHandler removeHandler)
                 {
-                    if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
+                    if (removeHandler.Handler.Command is not null)
                     {
-                        await Interop.WriteToConsole("Command not found");
+                        if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
+                        {
+                            await Interop.WriteToConsole("Command not found");
+                        }
+                    }
+                    if (removeHandler.Handler.WithValue is not null)
+                    {
+                        _valueHandlers.TryRemove(removeHandler.Handler.CommandId, out _);
                     }
                 }
                 await Operations.Apply(patch);
@@ -200,9 +212,13 @@ public static partial class Runtime
             {
                 if (attribute is Handler handler)
                 {
-                    if (!_handlers.TryAdd(handler.CommandId, handler.Command))
+                    if (handler.Command is not null && !_handlers.TryAdd(handler.CommandId, handler.Command))
                     {
                         throw new InvalidOperationException("Command already exists");
+                    }
+                    if (handler.WithValue is not null)
+                    {
+                        _valueHandlers[handler.CommandId] = handler.WithValue;
                     }
                     Interop.WriteToConsole($"Command {handler.Id} added");
                 }
@@ -215,10 +231,10 @@ public static partial class Runtime
         }
     }
     
-    private static Unit Dispatch(Message message)
+    private static System.ValueTuple Dispatch(Message message)
     {
         _messageChannel.Writer.TryWrite(message);
-        return new ();
+        return new();
     }
     
     [JSExport]
@@ -230,5 +246,24 @@ public static partial class Runtime
         }
 
         var _ = Dispatch(message);
+    }
+
+    [JSExport]
+    public static void DispatchValue(string messageId, string? value)
+    {
+        if (_valueHandlers.TryGetValue(messageId, out var factory))
+        {
+            var message = factory(value);
+            Dispatch(message);
+            return;
+        }
+
+        if (_handlers.TryGetValue(messageId, out var message2))
+        {
+            Dispatch(message2);
+            return;
+        }
+
+        throw new InvalidOperationException("Message to dispatch not found");
     }
 }

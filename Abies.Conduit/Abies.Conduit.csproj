@@ -16,6 +16,9 @@
     <ProjectReference Include="..\Abies\Abies.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.30.8" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Update="wwwroot\abies.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

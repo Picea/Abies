@@ -27,7 +27,8 @@ public record Model(
     string Email = "",
     string Password = "",
     bool IsSubmitting = false,
-    Dictionary<string, string[]>? Errors = null
+    Dictionary<string, string[]>? Errors = null,
+    User? CurrentUser = null
 );
 
 public class Page : Element<Model, Message>
@@ -101,54 +102,62 @@ public class Page : Element<Model, Message>
                           form([], [
                             fieldset([], [
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control"),
+                                    input([
+                                        class_("form-control"),
                                         type("text"),
                                         placeholder("URL of profile picture"),
                                         value(model.ImageUrl),
-                                        oninput(new Message.ImageUrlChanged(model.ImageUrl)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.ImageUrlChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Your Name"),
                                         value(model.Username),
-                                        oninput(new Message.UsernameChanged(model.Username)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.UsernameChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),                                fieldset([class_("form-group")], [
-                                    textarea([class_("form-control form-control-lg"),
+                                    textarea([
+                                        class_("form-control form-control-lg"),
                                         rows("8"),
                                         placeholder("Short bio about you"),
                                         value(model.Bio),
-                                        oninput(new Message.BioChanged(model.Bio)),
-                                        disabled(model.IsSubmitting.ToString())],
+                                        oninput(v => new Message.BioChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ],
                                         []
                                     )
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(new Message.EmailChanged(model.Email)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.EmailChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),
                                 fieldset([class_("form-group")], [
-                                    input([class_("form-control form-control-lg"),
+                                    input([
+                                        class_("form-control form-control-lg"),
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(new Message.PasswordChanged(model.Password)),
-                                        disabled(model.IsSubmitting.ToString())]
-                                    )
+                                        oninput(v => new Message.PasswordChanged(v)),
+                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                    ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
-                                    disabled((model.IsSubmitting || 
-                                             string.IsNullOrWhiteSpace(model.Username) || 
-                                             string.IsNullOrWhiteSpace(model.Email)).ToString()),
+                                    ..((model.IsSubmitting ||
+                                             string.IsNullOrWhiteSpace(model.Username) ||
+                                             string.IsNullOrWhiteSpace(model.Email))
+                                        ? [disabled()]
+                                        : []),
                                     onclick(new Message.SettingsSubmitted())],
                                     [text(model.IsSubmitting ? "Updating Settings..." : "Update Settings")]
                                 )

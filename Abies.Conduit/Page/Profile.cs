@@ -15,6 +15,8 @@ public interface Message : Abies.Message
     public record FavoritedArticlesLoaded(List<Home.Article> Articles, int ArticlesCount) : Message;
     public record ToggleTab(ProfileTab Tab) : Message;
     public record ToggleFollow : Message;
+    public record ToggleFavorite(string Slug, bool CurrentState) : Message;
+    public record PageSelected(int Page) : Message;
 }
 
 public enum ProfileTab
@@ -29,7 +31,9 @@ public record Model(
     Home.Profile? Profile = null,
     List<Home.Article>? Articles = null,
     int ArticlesCount = 0,
-    ProfileTab ActiveTab = ProfileTab.MyArticles
+    ProfileTab ActiveTab = ProfileTab.MyArticles,
+    int CurrentPage = 0,
+    User? CurrentUser = null
 );
 
 public class Page : Element<Model, Message>
@@ -71,14 +75,30 @@ public class Page : Element<Model, Message>
                 },
                 Commands.None
             ),            Message.ToggleTab toggleTab => (
-                model with { ActiveTab = toggleTab.Tab },
-                toggleTab.Tab == ProfileTab.FavoritedArticles 
-                    ? new LoadArticlesCommand(favoritedBy: model.UserName.Value)
-                    : new LoadArticlesCommand(author: model.UserName.Value)
+                model with { ActiveTab = toggleTab.Tab, CurrentPage = 0 },
+                toggleTab.Tab == ProfileTab.FavoritedArticles
+                    ? new LoadArticlesCommand(null, null, model.UserName.Value, Offset: 0)
+                    : new LoadArticlesCommand(null, model.UserName.Value, Offset: 0)
             ),
             Message.ToggleFollow => (
                 model,
                 model.Profile != null ?  new ToggleFollowCommand(model.UserName.Value, model.Profile.Following)  : Commands.None
+            ),
+            Message.ToggleFavorite fav => (
+                model,
+                Commands.Batch(new Command[]
+                {
+                    new ToggleFavoriteCommand(fav.Slug, fav.CurrentState),
+                    model.ActiveTab == ProfileTab.FavoritedArticles
+                        ? new LoadArticlesCommand(null, null, model.UserName.Value, Offset: model.CurrentPage * 10)
+                        : new LoadArticlesCommand(null, model.UserName.Value, Offset: model.CurrentPage * 10)
+                })
+            ),
+            Message.PageSelected pageSel => (
+                model with { CurrentPage = pageSel.Page },
+                model.ActiveTab == ProfileTab.FavoritedArticles
+                    ? new LoadArticlesCommand(null, null, model.UserName.Value, Offset: pageSel.Page * 10)
+                    : new LoadArticlesCommand(null, model.UserName.Value, Offset: pageSel.Page * 10)
             ),
             _ => (model, Commands.None)
         };
@@ -144,9 +164,10 @@ public class Page : Element<Model, Message>
                     span([class_("date")], [text(article.CreatedAt)])
                 ]),
                 div([class_("pull-xs-right")], [
-                    button([class_(article.Favorited 
-                            ? "btn btn-primary btn-sm pull-xs-right" 
-                            : "btn btn-outline-primary btn-sm pull-xs-right")],
+                    button([class_(article.Favorited
+                            ? "btn btn-primary btn-sm pull-xs-right"
+                            : "btn btn-outline-primary btn-sm pull-xs-right"),
+                            onclick(new Message.ToggleFavorite(article.Slug, article.Favorited))],
                     [
                         i([class_("ion-heart")], []),
                         text($" {article.FavoritesCount}")
@@ -165,6 +186,27 @@ public class Page : Element<Model, Message>
             ? div([class_("article-preview")], [text("No articles are here... yet.")])
             : div([], [ ..model.Articles.ConvertAll(article => ArticlePreview(article)) ]);
 
+    private static Node Pagination(Model model)
+    {
+        int pageCount = (int)System.Math.Ceiling(model.ArticlesCount / 10.0);
+        if (pageCount <= 1) return text("");
+
+        var items = new List<Node>();
+        for (int i = 0; i < pageCount; i++)
+        {
+            items.Add(
+                li([class_(i == model.CurrentPage ? "page-item active" : "page-item")], [
+                    a([
+                        class_("page-link"),
+                        href(""),
+                        onclick(new Message.PageSelected(i))
+                    ], [text((i + 1).ToString())])
+                ]));
+        }
+
+        return nav([], [ ul([class_("pagination")], [..items]) ]);
+    }
+
     public static Node View(Model model) =>
         model.IsLoading
             ? div([class_("profile-page")], [
@@ -177,12 +219,13 @@ public class Page : Element<Model, Message>
                 ])
               ])
             : div([class_("profile-page")], [
-                UserInfo(model, false),
+                UserInfo(model, model.CurrentUser is User u && u.Username.Value == model.UserName.Value),
                 div([class_("container")], [
                     div([class_("row")], [
                         div([class_("col-xs-12 col-md-10 offset-md-1")], [
                             ArticleToggle(model),
-                            ArticleList(model)
+                            ArticleList(model),
+                            Pagination(model)
                         ])
                     ])
                 ])
