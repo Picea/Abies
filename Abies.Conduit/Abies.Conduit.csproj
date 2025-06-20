@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <PublishTrimmed>false</PublishTrimmed>
+	  
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />
