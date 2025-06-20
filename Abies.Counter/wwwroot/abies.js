@@ -86,9 +86,6 @@ setModuleImports('abies.js', {
         }
     },
 
-    writeToConsole: async (message) => {
-        console.log(message);
-    },
 
     /**
      * Sets the title of the document.

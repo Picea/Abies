@@ -5,15 +5,10 @@ using static Abies.Html.Events;
 using System.Runtime.InteropServices.JavaScript;
 using Abies.DOM;
 
-Console.WriteLine("Bootstrapping...");
-
-
 await Runtime.Run<Counter, Arguments, Model>(new Arguments());
 
 public static partial class Interop
 {
-    [JSImport("writeToConsole", "abies.js")]
-    public static partial Task WriteToConsole(string message);
 }
 public record Arguments
 {
@@ -29,19 +24,16 @@ public class Counter : Program<Model, Arguments>
 {
     public static (Model, Command) Initialize(Url url, Arguments argument)
     {
-        Interop.WriteToConsole($"initialized");
         return (new Model(0), Commands.None);
     }
 
     public static Message OnLinkClicked(UrlRequest urlRequest)
     {
-        Interop.WriteToConsole($"link clicked");
         return new Increment();
     }
 
     public static Message OnUrlChanged(Url url)
     {
-        Interop.WriteToConsole($"url changed");
         return new Increment();
     }
 
@@ -55,14 +47,10 @@ public class Counter : Program<Model, Arguments>
         switch (message)
         {
             case Increment _:
-                Interop.WriteToConsole($"increment received");
                 model = model with { Count = model.Count + 1 };
-                Interop.WriteToConsole($"model count : {model.Count.ToString()}");
                 return (model, Commands.None);
             case Decrement _:
-                Interop.WriteToConsole($"decrement received");
                 model = model with { Count = model.Count - 1 };
-                Interop.WriteToConsole($"model count : {model.Count.ToString()}");
                 return (model, Commands.None);
             default:
                 throw new NotImplementedException();

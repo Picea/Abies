@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Channels;
 using Abies.DOM;
@@ -15,6 +16,8 @@ public static partial class Runtime
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
     {
+        using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
+
         // Register the URL change handler
         SetupInteropHandlers<TProgram, TArguments, TModel>();
 
@@ -36,10 +39,16 @@ public static partial class Runtime
         var model = initialModel;
         var dom = document.Body;
 
-        await TProgram.HandleCommand(initialCommand, Dispatch);
+        using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+        {
+            await TProgram.HandleCommand(initialCommand, Dispatch);
+        }
         
         await foreach(var message in _messageChannel.Reader.ReadAllAsync())
         {
+            using var messageActivity = Instrumentation.ActivitySource.StartActivity("Message");
+            messageActivity?.SetTag("message.type", message.GetType().FullName);
+
             // Update the model based on the message
             var (newModel, command) = TProgram.Update(message, model);
             
@@ -59,22 +68,18 @@ public static partial class Runtime
                 {
                     if (addHandler.Handler.Command is not null && !_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
                     {
-                        await Interop.WriteToConsole("Command already exists");
+                        continue;
                     }
                     if (addHandler.Handler.WithData is not null)
                     {
                         _dataHandlers[addHandler.Handler.CommandId] = (addHandler.Handler.WithData, addHandler.Handler.DataType ?? typeof(object));
                     }
-                    await Interop.WriteToConsole($"Command {addHandler.Handler.Id} added");
                 }
                 else if (patch is RemoveHandler removeHandler)
                 {
                     if (removeHandler.Handler.Command is not null)
                     {
-                        if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
-                        {
-                            await Interop.WriteToConsole("Command not found");
-                        }
+                        _handlers.TryRemove(removeHandler.Handler.CommandId, out _);
                     }
                     if (removeHandler.Handler.WithData is not null)
                     {
@@ -97,7 +102,10 @@ public static partial class Runtime
                     await Interop.Load(load.Url.ToString());
                     break;
                 default:
-                    await TProgram.HandleCommand(command, Dispatch);
+                    using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+                    {
+                        await TProgram.HandleCommand(command, Dispatch);
+                    }
                     break;
             }
         }
@@ -221,7 +229,6 @@ public static partial class Runtime
                     {
                         _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
                     }
-                    Interop.WriteToConsole($"Command {handler.Id} added");
                 }
             }
             // Recursively register handlers in child nodes

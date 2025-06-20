@@ -64,8 +64,6 @@ namespace Abies
         [JSImport("setTitle", "abies.js")]
         public static partial Task SetTitle(string title);
 
-        [JSImport("writeToConsole", "abies.js")]
-        public static partial Task WriteToConsole(string message);
 
         [JSImport("onUrlChange", "abies.js")]
         public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
