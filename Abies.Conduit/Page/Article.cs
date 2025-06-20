@@ -2,6 +2,7 @@ using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
+using Abies.Conduit;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -77,7 +78,7 @@ public class Page : Element<Model, Message>
             ),
             Message.SubmitComment => (
                 model with { SubmittingComment = true },
-                []
+                [ new SubmitCommentCommand(model.Slug.Value, model.CommentInput) ]
             ),
             Message.CommentSubmitted commentSubmitted => (
                 model with 
@@ -90,13 +91,28 @@ public class Page : Element<Model, Message>
                 },
                 []
             ),
-            Message.DeleteComment => (model, []),
+            Message.DeleteComment delete => (
+                model,
+                [ new DeleteCommentCommand(model.Slug.Value, delete.Id) ]
+            ),
             Message.CommentDeleted commentDeleted => (
-                model with 
-                { 
+                model with
+                {
                     Comments = model.Comments?.FindAll(c => c.Id != commentDeleted.Id)
                 },
                 []
+            ),
+            Message.ToggleFavorite => (
+                model,
+                model.Article != null ? [ new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) ] : []
+            ),
+            Message.ToggleFollow => (
+                model,
+                model.Article != null ? [ new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) ] : []
+            ),
+            Message.DeleteArticle => (
+                model,
+                model.Article != null ? [ new DeleteArticleCommand(model.Article.Slug) ] : []
             ),
             _ => (model, [])
         };

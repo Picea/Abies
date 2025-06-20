@@ -76,7 +76,10 @@ public class Page : Element<Model, Message>
                     ? [new LoadArticlesCommand(favoritedBy: model.UserName.Value)]
                     : [new LoadArticlesCommand(author: model.UserName.Value)]
             ),
-            Message.ToggleFollow => (model, []),
+            Message.ToggleFollow => (
+                model,
+                model.Profile != null ? [ new ToggleFollowCommand(model.UserName.Value, model.Profile.Following) ] : []
+            ),
             _ => (model, [])
         };
 
