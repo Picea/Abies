@@ -1,0 +1,18 @@
+<Project>
+    <PropertyGroup>
+      <!-- Example: Set the C# language version to 9.latest for all projects -->
+      <LangVersion>latest</LangVersion>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <!-- Example: Enable nullable reference types for all projects -->
+      <Nullable>enable</Nullable>
+      
+      <!-- Example: Treat all warnings as errors -->
+      <WarningsAsErrors>nullable, CS8509, CS8524, CS8846, CS8510 </WarningsAsErrors> 
+      
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Include the GlobalUsings.cs file in all projects -->
+        <Compile Include="$(SolutionDir)Global\Usings.cs" />
+        <Compile Include="$(SolutionDir)Global\Suppressions.cs" />
+    </ItemGroup>
+  </Project>
