@@ -3,6 +3,7 @@ using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
 using Abies.Conduit;
+using Markdig;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -20,6 +21,7 @@ public interface Message : Abies.Message
     public record ToggleFavorite : Message;
     public record ToggleFollow : Message;
     public record DeleteArticle : Message;
+    public record ArticleDeleted : Message;
 }
 
 public record Comment(
@@ -36,7 +38,8 @@ public record Model(
     Conduit.Page.Home.Article? Article = null,
     List<Comment>? Comments = null,
     string CommentInput = "",
-    bool SubmittingComment = false
+    bool SubmittingComment = false,
+    User? CurrentUser = null
 );
 
 public class Page : Element<Model, Message>
@@ -114,6 +117,10 @@ public class Page : Element<Model, Message>
                 model,
                 model.Article != null ? new DeleteArticleCommand(model.Article.Slug) : Commands.None
             ),
+            Message.ArticleDeleted => (
+                model,
+                Commands.None
+            ),
             _ => (model, Commands.None)
         };
 
@@ -170,19 +177,23 @@ public class Page : Element<Model, Message>
             ])
         ]);
 
-    private static Node ArticleContent(Conduit.Page.Home.Article article) =>
-        div([class_("row article-content")], [
+    private static Node ArticleContent(Conduit.Page.Home.Article article)
+    {
+        var html = Markdig.Markdown.ToHtml(article.Body);
+        return div([class_("row article-content")], [
             div([class_("col-md-12")], [
-                p([], [text(article.Body)]),                ul([class_("tag-list")], 
-                    article.TagList.ConvertAll(tag => 
+                raw(html),
+                ul([class_("tag-list")],
+                    article.TagList.ConvertAll(tag =>
                         li([class_("tag-default tag-pill tag-outline")], [text(tag)])
                     ).ToArray()
                 )
             ])
         ]);
+    }
 
-    private static Node CommentForm(Model model, User? currentUser) =>
-        currentUser == null
+    private static Node CommentForm(Model model) =>
+        model.CurrentUser == null
             ? div([class_("row")], [
                 div([class_("col-xs-12 col-md-8 offset-md-2")], [
                     p([], [                        a([href("/login")], [text("Sign in")]),
@@ -201,14 +212,14 @@ public class Page : Element<Model, Message>
                         []
                     )
                 ]),
-                div([class_("card-footer")], [                    img([class_("comment-author-img"), src("")]),                    button([class_("btn btn-sm btn-primary"),
+                div([class_("card-footer")], [                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),                    button([class_("btn btn-sm btn-primary"),
                         disabled((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment).ToString()),
                         onclick(new Message.SubmitComment())],
                         [text("Post Comment")])
                 ])
               ]);
 
-    private static Node CommentCard(Comment comment, User? currentUser) =>
+private static Node CommentCard(Model model, Comment comment) =>
         div([class_("card")], [
             div([class_("card-block")], [
                 p([class_("card-text")], [text(comment.Body)])
@@ -221,7 +232,7 @@ public class Page : Element<Model, Message>
                     text(comment.Author.Username)
                 ]),
                 span([class_("date-posted")], [text(comment.CreatedAt)]),
-                comment.Author.Username == (currentUser?.Username.Value ?? "") 
+                comment.Author.Username == (model.CurrentUser?.Username.Value ?? "")
                     ? span([class_("mod-options")], [                        i([class_("ion-trash-a"), 
                           onclick(new Message.DeleteComment(comment.Id))], [])
                       ])
@@ -229,11 +240,11 @@ public class Page : Element<Model, Message>
             ])
         ]);
 
-    private static Node CommentSection(Model model, User? currentUser) =>
+    private static Node CommentSection(Model model) =>
         div([class_("row")], [
             div([class_("col-xs-12 col-md-8 offset-md-2")], [
-                CommentForm(model, currentUser),
-                ..(model.Comments?.ConvertAll(c => CommentCard(c, currentUser)) ?? 
+                CommentForm(model),
+                ..(model.Comments?.ConvertAll(c => CommentCard(model, c)) ??
                     new List<Node> { text("Loading comments...") })
             ])
         ]);
@@ -250,12 +261,12 @@ public class Page : Element<Model, Message>
                 ])
               ])
             : div([class_("article-page")], [
-                ArticleBanner(model.Article, false),                div([class_("container page")], [                    div([], [ArticleContent(model.Article)]),
+                ArticleBanner(model.Article, model.CurrentUser is User u && u.Username.Value == model.Article.Author.Username),                div([class_("container page")], [                    div([], [ArticleContent(model.Article)]),
                     hr([class_("hr")]),
                     div([class_("article-actions")], [
-                        ArticleMeta(model.Article, false)
+                        ArticleMeta(model.Article, model.CurrentUser is User u2 && u2.Username.Value == model.Article.Author.Username)
                     ]),
-                    CommentSection(model, null)
+                    CommentSection(model)
                 ])
               ]);
 }

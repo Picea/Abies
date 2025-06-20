@@ -7,7 +7,7 @@ namespace Abies.Conduit.Page.Blank;
 
 public interface Message : Abies.Message;
 
-public record Model(Slug Slug);
+public record Model(Slug Slug, User? CurrentUser = null);
 
 public class Page : Element<Model, Message>
 {

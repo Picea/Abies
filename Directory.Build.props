@@ -2,6 +2,8 @@
     <PropertyGroup>
       <!-- Example: Set the C# language version to 9.latest for all projects -->
       <LangVersion>latest</LangVersion>
+      <EnablePreviewFeatures>true</EnablePreviewFeatures>
+      <EnableInterceptors>true</EnableInterceptors>
       <ImplicitUsings>enable</ImplicitUsings>
       <!-- Example: Enable nullable reference types for all projects -->
       <Nullable>enable</Nullable>

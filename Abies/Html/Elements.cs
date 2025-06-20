@@ -482,4 +482,7 @@ public static class Elements
     public static Node rect(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("rect", attributes, Array.Empty<Node>(), id);
 
+    public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => new DOM.RawHtml(id.ToString(), html);
+
 }

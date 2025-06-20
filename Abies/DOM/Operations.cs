@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
@@ -7,11 +8,19 @@ namespace Abies.DOM
     public record Document(string Title, Node Body);
     
     public record Node(string Id);
+    public record RawHtml(string Id, string Html) : Node(Id);
     public record Attribute(string Id, string Name, string Value);
 
     public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
-    public record Handler(string Name, string CommandId, Message Command, string Id) : Attribute(Id, $"data-event-{Name}", CommandId);
+    public record Handler(
+        string Name,
+        string CommandId,
+        Message? Command,
+        string Id,
+        Func<object?, Message>? WithData = null,
+        Type? DataType = null)
+        : Attribute(Id, $"data-event-{Name}", CommandId);
 
     public record Text(string Id, string Value) : Node(Id)
     {
@@ -77,10 +86,36 @@ namespace Abies.DOM
         public readonly Handler Handler = handler;
     }
 
-    public readonly struct UpdateText(Text node, string text) : Patch
+    public readonly struct UpdateText(Text node, string text, string newId) : Patch
     {
         public readonly Text Node = node;
         public readonly string Text = text;
+        public readonly string NewId = newId;
+    }
+
+    public readonly struct AddRaw(Element parent, RawHtml child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly RawHtml Child = child;
+    }
+
+    public readonly struct RemoveRaw(Element parent, RawHtml child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly RawHtml Child = child;
+    }
+
+    public readonly struct ReplaceRaw(RawHtml oldNode, RawHtml newNode) : Patch
+    {
+        public readonly RawHtml OldNode = oldNode;
+        public readonly RawHtml NewNode = newNode;
+    }
+
+    public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patch
+    {
+        public readonly RawHtml Node = node;
+        public readonly string Html = html;
+        public readonly string NewId = newId;
     }
 
 
@@ -118,6 +153,9 @@ namespace Abies.DOM
                     break;
                 case Text text:
                     sb.Append($"<span id=\"{text.Id}\">{System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
+                    break;
+                case RawHtml raw:
+                    sb.Append($"<span id=\"{raw.Id}\">{raw.Html}</span>");
                     break;
                 // Handle other node types if necessary
                 default:
@@ -206,6 +244,18 @@ namespace Abies.DOM
                 case UpdateText updateText:
                     await Interop.UpdateTextContent(updateText.Node.Id, updateText.Text);
                     break;
+                case AddRaw addRaw:
+                    await Interop.AddChildHtml(addRaw.Parent.Id, Render.Html(addRaw.Child));
+                    break;
+                case RemoveRaw removeRaw:
+                    await Interop.RemoveChild(removeRaw.Parent.Id, removeRaw.Child.Id);
+                    break;
+                case ReplaceRaw replaceRaw:
+                    await Interop.ReplaceChildHtml(replaceRaw.OldNode.Id, Render.Html(replaceRaw.NewNode));
+                    break;
+                case UpdateRaw updateRaw:
+                    await Interop.ReplaceChildHtml(updateRaw.Node.Id, Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html)));
+                    break;
                 default:
                     throw new InvalidOperationException("Unknown patch type");
             }
@@ -239,8 +289,15 @@ namespace Abies.DOM
             // Text nodes only need an update when the value changes
             if (oldNode is Text oldText && newNode is Text newText)
             {
-                if (!string.Equals(oldText.Value, newText.Value, StringComparison.Ordinal))
-                    patches.Add(new UpdateText(oldText, newText.Value));
+                if (!string.Equals(oldText.Value, newText.Value, StringComparison.Ordinal) || !string.Equals(oldText.Id, newText.Id, StringComparison.Ordinal))
+                    patches.Add(new UpdateText(oldText, newText.Value, newText.Id));
+                return;
+            }
+
+            if (oldNode is RawHtml oldRaw && newNode is RawHtml newRaw)
+            {
+                if (!string.Equals(oldRaw.Html, newRaw.Html, StringComparison.Ordinal) || !string.Equals(oldRaw.Id, newRaw.Id, StringComparison.Ordinal))
+                    patches.Add(new UpdateRaw(oldRaw, newRaw.Html, newRaw.Id));
                 return;
             }
 
@@ -266,9 +323,24 @@ namespace Abies.DOM
             }
 
             // Fallback for node type mismatch
-            if (oldNode is Element oe && newNode is Element ne && parent != null)
+            if (parent != null)
             {
-                patches.Add(new ReplaceChild(oe, ne));
+                if (oldNode is Element oe && newNode is Element ne)
+                {
+                    patches.Add(new ReplaceChild(oe, ne));
+                }
+                else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
+                {
+                    patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
+                }
+                else if (oldNode is RawHtml r && newNode is Element ne2)
+                {
+                    patches.Add(new ReplaceRaw(r, new RawHtml(ne2.Id, Render.Html(ne2))));
+                }
+                else if (oldNode is Element oe2 && newNode is RawHtml r2)
+                {
+                    patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
+                }
             }
         }// Diff attribute collections using dictionaries for O(n) lookup
         private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
@@ -382,6 +454,8 @@ namespace Abies.DOM
             {
                 if (oldChildren[i] is Element oldChild)
                     patches.Add(new RemoveChild(oldParent, oldChild));
+                else if (oldChildren[i] is RawHtml oldRaw)
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
             }
 
             // Add additional new children
@@ -389,6 +463,8 @@ namespace Abies.DOM
             {
                 if (newChildren[i] is Element newChild)
                     patches.Add(new AddChild(newParent, newChild));
+                else if (newChildren[i] is RawHtml newRaw)
+                    patches.Add(new AddRaw(newParent, newRaw));
             }
         }
     }

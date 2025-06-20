@@ -27,7 +27,7 @@ namespace Abies
         public static abstract Message OnLinkClicked(UrlRequest urlRequest);
         public static abstract Subscription Subscriptions(TModel model);
         
-        public static abstract Task HandleCommand(Command command, Func<Message, Unit> dispatch);
+        public static abstract Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch);
     }
 
     public interface UrlRequest : Message

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices.JavaScript;
 
 namespace Abies
 {
-    internal static partial class Interop
+    public static partial class Interop
     {
         [JSImport("forward", "abies.js")]
         public static partial Task Forward(int steps);
@@ -49,11 +49,21 @@ namespace Abies
         [JSImport("removeAttribute", "abies.js")]
         public static partial Task RemoveAttribute(string id, string name);
 
+        [JSImport("getValue", "abies.js")]
+        public static partial string? GetValue(string id);
+
+        [JSImport("setLocalStorage", "abies.js")]
+        public static partial Task SetLocalStorage(string key, string value);
+
+        [JSImport("getLocalStorage", "abies.js")]
+        public static partial string? GetLocalStorage(string key);
+
+        [JSImport("removeLocalStorage", "abies.js")]
+        public static partial Task RemoveLocalStorage(string key);
+
         [JSImport("setTitle", "abies.js")]
         public static partial Task SetTitle(string title);
 
-        [JSImport("writeToConsole", "abies.js")]
-        public static partial Task WriteToConsole(string message);
 
         [JSImport("onUrlChange", "abies.js")]
         public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);

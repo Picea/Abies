@@ -15,6 +15,8 @@ public interface Message : Abies.Message
     public record TagsLoaded(List<string> Tags) : Message;
     public record ToggleFeedTab(FeedTab Tab) : Message;
     public record TagSelected(string Tag) : Message;
+    public record ToggleFavorite(string Slug, bool CurrentState) : Message;
+    public record PageSelected(int Page) : Message;
 }
 
 public enum FeedTab
@@ -50,20 +52,22 @@ public record Model(
     List<string> Tags,
     FeedTab ActiveTab,
     string ActiveTag,
-    bool IsLoading
+    bool IsLoading,
+    int CurrentPage,
+    User? CurrentUser = null
 );
 
 public class Page : Element<Model, Message>
 {
     public static Model Initialize(Message argument)
     {
-        return new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true);
+        return new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true, 0, null);
     }
     
     public static (Model model, IEnumerable<Command> commands) Init()
     {
         return (
-            new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true),
+            new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true, 0, null),
             new List<Command> { new LoadArticlesCommand(), new LoadTagsCommand() }
         );
     }
@@ -95,13 +99,14 @@ public class Page : Element<Model, Message>
                     {
                         ActiveTab = toggleFeed.Tab,
                         ActiveTag = toggleFeed.Tab == FeedTab.Tag ? model.ActiveTag : "",
-                        IsLoading = true
+                        IsLoading = true,
+                        CurrentPage = 0
                     },
                     toggleFeed.Tab switch
                     {
-                        FeedTab.YourFeed => new LoadFeedCommand(),
-                        FeedTab.Tag => new LoadArticlesCommand(tag: model.ActiveTag),
-                        _ => new LoadArticlesCommand()
+                        FeedTab.YourFeed => new LoadFeedCommand(Offset: 0),
+                        FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: 0),
+                        _ => new LoadArticlesCommand(Offset: 0)
                     }
                 ),
                 Message.TagSelected tagSelected => (
@@ -109,9 +114,32 @@ public class Page : Element<Model, Message>
                     {
                         ActiveTab = FeedTab.Tag,
                         ActiveTag = tagSelected.Tag,
-                        IsLoading = true
+                        IsLoading = true,
+                        CurrentPage = 0
                     },
-                    new LoadArticlesCommand(tag: tagSelected.Tag)
+                    new LoadArticlesCommand(tagSelected.Tag, Offset: 0)
+                ),
+                Message.ToggleFavorite fav => (
+                    model with { IsLoading = true },
+                    Commands.Batch(new Command[]
+                    {
+                        new ToggleFavoriteCommand(fav.Slug, fav.CurrentState),
+                        model.ActiveTab switch
+                        {
+                            FeedTab.YourFeed => new LoadFeedCommand(Offset: model.CurrentPage * 10),
+                            FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: model.CurrentPage * 10),
+                            _ => new LoadArticlesCommand(Offset: model.CurrentPage * 10)
+                        }
+                    })
+                ),
+                Message.PageSelected pageSel => (
+                    model with { IsLoading = true, CurrentPage = pageSel.Page },
+                    model.ActiveTab switch
+                    {
+                        FeedTab.YourFeed => new LoadFeedCommand(Offset: pageSel.Page * 10),
+                        FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: pageSel.Page * 10),
+                        _ => new LoadArticlesCommand(Offset: pageSel.Page * 10)
+                    }
                 ),
                 _ => (model, Commands.None)
             };
@@ -125,13 +153,13 @@ public class Page : Element<Model, Message>
             ])
         ]);
 
-    private static Node FeedToggle(Model model, User? currentUser) =>
+    private static Node FeedToggle(Model model) =>
         div([class_("feed-toggle")], [
             ul([class_("nav nav-pills outline-active")], [
-                currentUser != null
+                model.CurrentUser != null
                     ? li([class_("nav-item")], [
-                        a([class_(model.ActiveTab == FeedTab.YourFeed 
-                            ? "nav-link active" 
+                        a([class_(model.ActiveTab == FeedTab.YourFeed
+                            ? "nav-link active"
                             : "nav-link"),
                           onclick(new Message.ToggleFeedTab(FeedTab.YourFeed)),
                           href("")],
@@ -169,9 +197,10 @@ public class Page : Element<Model, Message>
                     span([class_("date")], [text(article.CreatedAt)])
                 ]),
                 div([class_("pull-xs-right")], [
-                    button([class_(article.Favorited 
-                        ? "btn btn-primary btn-sm pull-xs-right" 
-                        : "btn btn-outline-primary btn-sm pull-xs-right")],
+                    button([class_(article.Favorited
+                        ? "btn btn-primary btn-sm pull-xs-right"
+                        : "btn btn-outline-primary btn-sm pull-xs-right"),
+                        onclick(new Message.ToggleFavorite(article.Slug, article.Favorited))],
                     [
                         i([class_("ion-heart")], []),
                         text($" {article.FavoritesCount}")
@@ -197,6 +226,29 @@ public class Page : Element<Model, Message>
                 ? div([class_("article-preview")], [text("No articles are here... yet.")])
                 : div([], [..model.Articles.ConvertAll(article => ArticlePreview(article))]);
 
+    private static Node Pagination(Model model)
+    {
+        int pageCount = (int)System.Math.Ceiling(model.ArticlesCount / 10.0);
+        if (pageCount <= 1) return text("");
+
+        var items = new List<Node>();
+        for (int i = 0; i < pageCount; i++)
+        {
+            items.Add(
+                li([class_(i == model.CurrentPage ? "page-item active" : "page-item")], [
+                    a([
+                        class_("page-link"),
+                        href(""),
+                        onclick(new Message.PageSelected(i))
+                    ], [text((i + 1).ToString())])
+                ]));
+        }
+
+        return nav([], [
+            ul([class_("pagination")], [..items])
+        ]);
+    }
+
     private static Node TagCloud(Model model) =>
         div([class_("sidebar")], [
             p([], [text("Popular Tags")]),
@@ -217,8 +269,9 @@ public class Page : Element<Model, Message>
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-9")], [
-                        FeedToggle(model, null),
-                        ArticleList(model)
+                        FeedToggle(model),
+                        ArticleList(model),
+                        Pagination(model)
                     ]),
                     div([class_("col-md-3")], [
                         TagCloud(model)

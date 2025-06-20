@@ -75,27 +75,57 @@ public record Url
     private Url(Uri uri)
     {
         _uri = uri;
-        
-        // Convert the Uri to our domain types
-        Scheme = uri.Scheme.ToLowerInvariant() switch
+
+        if (uri.IsAbsoluteUri)
         {
-            "http" => new Protocol.Http(),
-            "https" => new Protocol.Https(),
-            _ => throw new Exception($"Unsupported scheme: {uri.Scheme}")
-        };
-        
-        Host = new Host(uri.Host);
-        Port = uri.IsDefaultPort ? null : new Port(uri.Port);
-        Path = new Path(uri.AbsolutePath);
-        Query = new Query(uri.Query);
-        Fragment = new Fragment(uri.Fragment);
+            Scheme = uri.Scheme.ToLowerInvariant() switch
+            {
+                "http" => new Protocol.Http(),
+                "https" => new Protocol.Https(),
+                _ => throw new Exception($"Unsupported scheme: {uri.Scheme}")
+            };
+
+            Host = new Host(uri.Host);
+            Port = uri.IsDefaultPort ? null : new Port(uri.Port);
+            Path = new Path(uri.AbsolutePath);
+            Query = new Query(uri.Query);
+            Fragment = new Fragment(uri.Fragment);
+        }
+        else
+        {
+            Scheme = null;
+            Host = null;
+            Port = null;
+
+            string originalString = _uri.OriginalString;
+            string fragmentString = "";
+            int fragmentIndex = originalString.IndexOf('#');
+            if (fragmentIndex != -1)
+            {
+                fragmentString = originalString.Substring(fragmentIndex);
+                originalString = originalString.Substring(0, fragmentIndex);
+            }
+
+            string pathString = originalString;
+            string queryString = "";
+            int queryIndex = originalString.IndexOf('?');
+            if (queryIndex != -1)
+            {
+                queryString = originalString.Substring(queryIndex);
+                pathString = originalString.Substring(0, queryIndex);
+            }
+
+            Path = new Path(pathString);
+            Query = new Query(queryString);
+            Fragment = new Fragment(fragmentString);
+        }
     }
     
     public static Url Create(string url)
     {
         try
         {
-            return new Url(new Uri(url, UriKind.Absolute));
+            return new Url(new Uri(url, UriKind.RelativeOrAbsolute));
         }
         catch (UriFormatException)
         {
