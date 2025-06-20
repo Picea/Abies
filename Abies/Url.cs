@@ -1,12 +1,76 @@
-using System;
+using Abies;
+using System.Globalization;
+
+using static Abies.Parse;
 
 namespace Abies;
+
+public record Scheme(string Value)
+{
+    public static implicit operator string(Scheme scheme) => scheme.Value;
+}
+public record Host(string Value)
+{
+    public static implicit operator string(Host host) => host.Value;
+}
+public record Port(int Value)
+{
+    public static implicit operator int(Port port) => port.Value;
+    public static implicit operator int?(Port? port) => port?.Value;
+}
+public record Path(string Value)
+{
+    public static implicit operator string(Path path) => path.Value;
+};
+public record Query(string Value)
+{
+    public static implicit operator string(Query query) => query.Value;
+}
+public record Fragment(string Value)
+{
+    public static implicit operator string(Fragment fragment) => fragment.Value;
+}
+
+public partial interface Parser<T>
+{
+    public static Parser<T> operator /(Parser<T> first, Parser<T> second) =>
+        first.Slash(second);
+
+    public static Parser<int> operator /(Parser<T> first, int second) =>
+        first.Slash(Abies.Parse.Int(second));
+
+    public static Parser<T> operator /(int first, Parser<T> second) =>
+        Abies.Parse.Int(first).Slash(second);
+
+    public static Parser<string> operator /(Parser<T> first, string second) =>
+        first.Slash(Abies.Parse.String(second));
+
+    public static Parser<T> operator /(string first, Parser<T> second) =>
+        Abies.Parse.String(first).Slash(second);
+
+    // for the rest of the primitive types
+    public static Parser<T> operator /(Parser<T> first, T second) =>
+        first.Slash(second.Return());
+
+    public static Parser<T> operator /(T first, Parser<T> second) =>
+        first.Return().Slash(second);
+
+    public static Parser<T> operator /(Parser<T> first, Func<T, T> second) =>
+        first.Select(second);
+
+}
 
 /// <summary>
 ///   https://example.com:8042/over/there?name=ferret#nose
 ///  \___/   \______________/\_________/ \_________/ \__/
 ///    |            |            |            |        |
 ///  scheme     authority       path        query   fragment
+///  
+/// 
+///   /over/there
+///   \___/ \__/
+///    |     | 
+///    segment
 ///  
 ///   example.com:8042
 ///  \_________/ \__/
@@ -16,23 +80,30 @@ namespace Abies;
 /// </summary>
 public record Url
 {
+    private Url()
+    {
+        Scheme = default!;
+        Host = default!;
+        Port = default!;
+        Path = default!;
+        Query = default!;
+        Fragment = default!;
+    }
     public required Protocol Scheme { get; init; }
-    public required string Host { get; init; }
-    public required int Port { get; init; }
-    public required string Path { get; init; }
-    public required string Query { get; init; }
-    public required string Fragment { get; init; }
+    public required Host Host { get; init; }
+    public required Port? Port { get; init; }
+    public required Path Path { get; init; }
+    public required Query Query { get; init; }
+    public required Fragment Fragment { get; init; }
 
     public override string ToString() => ToString(this);
 
-    public static Url FromSpan(ReadOnlySpan<char> input) =>
-        FromSpanInternal(input);
+    public static Url Create(Decoded.String input) =>
+        FromSpanInternal(input.Value.AsSpan());
 
-    public static Url FromString(string input) =>
-        FromSpan(input.AsSpan());
-
-    public static string ToString(Url url) =>
-        new UriBuilder
+    public static string ToString(Url url)
+    {
+        UriBuilder uriBuilder = new UriBuilder
         {
             Scheme = url.Scheme switch
             {
@@ -40,16 +111,43 @@ public record Url
                 Protocol.Https _ => "https",
                 _ => throw new Exception("Unknown scheme")
             },
-            Host = url.Host,
-            Port = url.Port,
-            Path = url.Path,
-            Query = url.Query,
-            Fragment = url.Fragment
-        }.Uri.ToString();
+            Host = url.Host.Value,
+            Path = url.Path.Value,
+            Query = url.Query.Value,
+            Fragment = url.Fragment.Value
+        };
+        if (url.Port is not null) uriBuilder.Port = url.Port.Value;
+        return uriBuilder.Uri.ToString();
+    }
+
+
+    private static Parser<Url> Parser =>
+        from scheme in Parse.Scheme
+        from host in Parse.Host
+        from port in Parse.Port
+        from path in Parse.Path
+        from query in Parse.Query
+        from fragment in Parse.Fragment
+        select new Url
+        {
+            Scheme = scheme switch
+            {
+                "http" => new Protocol.Http(),
+                "https" => new Protocol.Https(),
+                _ => throw new Exception("Unknown scheme")
+            },
+            Host = new(host),
+            Port = port is not null ? new Port(port.Value) : null,
+            Path = new(Uri.UnescapeDataString(path)),
+            Query = new(query),
+            Fragment = new(fragment)
+        };
+
+
 
     private static Url FromSpanInternal(ReadOnlySpan<char> input)
     {
-        var result = Parser.Url(input);
+        var result = Parser.Parse(input);
         if (!result.Success)
         {
             throw new FormatException("Invalid URL format.");
@@ -58,14 +156,18 @@ public record Url
         var parsedUrl = result.Value;
 
         // Assign default ports if none are specified
-        int effectivePort = parsedUrl.Port == -1 
+        int? effectivePort = parsedUrl.Port?.Value == -1
         ? (parsedUrl.Scheme switch
         {
             Protocol.Http _ => 80,
             Protocol.Https _ => 443,
             _ => throw new Exception("Unknown scheme for default port assignment.")
-        }) 
-        : parsedUrl.Port;
+        })
+        : parsedUrl.Port?.Value;
+
+        // Normalize scheme and host to lowercase and convert to Punycode
+        var idn = new IdnMapping();
+        string punycodeHost = idn.GetAscii(parsedUrl.Host.Value.ToLowerInvariant());
 
         // Normalize scheme and host to lowercase
         return parsedUrl with
@@ -76,119 +178,185 @@ public record Url
                 Protocol.Https _ => new Protocol.Https(),
                 _ => throw new Exception("Unknown scheme")
             },
-            Host = parsedUrl.Host.ToLowerInvariant(),
-            Port = effectivePort
+            Host = new(punycodeHost),
+            Port =effectivePort.HasValue ? new(effectivePort.Value) : null,
+            Path = parsedUrl.Path,
+            Query = parsedUrl.Query,
+            Fragment = parsedUrl.Fragment
         };
     }
-}
 
-public interface Protocol
-{
-    public sealed record Http : Protocol;
-    public sealed record Https : Protocol;
-}
-
-// // Usage example
-// var input = "https://www.example.com:8080/path/to/resource?query=abc#section";
-// var result = UrlParser.Url(input.AsSpan());
-
-// if (result.Success)
-// {
-//     var urlComponents = result.Value;
-//     // Access urlComponents.Scheme, urlComponents.Host, etc.
-// }
-// else
-// {
-//     // Handle parsing failure
-public static class Parser
-{
-    public static Parser<char> LetterOrDigitOrPlus =>
-        Parse.Satisfy(c => char.IsLetterOrDigit(c) || c == '+');
-
-    public static Parser<string> Scheme =>
-        from schemeChars in Parse.Many1(LetterOrDigitOrPlus)
-        from colon in Parse.Char(':')
-        select new string(schemeChars.ToArray());
-
-    public static Parser<string> Host =>
-        from slashes in Parse.String("//")
-        from hostChars in Parse.Many1(Parse.Satisfy(c => c != ':' && c != '/' && c != '?' && c != '#'))
-        select new string([.. hostChars]);
-
-    public static Parser<int?> Port =>
-        input =>
+    public static class Encoded
+    {
+        public readonly struct String(string value)
         {
-            if (input.Length > 0 && input[0] == ':')
-            {
-                var portParser =
-                    from colon in Parse.Char(':')
-                    from digits in Parse.Many1(Parse.Digit)
-                    select int.Parse(new string([.. digits]));
+            public string Value { get; } = Uri.EscapeDataString(value);
 
-                var result = portParser(input);
-                if (result.Success)
-                    return ParseResult<int?>.Successful(result.Value, result.Remaining);
-            }
-            return ParseResult<int?>.Successful(null, input);
-        };
+            public override string ToString() => Value;
 
-    public static Parser<string> Path =>
-        from pathChars in Parse.Many(Parse.Satisfy(c => c != '?' && c != '#'))
-        select new string(pathChars.ToArray());
+            public static Decoded.String Decode(string value) =>
+                new(Uri.UnescapeDataString(value));
 
-    public static Parser<string> Query =>
-        input =>
+            public static implicit operator string(String value) => value.Value;
+        }
+    }
+
+    public static class Decoded
+    {
+        public readonly struct String(string value)
         {
-            if (input.Length > 0 && input[0] == '?')
-            {
-                var queryParser =
-                    from question in Parse.Char('?')
-                    from queryChars in Parse.Many(Parse.Satisfy(c => c != '#'))
-                    select new string(queryChars.ToArray());
+            public string Value { get; } = // Check if the input is already decoded
+                Uri.IsWellFormedUriString(value, UriKind.Absolute)
+                ? value
+                : Uri.UnescapeDataString(value);
 
-                var result = queryParser(input);
-                if (result.Success)
-                    return ParseResult<string>.Successful(result.Value, result.Remaining);
-            }
-            return ParseResult<string>.Successful(string.Empty, input);
-        };
+            public override string ToString() => Value;
 
-    public static Parser<string> Fragment =>
-        input =>
+            public static Encoded.String Encode(string value) =>
+                new(Uri.EscapeDataString(value));
+
+            public static implicit operator string(String value) =>
+                value.Value;
+        }
+    }
+
+
+    // // Usage example
+    // var input = "https://www.example.com:8080/path/to/resource?query=abc#section";
+    // var result = UrlParser.Url(input.AsSpan());
+
+    // if (result.Success)
+    // {
+    //     var urlComponents = result.Value;
+    //     // Access urlComponents.Scheme, urlComponents.Host, etc.
+    // }
+    // else
+    // {
+    //     // Handle parsing failure
+    public static class Parse
+    {
+        public static Parser<char> LetterOrDigitOrPlus =>
+            Abies.Parse.Satisfy(c => char.IsLetterOrDigit(c) || c == '+');
+
+        public static Parser<string> Scheme =>
+            from schemeChars in Abies.Parse.Many1(LetterOrDigitOrPlus)
+            from colon in Abies.Parse.Char(':')
+            select new string(schemeChars.ToArray());
+
+        public static Parser<string> Host =>
+            from slashes in Abies.Parse.String("//")
+            from hostChars in Abies.Parse.Many1(Abies.Parse.Satisfy(c => c != ':' && c != '/' && c != '?' && c != '#'))
+            select new string([.. hostChars]);
+
+        public static Parser<string> Query =>
+            (from question in Abies.Parse.Char('?')
+             from parameters in Abies.Parse.Many1(ParseParameter())
+             select string.Join("&", parameters))
+            .Optional()
+            .Select(query => query ?? string.Empty);
+
+        private static Parser<string> ParseParameter() =>
+            from key in Abies.Parse.Many1(Abies.Parse.Satisfy(c => char.IsLetterOrDigit(c) || c == '_'))
+            from _ in Abies.Parse.Char('=')
+            from value in Abies.Parse.Many1(Abies.Parse.Satisfy(c => char.IsLetterOrDigit(c) || c == '_'))
+            from ampersand in Abies.Parse.Char('&').Optional()
+            select $"{new string(key.ToArray())}={new string(value.ToArray())}";
+
+        public static Parser<string> Fragment =>
+            (from hash in Abies.Parse.Char('#')
+             from fragmentChars in Abies.Parse.Many(Abies.Parse.Item())
+             select new string(fragmentChars.ToArray()))
+            .Optional()
+            .Select(fragment => fragment ?? string.Empty);
+
+        public static Parser<int?> Port =>
+            (from colon in Abies.Parse.Char(':')
+             from portChars in Abies.Parse.Many1(Abies.Parse.Satisfy(char.IsDigit))
+             select (int?)int.Parse(new string(portChars.ToArray())))
+            .Optional();
+
+        public static Parser<string> Path =>
+            Abies.Parse.Many(Abies.Parse.Satisfy(c => c != '?' && c != '#'))
+                .Select(chars => new string(chars.ToArray()))
+                .Optional()
+                .Select(path => string.IsNullOrEmpty(path) ? "/" : path);
+
+        public static class Segment
         {
-            if (input.Length > 0 && input[0] == '#')
-            {
-                var fragmentParser =
-                    from hash in Parse.Char('#')
-                    from fragmentChars in Parse.Many(Parse.Item())
-                    select new string(fragmentChars.ToArray());
+            public static Parser<string> String(string segment) =>
+                from slash in Abies.Parse.Char('/')
+                from @string in Abies.ParserExtensions.String(segment)
+                select @string;
 
-                var result = fragmentParser(input);
-                if (result.Success)
-                    return ParseResult<string>.Successful(result.Value, result.Remaining);
-            }
-            return ParseResult<string>.Successful(string.Empty, input);
-        };
+            /// <summary>
+            /// A parser that parses a sequence of one or more characters that are not a '/' character.
+            /// For example, the parser succeeds when input is "foo" or "bar", but fails when input is "foo/bar".
+            /// </summary>
+            public static Parser<string> Any =>
+                from segmentChars in Abies.Parse.Many1(Abies.Parse.Satisfy(c => c != '/'))
+                select new string([.. segmentChars]);
 
-    public static Parser<Url> Url =>
-        from scheme in Scheme
-        from host in Host
-        from port in Port
-        from path in Path
-        from query in Query
-        from fragment in Fragment
-        select new Url
+            /// <summary>
+            /// Parses an empty segment, which is represented by a single forward slash and returns an empty string.
+            /// Applications can use this parser to represent the root path of a URL.
+            /// </summary>
+            public static Parser<string> Empty =>
+                from empty in Abies.Parse.Char('/')
+                select string.Empty;
+
+            // parse ONLY the root segment
+            public static Parser<string> Root =>
+                from root in Abies.Parse.Char('/')
+                select "/";
+        }
+
+
+
+
+        /// <summary>
+        /// A parser that parses a sequence of one or more digits (0-9) that are not preceded by a '/' character.
+        /// If the input does not contain at least one digit or contains a '/' character, the parser fails.
+        /// </summary>
+        /// <remarks>
+        /// This parser uses the `Parse.Many1` combinator to ensure that at least one digit is present in the input.
+        /// It uses the `Parse.Satisfy` combinator to check that each character is a digit and not a '/' character.
+        /// When the parser succeeds, it returns an integer parsed from the sequence of digits.
+        /// </remarks>
+        public static Parser<int> Int =>
+            from digits in Abies.Parse.Many1(Abies.Parse.Satisfy(c => c != '/' && char.IsDigit(c)))
+            select int.Parse(new string([.. digits]));
+
+        public static Parser<double> Double =>
+            from digits in Abies.Parse.Many1(Abies.Parse.Satisfy(c => c != '/' && char.IsDigit(c)))
+            select double.Parse(new string([.. digits]));
+
+
+        public static class Strict
         {
-            Scheme = scheme switch
-            {
-                "http" => new Protocol.Http(),
-                "https" => new Protocol.Https(),
-                _ => throw new Exception("Unknown scheme")
-            },
-            Host = host,
-            Port = port ?? -1, // Temporary placeholder; actual port handled in FromSpanInternal
-            Path = path,
-            Query = query,
-            Fragment = fragment
-        };
+            public static Parser<int?> Int =>
+                from items in Segment.Any
+                let digits = int.TryParse(new string([.. items]), out var result) ? result : (int?)null
+                select digits;
+
+            public static Parser<double?> Double =>
+                from items in Segment.Any
+                let digits = double.TryParse(new string([.. items]), out var result) ? result : (double?)null
+                select digits;
+        }
+
+        /// <summary>
+        /// A parser that parses a sequence of one or more characters that are not a '/' character.
+        /// If the input does not contain at least one character or contains a '/' character, the parser fails.
+        /// </summary>
+        public static Parser<string> String =>
+            from chars in Abies.Parse.Many(Abies.Parse.Satisfy(c => c != '/'))
+            select new string([.. chars]);
+
+    }
+
+    public interface Protocol
+    {
+        public sealed record Http : Protocol;
+        public sealed record Https : Protocol;
+    }
 }
