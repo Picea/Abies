@@ -11,6 +11,8 @@
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
     <MonoRuntimeDebuggerEnabled>true</MonoRuntimeDebuggerEnabled>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    <NoWarn>CA2252</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />
