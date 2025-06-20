@@ -108,7 +108,7 @@ public class Page : Element<Model, Message>
                                         placeholder("URL of profile picture"),
                                         value(model.ImageUrl),
                                         oninput(d => new Message.ImageUrlChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -118,7 +118,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Your Name"),
                                         value(model.Username),
                                         oninput(d => new Message.UsernameChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                fieldset([class_("form-group")], [
                                     textarea([
@@ -127,7 +127,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Short bio about you"),
                                         value(model.Bio),
                                         oninput(d => new Message.BioChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ],
                                         []
                                     )
@@ -139,7 +139,7 @@ public class Page : Element<Model, Message>
                                         placeholder("Email"),
                                         value(model.Email),
                                         oninput(d => new Message.EmailChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -149,15 +149,15 @@ public class Page : Element<Model, Message>
                                         placeholder("Password"),
                                         value(model.Password),
                                         oninput(d => new Message.PasswordChanged(d?.Value)),
-                                        ..(model.IsSubmitting ? [disabled()] : [])
+                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("button"),
                                     ..((model.IsSubmitting ||
                                              string.IsNullOrWhiteSpace(model.Username) ||
                                              string.IsNullOrWhiteSpace(model.Email))
-                                        ? [disabled()]
-                                        : []),
+                                        ? new[] { disabled() }
+                                        : System.Array.Empty<DOM.Attribute>()),
                                     onclick(new Message.SettingsSubmitted())],
                                     [text(model.IsSubmitting ? "Updating Settings..." : "Update Settings")]
                                 )
