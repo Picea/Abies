@@ -35,24 +35,44 @@ public record Decrement : Message;
 public class Counter : Application<Model, Arguments>
 {
     public static Model Initialize(Url url, Arguments argument)
-        => new(0);
+    {
+        Interop.WriteToConsole($"initialized");
+        return new Model(0);
+    }
 
     public static Message OnLinkClicked(UrlRequest urlRequest)
-        => new Increment();
+    {
+        Interop.WriteToConsole($"link clicked");
+        return new Increment();
+    }
 
     public static Message OnUrlChanged(Url url)
-        => new Increment();
+    {
+        Interop.WriteToConsole($"url changed");
+        return new Increment();
+    }
 
     public static Subscription Subscriptions(Model model)
         => new();
 
     public static (Model model, IEnumerable<Command> commands) Update(Message message, Model model)
-        => message switch
+    {
+        switch (message)
         {
-            Increment _ => (model with { Count = model.Count + 1 }, []),
-            Decrement _ => (model with { Count = model.Count - 1 }, []),
-            _ => throw new NotImplementedException()
-        };
+            case Increment _:
+                Interop.WriteToConsole($"increment received");
+                model = model with { Count = model.Count + 1 };
+                Interop.WriteToConsole($"model count : {model.Count.ToString()}");
+                return (model, Array.Empty<Command>());
+            case Decrement _:
+                Interop.WriteToConsole($"decrement received");
+                model = model with { Count = model.Count - 1 };
+                Interop.WriteToConsole($"model count : {model.Count.ToString()}");
+                return (model, Array.Empty<Command>());
+            default:
+                throw new NotImplementedException();
+        }
+    }
 
     public static Document View(Model model)
         => new("Counter",

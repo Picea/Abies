@@ -46,6 +46,7 @@ public interface Page
     public sealed record Register(Conduit.Page.Register.Model Model) : Page;
     public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
     public sealed record Article(Conduit.Page.Article.Model Model) : Page;
+    public sealed record NewArticle(Conduit.Page.Article.Model Model) : Page;
 }
 
 /// <summary>
@@ -75,6 +76,7 @@ public class Application : Application<Model, Arguments>
             Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute),
             Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute),
             Route.Redirect => new(new Page.Redirect(), currentRoute),
+            Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Article.Model(new Slug(""))), currentRoute),
             _ => new(new Page.NotFound(), currentRoute),
         };
     }
@@ -170,6 +172,7 @@ public class Application : Application<Model, Arguments>
             Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),
             Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
             Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(article.Model)),
+            Page.NewArticle newArticle => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(newArticle.Model)),
 
             _ => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")]))
         };

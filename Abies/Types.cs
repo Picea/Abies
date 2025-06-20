@@ -228,6 +228,8 @@ namespace Abies
             // Update the state with the new message
             var (newModel, commands) = TApplication.Update(message, model);
 
+            model = newModel;
+
             // Generate new virtual DOM
             var newDocument = TApplication.View(newModel);
 

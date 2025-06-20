@@ -40,7 +40,7 @@ public class RouteParsingTests
                 Assert.IsType<Route.Home>(route);
                 break;
             case "/login":
-                Assert.IsType<Route.Login>(route);
+                _ = Assert.IsType<Route.Login>(route);
                 break;
             case "/settings":
                 Assert.IsType<Route.Settings>(route);
