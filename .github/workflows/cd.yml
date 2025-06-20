@@ -15,8 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install WASM experimental workload
-      run: dotnet workload install wasm-experimental
+
     - uses: actions/checkout@v4.2.2
       with:
           fetch-depth: 0
@@ -24,6 +23,9 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
+        # allow-prerelease: true
+    - name: Install WASM experimental workload
+      run: dotnet workload install wasm-experimental wasm-tools
     - name: Install GitVersioning
       run: dotnet tool install --global nbgv
     - name: Set version
@@ -39,5 +41,3 @@ jobs:
       run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
     - name: Publish to NuGet
       run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-    - name: Publish to GitHub Packages
-      run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.PUSH_GITHUB_PACKAGES }} --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json

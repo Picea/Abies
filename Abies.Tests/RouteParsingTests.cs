@@ -1,7 +1,6 @@
-using Abies.Conduit.Routing;
+using Route = Abies.Conduit.Routing.Route;
 using FsCheck;
 using FsCheck.Xunit;
-using static Abies.Url;
 
 namespace Abies.Tests;
 
@@ -30,38 +29,38 @@ public class RouteParsingTests
         var url = Url.Create(new($"http://localhost:80{path}"));
 
         // Act
-        var route = Route.FromUrl(Route.Match, url);
+        var route = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, url);
 
         // Assert
         switch (path)
         {
             case "/":
             case "/home":
-                Assert.IsType<Route.Home>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.Home>(route);
                 break;
             case "/login":
-                _ = Assert.IsType<Route.Login>(route);
+                _ = Assert.IsType<Abies.Conduit.Routing.Route.Login>(route);
                 break;
             case "/settings":
-                Assert.IsType<Route.Settings>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.Settings>(route);
                 break;
             case "/register":
-                Assert.IsType<Route.Register>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.Register>(route);
                 break;
             case "/editor":
-                Assert.IsType<Route.NewArticle>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.NewArticle>(route);
                 break;
             case var p when p.StartsWith("/profile/"):
-                Assert.IsType<Route.Profile>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.Profile>(route);
                 break;
             case var p when p.StartsWith("/article/"):
-                Assert.IsType<Route.Article>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.Article>(route);
                 break;
             case var p when p.StartsWith("/editor/"):
-                Assert.IsType<Route.EditArticle>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.EditArticle>(route);
                 break;
             default:
-                Assert.IsType<Route.NotFound>(route);
+                Assert.IsType<Abies.Conduit.Routing.Route.NotFound>(route);
                 break;
         }
     }
@@ -74,7 +73,7 @@ public class RouteParsingTests
         var url = Url.Create(new($"http://localhost:80{path}"));
 
         // Act
-        var route = Route.FromUrl(Route.Match, url);
+        var route = Abies.Conduit.Routing.Route.FromUrl(Abies.Conduit.Routing.Route.Match, url);
 
         // Assert
         // Assuming known routes are limited to those defined earlier
@@ -94,25 +93,7 @@ public class RouteParsingTests
         var isKnownRoute = knownRoutes.Any(r => path == r || path.StartsWith(r));
         if (!isKnownRoute)
         {
-            Assert.IsType<Route.NotFound>(route);
+            Assert.IsType<Abies.Conduit.Routing.Route.NotFound>(route);
         }
     }
-
-    //[Property]
-    //public Property RouteParser_ShouldHandleAnyValidPath()
-    //{
-    //    // Generate any string that can represent a path
-    //    return Prop.ForAll(Arb.Generate<string>(), path =>
-    //    {
-    //        // Arrange
-    //        var url = Url.Create(new($"http://localhost:80{path}"));
-
-    //        // Act
-    //        var route = Route.FromUrl(Route.Match, url);
-
-    //        // Assert
-    //        // The parser should not throw exceptions
-    //        return true.ToProperty();
-    //    });
-    //}
 }
