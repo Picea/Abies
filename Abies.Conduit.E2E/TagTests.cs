@@ -19,19 +19,19 @@ public class TagTests
         var email = $"e2e{System.Guid.NewGuid():N}@example.com";
 
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "taguser");
-        await page.FillAsync("input[placeholder=Email]", email);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "taguser");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         await page.ClickAsync("text=New Article");
-        await page.FillAsync("input[placeholder=Article Title]", "Tag Article");
-        await page.FillAsync("input[placeholder='What\'s this article about?']", "Tagging");
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
-        await page.FillAsync("input[placeholder='Enter tags']", "e2etag");
+        await page.TypeAsync("input[placeholder=Article Title]", "Tag Article");
+        await page.TypeAsync("input[placeholder='What\'s this article about?']", "Tagging");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
+        await page.TypeAsync("input[placeholder='Enter tags']", "e2etag");
         await page.PressAsync("input[placeholder='Enter tags']", "Enter");
-        await page.ClickAsync("button[type=submit]");
+        await page.ClickAsync("button:has-text('Publish Article')");
         await page.WaitForSelectorAsync("text=Edit Article");
         await page.GotoAsync("http://localhost:5209/");
         await page.ClickAsync("text=e2etag");

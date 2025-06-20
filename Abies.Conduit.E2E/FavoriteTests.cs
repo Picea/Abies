@@ -20,18 +20,18 @@ public class FavoriteTests
 
         // register and login
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "favuser");
-        await page.FillAsync("input[placeholder=Email]", email);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "favuser");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         // create article
         await page.ClickAsync("text=New Article");
-        await page.FillAsync("input[placeholder=Article Title]", "Fav Article");
-        await page.FillAsync("input[placeholder='What\'s this article about?']", "Favs");
-        await page.FillAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Article Title]", "Fav Article");
+        await page.TypeAsync("input[placeholder='What\'s this article about?']", "Favs");
+        await page.TypeAsync("textarea[placeholder='Write your article (in markdown)']", "Body");
+        await page.ClickAsync("button:has-text('Publish Article')");
         await page.WaitForSelectorAsync("text=Edit Article");
         var slug = page.Url.Split('/').Last();
         await page.GotoAsync("http://localhost:5209/");

@@ -19,16 +19,16 @@ public class SettingsTests
         var email = $"e2e{System.Guid.NewGuid():N}@example.com";
 
         await page.GotoAsync("http://localhost:5209/register");
-        await page.FillAsync("input[placeholder=Username]", "settingsuser");
-        await page.FillAsync("input[placeholder=Email]", email);
-        await page.FillAsync("input[placeholder=Password]", "Password1!");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder=Username]", "settingsuser");
+        await page.TypeAsync("input[placeholder=Email]", email);
+        await page.TypeAsync("input[placeholder=Password]", "Password1!");
+        await page.ClickAsync("button:has-text('Sign up')");
         await page.WaitForSelectorAsync("text=Your Feed");
 
         await page.ClickAsync("text=Settings");
-        await page.FillAsync("input[placeholder='URL of profile picture']", "http://example.com/pic.png");
-        await page.FillAsync("textarea[placeholder='Short bio about you']", "Hello there");
-        await page.ClickAsync("button[type=submit]");
+        await page.TypeAsync("input[placeholder='URL of profile picture']", "http://example.com/pic.png");
+        await page.TypeAsync("textarea[placeholder='Short bio about you']", "Hello there");
+        await page.ClickAsync("button:has-text('Update Settings')");
         await page.WaitForSelectorAsync("text=Your Feed");
         await page.ClickAsync("text=Settings");
         await page.WaitForSelectorAsync("input[value='http://example.com/pic.png']");
