@@ -111,17 +111,17 @@ public class Page : Element<Model, Message>
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")
-            : ul([@class("error-messages")],
+            : ul([class_("error-messages")],
                 [.. errors.SelectMany(e => e.Value.Select(msg => 
                     li([], [text($"{e.Key} {msg}")])
                 ))]
             );
 
     private static Node TagInputSection(Model model) =>
-        div([@class("tag-list")], [
+        div([class_("tag-list")], [
             ..model.TagList?.Select(static tag =>
-                div([@class("tag-pill tag-default")], [
-                    i([@class("ion-close-round"),
+                div([class_("tag-pill tag-default")], [
+                    i([class_("ion-close-round"),
                       onclick(new Message.RemoveTag(tag))],
                       []),
                     text($" {tag}")
@@ -129,15 +129,15 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-        div([@class("editor-page")], [
-            div([@class("container page")], [
-                div([@class("row")], [
-                    div([@class("col-md-10 offset-md-1 col-xs-12")], [
+        div([class_("editor-page")], [
+            div([class_("container page")], [
+                div([class_("row")], [
+                    div([class_("col-md-10 offset-md-1 col-xs-12")], [
                         ErrorList(model.Errors),
                         form([], [
                             fieldset([], [
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control form-control-lg"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control form-control-lg"),
                                         type("text"),
                                         placeholder("Article Title"),
                                         value(model.Title),
@@ -145,8 +145,8 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control"),
                                         type("text"),
                                         placeholder("What's this article about?"),
                                         value(model.Description),
@@ -154,8 +154,8 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    textarea([@class("form-control"),
+                                fieldset([class_("form-group")], [
+                                    textarea([class_("form-control"),
                                         rows("8"),
                                         placeholder("Write your article (in markdown)"),
                                         value(model.Body),
@@ -163,8 +163,8 @@ public class Page : Element<Model, Message>
                                         disabled(model.IsSubmitting.ToString())],[]
                                     )
                                 ]),
-                                fieldset([@class("form-group")], [
-                                    input([@class("form-control"),
+                                fieldset([class_("form-group")], [
+                                    input([class_("form-control"),
                                         type("text"),
                                         placeholder("Enter tags"),
                                         value(model.TagInput),
@@ -172,11 +172,11 @@ public class Page : Element<Model, Message>
                                         onkeypress(new Message.AddTag()),
                                         disabled(model.IsSubmitting.ToString())]
                                     ),
-                                    div([@class("tag-list")], [
+                                    div([class_("tag-list")], [
                                         TagInputSection(model)
                                     ])
                                 ]),
-                                button([@class("btn btn-lg pull-xs-right btn-primary"),
+                                button([class_("btn btn-lg pull-xs-right btn-primary"),
                                     type("button"),
                                     disabled((model.IsSubmitting || 
                                              string.IsNullOrWhiteSpace(model.Title) || 
