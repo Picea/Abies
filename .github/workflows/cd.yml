@@ -30,7 +30,7 @@ jobs:
         dotnet-version: '10.0.x'
         dotnet-quality: 'preview'
     - name: Install WASM experimental workload
-      run: dotnet workload install wasm-experimental wasm-tools
+      run: dotnet workload install wasm-experimental wasm-tools    
     - name: Install GitVersioning
       run: dotnet tool install --global nbgv
     - name: Set version
@@ -41,7 +41,7 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test Abies.sln --no-build --verbosity normal
+      run: dotnet test Abies.Tests/Abies.Tests.csproj --no-build --verbosity normal
     - name: Pack Abies Only
       if: github.event_name != 'pull_request'
       run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
