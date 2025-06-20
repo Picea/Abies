@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies", "Abies\Abies.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Counter", "Abies.Counter\Abies.Counter.csproj", "{69F67432-7D24-4223-9097-C1A80B4C407A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Benchmarks", "Abies.Benchmarks\Abies.Benchmarks.csproj", "{594B95A2-E4E3-427F-9B2D-819F2A142F4B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,5 +25,9 @@ Global
 		{69F67432-7D24-4223-9097-C1A80B4C407A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{69F67432-7D24-4223-9097-C1A80B4C407A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{69F67432-7D24-4223-9097-C1A80B4C407A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{594B95A2-E4E3-427F-9B2D-819F2A142F4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{594B95A2-E4E3-427F-9B2D-819F2A142F4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{594B95A2-E4E3-427F-9B2D-819F2A142F4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{594B95A2-E4E3-427F-9B2D-819F2A142F4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

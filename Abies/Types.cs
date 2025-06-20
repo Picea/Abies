@@ -62,18 +62,17 @@ namespace Abies
             OnUrlChange onUrlChanged)
         {
             // Register the URL change handler
-            Interop.OnUrlChange(newUrlString => {
+            Interop.OnUrlChange(newUrlString => 
+                onUrlChanged(Url.FromString(newUrlString))
+            );
 
-                onUrlChanged(Url.FromString(newUrlString));
-            });
-
-            var urlRequesHandler = (string newUrlString) => 
+            void urlRequesHandler(string newUrlString)
             {
                 var currentUrlString = Interop.GetCurrentUrl();
                 var currentUrl = Url.FromString(currentUrlString);
                 var newUrl = Url.FromString(newUrlString);
 
-                if(currentUrl.Scheme.GetType() != newUrl.Scheme.GetType() || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
+                if (currentUrl.Scheme.GetType() != newUrl.Scheme.GetType() || currentUrl.Host != newUrl.Host || currentUrl.Port != newUrl.Port)
                 {
                     onUrlRequest(new UrlRequest.External(newUrlString));
                 }
@@ -81,7 +80,7 @@ namespace Abies
                 {
                     onUrlRequest(new UrlRequest.Internal(newUrl));
                 }
-            };
+            }
 
             // On form submit a link click, dispatch the URL request
             Interop.OnLinkClick(newUrlString => {
