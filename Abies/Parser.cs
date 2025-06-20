@@ -4,24 +4,24 @@ using System.Runtime.InteropServices;
 
 namespace Abies;
 
-[StructLayout(LayoutKind.Sequential)]
-public readonly ref struct ParseResult<T>
+    [StructLayout(LayoutKind.Sequential)]
+    public readonly ref struct ParseResult<T>
     {
-        public readonly T Value { get; }
-        public readonly ReadOnlySpan<char> Remaining { get; }
-        public readonly bool Success { get; }
+        public readonly T Value;
+        public readonly ReadOnlySpan<char> Remaining;
+        public readonly bool Success;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ParseResult(T value, ReadOnlySpan<char> remaining)
+        public ParseResult(T value, ReadOnlySpan<char> remaining, bool success)
         {
             Value = value;
             Remaining = remaining;
-            Success = true;
+            Success = success;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ParseResult<T> Successful(T value, ReadOnlySpan<char> remaining)
-            => new(value, remaining);
+            => new ParseResult<T>(value, remaining, true);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ParseResult<T> Failure()
@@ -52,10 +52,16 @@ public readonly ref struct ParseResult<T>
                     : ParseResult<char>.Failure();
 
         public static Parser<char> Digit =>
-            Satisfy(char.IsDigit);
+            static input =>
+                !input.IsEmpty && char.IsDigit(input[0])
+                    ? ParseResult<char>.Successful(input[0], input.Slice(1))
+                    : ParseResult<char>.Failure();
 
         public static Parser<char> Letter =>
-            Satisfy(char.IsLetter);
+            static input =>
+                !input.IsEmpty && char.IsLetter(input[0])
+                    ? ParseResult<char>.Successful(input[0], input.Slice(1))
+                    : ParseResult<char>.Failure();
 
 
         public static Parser<T> Return<T>(T value) =>
@@ -109,6 +115,12 @@ public readonly ref struct ParseResult<T>
                     : ParseResult<string>.Failure();
             };
 
+        /// <summary>
+        /// Parses zero or more occurrences of the given parser.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="parser"></param>
+        /// <returns></returns>
         public static Parser<List<T>> Many<T>(this Parser<T> parser)
         {
             return input =>
@@ -127,6 +139,12 @@ public readonly ref struct ParseResult<T>
             };
         }
 
+        /// <summary>
+        /// Parses one or more occurrences of the given parser.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="parser"></param>
+        /// <returns></returns>
         public static Parser<List<T>> Many1<T>(this Parser<T> parser)
         {
             return parser.Bind(first =>
