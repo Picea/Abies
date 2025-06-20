@@ -177,6 +177,10 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "Invalid email or password" }));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "An unexpected error occurred" }));
@@ -191,6 +195,10 @@ public class Program : Program<Model, Arguments>
                 catch (ApiException ex)
                 {
                     dispatch(new Conduit.Page.Register.Message.RegisterError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -211,6 +219,10 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new Conduit.Page.Settings.Message.SettingsError(ex.Errors));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
@@ -225,6 +237,10 @@ public class Program : Program<Model, Arguments>
                 {
                     var (articles, count) = await ArticleService.GetArticlesAsync(loadArticles.Tag, loadArticles.Author, loadArticles.FavoritedBy, loadArticles.Limit, loadArticles.Offset);
                     dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -248,6 +264,10 @@ public class Program : Program<Model, Arguments>
                     var tags = await TagService.GetTagsAsync();
                     dispatch(new Conduit.Page.Home.Message.TagsLoaded(tags));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Home.Message.TagsLoaded(new System.Collections.Generic.List<string>()));
@@ -258,6 +278,10 @@ public class Program : Program<Model, Arguments>
                 {
                     var article = await ArticleService.GetArticleAsync(loadArticle.Slug);
                     dispatch(new Conduit.Page.Article.Message.ArticleLoaded(article));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -270,6 +294,10 @@ public class Program : Program<Model, Arguments>
                     var comments = await ArticleService.GetCommentsAsync(loadComments.Slug);
                     dispatch(new Conduit.Page.Article.Message.CommentsLoaded(comments));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Article.Message.CommentsLoaded(new System.Collections.Generic.List<Conduit.Page.Article.Comment>()));
@@ -281,6 +309,10 @@ public class Program : Program<Model, Arguments>
                     var comment = await ArticleService.AddCommentAsync(submitComment.Slug, submitComment.Body);
                     dispatch(new Conduit.Page.Article.Message.CommentSubmitted(comment));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Article.Message.SubmitComment());
@@ -291,6 +323,10 @@ public class Program : Program<Model, Arguments>
                 {
                     await ArticleService.DeleteCommentAsync(deleteComment.Slug, deleteComment.CommentId);
                     dispatch(new Conduit.Page.Article.Message.CommentDeleted(deleteComment.CommentId));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -306,6 +342,10 @@ public class Program : Program<Model, Arguments>
                 catch (ApiException ex)
                 {
                     dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -326,6 +366,10 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(ex.Errors));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
@@ -341,6 +385,10 @@ public class Program : Program<Model, Arguments>
                     var article = toggleFavorite.CurrentState ? await ArticleService.UnfavoriteArticleAsync(toggleFavorite.Slug) : await ArticleService.FavoriteArticleAsync(toggleFavorite.Slug);
                     dispatch(new Conduit.Page.Article.Message.ArticleLoaded(article));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Article.Message.ToggleFavorite());
@@ -351,6 +399,10 @@ public class Program : Program<Model, Arguments>
                 {
                     var profile = await ProfileService.GetProfileAsync(loadProfile.Username);
                     dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(profile));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {
@@ -363,6 +415,10 @@ public class Program : Program<Model, Arguments>
                     var profile = toggleFollow.CurrentState ? await ProfileService.UnfollowUserAsync(toggleFollow.Username) : await ProfileService.FollowUserAsync(toggleFollow.Username);
                     dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(profile));
                 }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Profile.Message.ToggleFollow());
@@ -373,6 +429,10 @@ public class Program : Program<Model, Arguments>
                 {
                     await ArticleService.DeleteArticleAsync(deleteArticle.Slug);
                     dispatch(new Conduit.Page.Article.Message.ArticleDeleted());
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
                 }
                 catch (Exception)
                 {

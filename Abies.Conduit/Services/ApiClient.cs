@@ -251,6 +251,10 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
     {
         var content = await response.Content.ReadAsStringAsync();
 
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            throw new UnauthorizedException();
+        }
         if (!response.IsSuccessStatusCode)
         {
             // Try to parse error response
@@ -365,4 +369,8 @@ public class ApiException : Exception
     {
         Errors = errors;
     }
+}
+
+public class UnauthorizedException : Exception
+{
 }
