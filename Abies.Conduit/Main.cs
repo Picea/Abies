@@ -40,68 +40,91 @@ public interface Page
 {
     public sealed record Redirect : Page;
     public sealed record NotFound : Page;
-    public sealed record Home(Conduit.Home.Model Model) : Page;
-    public sealed record Settings(Conduit.Settings.Model Model) : Page;
-    public sealed record Login(Conduit.Login.Model Model) : Page;
-    public sealed record Register(Conduit.Register.Model Model) : Page;
-    public sealed record Profile(Conduit.Profile.Model Model) : Page;
-    public sealed record Article(Conduit.Article.Model Model) : Page;
+    public sealed record Home(Conduit.Page.Home.Model Model) : Page;
+    public sealed record Settings(Conduit.Page.Settings.Model Model) : Page;
+    public sealed record Login(Conduit.Page.Login.Model Model) : Page;
+    public sealed record Register(Conduit.Page.Register.Model Model) : Page;
+    public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
+    public sealed record Article(Conduit.Page.Article.Model Model) : Page;
 }
 
+/// <summary>
+/// Represents the arguments passed to the application.
+/// </summary>
 public record Arguments;
 
+/// <summary>
+/// The main application class.
+/// </summary>
 public class Application : Application<Model, Arguments>
 {
+    /// <summary>
+    /// Determines the next model based on the given URL.
+    /// </summary>
+    /// <param name="url">The URL to process.</param>
+    /// <returns>The next model.</returns>
     private static Model GetNextModel(Url url)
     {
         Route currentRoute = Route.FromUrl(Route.Match, url);
-        switch (currentRoute)
+        return currentRoute switch
         {
-            case Route.Home:
-                return new(new Page.Home(new Home.Model()), currentRoute);
-            case Route.Settings:
-                return new(new Page.Settings(new Settings.Model()), currentRoute);
-            case Route.Login:
-                return new(new Page.Login(new Login.Model()), currentRoute);
-            case Route.Register:
-                return new(new Page.Register(new Register.Model()), currentRoute);
-            case Route.Profile profile:
-                return new (new Page.Profile(new Profile.Model(profile.UserName)), currentRoute);
-            case Route.Article article:
-                return new(new Page.Article(new Article.Model(article.Slug)), currentRoute);
-            //case Route.NewArticle:
-            //    return new(new Page.Article(new Article.Model()), currentRoute);
-            //case Route.EditArticle article:
-            //    return new(new Page.Article(new Article.Model()), currentRoute);
-            case Route.Redirect:
-                return new(new Page.Redirect(), currentRoute);
-            default:
-                return new(new Page.NotFound(), currentRoute);
-        }
+            Route.Home => new(new Page.Home(new Conduit.Page.Home.Model()), currentRoute),
+            Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute),
+            Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute),
+            Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute),
+            Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute),
+            Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute),
+            Route.Redirect => new(new Page.Redirect(), currentRoute),
+            _ => new(new Page.NotFound(), currentRoute),
+        };
     }
 
-         
-
+    /// <summary>
+    /// Handles the URL changed event.
+    /// </summary>
+    /// <param name="url">The new URL.</param>
+    /// <param name="model">The current model.</param>
+    /// <returns>The updated model and commands.</returns>
     private static (Model model, IEnumerable<Command>) HandleUrlChanged(Url url, Model model)
     {
-        return ( GetNextModel(url), [Commands.None]);
+        return (GetNextModel(url), new List<Command> { new Command.None() });
     }
 
+    /// <summary>
+    /// Handles the link clicked event.
+    /// </summary>
+    /// <param name="urlRequest">The URL request.</param>
+    /// <param name="model">The current model.</param>
+    /// <returns>The updated model and commands.</returns>
     private static (Model model, IEnumerable<Command>) HandleLinkClicked(UrlRequest urlRequest, Model model)
         => urlRequest switch
         {
-            Internal @internal => (model with { CurrentRoute = Route.FromUrl(Route.Match, @internal.Url) }, [new PushState(@internal.Url)]),
-            External externalUrl => (model, [new Load(Create(new Decoded.String(externalUrl.Url)))]),
-            _ => (model, [])
+            Internal @internal => (model with { CurrentRoute = Route.FromUrl(Route.Match, @internal.Url) }, new List<Command> { new PushState(@internal.Url) }),
+            External externalUrl => (model, new List<Command> { new Load(Create(new Decoded.String(externalUrl.Url))) }),
+            _ => (model, new List<Command>())
         };
 
-    public static Subscription Subscriptions(Model model) =>
-        new();
+    /// <summary>
+    /// Subscribes to model changes.
+    /// </summary>
+    /// <param name="model">The current model.</param>
+    /// <returns>The subscription.</returns>
+    public static Subscription Subscriptions(Model model) => new();
 
+    /// <summary>
+    /// Initializes the application with the given URL and arguments.
+    /// </summary>
+    /// <param name="url">The initial URL.</param>
+    /// <param name="argument">The arguments.</param>
+    /// <returns>The initial model.</returns>
+    public static Model Initialize(Url url, Arguments argument) => GetNextModel(url);
 
-    public static Model Initialize(Url url, Arguments argument)
-        => GetNextModel(url);
-
+    /// <summary>
+    /// Updates the model based on the given message.
+    /// </summary>
+    /// <param name="message">The message to process.</param>
+    /// <param name="model">The current model.</param>
+    /// <returns>The updated model and commands.</returns>
     public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
     {
         switch(message, model.Page)
@@ -110,23 +133,23 @@ public class Application : Application<Model, Arguments>
                 return HandleUrlChanged(urlChanged.Url, model);
             case (LinkClicked linkClicked, _):
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
-            case (Login.Message msg, Page.Login login):
-                var (nextLoginModel, nextLoginCommand) = Login.Page.Update(msg, login.Model);
+            case (Conduit.Page.Login.Message msg, Page.Login login):
+                var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(msg, login.Model);
                 return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);  
-            case (Register.Message msg, Page.Register register):
-                var (nextRegisterModel, nextRegisterCommand) = Register.Page.Update(msg, register.Model);
+            case (Conduit.Page.Register.Message msg, Page.Register register):
+                var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(msg, register.Model);
                 return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
-            case (Home.Message msg, Page.Home home):
-                var (nextHomeModel, nextHomeCommand) = Home.Page.Update(msg, home.Model);
+            case (Conduit.Page.Home.Message msg, Page.Home home):
+                var (nextHomeModel, nextHomeCommand) = Conduit.Page.Home.Page.Update(msg, home.Model);
                 return (model with { Page = new Page.Home(nextHomeModel) }, nextHomeCommand);
-            case (Settings.Message msg, Page.Settings settings):
-                var (nextSettingsModel, nextSettingsCommand) = Settings.Page.Update(msg, settings.Model);
+            case (Conduit.Page.Settings.Message msg, Page.Settings settings):
+                var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(msg, settings.Model);
                 return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
-            case (Profile.Message msg, Page.Profile profile):
-                var (nextProfileModel, nextProfileCommand) = Profile.Page.Update(msg, profile.Model);
+            case (Conduit.Page.Profile.Message msg, Page.Profile profile):
+                var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(msg, profile.Model);
                 return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
-            case (Article.Message msg, Page.Article article):
-                var (nextArticleModel, nextArticleCommand) = Article.Page.Update(msg, article.Model);
+            case (Conduit.Page.Article.Message msg, Page.Article article):
+                var (nextArticleModel, nextArticleCommand) = Conduit.Page.Article.Page.Update(msg, article.Model);
                 return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
             default:
                 return (model, []);
@@ -141,12 +164,12 @@ public class Application : Application<Model, Arguments>
         {
             Page.Redirect => new Document(string.Format(Title, "Redirect"), h1([], [text("Redirecting...")])),
             Page.NotFound => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")])),
-            Page.Home home => new Document(string.Format(Title, nameof(Home)), Home.Page.View(home.Model)),
-            Page.Settings settings => new Document(string.Format(Title, nameof(Settings)), Settings.Page.View(settings.Model)),
-            Page.Login login => new Document(string.Format(Title, nameof(Login)), Login.Page.View(login.Model)),
-            Page.Register register => new Document(string.Format(Title, nameof(Register)), Register.Page.View(register.Model)),
-            Page.Profile profile => new Document(string.Format(Title, nameof(Profile)), Profile.Page.View(profile.Model)),
-            Page.Article article => new Document(string.Format(Title, nameof(Article)), Article.Page.View(article.Model)),
+            Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), Conduit.Page.Home.Page.View(home.Model)),
+            Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), Conduit.Page.Settings.Page.View(settings.Model)),
+            Page.Login login => new Document(string.Format(Title, nameof(Conduit.Page.Login)), Conduit.Page.Login.Page.View(login.Model)),
+            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), Conduit.Page.Register.Page.View(register.Model)),
+            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), Conduit.Page.Profile.Page.View(profile.Model)),
+            Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), Conduit.Page.Article.Page.View(article.Model)),
 
             _ => new Document(string.Format(Title, "Not Found"), h1([], [text("Not Found")]))
         };

@@ -1,15 +1,13 @@
+﻿using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
 
-namespace Abies.Conduit.Home;
+namespace Abies.Conduit.Page.Blank;
 
-public interface Message : Abies.Message
-{
+public interface Message : Abies.Message;
 
-}
-
-public record Model;
+public record Model(Slug Slug);
 
 public class Page : Element<Model, Message>
 {
@@ -30,5 +28,5 @@ public class Page : Element<Model, Message>
         };
 
     public static Node View(Model model)
-         => h1([], [text("Home")]);
+         => text("");
 }

@@ -2,7 +2,7 @@ using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
 
-namespace Abies.Conduit.Settings;
+namespace Abies.Conduit.Page.Register;
 
 public interface Message : Abies.Message
 {
@@ -30,5 +30,5 @@ public class Page : Element<Model, Message>
         };
 
     public static Node View(Model model)
-         => h1([], [text("Settings")]);
+         => h1([], [text("Register")]);
 }
