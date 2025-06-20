@@ -33,8 +33,12 @@ jobs:
       run: dotnet workload install wasm-experimental wasm-tools
     - name: Install GitVersioning
       run: dotnet tool install --global nbgv
-    - name: Setup Playwright
-      uses: microsoft/playwright-github-action@v1
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Install Playwright
+      run: npx playwright install --with-deps
     - name: Set version
       id: version
       run: echo "::set-output name=VERSION::$(nbgv get-version -v AssemblyInformationalVersion)"
