@@ -491,202 +491,135 @@ public class Program : Program<Model, Arguments>
     /// <param name="model">The current model.</param>
     /// <returns>The updated model and commands.</returns>
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-    {    
-    switch   (message)
+    {
+        switch (message)
         {
             case UrlChanged urlChanged:
                 var (nextModel, _) = HandleUrlChanged(urlChanged.Url, model);
-
-                // Prepare initialization commands based on route type
-                Command initCommand = Commands.None;
-                if (nextModel.Page is Page.Home)
-                {
-                    initCommand = Commands.Batch(new Command[]
-                    {
-                        new LoadArticlesCommand(),
-                        new LoadTagsCommand()
-                    });
-                }
-                else if (nextModel.Page is Page.Article article)
-                {
-                    initCommand = Commands.Batch(new Command[]
-                    {
-                        new LoadArticleCommand(article.Model.Slug.Value),
-                        new LoadCommentsCommand(article.Model.Slug.Value)
-                    });
-                }
-                else if (nextModel.Page is Page.Profile profile)
-                {
-                    initCommand = Commands.Batch(new Command[]
-                    {
-                        new LoadProfileCommand(profile.Model.UserName.Value),
-                        new LoadArticlesCommand(null, profile.Model.UserName.Value)
-                    });
-                }
-                else if (nextModel.Page is Page.ProfileFavorites profileFavorites)
-                {
-                    initCommand = Commands.Batch(new Command[]
-                    {
-                        new LoadProfileCommand(profileFavorites.Model.UserName.Value),
-                        new LoadArticlesCommand(null, null, profileFavorites.Model.UserName.Value)
-                    });
-                }
-                else if (nextModel.Page is Page.NewArticle editPage && nextModel.CurrentRoute is Routing.Route.EditArticle edit)
-                {
-                    initCommand = new LoadArticleCommand(edit.Slug.Value);
-                }
+                var initCommand = GetInitCommandForRoute(nextModel);
                 return (nextModel, initCommand);
+
             case LinkClicked linkClicked:
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
-            case UserLoggedIn userLoggedIn:
+
+            case UserLoggedIn loggedIn:
                 return (
                     model with
                     {
-                        CurrentUser = userLoggedIn.User,
-                        Page = model.Page switch
-                        {
-                            Page.Home home => new Page.Home(home.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.Settings settings => new Page.Settings(settings.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.Login loginAfterLogin => new Page.Login(loginAfterLogin.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.Register register => new Page.Register(register.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.Profile profile => new Page.Profile(profile.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.ProfileFavorites profileFav => new Page.ProfileFavorites(profileFav.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.Article article => new Page.Article(article.Model with { CurrentUser = userLoggedIn.User }),
-                            Page.NewArticle editor => new Page.NewArticle(editor.Model with { CurrentUser = userLoggedIn.User }),
-                            _ => model.Page
-                        }
+                        CurrentUser = loggedIn.User,
+                        Page = SetUser(model.Page, loggedIn.User)
                     },
                     Commands.None);
+
             case UserLoggedOut:
                 AuthService.Logout().GetAwaiter().GetResult();
                 return (
                     model with
                     {
                         CurrentUser = null,
-                        Page = model.Page switch
-                        {
-                            Page.Home home => new Page.Home(home.Model with { CurrentUser = null }),
-                            Page.Settings settings => new Page.Settings(settings.Model with { CurrentUser = null }),
-                            Page.Login loginAfterLogout => new Page.Login(loginAfterLogout.Model with { CurrentUser = null }),
-                            Page.Register register => new Page.Register(register.Model with { CurrentUser = null }),
-                            Page.Profile profile => new Page.Profile(profile.Model with { CurrentUser = null }),
-                            Page.ProfileFavorites profileFav => new Page.ProfileFavorites(profileFav.Model with { CurrentUser = null }),
-                            Page.Article article => new Page.Article(article.Model with { CurrentUser = null }),
-                            Page.NewArticle editor => new Page.NewArticle(editor.Model with { CurrentUser = null }),
-                            _ => model.Page
-                        }
+                        Page = SetUser(model.Page, null)
                     },
                     Commands.None);
+
             default:
-                // Check page-specific messages based on current page type
-                if (message is Conduit.Page.Login.Message loginMsg && model.Page is Page.Login loginCurrent)
+                return (message, model.Page) switch
                 {
-                    if (loginMsg is Conduit.Page.Login.Message.LoginSuccess loginSuccess)
-                    {
-                        var url = Url.Create("/");
-                        var homeModel = new Conduit.Page.Home.Model(
-                            new System.Collections.Generic.List<Conduit.Page.Home.Article>(),
-                            0,
-                            new System.Collections.Generic.List<string>(),
-                            Conduit.Page.Home.FeedTab.YourFeed,
-                            "",
-                            true,
-                            0,
-                            loginSuccess.User);
-                        var redirectModel = new Model(new Page.Home(homeModel), new Routing.Route.Home(), loginSuccess.User);
-                        var redirectCommand = Commands.Batch(new Command[] { new LoadFeedCommand(), new LoadTagsCommand() });
-                        return (redirectModel, Commands.Batch(new Command[] { new PushState(url), redirectCommand }));
-                    }
+                    (Conduit.Page.Login.Message.LoginSuccess success, Page.Login _) =>
+                        RedirectAfterAuth(success.User),
 
-                    var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(loginMsg, loginCurrent.Model);
-                    return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);
-                }
-                else if (message is Conduit.Page.Register.Message registerMsg && model.Page is Page.Register register)
-                {
-                    if (registerMsg is Conduit.Page.Register.Message.RegisterSuccess registerSuccess)
-                    {
-                        var url = Url.Create("/");
-                        var homeModel = new Conduit.Page.Home.Model(
-                            new System.Collections.Generic.List<Conduit.Page.Home.Article>(),
-                            0,
-                            new System.Collections.Generic.List<string>(),
-                            Conduit.Page.Home.FeedTab.YourFeed,
-                            "",
-                            true,
-                            0,
-                            registerSuccess.User);
-                        var redirectModel = new Model(new Page.Home(homeModel), new Routing.Route.Home(), registerSuccess.User);
-                        var redirectCommand = Commands.Batch(new Command[] { new LoadFeedCommand(), new LoadTagsCommand() });
-                        return (redirectModel, Commands.Batch(new Command[] { new PushState(url), redirectCommand }));
-                    }
+                    (Conduit.Page.Login.Message loginMsg, Page.Login login) =>
+                        UpdatePage(model, m => new Page.Login(m), login.Model, loginMsg, Conduit.Page.Login.Page.Update),
 
-                    var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(registerMsg, register.Model);
-                    return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
-                }
-                else if (message is Conduit.Page.Home.Message homeMsg && model.Page is Page.Home home)
-                {
-                    var (nextHomeModel, nextHomeCommand) = Conduit.Page.Home.Page.Update(homeMsg, home.Model);
-                    return (model with { Page = new Page.Home(nextHomeModel) }, nextHomeCommand);
-                }
-                else if (message is Conduit.Page.Settings.Message settingsMsg && model.Page is Page.Settings settings)
-                {
-                    if (settingsMsg is Conduit.Page.Settings.Message.LogoutRequested)
-                    {
-                        AuthService.Logout().GetAwaiter().GetResult();
-                        var current = new Uri(Interop.GetCurrentUrl());
-                        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
-                        var url = Url.Create(root.ToString());
-                        var (loggedOutModel, _) = GetNextModel(url, null);
-                        return (loggedOutModel, new PushState(url));
-                    }
+                    (Conduit.Page.Register.Message.RegisterSuccess success, Page.Register _) =>
+                        RedirectAfterAuth(success.User),
 
-                    var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(settingsMsg, settings.Model);
-                    return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
-                }
-                else if (message is Conduit.Page.Profile.Message profileMsg && model.Page is Page.Profile profile)
-                {
-                    var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(profileMsg, profile.Model);
-                    return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
-                }
-                else if (message is Conduit.Page.Profile.Message profileFavoritesMsg && model.Page is Page.ProfileFavorites profileFavorites)
-                {
-                    var (nextProfileFavoritesModel, nextProfileFavoritesCommand) = Conduit.Page.Profile.Page.Update(profileFavoritesMsg, profileFavorites.Model);
-                    return (model with { Page = new Page.ProfileFavorites(nextProfileFavoritesModel) }, nextProfileFavoritesCommand);
-                }
-                else if (message is Conduit.Page.Article.Message articleMsg && model.Page is Page.Article article)
-                {
-                    if (articleMsg is Conduit.Page.Article.Message.ArticleDeleted)
-                    {
-                        var current = new Uri(Interop.GetCurrentUrl());
-                        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
-                        var url = Url.Create(root.ToString());
-                        var (afterDeleteModel, _) = GetNextModel(url, model.CurrentUser);
-                        return (afterDeleteModel, new PushState(url));
-                    }
-                    else
-                    {
-                        var (nextArticleModel, nextArticleCommand) = Conduit.Page.Article.Page.Update(articleMsg, article.Model);
-                        return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
-                    }
-                }
-                else if (message is Conduit.Page.Editor.Message editorMsg && model.Page is Page.NewArticle newArticle)
-                {
-                    if (editorMsg is Conduit.Page.Editor.Message.ArticleSubmitSuccess success)
-                    {
-                        var current = new Uri(Interop.GetCurrentUrl());
-                        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
-                        var url = Url.Create($"{root}article/{success.Slug}");
-                        var (redirectModel, _) = GetNextModel(url, model.CurrentUser);
-                        return (redirectModel, new PushState(url));
-                    }
+                    (Conduit.Page.Register.Message registerMsg, Page.Register register) =>
+                        UpdatePage(model, m => new Page.Register(m), register.Model, registerMsg, Conduit.Page.Register.Page.Update),
 
-                    var (nextEditorModel, nextEditorCommand) = Conduit.Page.Editor.Page.Update(editorMsg, newArticle.Model);
-                    return (model with { Page = new Page.NewArticle(nextEditorModel) }, nextEditorCommand);
-                }
-                
-                return (model, Commands.None);
+                    (Conduit.Page.Home.Message homeMsg, Page.Home home) =>
+                        UpdatePage(model, m => new Page.Home(m), home.Model, homeMsg, Conduit.Page.Home.Page.Update),
+
+                    (Conduit.Page.Settings.Message.LogoutRequested, Page.Settings _) =>
+                        LogoutAndRedirect(),
+
+                    (Conduit.Page.Settings.Message settingsMsg, Page.Settings settings) =>
+                        UpdatePage(model, m => new Page.Settings(m), settings.Model, settingsMsg, Conduit.Page.Settings.Page.Update),
+
+                    (Conduit.Page.Profile.Message profileMsg, Page.Profile profile) =>
+                        UpdatePage(model, m => new Page.Profile(m), profile.Model, profileMsg, Conduit.Page.Profile.Page.Update),
+
+                    (Conduit.Page.Profile.Message profileFavMsg, Page.ProfileFavorites fav) =>
+                        UpdatePage(model, m => new Page.ProfileFavorites(m), fav.Model, profileFavMsg, Conduit.Page.Profile.Page.Update),
+
+                    (Conduit.Page.Article.Message.ArticleDeleted, Page.Article _) =>
+                        RedirectHome(model.CurrentUser),
+
+                    (Conduit.Page.Article.Message articleMsg, Page.Article article) =>
+                        UpdatePage(model, m => new Page.Article(m), article.Model, articleMsg, Conduit.Page.Article.Page.Update),
+
+                    (Conduit.Page.Editor.Message.ArticleSubmitSuccess success, Page.NewArticle _) =>
+                        RedirectToArticle(success.Slug, model.CurrentUser),
+
+                    (Conduit.Page.Editor.Message editorMsg, Page.NewArticle editor) =>
+                        UpdatePage(model, m => new Page.NewArticle(m), editor.Model, editorMsg, Conduit.Page.Editor.Page.Update),
+
+                    _ => (model, Commands.None)
+                };
         }
-        
+
+    }
+
+    private static Page SetUser(Page page, User? user) => page switch
+    {
+        Page.Home p => new Page.Home(p.Model with { CurrentUser = user }),
+        Page.Settings s => new Page.Settings(s.Model with { CurrentUser = user }),
+        Page.Login l => new Page.Login(l.Model with { CurrentUser = user }),
+        Page.Register r => new Page.Register(r.Model with { CurrentUser = user }),
+        Page.Profile pr => new Page.Profile(pr.Model with { CurrentUser = user }),
+        Page.ProfileFavorites pf => new Page.ProfileFavorites(pf.Model with { CurrentUser = user }),
+        Page.Article a => new Page.Article(a.Model with { CurrentUser = user }),
+        Page.NewArticle e => new Page.NewArticle(e.Model with { CurrentUser = user }),
+        _ => page
+    };
+
+    private static (Model, Command) UpdatePage<TModel, TMsg>(Model model, Func<TModel, Page> ctor, TModel pageModel, TMsg msg, Func<TMsg, TModel, (TModel, Command)> update)
+        where TMsg : Abies.Message
+    {
+        var (nextPageModel, cmd) = update(msg, pageModel);
+        return (model with { Page = ctor(nextPageModel) }, cmd);
+    }
+
+    private static (Model, Command) RedirectAfterAuth(User user)
+    {
+        var url = Url.Create("/");
+        var (homeModel, _) = GetNextModel(url, user);
+        var init = GetInitCommandForRoute(homeModel);
+        var batch = Commands.Batch(new Command[] { new PushState(url), init });
+        return (homeModel with { CurrentUser = user }, batch);
+    }
+
+    private static (Model, Command) RedirectHome(User? user)
+    {
+        var current = new Uri(Interop.GetCurrentUrl());
+        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
+        var url = Url.Create(root.ToString());
+        var (next, _) = GetNextModel(url, user);
+        return (next, new PushState(url));
+    }
+
+    private static (Model, Command) RedirectToArticle(string slug, User? user)
+    {
+        var current = new Uri(Interop.GetCurrentUrl());
+        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
+        var url = Url.Create($"{root}article/{slug}");
+        var (next, _) = GetNextModel(url, user);
+        return (next, new PushState(url));
+    }
+
+    private static (Model, Command) LogoutAndRedirect()
+    {
+        AuthService.Logout().GetAwaiter().GetResult();
+        return RedirectHome(null);
     }
     private static Node WithLayout(Node page, Model model) =>
         div([], [
