@@ -5,6 +5,95 @@ namespace Abies.Html;
 
 public static class Elements
 {
+    // Math-related and scientific content elements
+    public static Node math(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("math", attributes, children, id);
+
+    public static Node var(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("var", attributes, children, id);
+
+    // Less common but valid elements
+    public static Node s(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("s", attributes, children, id);
+
+    public static Node rb(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("rb", attributes, children, id);
+
+    public static Node rtc(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("rtc", attributes, children, id);
+
+    // Additional SVG elements
+    public static Node desc(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("desc", attributes, children, id);
+
+    public static Node ellipse(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("ellipse", attributes, Array.Empty<Node>(), id);
+
+    public static Node text(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("text", attributes, children, id);
+
+    public static Node tspan(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("tspan", attributes, children, id);
+
+    public static Node filter(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("filter", attributes, children, id);
+
+    public static Node feBlend(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feBlend", attributes, Array.Empty<Node>(), id);
+
+    public static Node feColorMatrix(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feColorMatrix", attributes, Array.Empty<Node>(), id);
+
+    public static Node feComponentTransfer(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("feComponentTransfer", attributes, children, id);
+
+    public static Node feComposite(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feComposite", attributes, Array.Empty<Node>(), id);
+
+    public static Node feConvolveMatrix(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feConvolveMatrix", attributes, Array.Empty<Node>(), id);
+
+    public static Node feDiffuseLighting(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("feDiffuseLighting", attributes, children, id);
+
+    public static Node feDisplacementMap(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feDisplacementMap", attributes, Array.Empty<Node>(), id);
+
+    public static Node feFlood(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feFlood", attributes, Array.Empty<Node>(), id);
+
+    public static Node feGaussianBlur(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feGaussianBlur", attributes, Array.Empty<Node>(), id);
+
+    public static Node feImage(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feImage", attributes, Array.Empty<Node>(), id);
+
+    public static Node feMerge(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("feMerge", attributes, children, id);
+
+    public static Node feMergeNode(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feMergeNode", attributes, Array.Empty<Node>(), id);
+
+    public static Node feMorphology(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feMorphology", attributes, Array.Empty<Node>(), id);
+
+    public static Node feOffset(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feOffset", attributes, Array.Empty<Node>(), id);
+
+    public static Node feSpecularLighting(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("feSpecularLighting", attributes, children, id);
+
+    public static Node feTile(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feTile", attributes, Array.Empty<Node>(), id);
+
+    public static Node feTurbulence(DOM.Attribute[] attributes, [CallerLineNumber] int id = 0)
+        => element("feTurbulence", attributes, Array.Empty<Node>(), id);
+
+    public static Node symbol(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("symbol", attributes, children, id);
+
+    public static Node pattern(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
+        => element("pattern", attributes, children, id);
 
     public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
         => new(id.ToString(), tag, [Attributes.id(id.ToString()), .. attributes], children);
@@ -265,8 +354,6 @@ public static class Elements
     public static Node samp(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
         => element("samp", attributes, children, id);
 
-    public static Node var(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
-        => element("var", attributes, children, id);
 
     public static Node sup(DOM.Attribute[] attributes, Node[] children, [CallerLineNumber] int id = 0)
         => element("sup", attributes, children, id);
@@ -808,11 +895,229 @@ public static class Attributes
 
     public static DOM.Attribute acceptcharset(string value, [CallerLineNumber] int id = 0)
         => attribute("accept-charset", value, id);
+
+    // Extremely rare but valid attributes
+    public static DOM.Attribute allowfullscreen(string value = "true", [CallerLineNumber] int id = 0)
+        => attribute("allowfullscreen", value, id);
+
+    public static DOM.Attribute as_(string value, [CallerLineNumber] int id = 0)
+        => attribute("as", value, id);
+
+    public static DOM.Attribute challenge(string value, [CallerLineNumber] int id = 0)
+        => attribute("challenge", value, id);
+
+    public static DOM.Attribute color(string value, [CallerLineNumber] int id = 0)
+        => attribute("color", value, id);
+
+    public static DOM.Attribute default_(string value = "true", [CallerLineNumber] int id = 0)
+        => attribute("default", value, id);
+
+    public static DOM.Attribute dirname(string value, [CallerLineNumber] int id = 0)
+        => attribute("dirname", value, id);
+
+    public static DOM.Attribute high(string value, [CallerLineNumber] int id = 0)
+        => attribute("high", value, id);
+
+    public static DOM.Attribute keytype(string value, [CallerLineNumber] int id = 0)
+        => attribute("keytype", value, id);
+
+    public static DOM.Attribute kind(string value, [CallerLineNumber] int id = 0)
+        => attribute("kind", value, id);
+
+    public static DOM.Attribute low(string value, [CallerLineNumber] int id = 0)
+        => attribute("low", value, id);
+
+    public static DOM.Attribute optimum(string value, [CallerLineNumber] int id = 0)
+        => attribute("optimum", value, id);
+
+    public static DOM.Attribute playsinline(string value = "true", [CallerLineNumber] int id = 0)
+        => attribute("playsinline", value, id);
+
+    public static DOM.Attribute results(string value, [CallerLineNumber] int id = 0)
+        => attribute("results", value, id);
+
+    public static DOM.Attribute seamless(string value = "true", [CallerLineNumber] int id = 0)
+        => attribute("seamless", value, id);
+
+    public static DOM.Attribute shape(string value, [CallerLineNumber] int id = 0)
+        => attribute("shape", value, id);
+
+    public static DOM.Attribute srcdoc(string value, [CallerLineNumber] int id = 0)
+        => attribute("srcdoc", value, id);
+
+    public static DOM.Attribute srclang(string value, [CallerLineNumber] int id = 0)
+        => attribute("srclang", value, id);
+
+    // More SVG attributes
+    public static DOM.Attribute rx(string value, [CallerLineNumber] int id = 0)
+        => attribute("rx", value, id);
+
+    public static DOM.Attribute ry(string value, [CallerLineNumber] int id = 0)
+        => attribute("ry", value, id);
+
+    public static DOM.Attribute dx(string value, [CallerLineNumber] int id = 0)
+        => attribute("dx", value, id);
+
+    public static DOM.Attribute dy(string value, [CallerLineNumber] int id = 0)
+        => attribute("dy", value, id);
+
+    public static DOM.Attribute gradientUnits(string value, [CallerLineNumber] int id = 0)
+        => attribute("gradientUnits", value, id);
+
+    public static DOM.Attribute patternUnits(string value, [CallerLineNumber] int id = 0)
+        => attribute("patternUnits", value, id);
+
+    public static DOM.Attribute spreadMethod(string value, [CallerLineNumber] int id = 0)
+        => attribute("spreadMethod", value, id);
+
+    public static DOM.Attribute transform(string value, [CallerLineNumber] int id = 0)
+        => attribute("transform", value, id);
+
+    public static DOM.Attribute markerWidth(string value, [CallerLineNumber] int id = 0)
+        => attribute("markerWidth", value, id);
+
+    public static DOM.Attribute markerHeight(string value, [CallerLineNumber] int id = 0)
+        => attribute("markerHeight", value, id);
+
+    public static DOM.Attribute refX(string value, [CallerLineNumber] int id = 0)
+        => attribute("refX", value, id);
+
+    public static DOM.Attribute refY(string value, [CallerLineNumber] int id = 0)
+        => attribute("refY", value, id);
+
+    public static DOM.Attribute markerUnits(string value, [CallerLineNumber] int id = 0)
+        => attribute("markerUnits", value, id);
+
+    public static DOM.Attribute preserveAspectRatio(string value, [CallerLineNumber] int id = 0)
+        => attribute("preserveAspectRatio", value, id);
+
+    public static DOM.Attribute vectorEffect(string value, [CallerLineNumber] int id = 0)
+        => attribute("vector-effect", value, id);
+
+    public static DOM.Attribute opacity(string value, [CallerLineNumber] int id = 0)
+        => attribute("opacity", value, id);
+
+    public static DOM.Attribute offset(string value, [CallerLineNumber] int id = 0)
+        => attribute("offset", value, id);
+
+    // Additional ARIA attributes 
+    public static DOM.Attribute ariaAtomic(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-atomic", value, id);
+
+    public static DOM.Attribute ariaBusy(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-busy", value, id);
+
+    public static DOM.Attribute ariaChecked(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-checked", value, id);
+
+    public static DOM.Attribute ariaCurrent(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-current", value, id);
+
+    public static DOM.Attribute ariaDisabled(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-disabled", value, id);
+
+    public static DOM.Attribute ariaErrormessage(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-errormessage", value, id);
+
+    public static DOM.Attribute ariaHaspopup(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-haspopup", value, id);
+
+    public static DOM.Attribute ariaInvalid(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-invalid", value, id);
+
+    public static DOM.Attribute ariaKeyshortcuts(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-keyshortcuts", value, id);
+
+    public static DOM.Attribute ariaLive(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-live", value, id);
+
+    public static DOM.Attribute ariaModal(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-modal", value, id);
+
+    public static DOM.Attribute ariaMultiline(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-multiline", value, id);
+
+    public static DOM.Attribute ariaMultiselectable(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-multiselectable", value, id);
+
+    public static DOM.Attribute ariaOrientation(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-orientation", value, id);
+
+    public static DOM.Attribute ariaPlaceholder(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-placeholder", value, id);
+
+    public static DOM.Attribute ariaReadonly(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-readonly", value, id);
+
+    public static DOM.Attribute ariaRelevant(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-relevant", value, id);
+
+    public static DOM.Attribute ariaRequired(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-required", value, id);
+
+    public static DOM.Attribute ariaRoledescription(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-roledescription", value, id);
+
+    public static DOM.Attribute ariaSort(string value, [CallerLineNumber] int id = 0)
+        => attribute("aria-sort", value, id);
 }
 
 public static class Events
 {
+    // Rarely used touch/pointer/mobile events
+    public static Handler ongotpointercapture(Message command, [CallerLineNumber] int id = 0)
+        => on("gotpointercapture", command, id);
 
+    public static Handler onlostpointercapture(Message command, [CallerLineNumber] int id = 0)
+        => on("lostpointercapture", command, id);
+
+    // Advanced media handling
+    public static Handler onencrypted(Message command, [CallerLineNumber] int id = 0)
+        => on("encrypted", command, id);
+
+    public static Handler onwaiting(Message command, [CallerLineNumber] int id = 0)
+        => on("waiting", command, id);
+
+    // The newest bleeding-edge events (HTML Living Standard)
+    public static Handler onformdata(Message command, [CallerLineNumber] int id = 0)
+        => on("formdata", command, id);
+
+    public static Handler onbeforexrselect(Message command, [CallerLineNumber] int id = 0)
+        => on("beforexrselect", command, id);
+
+    public static Handler onafterprint(Message command, [CallerLineNumber] int id = 0)
+        => on("afterprint", command, id);
+
+    public static Handler onbeforeprint(Message command, [CallerLineNumber] int id = 0)
+        => on("beforeprint", command, id);
+
+    public static Handler onlanguagechange(Message command, [CallerLineNumber] int id = 0)
+        => on("languagechange", command, id);
+
+    public static Handler onmessage(Message command, [CallerLineNumber] int id = 0)
+        => on("message", command, id);
+
+    public static Handler onmessageerror(Message command, [CallerLineNumber] int id = 0)
+        => on("messageerror", command, id);
+
+    public static Handler onrejectionhandled(Message command, [CallerLineNumber] int id = 0)
+        => on("rejectionhandled", command, id);
+
+    public static Handler onunhandledrejection(Message command, [CallerLineNumber] int id = 0)
+        => on("unhandledrejection", command, id);
+
+    public static Handler onsecuritypolicyviolation(Message command, [CallerLineNumber] int id = 0)
+        => on("securitypolicyviolation", command, id);
+
+    // Experimental sensor/device API events
+    public static Handler ondevicemotion(Message command, [CallerLineNumber] int id = 0)
+        => on("devicemotion", command, id);
+
+    public static Handler ondeviceorientation(Message command, [CallerLineNumber] int id = 0)
+        => on("deviceorientation", command, id);
+
+    public static Handler ondeviceorientationabsolute(Message command, [CallerLineNumber] int id = 0)
+        => on("deviceorientationabsolute", command, id);
     // Dialog events
     public static Handler onclose(Message command, [CallerLineNumber] int id = 0)
         => on("close", command, id);
@@ -1065,9 +1370,6 @@ public static class Events
 
     public static Handler onsuspend(Message command, [CallerLineNumber] int id = 0)
         => on("suspend", command, id);
-
-    public static Handler onwaiting(Message command, [CallerLineNumber] int id = 0)
-        => on("waiting", command, id);
 
     public static Handler onratechange(Message command, [CallerLineNumber] int id = 0)
         => on("ratechange", command, id);
