@@ -2,6 +2,7 @@ using Abies.Conduit.Main;
 using Abies.Conduit.Routing;
 using Abies.DOM;
 using System.Collections.Generic;
+using Abies.Conduit;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -83,7 +84,9 @@ public class Page : Element<Model, Message>
             ),
             Message.ArticleSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                []
+                model.Slug == null
+                    ? [ new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? new List<string>()) ]
+                    : [ new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body) ]
             ),
             Message.ArticleSubmitSuccess slug => (
                 model with { IsSubmitting = false, Errors = null, Slug = slug.Slug },
