@@ -14,6 +14,9 @@
     <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>webassembly;wasm;dotnet;web</PackageTags>
+    <!-- support voor sourcelink -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+
   </PropertyGroup>
 
   <ItemGroup>
