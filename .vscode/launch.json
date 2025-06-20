@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "C#: Abies. Debug",
             "type": "dotnet",
@@ -11,10 +12,18 @@
             "projectPath": "${workspaceFolder}/Abies.Conduit/Abies.Conduit.csproj"
         },
         {
-            "type": "msedge",
+            "type": "firefox",
             "request": "launch",
-            "name": "Launch Edge against localhost",
-            "url": "http://localhost:8080",
+            "name": "Launch Firefox against localhost",
+            "url": "http://localhost:56153",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "chrome",
+            "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+            "request": "attach",
+            "name": "Attach Chrome for WebAssembly",
+            "url": "http://localhost:52206",
             "webRoot": "${workspaceFolder}"
         }
     ]

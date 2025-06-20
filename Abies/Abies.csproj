@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <!-- needed to support JS interop -->    
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
@@ -19,6 +19,7 @@
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+    <MonoRuntimeDebuggerEnabled>true</MonoRuntimeDebuggerEnabled>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,7 +45,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Praefixum" Version="1.1.3-tags-v1-1-2.1" />
+    <PackageReference Include="Praefixum" Version="1.1.5-tags-v1-1-4.1" />
   </ItemGroup>
 
 </Project>
