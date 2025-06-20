@@ -1,6 +1,8 @@
 using Abies.Conduit.Routing;
 using Abies.Conduit.Services;
 using Abies.DOM;
+using Abies;
+using System;
 using System.Threading.Tasks;
 using static Abies.Conduit.Main.Message.Event;
 using static Abies.UrlRequest;
@@ -16,7 +18,7 @@ public record struct Email(string Value);
 
 public record struct Token(string Value);
 
-public record User(UserName Username, Email Email, Token Token);
+public record User(UserName Username, Email Email, Token Token, string Image);
 
 public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = null);
 
@@ -67,20 +69,27 @@ public class Program : Program<Model, Arguments>
     /// </summary>
     /// <param name="url">The URL to process.</param>
     /// <returns>The next model.</returns>
+    private static bool RequiresAuth(Routing.Route route)
+        => route is Routing.Route.Settings
+            || route is Routing.Route.NewArticle
+            || route is Routing.Route.EditArticle;
+
     private static (Model model, Command command) GetNextModel(Url url, User? currentUser = null)
-    {        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
+    {
+        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
         return currentRoute switch
         {
-            Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true, 0, currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.NotFound => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None),
-            Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute, currentUser), Commands.None),
-            Routing.Route.Login => (new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute, currentUser), Commands.None),
-            Routing.Route.Register => (new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute, currentUser), Commands.None),
-            Routing.Route.Profile profile => (new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser), Commands.None),
-            Routing.Route.ProfileFavorites profileFavorites => (new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles)), currentRoute, currentUser), Commands.None),
-            Routing.Route.Article article => (new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model(CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Login => (new(new Page.Login(new Conduit.Page.Login.Model() with { CurrentUser = currentUser }), currentRoute, currentUser), Commands.None),
+            Routing.Route.Register => (new(new Page.Register(new Conduit.Page.Register.Model() with { CurrentUser = currentUser }), currentRoute, currentUser), Commands.None),
+            Routing.Route.Profile profile => (new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.ProfileFavorites profileFavorites => (new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Article article => (new(new Page.Article(new Conduit.Page.Article.Model(article.Slug, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.Redirect => (new(new Page.Redirect(), currentRoute, currentUser), Commands.None),
-            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model()), currentRoute, currentUser), Commands.None),
+            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.EditArticle edit => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(IsLoading: true, Slug: edit.Slug.Value, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             _ => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None)
         };
     }
@@ -93,8 +102,15 @@ public class Program : Program<Model, Arguments>
     /// <returns>The updated model and commands.</returns>
     private static (Model model, Command) HandleUrlChanged(Url url, Model model)
     {
-        return (GetNextModel(url, model.CurrentUser).model, Commands.None);
-    }    
+        var (nextModel, _) = GetNextModel(url, model.CurrentUser);
+        if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser == null)
+        {
+            var loginUrl = Url.Create("/login");
+            var (loginModel, _) = GetNextModel(loginUrl, null);
+            return (loginModel, new PushState(loginUrl));
+        }
+        return (nextModel, Commands.None);
+    }
     
     /// <summary>
     /// Handles the link clicked event.
@@ -103,11 +119,20 @@ public class Program : Program<Model, Arguments>
     /// <param name="model">The current model.</param>
     /// <returns>The updated model and commands.</returns>
     private static (Model model, Command) HandleLinkClicked(UrlRequest urlRequest, Model model)
-        => urlRequest switch
+    {
+        if (urlRequest is Internal @internal)
         {
-            Internal @internal => (GetNextModel(@internal.Url, model.CurrentUser).model, new PushState(@internal.Url)),
-            _ => (model, Commands.None)
-        };
+            var (nextModel, _) = GetNextModel(@internal.Url, model.CurrentUser);
+            if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser == null)
+            {
+                var loginUrl = Url.Create("/login");
+                var (loginModel, _) = GetNextModel(loginUrl, null);
+                return (loginModel, new PushState(loginUrl));
+            }
+            return (nextModel, new PushState(@internal.Url));
+        }
+        return (model, Commands.None);
+    }
 
     /// <summary>
     /// Subscribes to model changes.
@@ -116,9 +141,307 @@ public class Program : Program<Model, Arguments>
     /// <returns>The subscription.</returns>
     public static Subscription Subscriptions(Model model) => new();
 
-    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
+    public static async Task HandleCommand(Command command, Func<Abies.Message, System.ValueTuple> dispatch)
     {
-        return Task.CompletedTask;
+        switch (command)
+        {
+            case Command.None:
+                break;
+            case Command.Batch batch:
+                foreach (var cmd in batch.Commands)
+                {
+                    await HandleCommand(cmd, dispatch);
+                }
+                break;
+            case Message.Command.LoadCurrentUser:
+                try
+                {
+                    var user = await AuthService.LoadUserFromLocalStorageAsync();
+                    if (user != null)
+                    {
+                        dispatch(new UserLoggedIn(user));
+                    }
+                }
+                catch (Exception)
+                {
+                    // ignore invalid token
+                }
+                break;
+            case LoginCommand login:
+                try
+                {
+                    var user = await AuthService.LoginAsync(login.Email, login.Password);
+                    dispatch(new Conduit.Page.Login.Message.LoginSuccess(user));
+                }
+                catch (ApiException)
+                {
+                    dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "Invalid email or password" }));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "An unexpected error occurred" }));
+                }
+                break;
+            case RegisterCommand register:
+                try
+                {
+                    var user = await AuthService.RegisterAsync(register.Username, register.Email, register.Password);
+                    dispatch(new Conduit.Page.Register.Message.RegisterSuccess(user));
+                }
+                catch (ApiException ex)
+                {
+                    dispatch(new Conduit.Page.Register.Message.RegisterError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    {
+                        { "error", new[] { "An unexpected error occurred" } }
+                    };
+                    dispatch(new Conduit.Page.Register.Message.RegisterError(errors));
+                }
+                break;
+            case UpdateUserCommand updateUser:
+                try
+                {
+                    var user = await AuthService.UpdateUserAsync(updateUser.Username, updateUser.Email, updateUser.Bio, updateUser.Image, updateUser.Password);
+                    dispatch(new Conduit.Page.Settings.Message.SettingsSuccess(user));
+                }
+                catch (ApiException ex)
+                {
+                    dispatch(new Conduit.Page.Settings.Message.SettingsError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    {
+                        { "error", new[] { "An unexpected error occurred" } }
+                    };
+                    dispatch(new Conduit.Page.Settings.Message.SettingsError(errors));
+                }
+                break;
+            case LoadArticlesCommand loadArticles:
+                try
+                {
+                    var (articles, count) = await ArticleService.GetArticlesAsync(loadArticles.Tag, loadArticles.Author, loadArticles.FavoritedBy, loadArticles.Limit, loadArticles.Offset);
+                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                }
+                break;
+            case LoadFeedCommand loadFeed:
+                try
+                {
+                    var (articles, count) = await ArticleService.GetFeedArticlesAsync(loadFeed.Limit, loadFeed.Offset);
+                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                }
+                break;
+            case LoadTagsCommand:
+                try
+                {
+                    var tags = await TagService.GetTagsAsync();
+                    dispatch(new Conduit.Page.Home.Message.TagsLoaded(tags));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Home.Message.TagsLoaded(new System.Collections.Generic.List<string>()));
+                }
+                break;
+            case LoadArticleCommand loadArticle:
+                try
+                {
+                    var article = await ArticleService.GetArticleAsync(loadArticle.Slug);
+                    dispatch(new Conduit.Page.Article.Message.ArticleLoaded(article));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.ArticleLoaded(null));
+                }
+                break;
+            case LoadCommentsCommand loadComments:
+                try
+                {
+                    var comments = await ArticleService.GetCommentsAsync(loadComments.Slug);
+                    dispatch(new Conduit.Page.Article.Message.CommentsLoaded(comments));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.CommentsLoaded(new System.Collections.Generic.List<Conduit.Page.Article.Comment>()));
+                }
+                break;
+            case SubmitCommentCommand submitComment:
+                try
+                {
+                    var comment = await ArticleService.AddCommentAsync(submitComment.Slug, submitComment.Body);
+                    dispatch(new Conduit.Page.Article.Message.CommentSubmitted(comment));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.SubmitComment());
+                }
+                break;
+            case DeleteCommentCommand deleteComment:
+                try
+                {
+                    await ArticleService.DeleteCommentAsync(deleteComment.Slug, deleteComment.CommentId);
+                    dispatch(new Conduit.Page.Article.Message.CommentDeleted(deleteComment.CommentId));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.CommentDeleted(""));
+                }
+                break;
+            case CreateArticleCommand createArticle:
+                try
+                {
+                    var article = await ArticleService.CreateArticleAsync(createArticle.Title, createArticle.Description, createArticle.Body, createArticle.TagList);
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitSuccess(article.Slug));
+                }
+                catch (ApiException ex)
+                {
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    {
+                        { "error", new[] { "An unexpected error occurred" } }
+                    };
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(errors));
+                }
+                break;
+            case UpdateArticleCommand updateArticle:
+                try
+                {
+                    var article = await ArticleService.UpdateArticleAsync(updateArticle.Slug, updateArticle.Title, updateArticle.Description, updateArticle.Body);
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitSuccess(article.Slug));
+                }
+                catch (ApiException ex)
+                {
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(ex.Errors));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    {
+                        { "error", new[] { "An unexpected error occurred" } }
+                    };
+                    dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(errors));
+                }
+                break;
+            case ToggleFavoriteCommand toggleFavorite:
+                try
+                {
+                    var article = toggleFavorite.CurrentState ? await ArticleService.UnfavoriteArticleAsync(toggleFavorite.Slug) : await ArticleService.FavoriteArticleAsync(toggleFavorite.Slug);
+                    dispatch(new Conduit.Page.Article.Message.ArticleLoaded(article));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.ToggleFavorite());
+                }
+                break;
+            case LoadProfileCommand loadProfile:
+                try
+                {
+                    var profile = await ProfileService.GetProfileAsync(loadProfile.Username);
+                    dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(profile));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(new Conduit.Page.Home.Profile(loadProfile.Username, "", "", false)));
+                }
+                break;
+            case ToggleFollowCommand toggleFollow:
+                try
+                {
+                    var profile = toggleFollow.CurrentState ? await ProfileService.UnfollowUserAsync(toggleFollow.Username) : await ProfileService.FollowUserAsync(toggleFollow.Username);
+                    dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(profile));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Profile.Message.ToggleFollow());
+                }
+                break;
+            case DeleteArticleCommand deleteArticle:
+                try
+                {
+                    await ArticleService.DeleteArticleAsync(deleteArticle.Slug);
+                    dispatch(new Conduit.Page.Article.Message.ArticleDeleted());
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    dispatch(new Conduit.Page.Article.Message.ArticleDeleted());
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     /// <summary>
@@ -127,7 +450,37 @@ public class Program : Program<Model, Arguments>
     /// <param name="url">The initial URL.</param>
     /// <param name="argument">The arguments.</param>
     /// <returns>The initial model.</returns>
-    public static (Model, Command) Initialize(Url url, Arguments argument) => GetNextModel(url, null);
+    private static Command GetInitCommandForRoute(Model model)
+        => model.Page switch
+        {
+            Page.Home => Commands.Batch(new Command[] { new LoadArticlesCommand(), new LoadTagsCommand() }),
+            Page.Article article => Commands.Batch(new Command[] { new LoadArticleCommand(article.Model.Slug.Value), new LoadCommentsCommand(article.Model.Slug.Value) }),
+            Page.Profile profile => Commands.Batch(new Command[] { new LoadProfileCommand(profile.Model.UserName.Value), new LoadArticlesCommand(null, profile.Model.UserName.Value) }),
+            Page.ProfileFavorites profileFav => Commands.Batch(new Command[] { new LoadProfileCommand(profileFav.Model.UserName.Value), new LoadArticlesCommand(null, null, profileFav.Model.UserName.Value) }),
+            Page.NewArticle newArticle when model.CurrentRoute is Routing.Route.EditArticle edit => new LoadArticleCommand(edit.Slug.Value),
+            _ => Commands.None
+        };
+
+    public static (Model, Command) Initialize(Url url, Arguments argument)
+    {
+        var (model, _) = GetNextModel(url, null);
+        Command redirectCommand = Commands.None;
+        if (RequiresAuth(model.CurrentRoute))
+        {
+            var loginUrl = Url.Create("/login");
+            (model, _) = GetNextModel(loginUrl, null);
+            redirectCommand = new PushState(loginUrl);
+        }
+        var init = GetInitCommandForRoute(model);
+        if (redirectCommand is Command.None)
+        {
+            return (model, Commands.Batch(new Command[] { new Message.Command.LoadCurrentUser(), init }));
+        }
+        else
+        {
+            return (model, Commands.Batch(new Command[] { new Message.Command.LoadCurrentUser(), init, redirectCommand }));
+        }
+    }
 
 
 
@@ -138,99 +491,135 @@ public class Program : Program<Model, Arguments>
     /// <param name="model">The current model.</param>
     /// <returns>The updated model and commands.</returns>
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-    {    
-    switch   (message)
+    {
+        switch (message)
         {
             case UrlChanged urlChanged:
                 var (nextModel, _) = HandleUrlChanged(urlChanged.Url, model);
-                
-                // Send initialization messages based on route type
-                if (nextModel.Page is Page.Home)
-                {
-                    Task.Run(async () => {
-                        await new LoadArticlesCommand().ExecuteAsync();
-                        await new LoadTagsCommand().ExecuteAsync();
-                    });
-                }
-                else if (nextModel.Page is Page.Article article)
-                {
-                    Task.Run(async () => {
-                        await new LoadArticleCommand(article.Model.Slug.Value).ExecuteAsync();
-                        await new LoadCommentsCommand(article.Model.Slug.Value).ExecuteAsync();
-                    });
-                }                else if (nextModel.Page is Page.Profile profile)
-                {
-                    Task.Run(async () => {
-                        await new LoadProfileCommand(profile.Model.UserName.Value).ExecuteAsync();
-                        await new LoadArticlesCommand(author: profile.Model.UserName.Value).ExecuteAsync();
-                    });
-                }
-                else if (nextModel.Page is Page.ProfileFavorites profileFavorites)
-                {
-                    Task.Run(async () => {
-                        await new LoadProfileCommand(profileFavorites.Model.UserName.Value).ExecuteAsync();
-                        await new LoadArticlesCommand(favoritedBy: profileFavorites.Model.UserName.Value).ExecuteAsync();
-                    });
-                }
-                return (nextModel, Commands.None);
+                var initCommand = GetInitCommandForRoute(nextModel);
+                return (nextModel, initCommand);
+
             case LinkClicked linkClicked:
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
-            case UserLoggedIn userLoggedIn:
-                return (model with { CurrentUser = userLoggedIn.User }, Commands.None);
+
+            case UserLoggedIn loggedIn:
+                return (
+                    model with
+                    {
+                        CurrentUser = loggedIn.User,
+                        Page = SetUser(model.Page, loggedIn.User)
+                    },
+                    Commands.None);
+
             case UserLoggedOut:
-                AuthService.Logout();
-                return (model with { CurrentUser = null }, Commands.None);
+                AuthService.Logout().GetAwaiter().GetResult();
+                return (
+                    model with
+                    {
+                        CurrentUser = null,
+                        Page = SetUser(model.Page, null)
+                    },
+                    Commands.None);
+
             default:
-                // Check page-specific messages based on current page type
-                if (message is Conduit.Page.Login.Message loginMsg && model.Page is Page.Login login)
+                return (message, model.Page) switch
                 {
-                    if (loginMsg is Conduit.Page.Login.Message.LoginSuccess loginSuccess)
-                        return (model with { CurrentUser = loginSuccess.User }, Commands.None);
-                    
-                    var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(loginMsg, login.Model);
-                    return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);
-                }
-                else if (message is Conduit.Page.Register.Message registerMsg && model.Page is Page.Register register)
-                {
-                    if (registerMsg is Conduit.Page.Register.Message.RegisterSuccess registerSuccess)
-                        return (model with { CurrentUser = registerSuccess.User }, Commands.None);
-                    
-                    var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(registerMsg, register.Model);
-                    return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
-                }
-                else if (message is Conduit.Page.Home.Message homeMsg && model.Page is Page.Home home)
-                {
-                    var (nextHomeModel, nextHomeCommand) = Conduit.Page.Home.Page.Update(homeMsg, home.Model);
-                    return (model with { Page = new Page.Home(nextHomeModel) }, nextHomeCommand);
-                }
-                else if (message is Conduit.Page.Settings.Message settingsMsg && model.Page is Page.Settings settings)
-                {
-                    var (nextSettingsModel, nextSettingsCommand) = Conduit.Page.Settings.Page.Update(settingsMsg, settings.Model);
-                    return (model with { Page = new Page.Settings(nextSettingsModel) }, nextSettingsCommand);
-                }                else if (message is Conduit.Page.Profile.Message profileMsg && model.Page is Page.Profile profile)
-                {
-                    var (nextProfileModel, nextProfileCommand) = Conduit.Page.Profile.Page.Update(profileMsg, profile.Model);
-                    return (model with { Page = new Page.Profile(nextProfileModel) }, nextProfileCommand);
-                }
-                else if (message is Conduit.Page.Profile.Message profileFavoritesMsg && model.Page is Page.ProfileFavorites profileFavorites)
-                {
-                    var (nextProfileFavoritesModel, nextProfileFavoritesCommand) = Conduit.Page.Profile.Page.Update(profileFavoritesMsg, profileFavorites.Model);
-                    return (model with { Page = new Page.ProfileFavorites(nextProfileFavoritesModel) }, nextProfileFavoritesCommand);
-                }
-                else if (message is Conduit.Page.Article.Message articleMsg && model.Page is Page.Article article)
-                {
-                    var (nextArticleModel, nextArticleCommand) = Conduit.Page.Article.Page.Update(articleMsg, article.Model);
-                    return (model with { Page = new Page.Article(nextArticleModel) }, nextArticleCommand);
-                }
-                else if (message is Conduit.Page.Editor.Message editorMsg && model.Page is Page.NewArticle newArticle)
-                {
-                    var (nextEditorModel, nextEditorCommand) = Conduit.Page.Editor.Page.Update(editorMsg, newArticle.Model);
-                    return (model with { Page = new Page.NewArticle(nextEditorModel) }, nextEditorCommand);
-                }
-                
-                return (model, Commands.None);
+                    (Conduit.Page.Login.Message.LoginSuccess success, Page.Login _) =>
+                        RedirectAfterAuth(success.User),
+
+                    (Conduit.Page.Login.Message loginMsg, Page.Login login) =>
+                        UpdatePage(model, m => new Page.Login(m), login.Model, loginMsg, Conduit.Page.Login.Page.Update),
+
+                    (Conduit.Page.Register.Message.RegisterSuccess success, Page.Register _) =>
+                        RedirectAfterAuth(success.User),
+
+                    (Conduit.Page.Register.Message registerMsg, Page.Register register) =>
+                        UpdatePage(model, m => new Page.Register(m), register.Model, registerMsg, Conduit.Page.Register.Page.Update),
+
+                    (Conduit.Page.Home.Message homeMsg, Page.Home home) =>
+                        UpdatePage(model, m => new Page.Home(m), home.Model, homeMsg, Conduit.Page.Home.Page.Update),
+
+                    (Conduit.Page.Settings.Message.LogoutRequested, Page.Settings _) =>
+                        LogoutAndRedirect(),
+
+                    (Conduit.Page.Settings.Message settingsMsg, Page.Settings settings) =>
+                        UpdatePage(model, m => new Page.Settings(m), settings.Model, settingsMsg, Conduit.Page.Settings.Page.Update),
+
+                    (Conduit.Page.Profile.Message profileMsg, Page.Profile profile) =>
+                        UpdatePage(model, m => new Page.Profile(m), profile.Model, profileMsg, Conduit.Page.Profile.Page.Update),
+
+                    (Conduit.Page.Profile.Message profileFavMsg, Page.ProfileFavorites fav) =>
+                        UpdatePage(model, m => new Page.ProfileFavorites(m), fav.Model, profileFavMsg, Conduit.Page.Profile.Page.Update),
+
+                    (Conduit.Page.Article.Message.ArticleDeleted, Page.Article _) =>
+                        RedirectHome(model.CurrentUser),
+
+                    (Conduit.Page.Article.Message articleMsg, Page.Article article) =>
+                        UpdatePage(model, m => new Page.Article(m), article.Model, articleMsg, Conduit.Page.Article.Page.Update),
+
+                    (Conduit.Page.Editor.Message.ArticleSubmitSuccess success, Page.NewArticle _) =>
+                        RedirectToArticle(success.Slug, model.CurrentUser),
+
+                    (Conduit.Page.Editor.Message editorMsg, Page.NewArticle editor) =>
+                        UpdatePage(model, m => new Page.NewArticle(m), editor.Model, editorMsg, Conduit.Page.Editor.Page.Update),
+
+                    _ => (model, Commands.None)
+                };
         }
-        
+
+    }
+
+    private static Page SetUser(Page page, User? user) => page switch
+    {
+        Page.Home p => new Page.Home(p.Model with { CurrentUser = user }),
+        Page.Settings s => new Page.Settings(s.Model with { CurrentUser = user }),
+        Page.Login l => new Page.Login(l.Model with { CurrentUser = user }),
+        Page.Register r => new Page.Register(r.Model with { CurrentUser = user }),
+        Page.Profile pr => new Page.Profile(pr.Model with { CurrentUser = user }),
+        Page.ProfileFavorites pf => new Page.ProfileFavorites(pf.Model with { CurrentUser = user }),
+        Page.Article a => new Page.Article(a.Model with { CurrentUser = user }),
+        Page.NewArticle e => new Page.NewArticle(e.Model with { CurrentUser = user }),
+        _ => page
+    };
+
+    private static (Model, Command) UpdatePage<TModel, TMsg>(Model model, Func<TModel, Page> ctor, TModel pageModel, TMsg msg, Func<TMsg, TModel, (TModel, Command)> update)
+        where TMsg : Abies.Message
+    {
+        var (nextPageModel, cmd) = update(msg, pageModel);
+        return (model with { Page = ctor(nextPageModel) }, cmd);
+    }
+
+    private static (Model, Command) RedirectAfterAuth(User user)
+    {
+        var url = Url.Create("/");
+        var (homeModel, _) = GetNextModel(url, user);
+        var init = GetInitCommandForRoute(homeModel);
+        var batch = Commands.Batch(new Command[] { new PushState(url), init });
+        return (homeModel with { CurrentUser = user }, batch);
+    }
+
+    private static (Model, Command) RedirectHome(User? user)
+    {
+        var current = new Uri(Interop.GetCurrentUrl());
+        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
+        var url = Url.Create(root.ToString());
+        var (next, _) = GetNextModel(url, user);
+        return (next, new PushState(url));
+    }
+
+    private static (Model, Command) RedirectToArticle(string slug, User? user)
+    {
+        var current = new Uri(Interop.GetCurrentUrl());
+        var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
+        var url = Url.Create($"{root}article/{slug}");
+        var (next, _) = GetNextModel(url, user);
+        return (next, new PushState(url));
+    }
+
+    private static (Model, Command) LogoutAndRedirect()
+    {
+        AuthService.Logout().GetAwaiter().GetResult();
+        return RedirectHome(null);
     }
     private static Node WithLayout(Node page, Model model) =>
         div([], [
@@ -245,12 +634,12 @@ public class Program : Program<Model, Arguments>
             Page.NotFound => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model)),
             Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), WithLayout(Conduit.Page.Home.Page.View(home.Model), model)),
             Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), WithLayout(Conduit.Page.Settings.Page.View(settings.Model), model)),
-            Page.Login login => new Document(string.Format(Title, nameof(Conduit.Page.Login)), WithLayout(Conduit.Page.Login.Page.View(login.Model), model)),
+            Page.Login loginDoc => new Document(string.Format(Title, nameof(Conduit.Page.Login)), WithLayout(Conduit.Page.Login.Page.View(loginDoc.Model), model)),
             Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), WithLayout(Conduit.Page.Register.Page.View(register.Model), model)),
             Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), WithLayout(Conduit.Page.Profile.Page.View(profile.Model), model)),
             Page.ProfileFavorites profileFavorites => new Document(string.Format(Title, "Profile Favorites"), WithLayout(Conduit.Page.Profile.Page.View(profileFavorites.Model), model)),
             Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), WithLayout(Conduit.Page.Article.Page.View(article.Model), model)),
-            Page.NewArticle newArticle => new Document(string.Format(Title, "New Article"), WithLayout(Conduit.Page.Editor.Page.View(newArticle.Model), model)),
+            Page.NewArticle newArticle => new Document(string.Format(Title, model.CurrentRoute is Routing.Route.EditArticle ? "Edit Article" : "New Article"), WithLayout(Conduit.Page.Editor.Page.View(newArticle.Model), model)),
             _ => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model))
         };
 

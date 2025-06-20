@@ -1,4 +1,6 @@
-﻿using System.Collections.Concurrent;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Channels;
 using Abies.DOM;
@@ -9,10 +11,13 @@ public static partial class Runtime
 {
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
+    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
     
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
     {
+        using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
+
         // Register the URL change handler
         SetupInteropHandlers<TProgram, TArguments, TModel>();
 
@@ -34,10 +39,16 @@ public static partial class Runtime
         var model = initialModel;
         var dom = document.Body;
 
-        await TProgram.HandleCommand(initialCommand, Dispatch);
+        using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+        {
+            await TProgram.HandleCommand(initialCommand, Dispatch);
+        }
         
         await foreach(var message in _messageChannel.Reader.ReadAllAsync())
         {
+            using var messageActivity = Instrumentation.ActivitySource.StartActivity("Message");
+            messageActivity?.SetTag("message.type", message.GetType().FullName);
+
             // Update the model based on the message
             var (newModel, command) = TProgram.Update(message, model);
             
@@ -55,17 +66,24 @@ public static partial class Runtime
             {
                 if (patch is AddHandler addHandler)
                 {
-                    if (!_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
+                    if (addHandler.Handler.Command is not null && !_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
                     {
-                        await Interop.WriteToConsole("Command already exists");
+                        continue;
                     }
-                    await Interop.WriteToConsole($"Command {addHandler.Handler.Id} added");
+                    if (addHandler.Handler.WithData is not null)
+                    {
+                        _dataHandlers[addHandler.Handler.CommandId] = (addHandler.Handler.WithData, addHandler.Handler.DataType ?? typeof(object));
+                    }
                 }
                 else if (patch is RemoveHandler removeHandler)
                 {
-                    if (!_handlers.TryRemove(removeHandler.Handler.CommandId, out _))
+                    if (removeHandler.Handler.Command is not null)
                     {
-                        await Interop.WriteToConsole("Command not found");
+                        _handlers.TryRemove(removeHandler.Handler.CommandId, out _);
+                    }
+                    if (removeHandler.Handler.WithData is not null)
+                    {
+                        _dataHandlers.TryRemove(removeHandler.Handler.CommandId, out _);
                     }
                 }
                 await Operations.Apply(patch);
@@ -84,7 +102,10 @@ public static partial class Runtime
                     await Interop.Load(load.Url.ToString());
                     break;
                 default:
-                    await TProgram.HandleCommand(command, Dispatch);
+                    using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+                    {
+                        await TProgram.HandleCommand(command, Dispatch);
+                    }
                     break;
             }
         }
@@ -200,11 +221,14 @@ public static partial class Runtime
             {
                 if (attribute is Handler handler)
                 {
-                    if (!_handlers.TryAdd(handler.CommandId, handler.Command))
+                    if (handler.Command is not null && !_handlers.TryAdd(handler.CommandId, handler.Command))
                     {
                         throw new InvalidOperationException("Command already exists");
                     }
-                    Interop.WriteToConsole($"Command {handler.Id} added");
+                    if (handler.WithData is not null)
+                    {
+                        _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
+                    }
                 }
             }
             // Recursively register handlers in child nodes
@@ -215,10 +239,10 @@ public static partial class Runtime
         }
     }
     
-    private static Unit Dispatch(Message message)
+    private static System.ValueTuple Dispatch(Message message)
     {
         _messageChannel.Writer.TryWrite(message);
-        return new ();
+        return new();
     }
     
     [JSExport]
@@ -230,5 +254,25 @@ public static partial class Runtime
         }
 
         var _ = Dispatch(message);
+    }
+
+    [JSExport]
+    public static void DispatchData(string messageId, string? json)
+    {
+        if (_dataHandlers.TryGetValue(messageId, out var entry))
+        {
+            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            var message = entry.handler(data);
+            Dispatch(message);
+            return;
+        }
+
+        if (_handlers.TryGetValue(messageId, out var message2))
+        {
+            Dispatch(message2);
+            return;
+        }
+
+        throw new InvalidOperationException("Message to dispatch not found");
     }
 }
