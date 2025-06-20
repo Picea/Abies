@@ -114,10 +114,6 @@ namespace Abies.DOM
             }
         }        private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
         {
-            // Early exit for reference equality
-            if (ReferenceEquals(oldNode, newNode))
-                return;
-
             // Text nodes only need an update when the value changes
             if (oldNode is Text oldText && newNode is Text newText)
             {
@@ -129,6 +125,10 @@ namespace Abies.DOM
             // Elements may need to be replaced when the tag differs or the node type changed
             if (oldNode is Element oldElement && newNode is Element newElement)
             {
+                // Early exit for reference equality only for elements with same tag
+                if (ReferenceEquals(oldElement, newElement))
+                    return;
+
                 if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
                 {
                     if (parent == null)

@@ -214,9 +214,7 @@ namespace Abies
                     RegisterHandlers(child);
                 }
             }
-        }
-
-        private static Node PreserveIds(Node? oldNode, Node newNode)
+        }        private static Node PreserveIds(Node? oldNode, Node newNode)
         {
             if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag == newElement.Tag)
             {
@@ -248,6 +246,11 @@ namespace Abies
                 }
 
                 return new Element(oldElement.Id, newElement.Tag, attrs, children);
+            }
+            else if (oldNode is Text oldText && newNode is Text newText)
+            {
+                // Preserve text node IDs so they can be properly updated
+                return new Text(oldText.Id, newText.Value);
             }
             else if (newNode is Element newElem)
             {
@@ -345,7 +348,8 @@ namespace Abies
                     if (executeMethod != null)
                     {
                         try
-                        {                            var result = executeMethod.Invoke(command, null);
+                        {                           
+                            var result = executeMethod.Invoke(command, null);
                             if (result is Task<Message> messageTask)
                             {
                                 var message = await messageTask;
