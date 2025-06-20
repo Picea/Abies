@@ -21,10 +21,10 @@ public class Page : Element<Model, Message>
         throw new System.NotImplementedException();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
-            _ => (model, [])
+            _ => (model, Commands.None)
         };
 
     public static Node View(Model model)

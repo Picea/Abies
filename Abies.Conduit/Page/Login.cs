@@ -37,23 +37,23 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.EmailChanged emailChanged => (
                 model with { Email = emailChanged.Value },
-                []
+                Commands.None
             ),
             Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
-                []
+                Commands.None
             ),            Message.LoginSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                [new LoginCommand(model.Email, model.Password)]
+                new LoginCommand(model.Email, model.Password)
             ),
             Message.LoginSuccess loginSuccess => (
                 model with { IsSubmitting = false, Errors = null },
-                []
+                Commands.None
             ),
             Message.LoginError errors => (
                 model with 
@@ -61,9 +61,9 @@ public class Page : Element<Model, Message>
                     IsSubmitting = false,
                     Errors = errors.Errors.ToDictionary(e => e, e => new string[] { e })
                 },
-                []
+                Commands.None
             ),
-            _ => (model, [])
+            _ => (model, Commands.None)
         };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>

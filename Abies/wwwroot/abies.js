@@ -29,14 +29,14 @@ function eventHandler(event) {
     const target = event.target.closest('[data-event-click]');
     console.log(`Event target: ${target}`);
     if (target) {
-        const commandId = target.getAttribute('data-event-click');
+        const message = target.getAttribute('data-event-click');
 
-        if (commandId) {
-            console.log(`Dispatching command ${commandId}`);
-            exports.Abies.Runtime.Dispatch(commandId);
+        if (message) {
+            console.log(`Dispatching message ${message}`);
+            exports.Abies.Runtime.Dispatch(message);
             event.preventDefault();
         } else {
-            console.error("No command id found in data-event-click attribute.");
+            console.error("No message id found in data-event-click attribute.");
         }
     }
 }

@@ -42,44 +42,46 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.ImageUrlChanged imageUrlChanged => (
                 model with { ImageUrl = imageUrlChanged.Value },
-                []
+                Commands.None
             ),
             Message.UsernameChanged usernameChanged => (
                 model with { Username = usernameChanged.Value },
-                []
+                Commands.None
             ),
             Message.BioChanged bioChanged => (
                 model with { Bio = bioChanged.Value },
-                []
+                Commands.None
             ),
             Message.EmailChanged emailChanged => (
                 model with { Email = emailChanged.Value },
-                []
+                Commands.None
             ),
             Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
-                []
+                Commands.None
             ),            Message.SettingsSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                [new Abies.Conduit.UpdateUserCommand(model.Username, model.Email, model.Bio, model.ImageUrl, 
-                    string.IsNullOrEmpty(model.Password) ? null : model.Password)]
+                new Abies.Conduit.UpdateUserCommand(model.Username, model.Email, model.Bio, model.ImageUrl, 
+                    string.IsNullOrEmpty(model.Password) ? null : model.Password)
             ),
             Message.SettingsSuccess success => (
                 model with { IsSubmitting = false, Errors = null },
-                []
+                Commands.None
             ),
             Message.SettingsError errors => (
                 model with { IsSubmitting = false, Errors = errors.Errors },
-                []
+                Commands.None
             ),
-            Message.LogoutRequested => (model, []),
-            _ => (model, [])
-        };    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
+            Message.LogoutRequested => (model, Commands.None),
+            _ => (model, Commands.None)
+        };    
+
+        private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")
             : ul([class_("error-messages")], 

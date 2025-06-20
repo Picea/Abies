@@ -58,7 +58,7 @@ public record Arguments;
 /// <summary>
 /// The main application class.
 /// </summary>
-public class Application : Application<Model, Arguments>
+public class Program : Program<Model, Arguments>
 {
     private static string Title = "Conduit - {0}";
 
@@ -67,21 +67,21 @@ public class Application : Application<Model, Arguments>
     /// </summary>
     /// <param name="url">The URL to process.</param>
     /// <returns>The next model.</returns>
-    private static Model GetNextModel(Url url, User? currentUser = null)
+    private static (Model model, Command command) GetNextModel(Url url, User? currentUser = null)
     {        Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
         return currentRoute switch
         {
-            Routing.Route.Home => new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true)), currentRoute, currentUser),
-            Routing.Route.NotFound => new(new Page.NotFound(), currentRoute, currentUser),
-            Routing.Route.Settings => new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute, currentUser),
-            Routing.Route.Login => new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute, currentUser),
-            Routing.Route.Register => new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute, currentUser),
-            Routing.Route.Profile profile => new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser),
-            Routing.Route.ProfileFavorites profileFavorites => new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles)), currentRoute, currentUser),
-            Routing.Route.Article article => new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser),
-            Routing.Route.Redirect => new(new Page.Redirect(), currentRoute, currentUser),
-            Routing.Route.NewArticle => new(new Page.NewArticle(new Conduit.Page.Editor.Model()), currentRoute, currentUser),
-            _ => new(new Page.NotFound(), currentRoute, currentUser),
+            Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true)), currentRoute, currentUser), Commands.None),
+            Routing.Route.NotFound => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None),
+            Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model()), currentRoute, currentUser), Commands.None),
+            Routing.Route.Login => (new(new Page.Login(new Conduit.Page.Login.Model()), currentRoute, currentUser), Commands.None),
+            Routing.Route.Register => (new(new Page.Register(new Conduit.Page.Register.Model()), currentRoute, currentUser), Commands.None),
+            Routing.Route.Profile profile => (new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName)), currentRoute, currentUser), Commands.None),
+            Routing.Route.ProfileFavorites profileFavorites => (new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Article article => (new(new Page.Article(new Conduit.Page.Article.Model(article.Slug)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Redirect => (new(new Page.Redirect(), currentRoute, currentUser), Commands.None),
+            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model()), currentRoute, currentUser), Commands.None),
+            _ => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None)
         };
     }
 
@@ -91,20 +91,22 @@ public class Application : Application<Model, Arguments>
     /// <param name="url">The new URL.</param>
     /// <param name="model">The current model.</param>
     /// <returns>The updated model and commands.</returns>
-    private static (Model model, IEnumerable<Command>) HandleUrlChanged(Url url, Model model)
+    private static (Model model, Command) HandleUrlChanged(Url url, Model model)
     {
-        return (GetNextModel(url, model.CurrentUser), new List<Command> { new Command.None() });
-    }    /// <summary>
+        return (GetNextModel(url, model.CurrentUser).model, Commands.None);
+    }    
+    
+    /// <summary>
     /// Handles the link clicked event.
     /// </summary>
     /// <param name="urlRequest">The URL request.</param>
     /// <param name="model">The current model.</param>
     /// <returns>The updated model and commands.</returns>
-    private static (Model model, IEnumerable<Command>) HandleLinkClicked(UrlRequest urlRequest, Model model)
+    private static (Model model, Command) HandleLinkClicked(UrlRequest urlRequest, Model model)
         => urlRequest switch
         {
-            Internal @internal => (GetNextModel(@internal.Url, model.CurrentUser), new List<Command> { new PushState(@internal.Url) }),
-            _ => (model, new List<Command> { new Command.None() })
+            Internal @internal => (GetNextModel(@internal.Url, model.CurrentUser).model, new PushState(@internal.Url)),
+            _ => (model, Commands.None)
         };
 
     /// <summary>
@@ -114,67 +116,76 @@ public class Application : Application<Model, Arguments>
     /// <returns>The subscription.</returns>
     public static Subscription Subscriptions(Model model) => new();
 
+    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
+    {
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// Initializes the application with the given URL and arguments.
     /// </summary>
     /// <param name="url">The initial URL.</param>
     /// <param name="argument">The arguments.</param>
     /// <returns>The initial model.</returns>
-    public static Model Initialize(Url url, Arguments argument) => GetNextModel(url, null);    /// <summary>
-                                                                                               /// Updates the model based on the given message.
-                                                                                               /// </summary>
-                                                                                               /// <param name="message">The message to process.</param>
-                                                                                               /// <param name="model">The current model.</param>
-                                                                                               /// <returns>The updated model and commands.</returns>
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model, Command) Initialize(Url url, Arguments argument) => GetNextModel(url, null);
+
+
+
+    /// <summary>
+    /// Updates the model based on the given message.
+    /// </summary>
+    /// <param name="message">The message to process.</param>
+    /// <param name="model">The current model.</param>
+    /// <returns>The updated model and commands.</returns>
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
     {    
     switch   (message)
         {
             case UrlChanged urlChanged:
-                var nextModel = HandleUrlChanged(urlChanged.Url, model);
+                var (nextModel, _) = HandleUrlChanged(urlChanged.Url, model);
                 
                 // Send initialization messages based on route type
-                if (nextModel.model.Page is Page.Home)
+                if (nextModel.Page is Page.Home)
                 {
                     Task.Run(async () => {
                         await new LoadArticlesCommand().ExecuteAsync();
                         await new LoadTagsCommand().ExecuteAsync();
                     });
                 }
-                else if (nextModel.model.Page is Page.Article article)
+                else if (nextModel.Page is Page.Article article)
                 {
                     Task.Run(async () => {
                         await new LoadArticleCommand(article.Model.Slug.Value).ExecuteAsync();
                         await new LoadCommentsCommand(article.Model.Slug.Value).ExecuteAsync();
                     });
-                }                else if (nextModel.model.Page is Page.Profile profile)
+                }                else if (nextModel.Page is Page.Profile profile)
                 {
                     Task.Run(async () => {
                         await new LoadProfileCommand(profile.Model.UserName.Value).ExecuteAsync();
                         await new LoadArticlesCommand(author: profile.Model.UserName.Value).ExecuteAsync();
                     });
                 }
-                else if (nextModel.model.Page is Page.ProfileFavorites profileFavorites)
+                else if (nextModel.Page is Page.ProfileFavorites profileFavorites)
                 {
                     Task.Run(async () => {
                         await new LoadProfileCommand(profileFavorites.Model.UserName.Value).ExecuteAsync();
                         await new LoadArticlesCommand(favoritedBy: profileFavorites.Model.UserName.Value).ExecuteAsync();
                     });
                 }
-                return nextModel;
+                return (nextModel, Commands.None);
             case LinkClicked linkClicked:
                 return HandleLinkClicked(linkClicked.UrlRequest, model);
             case UserLoggedIn userLoggedIn:
-                return (model with { CurrentUser = userLoggedIn.User }, new List<Command> { new Command.None() });
+                return (model with { CurrentUser = userLoggedIn.User }, Commands.None);
             case UserLoggedOut:
                 AuthService.Logout();
-                return (model with { CurrentUser = null }, new List<Command> { new Command.None() });
+                return (model with { CurrentUser = null }, Commands.None);
             default:
                 // Check page-specific messages based on current page type
                 if (message is Conduit.Page.Login.Message loginMsg && model.Page is Page.Login login)
                 {
                     if (loginMsg is Conduit.Page.Login.Message.LoginSuccess loginSuccess)
-                        return (model with { CurrentUser = loginSuccess.User }, new List<Command> { new Command.None() });
+                        return (model with { CurrentUser = loginSuccess.User }, Commands.None);
                     
                     var (nextLoginModel, nextLoginCommand) = Conduit.Page.Login.Page.Update(loginMsg, login.Model);
                     return (model with { Page = new Page.Login(nextLoginModel) }, nextLoginCommand);
@@ -182,7 +193,7 @@ public class Application : Application<Model, Arguments>
                 else if (message is Conduit.Page.Register.Message registerMsg && model.Page is Page.Register register)
                 {
                     if (registerMsg is Conduit.Page.Register.Message.RegisterSuccess registerSuccess)
-                        return (model with { CurrentUser = registerSuccess.User }, new List<Command> { new Command.None() });
+                        return (model with { CurrentUser = registerSuccess.User }, Commands.None);
                     
                     var (nextRegisterModel, nextRegisterCommand) = Conduit.Page.Register.Page.Update(registerMsg, register.Model);
                     return (model with { Page = new Page.Register(nextRegisterModel) }, nextRegisterCommand);
@@ -217,7 +228,7 @@ public class Application : Application<Model, Arguments>
                     return (model with { Page = new Page.NewArticle(nextEditorModel) }, nextEditorCommand);
                 }
                 
-                return (model, new List<Command>());
+                return (model, Commands.None);
         }
         
     }

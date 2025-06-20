@@ -44,7 +44,7 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.ProfileLoaded profileLoaded => (
@@ -53,7 +53,7 @@ public class Page : Element<Model, Message>
                     Profile = profileLoaded.Profile,
                     IsLoading = false
                 },
-                []
+                Commands.None
             ),
             Message.ArticlesLoaded articlesLoaded => (
                 model with 
@@ -61,7 +61,7 @@ public class Page : Element<Model, Message>
                     Articles = articlesLoaded.Articles,
                     ArticlesCount = articlesLoaded.ArticlesCount
                 },
-                []
+                Commands.None
             ),
             Message.FavoritedArticlesLoaded favoritedArticlesLoaded => (
                 model with 
@@ -69,18 +69,18 @@ public class Page : Element<Model, Message>
                     Articles = favoritedArticlesLoaded.Articles,
                     ArticlesCount = favoritedArticlesLoaded.ArticlesCount
                 },
-                []
+                Commands.None
             ),            Message.ToggleTab toggleTab => (
                 model with { ActiveTab = toggleTab.Tab },
                 toggleTab.Tab == ProfileTab.FavoritedArticles 
-                    ? [new LoadArticlesCommand(favoritedBy: model.UserName.Value)]
-                    : [new LoadArticlesCommand(author: model.UserName.Value)]
+                    ? new LoadArticlesCommand(favoritedBy: model.UserName.Value)
+                    : new LoadArticlesCommand(author: model.UserName.Value)
             ),
             Message.ToggleFollow => (
                 model,
-                model.Profile != null ? [ new ToggleFollowCommand(model.UserName.Value, model.Profile.Following) ] : []
+                model.Profile != null ?  new ToggleFollowCommand(model.UserName.Value, model.Profile.Following)  : Commands.None
             ),
-            _ => (model, [])
+            _ => (model, Commands.None)
         };
 
     private static Node UserInfo(Model model, bool isCurrentUser) =>

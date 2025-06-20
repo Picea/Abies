@@ -40,33 +40,33 @@ public class Page : Element<Model, Message>
         return new Subscription();
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.UsernameChanged usernameChanged => (
                 model with { Username = usernameChanged.Value },
-                []
+                Commands.None
             ),
             Message.EmailChanged emailChanged => (
                 model with { Email = emailChanged.Value },
-                []
+                Commands.None
             ),
                         Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
-                []
+                Commands.None
             ),            Message.RegisterSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                [new Abies.Conduit.RegisterCommand(model.Username, model.Email, model.Password)]
+                new Abies.Conduit.RegisterCommand(model.Username, model.Email, model.Password)
             ),
             Message.RegisterSuccess registerSuccess => (
                 model with { IsSubmitting = false, Errors = null },
-                []
+                Commands.None
             ),
             Message.RegisterError errors => (
                 model with { IsSubmitting = false, Errors = errors.Errors },
-                []
+                Commands.None
             ),
-            _ => (model, [])
+            _ => (model, Commands.None)
         };    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")

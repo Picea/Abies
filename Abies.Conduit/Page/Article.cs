@@ -57,7 +57,7 @@ public class Page : Element<Model, Message>
         );
     }
 
-    public static (Model model, IEnumerable<Command> commands) Update(Abies.Message message, Model model)
+    public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
             Message.ArticleLoaded articleLoaded => (
@@ -66,19 +66,19 @@ public class Page : Element<Model, Message>
                     Article = articleLoaded.Article,
                     IsLoading = false
                 },
-                []
+                Commands.None
             ),
             Message.CommentsLoaded commentsLoaded => (
                 model with { Comments = commentsLoaded.Comments },
-                []
+                Commands.None
             ),
             Message.CommentInputChanged inputChanged => (
                 model with { CommentInput = inputChanged.Value },
-                []
+                Commands.None
             ),
             Message.SubmitComment => (
                 model with { SubmittingComment = true },
-                [ new SubmitCommentCommand(model.Slug.Value, model.CommentInput) ]
+                new SubmitCommentCommand(model.Slug.Value, model.CommentInput)
             ),
             Message.CommentSubmitted commentSubmitted => (
                 model with 
@@ -89,32 +89,32 @@ public class Page : Element<Model, Message>
                     CommentInput = "",
                     SubmittingComment = false
                 },
-                []
+                Commands.None
             ),
             Message.DeleteComment delete => (
                 model,
-                [ new DeleteCommentCommand(model.Slug.Value, delete.Id) ]
+                new DeleteCommentCommand(model.Slug.Value, delete.Id)
             ),
             Message.CommentDeleted commentDeleted => (
                 model with
                 {
                     Comments = model.Comments?.FindAll(c => c.Id != commentDeleted.Id)
                 },
-                []
+                Commands.None
             ),
             Message.ToggleFavorite => (
                 model,
-                model.Article != null ? [ new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) ] : []
+                model.Article != null ? new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) : Commands.None
             ),
             Message.ToggleFollow => (
                 model,
-                model.Article != null ? [ new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) ] : []
+                model.Article != null ? new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) : Commands.None
             ),
             Message.DeleteArticle => (
                 model,
-                model.Article != null ? [ new DeleteArticleCommand(model.Article.Slug) ] : []
+                model.Article != null ? new DeleteArticleCommand(model.Article.Slug) : Commands.None
             ),
-            _ => (model, [])
+            _ => (model, Commands.None)
         };
 
     private static Node ArticleMeta(Conduit.Page.Home.Article article, bool showEditDelete = false) =>
