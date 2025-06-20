@@ -18,7 +18,7 @@ public static class ApiClient
         PropertyNameCaseInsensitive = true
     };
     
-    private const string BaseUrl = "http://localhost:5000/api";
+    private const string BaseUrl = "http://localhost:5168/api";
 
     public static void SetAuthToken(string? token)
     {
