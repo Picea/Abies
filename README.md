@@ -1,6 +1,6 @@
 # Abies (/ˈa.bi.eːs/)
 
-A WebAssembly library for building MVP style web applications with .NET
+A WebAssembly library for building MVU style web applications with .NET
 
 ## The name
 
