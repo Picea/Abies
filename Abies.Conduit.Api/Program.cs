@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Abies.Conduit.ServiceDefaults;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -17,6 +18,8 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+builder.AddServiceDefaults();
 
 var app = builder.Build();
 // Configure middleware
@@ -33,6 +36,8 @@ app.UseCors();
 
 // Health check endpoint
 app.MapGet("/api/ping", () => Results.Json(new { pong = true }));
+
+app.MapDefaultEndpoints();
 
 // RealWorld Conduit API in-memory stores
 var users = new ConcurrentDictionary<string, UserRecord>(StringComparer.OrdinalIgnoreCase);
