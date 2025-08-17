@@ -19,7 +19,7 @@ public IBrowser Browser { get; private set; } = null!;
         _playwright = await Playwright.CreateAsync();
         Browser = await _playwright.Chromium.LaunchAsync(new() { Headless = true });
 
-        var apiDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Conduit.Api"));
+        var apiDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Abies.Conduit.Api"));
         var apiStart = new ProcessStartInfo("dotnet", "run --no-build --project " + apiDir)
         {
             WorkingDirectory = apiDir,
