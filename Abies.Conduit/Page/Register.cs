@@ -46,7 +46,7 @@ public class Page : Element<Model, Message>
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-        => message switch
+        => TraceUpdate(message switch
         {
             Message.UsernameChanged usernameChanged => (
                 model with { Username = usernameChanged.Value },
@@ -72,14 +72,28 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-        };    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
+        });
+
+    private static (Model model, Command command) TraceUpdate((Model model, Command command) result)
+    {
+        try
+        {
+            System.Console.WriteLine($"[abies] register model: user='{result.model.Username}', email='{result.model.Email}', pwd-len={(result.model.Password ?? "").Length}, submitting={result.model.IsSubmitting}");
+        }
+        catch { }
+        return result;
+    }
+
+    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
             ? text("")
             : ul([class_("error-messages")], 
                 [..errors.SelectMany(e => e.Value.Select(msg => 
                     li([], [text($"{e.Key} {msg}")])
                 ))]
-            );    public static Node View(Model model) =>
+            );
+
+    public static Node View(Model model) =>
         div([class_("auth-page")], [
             div([class_("container page")], [
                 div([class_("row")], [
@@ -98,7 +112,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Username"),
                                         value(model.Username),
-                                        oninput(d => new Message.UsernameChanged(d?.Value)),
+                                        oninput(d => new Message.UsernameChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.UsernameChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -108,7 +123,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(d => new Message.EmailChanged(d?.Value)),
+                                        oninput(d => new Message.EmailChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.EmailChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -118,7 +134,8 @@ public class Page : Element<Model, Message>
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(d => new Message.PasswordChanged(d?.Value)),
+                                        oninput(d => new Message.PasswordChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.PasswordChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),

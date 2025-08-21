@@ -92,7 +92,7 @@ public class Page : Element<Model, Message>
                     CommentInput = "",
                     SubmittingComment = false
                 },
-                Commands.None
+                new LoadCommentsCommand(model.Slug.Value)
             ),
             Message.DeleteComment delete => (
                 model,
@@ -180,7 +180,7 @@ public class Page : Element<Model, Message>
     private static Node ArticleContent(Conduit.Page.Home.Article article)
     {
         var html = Markdig.Markdown.ToHtml(article.Body);
-        return div([class_("row article-content")], [
+    return div([class_("row article-content"), Abies.Html.Attributes.data("testid", "article-content")], [
             div([class_("col-md-12")], [
                 raw(html),
                 ul([class_("tag-list")],
@@ -204,18 +204,22 @@ public class Page : Element<Model, Message>
                 ])
               ])
             : form([class_("card comment-form")], [
-                div([class_("card-block")], [                    textarea([class_("form-control"),
+                div([class_("card-block")], [
+                    textarea([
+                        class_("form-control"),
                         placeholder("Write a comment..."),
                         rows("3"),
-                        value(model.CommentInput),
-                        oninput(new Message.CommentInputChanged(model.CommentInput))],
-                        []
-                    )
+                        oninput(d => new Message.CommentInputChanged(d?.Value ?? "")),
+                        onchange(d => new Message.CommentInputChanged(d?.Value ?? ""))
+                    ], [text(model.CommentInput)])
                 ]),
-                div([class_("card-footer")], [                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),                    button([class_("btn btn-sm btn-primary"),
-                        disabled((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment).ToString()),
-                        onclick(new Message.SubmitComment())],
-                        [text("Post Comment")])
+                div([class_("card-footer")], [
+                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),
+                    button([
+                        class_("btn btn-sm btn-primary"),
+                        ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>()),
+                        onclick(new Message.SubmitComment())
+                    ], [text("Post Comment")])
                 ])
               ]);
 
@@ -251,7 +255,7 @@ private static Node CommentCard(Model model, Comment comment) =>
 
     public static Node View(Model model) =>
         model.IsLoading || model.Article == null
-            ? div([class_("article-page")], [
+            ? div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
                 div([class_("container")], [
                     div([class_("row")], [
                         div([class_("col-md-10 offset-md-1")], [
@@ -260,7 +264,7 @@ private static Node CommentCard(Model model, Comment comment) =>
                     ])
                 ])
               ])
-            : div([class_("article-page")], [
+            : div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
                 ArticleBanner(model.Article, model.CurrentUser is User u && u.Username.Value == model.Article.Author.Username),                div([class_("container page")], [                    div([], [ArticleContent(model.Article)]),
                     hr([class_("hr")]),
                     div([class_("article-actions")], [

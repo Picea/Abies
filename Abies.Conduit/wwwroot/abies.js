@@ -44,6 +44,8 @@ function genericEventHandler(event) {
     const name = event.type;
     const target = event.target.closest(`[data-event-${name}]`);
     if (!target) return;
+    // Ignore events coming from nodes that have been detached/replaced
+    if (!target.isConnected) return;
     const message = target.getAttribute(`data-event-${name}`);
     if (!message) {
         console.error(`No message id found in data-event-${name} attribute.`);
@@ -58,14 +60,13 @@ function genericEventHandler(event) {
     try {
         const data = buildEventData(event, target);
         exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
-        if (name === 'click') {
-            event.preventDefault();
-        }
+        if (name === 'click') event.preventDefault();
         span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
         span.recordException(err);
         span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
+        // Do not rethrow to avoid crashing the page when handler IDs are stale
+        console.error(err);
     } finally {
         span.end();
     }
@@ -193,27 +194,57 @@ setModuleImports('abies.js', {
      */
     updateAttribute: withSpan('updateAttribute', async (nodeId, propertyName, propertyValue) => {
         const node = document.getElementById(nodeId);
-        if (node) {
-            node.setAttribute(propertyName, propertyValue);
-            if (propertyName.startsWith('data-event-')) {
-                const name = propertyName.substring('data-event-'.length);
-                ensureEventListener(name);
-            }
-        } else {
+        if (!node) {
             console.error(`Node with ID ${nodeId} not found.`);
+            return;
+        }
+        const lower = propertyName.toLowerCase();
+        const isBooleanAttr = (
+            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+        );
+        if (lower === 'value' && ('value' in node)) {
+            // Keep the live value in sync for inputs/textareas
+            node.value = propertyValue;
+            node.setAttribute(propertyName, propertyValue);
+        } else if (isBooleanAttr) {
+            // Boolean attributes: presence => true
+            node.setAttribute(propertyName, '');
+            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+        } else {
+            node.setAttribute(propertyName, propertyValue);
+        }
+        if (propertyName.startsWith('data-event-')) {
+            const name = propertyName.substring('data-event-'.length);
+            ensureEventListener(name);
         }
     }),
 
     addAttribute: withSpan('addAttribute', async (nodeId, propertyName, propertyValue) => {
         const node = document.getElementById(nodeId);
-        if (node) {
-            node.setAttribute(propertyName, propertyValue);
-            if (propertyName.startsWith('data-event-')) {
-                const name = propertyName.substring('data-event-'.length);
-                ensureEventListener(name);
-            }
-        } else {
+        if (!node) {
             console.error(`Node with ID ${nodeId} not found.`);
+            return;
+        }
+        const lower = propertyName.toLowerCase();
+        const isBooleanAttr = (
+            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+        );
+        if (lower === 'value' && ('value' in node)) {
+            node.value = propertyValue;
+            node.setAttribute(propertyName, propertyValue);
+        } else if (isBooleanAttr) {
+            node.setAttribute(propertyName, '');
+            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+        } else {
+            node.setAttribute(propertyName, propertyValue);
+        }
+        if (propertyName.startsWith('data-event-')) {
+            const name = propertyName.substring('data-event-'.length);
+            ensureEventListener(name);
         }
     }),
 
@@ -225,7 +256,16 @@ setModuleImports('abies.js', {
     removeAttribute: withSpan('removeAttribute', async (nodeId, propertyName) =>{
         const node = document.getElementById(nodeId);
         if (node) {
+            const lower = propertyName.toLowerCase();
+            const isBooleanAttr = (
+                lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+            );
             node.removeAttribute(propertyName);
+            if (isBooleanAttr) {
+                try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
+            }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
@@ -255,6 +295,8 @@ setModuleImports('abies.js', {
     setAppContent: withSpan('setAppContent', async (html) => {
         document.body.innerHTML = html;
         addEventListeners(); // Ensure event listeners are attached
+        // Signal that the app is ready for interaction
+        window.abiesReady = true;
     }),
 
     // Expose functions to .NET via JS interop (if needed)
@@ -291,7 +333,7 @@ setModuleImports('abies.js', {
     }),
 
     onUrlChange: (callback) => {
-        window.addEventListener("popstate", () => callback(getCurrentUrl()));
+    window.addEventListener("popstate", () => callback(window.location.href));
     },
 
     onFormSubmit: (callback) => {
@@ -305,10 +347,15 @@ setModuleImports('abies.js', {
     onLinkClick: (callback) => {
         document.addEventListener("click", (event) => {
             const link = event.target.closest("a");
-            if (link) {
-                event.preventDefault();
-                callback(link.href);
-            }
+            if (!link) return;
+            // Skip if this anchor has Abies handlers; genericEventHandler will dispatch
+            const hasAbiesHandler = Array.from(link.attributes).some(a => a.name.startsWith('data-event-'));
+            if (hasAbiesHandler) return;
+            // Skip anchors with empty or hash hrefs which are used as UI controls
+            const rawHref = link.getAttribute('href') || '';
+            if (rawHref === '' || rawHref === '#') return;
+            event.preventDefault();
+            callback(link.href);
         });
     }
 

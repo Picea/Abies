@@ -25,7 +25,8 @@ public static class AuthService
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);
@@ -42,7 +43,8 @@ public static class AuthService
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);
@@ -67,7 +69,8 @@ public static class AuthService
                 new UserName(response.User.Username),
                 new Email(response.User.Email),
                 new Token(response.User.Token),
-                response.User.Image ?? ""
+                response.User.Image ?? "",
+                response.User.Bio ?? ""
             );
             
             return _currentUser;
@@ -100,7 +103,8 @@ public static async Task<User> UpdateUserAsync(string username, string email, st
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);

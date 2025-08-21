@@ -27,6 +27,7 @@ public sealed record DeleteCommentCommand(string Slug, string CommentId) : Abies
 public sealed record CreateArticleCommand(string Title, string Description, string Body, List<string> TagList) : Abies.Command;
 
 public sealed record UpdateArticleCommand(string Slug, string Title, string Description, string Body) : Abies.Command;
+public sealed record LoadArticleForEditorCommand(string Slug) : Abies.Command;
 
 public sealed record ToggleFavoriteCommand(string Slug, bool CurrentState) : Abies.Command;
 
