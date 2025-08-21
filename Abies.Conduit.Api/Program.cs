@@ -11,12 +11,10 @@ builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-    {
+    options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+              .AllowAnyMethod()
+              .AllowAnyHeader());
 });
 
 builder.AddServiceDefaults();
@@ -30,9 +28,23 @@ if (app.Environment.IsDevelopment())
 }
 
 // Configure the HTTP request pipeline.
-
-app.UseHttpsRedirection();
-app.UseCors();
+app.UseCors("AllowAll");
+// Strongly permissive CORS for local E2E/browser-wasm
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+    ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS";
+    var reqHeaders = ctx.Request.Headers.ContainsKey("Access-Control-Request-Headers")
+        ? ctx.Request.Headers["Access-Control-Request-Headers"].ToString()
+        : "Content-Type, Authorization";
+    ctx.Response.Headers["Access-Control-Allow-Headers"] = reqHeaders;
+    if (string.Equals(ctx.Request.Method, "OPTIONS", StringComparison.OrdinalIgnoreCase))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status204NoContent;
+        return;
+    }
+    await next();
+});
 
 // Health check endpoint
 app.MapGet("/api/ping", () => Results.Json(new { pong = true }));
@@ -223,6 +235,8 @@ app.MapGet("/api/articles", (int? limit, int? offset, string? tag, string? autho
     if (!string.IsNullOrEmpty(tag)) query = query.Where(a => a.TagList.Contains(tag));
     if (!string.IsNullOrEmpty(author)) query = query.Where(a => a.Author == author);
     if (!string.IsNullOrEmpty(favorited)) query = query.Where(a => a.FavoritedBy.Contains(favorited));
+    // Order by most recent first (RealWorld spec)
+    query = query.OrderByDescending(a => a.CreatedAt);
     var total = query.Count();
     if (offset.HasValue) query = query.Skip(offset.Value);
     if (limit.HasValue) query = query.Take(limit.Value);
@@ -246,11 +260,20 @@ app.MapGet("/api/articles/feed", (int? limit, int? offset, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx)?.Username;
     if (current == null) return Results.Unauthorized();
-    var following = follows[current];
-    var query = articles.Values.Where(a => following.Contains(a.Author));
+    // Compute the set of authors the current user follows
+    var authorsFollowedByCurrent = follows
+        .Where(kvp => kvp.Value.Contains(current))
+        .Select(kvp => kvp.Key)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    IEnumerable<ArticleRecord> query = articles.Values
+        .Where(a => authorsFollowedByCurrent.Contains(a.Author))
+        .OrderByDescending(a => a.CreatedAt);
+
     var total = query.Count();
     if (offset.HasValue) query = query.Skip(offset.Value);
     if (limit.HasValue) query = query.Take(limit.Value);
+
     var list = query.Select(a => new ArticleResponse(
         a.Slug,
         a.Title,
@@ -355,7 +378,7 @@ app.MapPut("/api/articles/{slug}", (string slug, UpdateArticleRequest req, HttpC
     var current = GetCurrentUser(ctx);
     if (current == null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
-    if (a.Author != current.Username) return Results.Forbid();
+    if (a.Author != current.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     
     var u = req.Article;
     string newSlug = slug;
@@ -439,21 +462,25 @@ app.MapDelete("/api/articles/{slug}", (string slug, HttpContext ctx) =>
     var current = GetCurrentUser(ctx);
     if (current == null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
-    if (a.Author != current.Username) return Results.Forbid();
+    if (a.Author != current.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     articles.TryRemove(slug, out _);
     return Results.NoContent();
 });
 
 // Comments
-app.MapGet("/api/articles/{slug}/comments", (string slug) =>
+app.MapGet("/api/articles/{slug}/comments", (string slug, HttpContext ctx) =>
 {
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
+    var current = GetCurrentUser(ctx)?.Username;
     var list = a.Comments.Select(c => new CommentResponse(
         c.Id,
         c.CreatedAt.ToString("o"),
         c.CreatedAt.ToString("o"),
         c.Body,
-        new ProfileResponse(users.Values.First(u => u.Username == c.Author), false)
+        new ProfileResponse(
+            users.Values.First(u => u.Username == c.Author),
+            current != null && follows[c.Author].Contains(current)
+        )
     ));
     return Results.Ok(new { comments = list });
 });
@@ -480,7 +507,7 @@ app.MapDelete("/api/articles/{slug}/comments/{id}", (string slug, int id, HttpCo
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     var c = a.Comments.FirstOrDefault(x => x.Id == id);
     if (c == null) return Results.NotFound();
-    if (c.Author != user.Username) return Results.Forbid();
+    if (c.Author != user.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     a.Comments.Remove(c);
     return Results.NoContent();
 });

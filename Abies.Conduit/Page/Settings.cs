@@ -46,6 +46,8 @@ public class Page : Element<Model, Message>
     public static (Model model, Command command) Update(Abies.Message message, Model model)
         => message switch
         {
+            // When Settings page is first shown or user context changes, prefill from CurrentUser
+            // This is handled by SetUser in Main, but ensure initial values are not empty in view
             Message.ImageUrlChanged imageUrlChanged => (
                 model with { ImageUrl = imageUrlChanged.Value },
                 Commands.None
@@ -91,8 +93,20 @@ public class Page : Element<Model, Message>
                 ))]
             );
 
-    public static Node View(Model model) =>
-        div([class_("settings-page")], [
+    public static Node View(Model model)
+    {
+        var initial = model;
+        if (initial.CurrentUser is User u)
+        {
+            // Prefill from current user if fields are empty
+            if (string.IsNullOrEmpty(initial.Username)) initial = initial with { Username = u.Username.Value };
+            if (string.IsNullOrEmpty(initial.Email)) initial = initial with { Email = u.Email.Value };
+            if (string.IsNullOrEmpty(initial.ImageUrl)) initial = initial with { ImageUrl = u.Image };
+            if (string.IsNullOrEmpty(initial.Bio)) initial = initial with { Bio = u.Bio };
+        }
+        model = initial;
+    return
+    div([class_("settings-page"), Abies.Html.Attributes.data("testid", "settings-page")], [
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-6 offset-md-3 col-xs-12")], [
@@ -107,7 +121,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("URL of profile picture"),
                                         value(model.ImageUrl),
-                                        oninput(d => new Message.ImageUrlChanged(d?.Value)),
+                                        oninput(d => new Message.ImageUrlChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.ImageUrlChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -117,7 +132,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Your Name"),
                                         value(model.Username),
-                                        oninput(d => new Message.UsernameChanged(d?.Value)),
+                                        oninput(d => new Message.UsernameChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.UsernameChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                fieldset([class_("form-group")], [
@@ -125,11 +141,11 @@ public class Page : Element<Model, Message>
                                         class_("form-control form-control-lg"),
                                         rows("8"),
                                         placeholder("Short bio about you"),
-                                        value(model.Bio),
-                                        oninput(d => new Message.BioChanged(d?.Value)),
+                                        oninput(d => new Message.BioChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.BioChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ],
-                                        []
+                                        [text(model.Bio)]
                                     )
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -138,7 +154,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(d => new Message.EmailChanged(d?.Value)),
+                                        oninput(d => new Message.EmailChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.EmailChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -148,7 +165,8 @@ public class Page : Element<Model, Message>
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(d => new Message.PasswordChanged(d?.Value)),
+                                        oninput(d => new Message.PasswordChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.PasswordChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
@@ -172,4 +190,5 @@ public class Page : Element<Model, Message>
                 ])
             ])
         ]);
+    }
 }

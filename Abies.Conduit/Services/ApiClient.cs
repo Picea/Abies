@@ -18,7 +18,7 @@ public static class ApiClient
         PropertyNameCaseInsensitive = true
     };
     
-    private const string BaseUrl = "http://localhost:5168/api";
+    private const string BaseUrl = "http://localhost:5179/api";
 
     public static void SetAuthToken(string? token)
     {
@@ -336,7 +336,7 @@ public class CommentResponse
 
 public class CommentData
 {
-    public string Id { get; set; } = string.Empty;
+    public int Id { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;

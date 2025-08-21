@@ -3,6 +3,7 @@ using Abies.Conduit.Services;
 using Abies.DOM;
 using Abies;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using static Abies.Conduit.Main.Message.Event;
 using static Abies.UrlRequest;
@@ -18,7 +19,7 @@ public record struct Email(string Value);
 
 public record struct Token(string Value);
 
-public record User(UserName Username, Email Email, Token Token, string Image);
+public record User(UserName Username, Email Email, Token Token, string Image, string Bio);
 
 public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = null);
 
@@ -81,14 +82,23 @@ public class Program : Program<Model, Arguments>
         {
             Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true, 0, currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.NotFound => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None),
-            Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model(CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model(
+                ImageUrl: currentUser?.Image ?? string.Empty,
+                Username: currentUser?.Username.Value ?? string.Empty,
+                Bio: currentUser?.Bio ?? string.Empty,
+                Email: currentUser?.Email.Value ?? string.Empty,
+                Password: string.Empty,
+                IsSubmitting: false,
+                Errors: null,
+                CurrentUser: currentUser
+            )), currentRoute, currentUser), Commands.None),
             Routing.Route.Login => (new(new Page.Login(new Conduit.Page.Login.Model() with { CurrentUser = currentUser }), currentRoute, currentUser), Commands.None),
             Routing.Route.Register => (new(new Page.Register(new Conduit.Page.Register.Model() with { CurrentUser = currentUser }), currentRoute, currentUser), Commands.None),
             Routing.Route.Profile profile => (new(new Page.Profile(new Conduit.Page.Profile.Model(profile.UserName, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.ProfileFavorites profileFavorites => (new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.Article article => (new(new Page.Article(new Conduit.Page.Article.Model(article.Slug, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.Redirect => (new(new Page.Redirect(), currentRoute, currentUser), Commands.None),
-            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(TagList: new List<string>(), CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.EditArticle edit => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(IsLoading: true, Slug: edit.Slug.Value, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             _ => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None)
         };
@@ -129,7 +139,12 @@ public class Program : Program<Model, Arguments>
                 var (loginModel, _) = GetNextModel(loginUrl, null);
                 return (loginModel, new PushState(loginUrl));
             }
-            return (nextModel, new PushState(@internal.Url));
+            // Also kick off the route's init command (e.g., prefill editor on edit routes)
+            var initForNext = GetInitCommandForRoute(nextModel);
+            // Ensure navigation happens first so subsequent init runs against the new page
+            return (nextModel, initForNext is Command.None
+                ? new PushState(@internal.Url)
+                : Commands.Batch(new Command[] { new PushState(@internal.Url), initForNext }));
         }
         return (model, Commands.None);
     }
@@ -286,6 +301,34 @@ public class Program : Program<Model, Arguments>
                 catch (Exception)
                 {
                     dispatch(new Conduit.Page.Article.Message.ArticleLoaded(null));
+                }
+                break;
+            case LoadArticleForEditorCommand loadForEditor:
+                try
+                {
+                    var article = await ArticleService.GetArticleAsync(loadForEditor.Slug);
+                    dispatch(new Conduit.Page.Editor.Message.ArticleLoaded(article));
+                }
+                catch (UnauthorizedException)
+                {
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    // If failed, keep editor in loading=false with empty fields
+                    dispatch(new Conduit.Page.Editor.Message.ArticleLoaded(
+                        new Conduit.Page.Home.Article(
+                            Slug: "",
+                            Title: "",
+                            Description: "",
+                            Body: "",
+                            TagList: new List<string>(),
+                            CreatedAt: "",
+                            UpdatedAt: "",
+                            Favorited: false,
+                            FavoritesCount: 0,
+                            Author: new Conduit.Page.Home.Profile("", "", "", false)
+                        )));
                 }
                 break;
             case LoadCommentsCommand loadComments:
@@ -457,7 +500,7 @@ public class Program : Program<Model, Arguments>
             Page.Article article => Commands.Batch(new Command[] { new LoadArticleCommand(article.Model.Slug.Value), new LoadCommentsCommand(article.Model.Slug.Value) }),
             Page.Profile profile => Commands.Batch(new Command[] { new LoadProfileCommand(profile.Model.UserName.Value), new LoadArticlesCommand(null, profile.Model.UserName.Value) }),
             Page.ProfileFavorites profileFav => Commands.Batch(new Command[] { new LoadProfileCommand(profileFav.Model.UserName.Value), new LoadArticlesCommand(null, null, profileFav.Model.UserName.Value) }),
-            Page.NewArticle newArticle when model.CurrentRoute is Routing.Route.EditArticle edit => new LoadArticleCommand(edit.Slug.Value),
+            Page.NewArticle newArticle when model.CurrentRoute is Routing.Route.EditArticle edit => new LoadArticleForEditorCommand(edit.Slug.Value),
             _ => Commands.None
         };
 
@@ -542,6 +585,9 @@ public class Program : Program<Model, Arguments>
                     (Conduit.Page.Settings.Message.LogoutRequested, Page.Settings _) =>
                         LogoutAndRedirect(),
 
+                    (Conduit.Page.Settings.Message.SettingsSuccess success, Page.Settings _) =>
+                        RedirectHome(success.User),
+
                     (Conduit.Page.Settings.Message settingsMsg, Page.Settings settings) =>
                         UpdatePage(model, m => new Page.Settings(m), settings.Model, settingsMsg, Conduit.Page.Settings.Page.Update),
 
@@ -612,8 +658,10 @@ public class Program : Program<Model, Arguments>
         var current = new Uri(Interop.GetCurrentUrl());
         var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
         var url = Url.Create($"{root}article/{slug}");
-        var (next, _) = GetNextModel(url, user);
-        return (next, new PushState(url));
+    var (next, _) = GetNextModel(url, user);
+    var init = GetInitCommandForRoute(next);
+    var batch = Commands.Batch(new Command[] { new PushState(url), init });
+    return (next, batch);
     }
 
     private static (Model, Command) LogoutAndRedirect()

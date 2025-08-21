@@ -264,13 +264,18 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-        div([class_("home-page")], [
+        div([class_("home-page"), Abies.Html.Attributes.data("testid", "home-page")], [
             Banner(),
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-9")], [
                         FeedToggle(model),
-                        ArticleList(model),
+                        div([
+                                Abies.Html.Attributes.data("testid", "article-list"),
+                                Abies.Html.Attributes.data("status", model.IsLoading ? "loading" : "loaded")
+                            ], [
+                                ArticleList(model)
+                            ]),
                         Pagination(model)
                     ]),
                     div([class_("col-md-3")], [

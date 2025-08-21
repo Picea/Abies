@@ -39,7 +39,7 @@ public static async Task<(List<Article> articles, int count)> GetArticlesAsync(s
     {
         var response = await ApiClient.GetCommentsAsync(slug);
         return response.Comments.Select(c => new Comment(
-            c.Id,
+            c.Id.ToString(),
             c.CreatedAt,
             c.UpdatedAt,
             c.Body,
@@ -56,7 +56,7 @@ public static async Task<(List<Article> articles, int count)> GetArticlesAsync(s
     {
         var response = await ApiClient.AddCommentAsync(slug, body);
         return new Comment(
-            response.Comment.Id,
+            response.Comment.Id.ToString(),
             response.Comment.CreatedAt,
             response.Comment.UpdatedAt,
             response.Comment.Body,
@@ -71,7 +71,7 @@ public static async Task<(List<Article> articles, int count)> GetArticlesAsync(s
 
     public static async Task DeleteCommentAsync(string slug, string id)
     {
-        await ApiClient.DeleteCommentAsync(slug, id);
+    await ApiClient.DeleteCommentAsync(slug, id);
     }
 
     public static async Task<Article> CreateArticleAsync(string title, string description, string body, List<string> tagList)
