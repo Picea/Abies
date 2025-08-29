@@ -86,6 +86,13 @@ namespace Abies.DOM
         public readonly Handler Handler = handler;
     }
 
+    public readonly struct UpdateHandler(Element element, Handler oldHandler, Handler newHandler) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Handler OldHandler = oldHandler;
+        public readonly Handler NewHandler = newHandler;
+    }
+
     public readonly struct UpdateText(Text node, string text, string newId) : Patch
     {
         public readonly Text Node = node;
@@ -258,6 +265,15 @@ namespace Abies.DOM
                     // First remove the DOM attribute to avoid dispatching with stale IDs, then unregister
                     await Interop.RemoveAttribute(removeHandler.Element.Id, ((Attribute)removeHandler.Handler).Name);
                     Abies.Runtime.UnregisterHandler(removeHandler.Handler);
+                    break;
+                case UpdateHandler updateHandler:
+                    // Atomically update handler mapping and DOM attribute value to avoid gaps
+                    // 1) Register the new handler command id
+                    Abies.Runtime.RegisterHandler(updateHandler.NewHandler);
+                    // 2) Update the DOM attribute value to the new command id
+                    await Interop.UpdateAttribute(updateHandler.Element.Id, ((Attribute)updateHandler.NewHandler).Name, updateHandler.NewHandler.Value);
+                    // 3) Unregister the old handler command id
+                    Abies.Runtime.UnregisterHandler(updateHandler.OldHandler);
                     break;
                 case UpdateText updateText:
                     // Update the text content first using the old ID
@@ -443,15 +459,23 @@ namespace Abies.DOM
                         oldMap.Remove(newAttr.Id);
                         if (!newAttr.Equals(oldAttr))
                         {
-                            if (oldAttr is Handler oldHandler)
-                                patches.Add(new RemoveHandler(oldElement, oldHandler));
-                            else if (newAttr is Handler)
-                                patches.Add(new RemoveAttribute(oldElement, oldAttr));
-
-                            if (newAttr is Handler newHandler)
-                                patches.Add(new AddHandler(newElement, newHandler));
+                            if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
+                            {
+                                // Same attribute id and name, but handler value changed: update atomically
+                                patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                            }
                             else
-                                patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                            {
+                                if (oldAttr is Handler oldHandler2)
+                                    patches.Add(new RemoveHandler(oldElement, oldHandler2));
+                                else if (newAttr is Handler)
+                                    patches.Add(new RemoveAttribute(oldElement, oldAttr));
+
+                                if (newAttr is Handler newHandler2)
+                                    patches.Add(new AddHandler(newElement, newHandler2));
+                                else
+                                    patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                            }
                         }
                     }
                     else

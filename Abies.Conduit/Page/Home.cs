@@ -212,8 +212,14 @@ public class Page : Element<Model, Message>
                 p([], [text(article.Description)]),
                 span([], [text("Read more...")]),
                 ul([class_("tag-list")], [..article.TagList.ConvertAll(tag => 
-                    li([class_("tag-default tag-pill tag-outline")], [
-                        text(tag)
+                    li([], [
+                        a([
+                            class_("tag-default tag-pill tag-outline"),
+                            href(""),
+                            onclick(new Message.TagSelected(tag))
+                        ], [
+                            text(tag)
+                        ])
                     ])
                 )])
             ])
@@ -236,17 +242,27 @@ public class Page : Element<Model, Message>
         {
             items.Add(
                 li([class_(i == model.CurrentPage ? "page-item active" : "page-item")], [
-                    a([
-                        class_("page-link"),
-                        href(""),
-                        onclick(new Message.PageSelected(i))
-                    ], [text((i + 1).ToString())])
+                    (i == model.CurrentPage
+                        ? a([
+                            class_("page-link active"),
+                            ariaCurrent("page"),
+                            href(""),
+                            onclick(new Message.PageSelected(i))
+                        ], [text((i + 1).ToString())])
+                        : a([
+                            class_("page-link"),
+                            href(""),
+                            onclick(new Message.PageSelected(i))
+                        ], [text((i + 1).ToString())]))
                 ]));
         }
 
-        return nav([], [
-            ul([class_("pagination")], [..items])
-        ]);
+    return nav([], [
+        ul([
+            class_("pagination"),
+            Abies.Html.Attributes.data("current-page", (model.CurrentPage + 1).ToString())
+        ], [..items])
+    ]);
     }
 
     private static Node TagCloud(Model model) =>

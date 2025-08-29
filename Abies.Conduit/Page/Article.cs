@@ -106,11 +106,24 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             Message.ToggleFavorite => (
-                model,
+                model.Article != null
+                    ? model with
+                    {
+                        Article = model.Article with
+                        {
+                            Favorited = !model.Article.Favorited,
+                            FavoritesCount = model.Article.Favorited
+                                ? System.Math.Max(0, model.Article.FavoritesCount - 1)
+                                : model.Article.FavoritesCount + 1
+                        }
+                    }
+                    : model,
                 model.Article != null ? new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) : Commands.None
             ),
             Message.ToggleFollow => (
-                model,
+                model.Article != null
+                    ? model with { Article = model.Article with { Author = model.Article.Author with { Following = !model.Article.Author.Following } } }
+                    : model,
                 model.Article != null ? new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) : Commands.None
             ),
             Message.DeleteArticle => (
@@ -147,8 +160,8 @@ public class Page : Element<Model, Message>
                         ])
                   ])
                 : div([], [                    button([class_(article.Author.Following 
-                        ? "btn btn-sm btn-secondary" 
-                        : "btn btn-sm btn-outline-secondary"),
+                        ? "btn btn-sm btn-secondary action-btn" 
+                        : "btn btn-sm btn-outline-secondary action-btn"),
                         onclick(new Message.ToggleFollow())],
                         [
                             i([class_("ion-plus-round")], []),
@@ -157,8 +170,8 @@ public class Page : Element<Model, Message>
                                 : $" Follow {article.Author.Username}")
                         ]),
                     text(" "),                    button([class_(article.Favorited 
-                        ? "btn btn-sm btn-primary" 
-                        : "btn btn-sm btn-outline-primary"),
+                        ? "btn btn-sm btn-primary action-btn" 
+                        : "btn btn-sm btn-outline-primary action-btn"),
                         onclick(new Message.ToggleFavorite())],
                         [
                             i([class_("ion-heart")], []),
@@ -217,6 +230,7 @@ public class Page : Element<Model, Message>
                     img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),
                     button([
                         class_("btn btn-sm btn-primary"),
+                        type("button"),
                         ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>()),
                         onclick(new Message.SubmitComment())
                     ], [text("Post Comment")])

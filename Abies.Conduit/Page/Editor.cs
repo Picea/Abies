@@ -52,7 +52,7 @@ public class Page : Element<Model, Message>
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-        => message switch
+        => TraceUpdate(message switch
         {
             Message.TitleChanged titleChanged => (
                 model with { Title = titleChanged.Value },
@@ -116,7 +116,17 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-        };
+        });
+
+    private static (Model model, Command command) TraceUpdate((Model model, Command command) result)
+    {
+        try
+        {
+            System.Console.WriteLine($"[abies] editor model: title='{result.model.Title}', desc='{result.model.Description}', body-len={(result.model.Body ?? "").Length}, submitting={result.model.IsSubmitting}, slug={(result.model.Slug ?? "\u2205")} ");
+        }
+        catch { }
+        return result;
+    }
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null

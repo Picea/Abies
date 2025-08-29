@@ -23,6 +23,9 @@ public class PaginationTests
         var context = await browser.NewContextAsync();
         var page = await context.NewPageAsync();
 
+    // Pipe browser console messages to test output for debugging
+    page.Console += (_, msg) => Console.WriteLine($"[PW] {msg.Type}: {msg.Text}");
+
     var email = $"e2e{System.Guid.NewGuid():N}@example.com";
     var username = $"pageuser{System.Guid.NewGuid():N}".Substring(0, 16);
 
@@ -79,9 +82,22 @@ public class PaginationTests
             null,
             new() { Timeout = 60000 }
         );
-        // Wait for pagination to appear and contain page 2
+        // Wait for list to be in 'loaded' state, then for pagination to appear and contain page 2
+        await page.WaitForSelectorAsync("[data-testid='article-list'][data-status='loaded']", new() { Timeout = 60000 });
         await page.WaitForSelectorAsync("ul.pagination li a.page-link", new() { Timeout = 60000 });
         await page.WaitForFunctionAsync("() => Array.from(document.querySelectorAll('ul.pagination li a.page-link')).some(a => (a.textContent||'').trim() === '2')", null, new() { Timeout = 60000 });
+        // Capture the anchor we'll click (id, dataset, outerHTML) for diagnostics, then click it
+    string? anchorBefore = null;
+        try
+        {
+            anchorBefore = await page.EvaluateAsync<string>("() => { const a = Array.from(document.querySelectorAll('ul.pagination li a.page-link')).find(x => (x.textContent||'').trim() === '2'); if(!a) return JSON.stringify({found:false}); try { return JSON.stringify({found:true, id: a.id || null, dataset: Object.assign({}, a.dataset), outer: a.outerHTML}); } catch(e) { return JSON.stringify({found:true, id: a.id || null, outer: a.outerHTML, evalError: e.message}); } }");
+            Console.WriteLine("[PW] clickedAnchor before click: " + anchorBefore);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("[PW] failed to read clicked anchor before click: " + ex.Message);
+        }
+
         // Click on the link with text '2'
         try
         {
@@ -93,11 +109,51 @@ public class PaginationTests
             await page.ReloadAsync();
             await page.WaitForSelectorAsync(".home-page .feed-toggle");
             await page.Locator(".feed-toggle a.nav-link:has-text('Global Feed')").ClickAsync();
+            await page.WaitForSelectorAsync("[data-testid='article-list'][data-status='loaded']");
             await page.WaitForSelectorAsync("ul.pagination li a.page-link");
             await page.Locator("ul.pagination li a.page-link", new() { HasTextString = "2" }).First.ClickAsync();
         }
-        // Assert active page highlights '2'
-        await page.WaitForSelectorAsync("ul.pagination li.active a.page-link", new() { Timeout = 60000 });
-        await page.WaitForFunctionAsync("() => { const el = document.querySelector('ul.pagination li.active a.page-link'); if(!el) return false; return (el.textContent||'').trim() === '2'; }", null, new() { Timeout = 60000 });
+        // Wait for list to load after clicking and assert current page via aria-current on the active link
+        await page.WaitForSelectorAsync("[data-testid='article-list'][data-status='loaded']", new() { Timeout = 60000 });
+        // Dump pagination outerHTML for diagnosis
+        try
+        {
+            var outer = await page.EvaluateAsync<string>("() => document.querySelector('ul.pagination') ? document.querySelector('ul.pagination').outerHTML : ''");
+            Console.WriteLine("[PW] pagination outerHTML after click: \n" + outer);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("[PW] failed to read pagination outerHTML: " + ex.Message);
+        }
+
+        // Dump the runtime debug bridge if present
+        try
+        {
+            // Filter only logs related to data-current-page updates to reduce noise
+            var dbgFiltered = await page.EvaluateAsync<string>("() => { try { const d = window.__abiesDebug || {}; const logs = Array.isArray(d.logs) ? d.logs.filter(l => (l.type === 'updateAttribute' || l.type === 'addAttribute') && l.propertyName === 'data-current-page') : []; return JSON.stringify({ filteredLogs: logs, registeredEvents: d.registeredEvents || [] }); } catch(e) { return 'eval-failed:' + e.message; } }");
+            Console.WriteLine("[PW] __abiesDebug (filtered): " + dbgFiltered);
+            // Also output structured replacements/events/attributes for precise diagnosis
+            var dbgStructured = await page.EvaluateAsync<string>(
+                "() => { try { const d = window.__abiesDebug || {}; return JSON.stringify({ replacements: d.replacements || [], events: d.events || [], attributes: d.attributes || [] }); } catch(e) { return 'eval-failed:' + e.message; } }"
+            );
+            Console.WriteLine("[PW] __abiesDebug (structured): " + dbgStructured);
+            // Also capture the anchor element after the click for comparison
+            try
+            {
+                var anchorAfter = await page.EvaluateAsync<string>("() => { const a = Array.from(document.querySelectorAll('ul.pagination li a.page-link')).find(x => (x.textContent||'').trim() === '2'); if(!a) return JSON.stringify({found:false}); return JSON.stringify({found:true, id: a.id || null, dataset: Object.assign({}, a.dataset), outer: a.outerHTML, aria: a.getAttribute('aria-current')}); }");
+                Console.WriteLine("[PW] clickedAnchor after click: " + anchorAfter);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[PW] failed to read clicked anchor after click: " + ex.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("[PW] failed to read __abiesDebug: " + ex.Message);
+        }
+
+    // Prefer a robust wait: active link in pagination becomes '2'
+    await page.WaitForFunctionAsync("() => { const a = document.querySelector('ul.pagination li a.page-link[aria-current=\"page\"]'); return !!a && (a.textContent||'').trim() === '2'; }", null, new() { Timeout = 60000 });
     }
 }
