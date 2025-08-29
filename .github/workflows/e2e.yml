@@ -1,0 +1,51 @@
+name: E2E
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
+      # Installs Playwright browsers and required OS deps on Ubuntu
+      - name: Setup Playwright
+        uses: microsoft/playwright-github-action@v1
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Debug
+
+      - name: Run E2E tests (sequential)
+        run: |
+          dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
+            --no-build -c Debug -v minimal -m:1 \
+            -l "trx;LogFileName=conduit-e2e.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            **/TestResults/*.trx
+            Abies.Conduit.E2E/bin/**/.playwright/**
