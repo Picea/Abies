@@ -34,19 +34,69 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
 
 const registeredEvents = new Set();
 
+// Lightweight debug bridge always available; can enable console via consoleEnabled
+if (typeof window !== 'undefined' && !window.__abiesDebug) {
+    try {
+        window.__abiesDebug = { logs: [], registeredEvents: [], events: [], replacements: [], attributes: [], consoleEnabled: false };
+    } catch (e) { /* ignore */ }
+}
+
+function dbgLog() {
+    try {
+        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+            // eslint-disable-next-line no-console
+            console.log.apply(console, arguments);
+        }
+    } catch { /* ignore */ }
+}
+
 function ensureEventListener(eventName) {
     if (registeredEvents.has(eventName)) return;
-    document.body.addEventListener(eventName, genericEventHandler);
+    dbgLog('[Abies Debug] ensureEventListener for', eventName);
+    try { window.__abiesDebug && window.__abiesDebug.registeredEvents.push(eventName); } catch {}
+    // Attach to document to survive body innerHTML changes and use capture for early handling
+    const opts = (eventName === 'click') ? { capture: true } : undefined;
+    document.addEventListener(eventName, genericEventHandler, opts);
     registeredEvents.add(eventName);
 }
 
 function genericEventHandler(event) {
     const name = event.type;
-    const target = event.target.closest(`[data-event-${name}]`);
+    // Normalize to an Element for closest(); handle rare Text node targets
+    let origin = event.target;
+    if (origin && origin.nodeType === 3 /* TEXT_NODE */) {
+        origin = origin.parentElement;
+    }
+    const target = origin && origin.closest ? origin.closest(`[data-event-${name}]`) : null;
     if (!target) return;
     // Ignore events coming from nodes that have been detached/replaced
     if (!target.isConnected) return;
+    // For Abies-managed clicks, prevent native navigation immediately
+    if (name === 'click') {
+        try {
+            event.preventDefault();
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+        } catch { /* ignore */ }
+    }
     const message = target.getAttribute(`data-event-${name}`);
+    try {
+        dbgLog('[Abies Debug] genericEventHandler', { name, targetId: target.id, message, isConnected: target.isConnected });
+        try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'genericEventHandler', name, targetId: target.id, message, isConnected: target.isConnected, time: Date.now() }); } catch {}
+        // Structured event entry when debugging is enabled
+        if (name === 'click' && window.__abiesDebug) {
+            try {
+                const text = (target.textContent || '').trim();
+                window.__abiesDebug.events.push({ type: 'click', targetId: target.id || null, text, at: Date.now() });
+            } catch { /* ignore */ }
+        }
+        // Prevent default only for Abies-managed Enter keydown events (scoped)
+        if (name === 'keydown' && event && event.key === 'Enter') {
+                try { event.preventDefault(); } catch { /* ignore */ }
+            }
+    } catch (err) {
+        dbgLog('[Abies Debug] genericEventHandler failed to stringify target', err);
+    }
     if (!message) {
         console.error(`No message id found in data-event-${name} attribute.`);
         return;
@@ -60,7 +110,7 @@ function genericEventHandler(event) {
     try {
         const data = buildEventData(event, target);
         exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
-        if (name === 'click') event.preventDefault();
+    // Keydown Enter prevention is handled above; click default already prevented
         span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
         span.recordException(err);
@@ -93,11 +143,26 @@ function buildEventData(event, target) {
 /**
  * Adds event listeners to the document body for interactive elements.
  */
-function addEventListeners() {
-    document.querySelectorAll('*').forEach(el => {
+function addEventListeners(root) {
+    const scope = root || document;
+    // Build a list including the scope element (if Element) plus all descendants
+    const nodes = [];
+    if (scope && scope.nodeType === 1 /* ELEMENT_NODE */) nodes.push(scope);
+    scope.querySelectorAll('*').forEach(el => {
+        nodes.push(el);
+    });
+    nodes.forEach(el => {
         for (const attr of el.attributes) {
             if (attr.name.startsWith('data-event-')) {
                 const name = attr.name.substring('data-event-'.length);
+                try {
+                    if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+                        console.log('[Abies Debug] addEventListeners found', attr.name, 'on', el.id || el.tagName);
+                    }
+                    try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'addEventListeners', attr: attr.name, el: el.id || el.tagName, time: Date.now() }); } catch {}
+                } catch (err) {
+                    /* ignore logging errors */
+                }
                 ensureEventListener(name);
             }
         }
@@ -124,7 +189,8 @@ setModuleImports('abies.js', {
             tempDiv.innerHTML = childHtml;
             const childElement = tempDiv.firstElementChild;
             parent.appendChild(childElement);
-            addEventListeners(); // Reattach event listeners to new elements
+            // Reattach event listeners to new elements within this subtree
+            addEventListeners(childElement);
         } else {
             console.error(`Parent element with ID ${parentId} not found.`);
         }
@@ -165,8 +231,13 @@ setModuleImports('abies.js', {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = newHtml;
             const newElement = tempDiv.firstElementChild;
-            oldNode.parentNode.replaceChild(newElement, oldNode);
-            addEventListeners(); // Reattach event listeners to new elements
+            try {
+                oldNode.parentNode.replaceChild(newElement, oldNode);
+                // Reattach event listeners to new elements within this subtree
+                addEventListeners(newElement);
+            } catch (err) {
+                console.error(`Node with ID ${oldNodeId} not found or has no parent.`, err);
+            }
         } else {
             console.error(`Node with ID ${oldNodeId} not found or has no parent.`);
         }
@@ -180,7 +251,13 @@ setModuleImports('abies.js', {
     updateTextContent: withSpan('updateTextContent', async (nodeId, newText) => {
         const node = document.getElementById(nodeId);
         if (node) {
+            // Keep text nodes and form control values in sync
             node.textContent = newText;
+            // If this is a textarea, also update its value property
+            const tag = (node.tagName || '').toUpperCase();
+            if (tag === 'TEXTAREA') {
+                try { node.value = newText; } catch { /* ignore */ }
+            }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
@@ -219,6 +296,12 @@ setModuleImports('abies.js', {
             const name = propertyName.substring('data-event-'.length);
             ensureEventListener(name);
         }
+        // Optional attribute debug logging
+        try {
+            if (window.__abiesDebug) {
+                window.__abiesDebug.attributes.push({ op: 'update', name: propertyName, value: propertyValue, nodeId, el: node.id || node.tagName, at: Date.now() });
+            }
+        } catch { /* ignore */ }
     }),
 
     addAttribute: withSpan('addAttribute', async (nodeId, propertyName, propertyValue) => {
@@ -246,6 +329,12 @@ setModuleImports('abies.js', {
             const name = propertyName.substring('data-event-'.length);
             ensureEventListener(name);
         }
+        // Optional attribute debug logging
+        try {
+            if (window.__abiesDebug) {
+                window.__abiesDebug.attributes.push({ op: 'add', name: propertyName, value: propertyValue, nodeId, el: node.id || node.tagName, at: Date.now() });
+            }
+        } catch { /* ignore */ }
     }),
 
     /**
@@ -266,6 +355,7 @@ setModuleImports('abies.js', {
             if (isBooleanAttr) {
                 try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
             }
+            try { window.__abiesDebug && window.__abiesDebug.attributes.push({ op: 'remove', name: propertyName, nodeId, el: node.id || node.tagName, at: Date.now() }); } catch { /* ignore */ }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
@@ -294,6 +384,7 @@ setModuleImports('abies.js', {
      */
     setAppContent: withSpan('setAppContent', async (html) => {
         document.body.innerHTML = html;
+    // Keep runtime generic: no app-specific hooks here
         addEventListeners(); // Ensure event listeners are attached
         // Signal that the app is ready for interaction
         window.abiesReady = true;
@@ -345,7 +436,7 @@ setModuleImports('abies.js', {
     },
 
     onLinkClick: (callback) => {
-        document.addEventListener("click", (event) => {
+    document.addEventListener("click", (event) => {
             const link = event.target.closest("a");
             if (!link) return;
             // Skip if this anchor has Abies handlers; genericEventHandler will dispatch
@@ -357,6 +448,7 @@ setModuleImports('abies.js', {
             event.preventDefault();
             callback(link.href);
         });
+    // Do not globally prevent Enter here; Abies-managed keydown handles scoped prevention
     }
 
 
@@ -366,3 +458,6 @@ const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 
 await runMain(); // Ensure the .NET runtime is initialized
+
+// Make sure any existing data-event-* attributes in the initial DOM are discovered
+try { addEventListeners(); } catch (err) { /* ignore */ }
