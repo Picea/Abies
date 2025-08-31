@@ -210,19 +210,19 @@ public class Page : Element<Model, Message>
             a([class_("preview-link"), href($"/article/{article.Slug}")], [
                 h1([], [text(article.Title)]),
                 p([], [text(article.Description)]),
-                span([], [text("Read more...")]),
-                ul([class_("tag-list")], [..article.TagList.ConvertAll(tag => 
-                    li([], [
-                        a([
-                            class_("tag-default tag-pill tag-outline"),
-                            href(""),
-                            onclick(new Message.TagSelected(tag))
-                        ], [
-                            text(tag)
-                        ])
+                span([], [text("Read more...")])
+            ]),
+            ul([class_("tag-list")], [..article.TagList.ConvertAll(tag =>
+                li([], [
+                    a([
+                        class_("tag-default tag-pill tag-outline"),
+                        href(""),
+                        onclick(new Message.TagSelected(tag))
+                    ], [
+                        text(tag)
                     ])
-                )])
-            ])
+                ])
+            )])
         ]);
 
     private static Node ArticleList(Model model) =>
