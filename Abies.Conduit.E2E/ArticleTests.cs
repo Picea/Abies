@@ -13,7 +13,7 @@ public class ArticleTests
     {
         await page.WaitForFunctionAsync("() => window.abiesReady === true");
         await page.WaitForFunctionAsync("() => !!localStorage.getItem('jwt')", null, new() { Timeout = 60000 });
-    await page.WaitForSelectorAsync("text=Settings", new() { Timeout = 60000 });
+        await page.WaitForSelectorAsync("text=Settings", new() { Timeout = 60000 });
     }
 
     private static async Task WaitForLoggedOutAsync(IPage page)
@@ -46,7 +46,10 @@ public class ArticleTests
     await page.GetByPlaceholder("Password").DispatchEventAsync("change");
     await page.WaitForSelectorAsync("button:has-text('Sign up'):not([disabled])");
     await page.Locator("button:has-text('Sign up')").ClickAsync();
-        await WaitForLoggedInAsync(page);
+    // After sign up, app redirects to home; ensure DOM is ready and logged-in markers are present
+    await page.WaitForURLAsync("**/");
+    await page.WaitForFunctionAsync("() => window.abiesReady === true");
+    await WaitForLoggedInAsync(page);
 
     // logout to verify login as existing user works (token clear + reload)
     await page.EvaluateAsync("() => { localStorage.removeItem('jwt'); location.reload(); }");
@@ -62,7 +65,9 @@ public class ArticleTests
     await page.GetByPlaceholder("Password").DispatchEventAsync("change");
     await page.WaitForSelectorAsync("button:has-text('Sign in'):not([disabled])");
     await page.Locator("button:has-text('Sign in')").ClickAsync();
-        await WaitForLoggedInAsync(page);
+    await page.WaitForURLAsync("**/");
+    await page.WaitForFunctionAsync("() => window.abiesReady === true");
+    await WaitForLoggedInAsync(page);
 
     await page.ClickAsync("text=New Article");
     await page.WaitForURLAsync("**/editor");

@@ -27,7 +27,7 @@ jobs:
 
       # Installs Playwright browsers and required OS deps on Ubuntu
       - name: Setup Playwright
-        uses: microsoft/playwright-github-action@v1
+        run: npx playwright install --with-deps
 
       - name: Restore
         run: dotnet restore
