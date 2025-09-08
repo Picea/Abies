@@ -36,3 +36,5 @@ public sealed record LoadProfileCommand(string Username) : Abies.Command;
 public sealed record ToggleFollowCommand(string Username, bool CurrentState) : Abies.Command;
 
 public sealed record DeleteArticleCommand(string Slug) : Abies.Command;
+
+public sealed record LogoutCommand() : Abies.Command;

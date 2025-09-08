@@ -251,7 +251,18 @@ public class Program : Program<Model, Arguments>
                 try
                 {
                     var (articles, count) = await ArticleService.GetArticlesAsync(loadArticles.Tag, loadArticles.Author, loadArticles.FavoritedBy, loadArticles.Limit, loadArticles.Offset);
-                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
+                    if (!string.IsNullOrEmpty(loadArticles.Author))
+                    {
+                        dispatch(new Conduit.Page.Profile.Message.ArticlesLoaded(articles, count));
+                    }
+                    else if (!string.IsNullOrEmpty(loadArticles.FavoritedBy))
+                    {
+                        dispatch(new Conduit.Page.Profile.Message.FavoritedArticlesLoaded(articles, count));
+                    }
+                    else
+                    {
+                        dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
+                    }
                 }
                 catch (UnauthorizedException)
                 {
@@ -259,7 +270,18 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (Exception)
                 {
-                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                    if (!string.IsNullOrEmpty(loadArticles.Author))
+                    {
+                        dispatch(new Conduit.Page.Profile.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                    }
+                    else if (!string.IsNullOrEmpty(loadArticles.FavoritedBy))
+                    {
+                        dispatch(new Conduit.Page.Profile.Message.FavoritedArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                    }
+                    else
+                    {
+                        dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                    }
                 }
                 break;
             case LoadFeedCommand loadFeed:
@@ -437,6 +459,17 @@ public class Program : Program<Model, Arguments>
                     dispatch(new Conduit.Page.Article.Message.ToggleFavorite());
                 }
                 break;
+            case LogoutCommand:
+                try
+                {
+                    await AuthService.Logout();
+                    dispatch(new UserLoggedOut());
+                }
+                catch (Exception)
+                {
+                    // ignore logout failures
+                }
+                break;
             case LoadProfileCommand loadProfile:
                 try
                 {
@@ -555,7 +588,6 @@ public class Program : Program<Model, Arguments>
                     Commands.None);
 
             case UserLoggedOut:
-                AuthService.Logout().GetAwaiter().GetResult();
                 return (
                     model with
                     {
@@ -583,7 +615,7 @@ public class Program : Program<Model, Arguments>
                         UpdatePage(model, m => new Page.Home(m), home.Model, homeMsg, Conduit.Page.Home.Page.Update),
 
                     (Conduit.Page.Settings.Message.LogoutRequested, Page.Settings _) =>
-                        LogoutAndRedirect(),
+                        LogoutAndPushHome(),
 
                     (Conduit.Page.Settings.Message.SettingsSuccess success, Page.Settings _) =>
                         RedirectHome(success.User),
@@ -662,6 +694,12 @@ public class Program : Program<Model, Arguments>
     var init = GetInitCommandForRoute(next);
     var batch = Commands.Batch(new Command[] { new PushState(url), init });
     return (next, batch);
+    }
+
+    private static (Model, Command) LogoutAndPushHome()
+    {
+        var (next, push) = RedirectHome(null);
+        return (next, Commands.Batch(new Command[] { new LogoutCommand(), push }));
     }
 
     private static (Model, Command) LogoutAndRedirect()

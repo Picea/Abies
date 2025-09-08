@@ -637,5 +637,3 @@ public record CommentResponse(
     string Body,
     ProfileResponse Author
 );
-
-
