@@ -100,7 +100,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Email"),
                                         value(model.Email),
-                                        oninput(d => new Message.EmailChanged(d?.Value)),
+                                        oninput(d => new Message.EmailChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.EmailChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -110,7 +111,8 @@ public class Page : Element<Model, Message>
                                         type("password"),
                                         placeholder("Password"),
                                         value(model.Password),
-                                        oninput(d => new Message.PasswordChanged(d?.Value)),
+                                        oninput(d => new Message.PasswordChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.PasswordChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),

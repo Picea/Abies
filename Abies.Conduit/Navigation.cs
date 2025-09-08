@@ -15,21 +15,31 @@ public static class Navigation
 
     public static Node View(Model model)
     {
-        var userLinks = model.CurrentUser == null
-            ? new Node[]
+        Node[] userLinks;
+        if (model.CurrentUser == null)
+        {
+            userLinks = new Node[]
             {
                 NavLink("/login", "Sign in", model.CurrentRoute is Routing.Route.Login),
                 NavLink("/register", "Sign up", model.CurrentRoute is Routing.Route.Register)
-            }
-            : new Node[]
+            };
+        }
+        else
+        {
+            var links = new System.Collections.Generic.List<Node>
             {
                 NavLink("/editor", "New Article", model.CurrentRoute is Abies.Conduit.Routing.Route.NewArticle),
-                NavLink("/settings", "Settings", model.CurrentRoute is Routing.Route.Settings),
-                NavLink($"/profile/{model.CurrentUser!.Username.Value}",
-                        model.CurrentUser.Username.Value,
-                        model.CurrentRoute is Routing.Route.Profile p && p.UserName.Value == model.CurrentUser.Username.Value ||
-                        model.CurrentRoute is Routing.Route.ProfileFavorites pf && pf.UserName.Value == model.CurrentUser.Username.Value)
+                NavLink("/settings", "Settings", model.CurrentRoute is Routing.Route.Settings)
             };
+            if (!string.IsNullOrWhiteSpace(model.CurrentUser.Username.Value))
+            {
+                links.Add(NavLink($"/profile/{model.CurrentUser.Username.Value}",
+                    model.CurrentUser.Username.Value,
+                    model.CurrentRoute is Routing.Route.Profile p && p.UserName.Value == model.CurrentUser.Username.Value ||
+                    model.CurrentRoute is Routing.Route.ProfileFavorites pf && pf.UserName.Value == model.CurrentUser.Username.Value));
+            }
+            userLinks = links.ToArray();
+        }
 
         return nav([class_("navbar navbar-light")], [
             div([class_("container")], [

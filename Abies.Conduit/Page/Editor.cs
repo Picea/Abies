@@ -15,6 +15,7 @@ public interface Message : Abies.Message
     public record BodyChanged(string Value) : Message;
     public record TagInputChanged(string Value) : Message;
     public record AddTag : Message;
+    public record NoOp : Message;
     public record RemoveTag(string Tag) : Message;
     public record ArticleSubmitted : Message;
     public record ArticleSubmitSuccess(string Slug) : Message;
@@ -51,7 +52,7 @@ public class Page : Element<Model, Message>
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-        => message switch
+        => TraceUpdate(message switch
         {
             Message.TitleChanged titleChanged => (
                 model with { Title = titleChanged.Value },
@@ -70,19 +71,24 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             Message.AddTag => (
-                !string.IsNullOrWhiteSpace(model.TagInput) && model.TagList != null && !model.TagList.Contains(model.TagInput)
+        !string.IsNullOrWhiteSpace(model.TagInput)
                     ? model with 
                     { 
-                        TagList = new List<string>(model.TagList) { model.TagInput },
-                        TagInput = ""
+            TagList = (model.TagList is null
+                                ? new List<string> { model.TagInput }
+                                : (model.TagList.Contains(model.TagInput)
+                                    ? model.TagList
+                                    : new List<string>(model.TagList) { model.TagInput })),
+                        TagInput = model.TagList is null || !model.TagList.Contains(model.TagInput) ? "" : model.TagInput
                     }
                     : model,
                 Commands.None
             ),
             Message.RemoveTag removeTag => (
-                model with { TagList = model.TagList?.FindAll(t => t != removeTag.Tag) },
+        model with { TagList = model.TagList?.FindAll(t => t != removeTag.Tag) },
                 Commands.None
             ),
+            Message.NoOp => (model, Commands.None),
             Message.ArticleSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
                 model.Slug == null
@@ -110,7 +116,17 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-        };
+        });
+
+    private static (Model model, Command command) TraceUpdate((Model model, Command command) result)
+    {
+        try
+        {
+            System.Console.WriteLine($"[abies] editor model: title='{result.model.Title}', desc='{result.model.Description}', body-len={(result.model.Body ?? "").Length}, submitting={result.model.IsSubmitting}, slug={(result.model.Slug ?? "\u2205")} ");
+        }
+        catch { }
+        return result;
+    }
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
@@ -133,7 +149,7 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-        div([class_("editor-page")], [
+    div([class_("editor-page"), Abies.Html.Attributes.data("testid", "editor-page")], [
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-10 offset-md-1 col-xs-12")], [
@@ -146,7 +162,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Article Title"),
                                         value(model.Title),
-                                        oninput(new Message.TitleChanged(model.Title)),
+                                        oninput(d => new Message.TitleChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.TitleChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -156,7 +173,8 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("What's this article about?"),
                                         value(model.Description),
-                                        oninput(new Message.DescriptionChanged(model.Description)),
+                                        oninput(d => new Message.DescriptionChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.DescriptionChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),
@@ -166,9 +184,10 @@ public class Page : Element<Model, Message>
                                         rows("8"),
                                         placeholder("Write your article (in markdown)"),
                                         value(model.Body),
-                                        oninput(new Message.BodyChanged(model.Body)),
+                                        oninput(d => new Message.BodyChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.BodyChanged(d?.Value ?? "")),
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
-                                    ],[])
+                                    ], [])
                                 ]),
                                 fieldset([class_("form-group")], [
                                     input([
@@ -176,8 +195,9 @@ public class Page : Element<Model, Message>
                                         type("text"),
                                         placeholder("Enter tags"),
                                         value(model.TagInput),
-                                        oninput(new Message.TagInputChanged(model.TagInput)),
-                                          onkeypress(new Message.AddTag()),
+                                        oninput(d => new Message.TagInputChanged(d?.Value ?? "")),
+                                        onchange(d => new Message.TagInputChanged(d?.Value ?? "")),
+                                          onkeydown(e => e != null && e.Key == "Enter" ? new Message.AddTag() : new Message.NoOp()),
                                           ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ]),
                                     div([class_("tag-list")], [

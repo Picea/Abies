@@ -1,0 +1,186 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run E2E tests",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run E2E tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
+				"-c",
+				"Debug",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Start API server (5179)",
+			"type": "shell",
+			"command": "dotnet run --project Abies.Conduit.Api --no-build --urls http://localhost:5179",
+			"args": [],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start Frontend (5209)",
+			"type": "shell",
+			"command": "dotnet run --project Abies.Conduit --no-build",
+			"args": [],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run E2E tests (fresh)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run E2E tests (fresh)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run E2E tests (pass 1)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests (pass 2)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests (full suite pass 1)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests (full suite pass 2)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests (agent)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
+				"-v",
+				"m"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E Favorite and Pagination tests",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -v minimal --filter \"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E Favorite and Pagination tests",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -v minimal --filter \"FullyQualifiedName~Abies.Conduit.E2E.FavoriteTests|FullyQualifiedName~Abies.Conduit.E2E.PaginationTests\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run single E2E test",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj --filter FullyQualifiedName~Abies.Conduit.E2E.PaginationTests.CanNavigateArticlePages -l trx",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run E2E tests (project-only)",
+			"type": "shell",
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		}
+	]
+}

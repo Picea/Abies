@@ -29,12 +29,11 @@ public static partial class Runtime
         // Generate the virtual DOM
         var document = TProgram.View(initialModel);
 
-        var html = Render.Html(document.Body);
+    var html = Render.Html(document.Body);
 
-        RegisterHandlers(document.Body);
-
-        // Apply the patches
-        await Interop.SetAppContent(html);
+    // Apply the initial DOM and register handlers for the first render
+    await Interop.SetAppContent(html);
+    RegisterHandlers(document.Body);
 
         var model = initialModel;
         var dom = document.Body;
@@ -61,31 +60,9 @@ public static partial class Runtime
             // Compute the patches
             var patches = Operations.Diff(dom, alignedBody);
 
-            // Apply patches and (de)register handlers
+            // Apply patches (handler registration is coordinated inside Operations.Apply)
             foreach (var patch in patches)
             {
-                if (patch is AddHandler addHandler)
-                {
-                    if (addHandler.Handler.Command is not null && !_handlers.TryAdd(addHandler.Handler.CommandId, addHandler.Handler.Command))
-                    {
-                        continue;
-                    }
-                    if (addHandler.Handler.WithData is not null)
-                    {
-                        _dataHandlers[addHandler.Handler.CommandId] = (addHandler.Handler.WithData, addHandler.Handler.DataType ?? typeof(object));
-                    }
-                }
-                else if (patch is RemoveHandler removeHandler)
-                {
-                    if (removeHandler.Handler.Command is not null)
-                    {
-                        _handlers.TryRemove(removeHandler.Handler.CommandId, out _);
-                    }
-                    if (removeHandler.Handler.WithData is not null)
-                    {
-                        _dataHandlers.TryRemove(removeHandler.Handler.CommandId, out _);
-                    }
-                }
                 await Operations.Apply(patch);
             }
 
@@ -97,9 +74,43 @@ public static partial class Runtime
             {
                 case Navigation.Command.PushState pushState:
                     await Interop.PushState(pushState.Url.ToString());
+                    var pushedMsg = TProgram.OnUrlChanged(pushState.Url);
+                    Dispatch(pushedMsg);
                     break;
                 case Navigation.Command.Load load:
                     await Interop.Load(load.Url.ToString());
+                    break;
+                case Navigation.Command.ReplaceState replaceState:
+                    await Interop.ReplaceState(replaceState.Url.ToString());
+                    var replacedMsg = TProgram.OnUrlChanged(replaceState.Url);
+                    Dispatch(replacedMsg);
+                    break;
+                case Command.Batch batch:
+                    foreach (var cmd in batch.Commands)
+                    {
+                        switch (cmd)
+                        {
+                            case Navigation.Command.PushState ps:
+                                await Interop.PushState(ps.Url.ToString());
+                                var msg = TProgram.OnUrlChanged(ps.Url);
+                                Dispatch(msg);
+                                break;
+                            case Navigation.Command.Load ld:
+                                await Interop.Load(ld.Url.ToString());
+                                break;
+                            case Navigation.Command.ReplaceState rs:
+                                await Interop.ReplaceState(rs.Url.ToString());
+                                var rmsg = TProgram.OnUrlChanged(rs.Url);
+                                Dispatch(rmsg);
+                                break;
+                            default:
+                                using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+                                {
+                                    await TProgram.HandleCommand(cmd, Dispatch);
+                                }
+                                break;
+                        }
+                    }
                     break;
                 default:
                     using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
@@ -211,7 +222,7 @@ public static partial class Runtime
         }
     }
 
-    private static void RegisterHandlers(Node node)
+    internal static void RegisterHandlers(Node node)
     {
         
         if (node is Element element)
@@ -238,6 +249,56 @@ public static partial class Runtime
             }
         }
     }
+
+    internal static void RegisterHandler(DOM.Handler handler)
+    {
+        if (handler.Command is not null)
+        {
+            _handlers.TryAdd(handler.CommandId, handler.Command);
+        }
+        if (handler.WithData is not null)
+        {
+            _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
+        }
+    }
+
+    internal static void UnregisterHandler(DOM.Handler handler)
+    {
+        if (handler.Command is not null)
+        {
+            _handlers.TryRemove(handler.CommandId, out _);
+        }
+        if (handler.WithData is not null)
+        {
+            _dataHandlers.TryRemove(handler.CommandId, out _);
+        }
+    }
+
+    internal static void UnregisterHandlers(Node node)
+    {
+        if (node is Element element)
+        {
+            foreach (var attribute in element.Attributes)
+            {
+                if (attribute is Handler handler)
+                {
+                    if (handler.Command is not null)
+                    {
+                        _handlers.TryRemove(handler.CommandId, out _);
+                    }
+                    if (handler.WithData is not null)
+                    {
+                        _dataHandlers.TryRemove(handler.CommandId, out _);
+                    }
+                }
+            }
+
+            foreach (var child in element.Children)
+            {
+                UnregisterHandlers(child);
+            }
+        }
+    }
     
     private static System.ValueTuple Dispatch(Message message)
     {
@@ -248,18 +309,19 @@ public static partial class Runtime
     [JSExport]
     public static void Dispatch(string messageId)
     {
-        if (!_handlers.TryGetValue(messageId, out var message))
+        if (_handlers.TryGetValue(messageId, out var message))
         {
-            throw new InvalidOperationException("Message to dispatch not found");
+            var _ = Dispatch(message);
+            return;
         }
-
-        var _ = Dispatch(message);
+        // Missing handler can occur during DOM replacement; ignore gracefully
+        System.Diagnostics.Debug.WriteLine($"[Abies] Missing handler for messageId={messageId}");
     }
 
     [JSExport]
     public static void DispatchData(string messageId, string? json)
     {
-        if (_dataHandlers.TryGetValue(messageId, out var entry))
+    if (_dataHandlers.TryGetValue(messageId, out var entry))
         {
             object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
             var message = entry.handler(data);
@@ -267,12 +329,11 @@ public static partial class Runtime
             return;
         }
 
-        if (_handlers.TryGetValue(messageId, out var message2))
+    if (_handlers.TryGetValue(messageId, out var message2))
         {
             Dispatch(message2);
             return;
         }
-
-        throw new InvalidOperationException("Message to dispatch not found");
+    // Ignore missing handlers gracefully
     }
 }

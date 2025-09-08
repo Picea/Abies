@@ -33,18 +33,54 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
     .create();
 
 const registeredEvents = new Set();
+// Expose a small debug bridge so tests/tools can read runtime events
+if (typeof window !== 'undefined' && !window.__abiesDebug) {
+    try {
+        window.__abiesDebug = { logs: [], registeredEvents: [], consoleEnabled: false };
+    } catch (e) { /* ignore */ }
+}
 
 function ensureEventListener(eventName) {
     if (registeredEvents.has(eventName)) return;
-    document.body.addEventListener(eventName, genericEventHandler);
+    if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+        console.log('[Abies Debug] ensureEventListener for', eventName);
+    }
+    try { window.__abiesDebug && window.__abiesDebug.registeredEvents.push(eventName); } catch {}
+    const opts = (eventName === 'click') ? { capture: true } : undefined;
+    document.addEventListener(eventName, genericEventHandler, opts);
     registeredEvents.add(eventName);
 }
 
 function genericEventHandler(event) {
     const name = event.type;
-    const target = event.target.closest(`[data-event-${name}]`);
+    let origin = event.target;
+    if (origin && origin.nodeType === 3 /* TEXT_NODE */) {
+        origin = origin.parentElement;
+    }
+    const target = origin && origin.closest ? origin.closest(`[data-event-${name}]`) : null;
     if (!target) return;
+    // Ignore events coming from nodes that have been detached/replaced
+    if (!target.isConnected) return;
+    if (name === 'click') {
+        // For Abies-managed clicks, prevent native handlers and navigation early
+        try {
+            event.preventDefault();
+            // Stop further propagation to avoid duplicate handlers interfering
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+        } catch { /* ignore */ }
+    }
     const message = target.getAttribute(`data-event-${name}`);
+    try {
+        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+            console.log('[Abies Debug] genericEventHandler', { name, targetId: target.id, message, isConnected: target.isConnected });
+        }
+        try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'genericEventHandler', name, targetId: target.id, message, isConnected: target.isConnected, time: Date.now() }); } catch {}
+    } catch (err) {
+        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+            console.log('[Abies Debug] genericEventHandler failed to stringify target', err);
+        }
+    }
     if (!message) {
         console.error(`No message id found in data-event-${name} attribute.`);
         return;
@@ -56,16 +92,14 @@ function genericEventHandler(event) {
         }
     });
     try {
-        const data = buildEventData(event, target);
-        exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
-        if (name === 'click') {
-            event.preventDefault();
-        }
+    const data = buildEventData(event, target);
+    exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
         span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
         span.recordException(err);
         span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
+        // Do not rethrow to avoid crashing the page when handler IDs are stale
+        console.error(err);
     } finally {
         span.end();
     }
@@ -92,11 +126,25 @@ function buildEventData(event, target) {
 /**
  * Adds event listeners to the document body for interactive elements.
  */
-function addEventListeners() {
-    document.querySelectorAll('*').forEach(el => {
+function addEventListeners(root) {
+    const scope = root || document;
+    const nodes = [];
+    if (scope && scope.nodeType === 1 /* ELEMENT_NODE */) nodes.push(scope);
+    scope.querySelectorAll('*').forEach(el => {
+        nodes.push(el);
+    });
+    nodes.forEach(el => {
         for (const attr of el.attributes) {
             if (attr.name.startsWith('data-event-')) {
                 const name = attr.name.substring('data-event-'.length);
+                try {
+                    if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+                        console.log('[Abies Debug] addEventListeners found', attr.name, 'on', el.id || el.tagName);
+                    }
+                    try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'addEventListeners', attr: attr.name, el: el.id || el.tagName, time: Date.now() }); } catch {}
+                } catch (err) {
+                    /* ignore logging errors */
+                }
                 ensureEventListener(name);
             }
         }
@@ -123,7 +171,7 @@ setModuleImports('abies.js', {
             tempDiv.innerHTML = childHtml;
             const childElement = tempDiv.firstElementChild;
             parent.appendChild(childElement);
-            addEventListeners(); // Reattach event listeners to new elements
+            addEventListeners(childElement); // Reattach event listeners to new subtree
         } else {
             console.error(`Parent element with ID ${parentId} not found.`);
         }
@@ -165,7 +213,7 @@ setModuleImports('abies.js', {
             tempDiv.innerHTML = newHtml;
             const newElement = tempDiv.firstElementChild;
             oldNode.parentNode.replaceChild(newElement, oldNode);
-            addEventListeners(); // Reattach event listeners to new elements
+            addEventListeners(newElement); // Reattach event listeners to new subtree
         } else {
             console.error(`Node with ID ${oldNodeId} not found or has no parent.`);
         }
@@ -193,28 +241,62 @@ setModuleImports('abies.js', {
      */
     updateAttribute: withSpan('updateAttribute', async (nodeId, propertyName, propertyValue) => {
         const node = document.getElementById(nodeId);
-        if (node) {
-            node.setAttribute(propertyName, propertyValue);
-            if (propertyName.startsWith('data-event-')) {
-                const name = propertyName.substring('data-event-'.length);
-                ensureEventListener(name);
-            }
-        } else {
+        if (!node) {
             console.error(`Node with ID ${nodeId} not found.`);
+            return;
         }
+        const lower = propertyName.toLowerCase();
+        const isBooleanAttr = (
+            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+        );
+        if (lower === 'value' && ('value' in node)) {
+            // Keep the live value in sync for inputs/textareas
+            node.value = propertyValue;
+            node.setAttribute(propertyName, propertyValue);
+        } else if (isBooleanAttr) {
+            // Boolean attributes: presence => true
+            node.setAttribute(propertyName, '');
+            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+        } else {
+            node.setAttribute(propertyName, propertyValue);
+        }
+        if (propertyName.startsWith('data-event-')) {
+            const name = propertyName.substring('data-event-'.length);
+            ensureEventListener(name);
+        }
+    // Generic debug hook (no app-specific attribute branches)
+    try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'updateAttribute', propertyName, propertyValue, nodeId, time: Date.now() }); } catch {}
     }),
 
     addAttribute: withSpan('addAttribute', async (nodeId, propertyName, propertyValue) => {
         const node = document.getElementById(nodeId);
-        if (node) {
-            node.setAttribute(propertyName, propertyValue);
-            if (propertyName.startsWith('data-event-')) {
-                const name = propertyName.substring('data-event-'.length);
-                ensureEventListener(name);
-            }
-        } else {
+        if (!node) {
             console.error(`Node with ID ${nodeId} not found.`);
+            return;
         }
+        const lower = propertyName.toLowerCase();
+        const isBooleanAttr = (
+            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+        );
+        if (lower === 'value' && ('value' in node)) {
+            node.value = propertyValue;
+            node.setAttribute(propertyName, propertyValue);
+        } else if (isBooleanAttr) {
+            node.setAttribute(propertyName, '');
+            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+        } else {
+            node.setAttribute(propertyName, propertyValue);
+        }
+        if (propertyName.startsWith('data-event-')) {
+            const name = propertyName.substring('data-event-'.length);
+            ensureEventListener(name);
+        }
+    // Generic debug hook (no app-specific attribute branches)
+    try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'addAttribute', propertyName, propertyValue, nodeId, time: Date.now() }); } catch {}
     }),
 
     /**
@@ -225,7 +307,16 @@ setModuleImports('abies.js', {
     removeAttribute: withSpan('removeAttribute', async (nodeId, propertyName) =>{
         const node = document.getElementById(nodeId);
         if (node) {
+            const lower = propertyName.toLowerCase();
+            const isBooleanAttr = (
+                lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+            );
             node.removeAttribute(propertyName);
+            if (isBooleanAttr) {
+                try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
+            }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
@@ -255,6 +346,8 @@ setModuleImports('abies.js', {
     setAppContent: withSpan('setAppContent', async (html) => {
         document.body.innerHTML = html;
         addEventListeners(); // Ensure event listeners are attached
+        // Signal that the app is ready for interaction
+        window.abiesReady = true;
     }),
 
     // Expose functions to .NET via JS interop (if needed)
@@ -291,7 +384,7 @@ setModuleImports('abies.js', {
     }),
 
     onUrlChange: (callback) => {
-        window.addEventListener("popstate", () => callback(getCurrentUrl()));
+    window.addEventListener("popstate", () => callback(window.location.href));
     },
 
     onFormSubmit: (callback) => {
@@ -305,10 +398,15 @@ setModuleImports('abies.js', {
     onLinkClick: (callback) => {
         document.addEventListener("click", (event) => {
             const link = event.target.closest("a");
-            if (link) {
-                event.preventDefault();
-                callback(link.href);
-            }
+            if (!link) return;
+            // Skip if this anchor has Abies handlers; genericEventHandler will dispatch
+            const hasAbiesHandler = Array.from(link.attributes).some(a => a.name.startsWith('data-event-'));
+            if (hasAbiesHandler) return;
+            // Skip anchors with empty or hash hrefs which are used as UI controls
+            const rawHref = link.getAttribute('href') || '';
+            if (rawHref === '' || rawHref === '#') return;
+            event.preventDefault();
+            callback(link.href);
         });
     }
 
@@ -319,3 +417,11 @@ const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 
 await runMain(); // Ensure the .NET runtime is initialized
+
+// Make sure any existing data-event-* attributes in the initial DOM are discovered
+try {
+    addEventListeners();
+    console.log('[Abies Debug] addEventListeners invoked after runMain');
+} catch (err) {
+    console.error('[Abies Debug] failed to invoke addEventListeners after runMain', err);
+}
