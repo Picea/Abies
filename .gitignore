@@ -125,6 +125,14 @@ ipch/
 .apphost.pid
 .apphost.log
 
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
 # TFS 2012 Local Workspace
 $tf/
 
