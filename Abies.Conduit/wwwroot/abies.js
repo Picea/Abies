@@ -1,7 +1,40 @@
 // wwwroot/js/pine.js
 
 import { dotnet } from './_framework/dotnet.js';
-import { trace, SpanStatusCode } from 'https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js';
+import { trace, SpanStatusCode, context, setGlobalTracerProvider } from 'https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js';
+// Optional: wire browser spans to Aspire via OTLP/HTTP if available
+try {
+  const [{ WebTracerProvider }] = await Promise.all([
+    import('https://unpkg.com/@opentelemetry/sdk-trace-web@1.18.1/build/esm/index.js')
+  ]);
+  const { BatchSpanProcessor } = await import('https://unpkg.com/@opentelemetry/sdk-trace-base@1.18.1/build/esm/index.js');
+  const { OTLPTraceExporter } = await import('https://unpkg.com/@opentelemetry/exporter-trace-otlp-http@0.50.0/build/esm/index.js');
+  const { Resource } = await import('https://unpkg.com/@opentelemetry/resources@1.18.1/build/esm/index.js');
+  const { SemanticResourceAttributes } = await import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js');
+
+  const guessOtlp = () => {
+    // Prefer explicit global if present
+    if (window.__OTLP_ENDPOINT) return window.__OTLP_ENDPOINT;
+    // Try common Aspire dev ports (http and https)
+    const candidates = [
+      'http://localhost:19062/v1/traces',
+      'https://localhost:21202/v1/traces'
+    ];
+    return candidates[0];
+  };
+
+  const exporter = new OTLPTraceExporter({ url: guessOtlp() });
+  const provider = new WebTracerProvider({
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web',
+    })
+  });
+  provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+  provider.register();
+  setGlobalTracerProvider(provider);
+} catch (err) {
+  // If OTel web SDK fails to load (offline), continue without exporting from browser
+}
 
 const tracer = trace.getTracer('Abies.JS');
 
