@@ -18,7 +18,7 @@ public static class ApiClient
         PropertyNameCaseInsensitive = true
     };
     
-    private const string BaseUrl = "http://localhost:5168/api";
+    private const string BaseUrl = "http://localhost:5179/api";
 
     public static void SetAuthToken(string? token)
     {
@@ -210,40 +210,84 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> GetAsync<T>(string endpoint)
     {
-        var response = await Client.GetAsync($"{BaseUrl}{endpoint}");
-        return await ProcessResponseAsync<T>(response);
+        try
+        {
+            Console.WriteLine($"[ApiClient] GET {BaseUrl}{endpoint}");
+            var response = await Client.GetAsync($"{BaseUrl}{endpoint}");
+            return await ProcessResponseAsync<T>(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiClient] GET failed: {BaseUrl}{endpoint} :: {ex.Message}");
+            throw;
+        }
     }
 
     private static async Task<T> PostAsync<T>(string endpoint, object? data)
     {
         var content = data != null
             ? new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json")
-            : null;
-
-        var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
-        return await ProcessResponseAsync<T>(response);
+            : new StringContent("{}", Encoding.UTF8, "application/json");
+        try
+        {
+            Console.WriteLine($"[ApiClient] POST {BaseUrl}{endpoint}");
+            var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
+            return await ProcessResponseAsync<T>(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiClient] POST failed: {BaseUrl}{endpoint} :: {ex.Message}");
+            throw;
+        }
     }
 
     private static async Task<T> PutAsync<T>(string endpoint, object data)
     {
         var content = new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json");
-        var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
-        return await ProcessResponseAsync<T>(response);
+        try
+        {
+            Console.WriteLine($"[ApiClient] PUT {BaseUrl}{endpoint}");
+            var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
+            return await ProcessResponseAsync<T>(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiClient] PUT failed: {BaseUrl}{endpoint} :: {ex.Message}");
+            throw;
+        }
     }
 
     private static async Task<T> DeleteAsync<T>(string endpoint)
     {
-        var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
-        return await ProcessResponseAsync<T>(response);
+        try
+        {
+            Console.WriteLine($"[ApiClient] DELETE {BaseUrl}{endpoint}");
+            var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
+            return await ProcessResponseAsync<T>(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiClient] DELETE failed: {BaseUrl}{endpoint} :: {ex.Message}");
+            throw;
+        }
     }
 
     private static async Task DeleteAsync(string endpoint)
     {
-        var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"API error: {response.StatusCode}, {errorContent}");
+            Console.WriteLine($"[ApiClient] DELETE {BaseUrl}{endpoint}");
+            var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"API error: {response.StatusCode}, {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiClient] DELETE failed: {BaseUrl}{endpoint} :: {ex.Message}");
+            throw;
         }
     }
 
@@ -336,7 +380,7 @@ public class CommentResponse
 
 public class CommentData
 {
-    public string Id { get; set; } = string.Empty;
+    public int Id { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;

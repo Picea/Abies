@@ -25,7 +25,8 @@ public static class AuthService
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);
@@ -42,7 +43,8 @@ public static class AuthService
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);
@@ -58,25 +60,29 @@ public static class AuthService
             return null;
         }
         
-        try
+        // Fast-path: set token immediately so UI can reflect authenticated state,
+        // then try to hydrate full user details in the background.
+        ApiClient.SetAuthToken(token);
+        _currentUser = new User(new UserName(string.Empty), new Email(string.Empty), new Token(token), string.Empty, string.Empty);
+        _ = Task.Run(async () =>
         {
-            ApiClient.SetAuthToken(token);
-            var response = await ApiClient.GetCurrentUserAsync();
-            
-            _currentUser = new User(
-                new UserName(response.User.Username),
-                new Email(response.User.Email),
-                new Token(response.User.Token),
-                response.User.Image ?? ""
-            );
-            
-            return _currentUser;
-        }
-        catch
-        {
-            ApiClient.SetAuthToken(null);
-            return null;
-        }
+            try
+            {
+                var response = await ApiClient.GetCurrentUserAsync();
+                _currentUser = new User(
+                    new UserName(response.User.Username),
+                    new Email(response.User.Email),
+                    new Token(response.User.Token),
+                    response.User.Image ?? string.Empty,
+                    response.User.Bio ?? string.Empty
+                );
+            }
+            catch
+            {
+                // If hydration fails, keep token-based user; callers already updated UI
+            }
+        });
+        return _currentUser;
     }
 
     public static async Task<User?> LoadUserFromLocalStorageAsync()
@@ -100,7 +106,8 @@ public static async Task<User> UpdateUserAsync(string username, string email, st
             new UserName(response.User.Username),
             new Email(response.User.Email),
             new Token(response.User.Token),
-            response.User.Image ?? ""
+            response.User.Image ?? "",
+            response.User.Bio ?? ""
         );
         
         ApiClient.SetAuthToken(response.User.Token);

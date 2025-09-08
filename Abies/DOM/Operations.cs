@@ -86,11 +86,30 @@ namespace Abies.DOM
         public readonly Handler Handler = handler;
     }
 
+    public readonly struct UpdateHandler(Element element, Handler oldHandler, Handler newHandler) : Patch
+    {
+        public readonly Element Element = element;
+        public readonly Handler OldHandler = oldHandler;
+        public readonly Handler NewHandler = newHandler;
+    }
+
     public readonly struct UpdateText(Text node, string text, string newId) : Patch
     {
         public readonly Text Node = node;
         public readonly string Text = text;
         public readonly string NewId = newId;
+    }
+
+    public readonly struct AddText(Element parent, Text child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly Text Child = child;
+    }
+
+    public readonly struct RemoveText(Element parent, Text child) : Patch
+    {
+        public readonly Element Parent = parent;
+        public readonly Text Child = child;
     }
 
     public readonly struct AddRaw(Element parent, RawHtml child) : Patch
@@ -137,11 +156,7 @@ namespace Abies.DOM
                     sb.Append($"<{element.Tag} id=\"{element.Id}\"");
                     foreach (var attr in element.Attributes)
                     {
-                        if (attr is Handler handler)
-                        {
-                            sb.Append($" {handler.Name}=\"{handler.Value}\"");
-                        }
-
+                        // For handlers, only render the data-event-* attribute; do not render a raw event name attribute
                         sb.Append($" {attr.Name}=\"{System.Web.HttpUtility.HtmlEncode(attr.Value)}\"");
                     }
                     sb.Append('>');
@@ -216,14 +231,20 @@ namespace Abies.DOM
             {
                 case AddRoot addRoot:
                     await Interop.SetAppContent(Render.Html(addRoot.Element));
+                    Abies.Runtime.RegisterHandlers(addRoot.Element);
                     break;
                 case ReplaceChild replaceChild:
+                    // Unregister old handlers before replacing DOM
+                    Abies.Runtime.UnregisterHandlers(replaceChild.OldElement);
                     await Interop.ReplaceChildHtml(replaceChild.OldElement.Id, Render.Html(replaceChild.NewElement));
+                    Abies.Runtime.RegisterHandlers(replaceChild.NewElement);
                     break;
                 case AddChild addChild:
                     await Interop.AddChildHtml(addChild.Parent.Id, Render.Html(addChild.Child));
+                    Abies.Runtime.RegisterHandlers(addChild.Child);
                     break;
                 case RemoveChild removeChild:
+                    Abies.Runtime.UnregisterHandlers(removeChild.Child);
                     await Interop.RemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
                     break;
                 case UpdateAttribute updateAttribute:
@@ -236,13 +257,38 @@ namespace Abies.DOM
                     await Interop.RemoveAttribute(removeAttribute.Element.Id, removeAttribute.Attribute.Name);
                     break;
                 case AddHandler addHandler:
-                    await Interop.AddAttribute(addHandler.Element.Id, addHandler.Handler.Name, addHandler.Handler.Value);
+                    // First register the handler so events dispatched immediately after DOM update are handled
+                    Abies.Runtime.RegisterHandler(addHandler.Handler);
+                    await Interop.AddAttribute(addHandler.Element.Id, ((Attribute)addHandler.Handler).Name, addHandler.Handler.Value);
                     break;
                 case RemoveHandler removeHandler:
-                    await Interop.RemoveAttribute(removeHandler.Element.Id, removeHandler.Handler.Name);
+                    // First remove the DOM attribute to avoid dispatching with stale IDs, then unregister
+                    await Interop.RemoveAttribute(removeHandler.Element.Id, ((Attribute)removeHandler.Handler).Name);
+                    Abies.Runtime.UnregisterHandler(removeHandler.Handler);
+                    break;
+                case UpdateHandler updateHandler:
+                    // Atomically update handler mapping and DOM attribute value to avoid gaps
+                    // 1) Register the new handler command id
+                    Abies.Runtime.RegisterHandler(updateHandler.NewHandler);
+                    // 2) Update the DOM attribute value to the new command id
+                    await Interop.UpdateAttribute(updateHandler.Element.Id, ((Attribute)updateHandler.NewHandler).Name, updateHandler.NewHandler.Value);
+                    // 3) Unregister the old handler command id
+                    Abies.Runtime.UnregisterHandler(updateHandler.OldHandler);
                     break;
                 case UpdateText updateText:
+                    // Update the text content first using the old ID
                     await Interop.UpdateTextContent(updateText.Node.Id, updateText.Text);
+                    // If the text node's ID changed, update the DOM element's id attribute
+                    if (!string.Equals(updateText.Node.Id, updateText.NewId, StringComparison.Ordinal))
+                    {
+                        await Interop.UpdateAttribute(updateText.Node.Id, "id", updateText.NewId);
+                    }
+                    break;
+                case AddText addText:
+                    await Interop.AddChildHtml(addText.Parent.Id, Render.Html(addText.Child));
+                    break;
+                case RemoveText removeText:
+                    await Interop.RemoveChild(removeText.Parent.Id, removeText.Child.Id);
                     break;
                 case AddRaw addRaw:
                     await Interop.AddChildHtml(addRaw.Parent.Id, Render.Html(addRaw.Child));
@@ -341,6 +387,20 @@ namespace Abies.DOM
                 {
                     patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
                 }
+                else if (oldNode is Text ot && newNode is Text nt)
+                {
+                    patches.Add(new UpdateText(ot, nt.Value, nt.Id));
+                }
+                else if (oldNode is Text ot2 && newNode is Element ne3)
+                {
+                    // Replace text with element via raw representation
+                    patches.Add(new ReplaceRaw(new RawHtml(ot2.Id, Render.Html(ot2)), new RawHtml(ne3.Id, Render.Html(ne3))));
+                }
+                else if (oldNode is Element oe3 && newNode is Text nt2)
+                {
+                    // Replace element with text via raw representation
+                    patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
+                }
             }
         }// Diff attribute collections using dictionaries for O(n) lookup
         private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
@@ -399,15 +459,23 @@ namespace Abies.DOM
                         oldMap.Remove(newAttr.Id);
                         if (!newAttr.Equals(oldAttr))
                         {
-                            if (oldAttr is Handler oldHandler)
-                                patches.Add(new RemoveHandler(oldElement, oldHandler));
-                            else if (newAttr is Handler)
-                                patches.Add(new RemoveAttribute(oldElement, oldAttr));
-
-                            if (newAttr is Handler newHandler)
-                                patches.Add(new AddHandler(newElement, newHandler));
+                            if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
+                            {
+                                // Same attribute id and name, but handler value changed: update atomically
+                                patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                            }
                             else
-                                patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                            {
+                                if (oldAttr is Handler oldHandler2)
+                                    patches.Add(new RemoveHandler(oldElement, oldHandler2));
+                                else if (newAttr is Handler)
+                                    patches.Add(new RemoveAttribute(oldElement, oldAttr));
+
+                                if (newAttr is Handler newHandler2)
+                                    patches.Add(new AddHandler(newElement, newHandler2));
+                                else
+                                    patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                            }
                         }
                     }
                     else
@@ -456,6 +524,8 @@ namespace Abies.DOM
                     patches.Add(new RemoveChild(oldParent, oldChild));
                 else if (oldChildren[i] is RawHtml oldRaw)
                     patches.Add(new RemoveRaw(oldParent, oldRaw));
+                else if (oldChildren[i] is Text oldText)
+                    patches.Add(new RemoveText(oldParent, oldText));
             }
 
             // Add additional new children
@@ -465,6 +535,8 @@ namespace Abies.DOM
                     patches.Add(new AddChild(newParent, newChild));
                 else if (newChildren[i] is RawHtml newRaw)
                     patches.Add(new AddRaw(newParent, newRaw));
+                else if (newChildren[i] is Text newText)
+                    patches.Add(new AddText(newParent, newText));
             }
         }
     }

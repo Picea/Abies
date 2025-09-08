@@ -4,6 +4,7 @@ using Abies.Conduit;
 using Abies.DOM;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Globalization;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -57,8 +58,14 @@ public record Model(
     User? CurrentUser = null
 );
 
-public class Page : Element<Model, Message>
-{
+    public class Page : Element<Model, Message>
+    {
+        private static string FormatDate(string value)
+        {
+            if (DateTime.TryParse(value, out var dt))
+                return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+            return value;
+        }
     public static Model Initialize(Message argument)
     {
         return new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true, 0, null);
@@ -194,7 +201,7 @@ public class Page : Element<Model, Message>
                     a([class_("author"), href($"/profile/{article.Author.Username}")], [
                         text(article.Author.Username)
                     ]),
-                    span([class_("date")], [text(article.CreatedAt)])
+                    span([class_("date")], [text(FormatDate(article.CreatedAt))])
                 ]),
                 div([class_("pull-xs-right")], [
                     button([class_(article.Favorited
@@ -210,13 +217,19 @@ public class Page : Element<Model, Message>
             a([class_("preview-link"), href($"/article/{article.Slug}")], [
                 h1([], [text(article.Title)]),
                 p([], [text(article.Description)]),
-                span([], [text("Read more...")]),
-                ul([class_("tag-list")], [..article.TagList.ConvertAll(tag => 
-                    li([class_("tag-default tag-pill tag-outline")], [
+                span([], [text("Read more...")])
+            ]),
+            ul([class_("tag-list")], [..article.TagList.ConvertAll(tag =>
+                li([], [
+                    a([
+                        class_("tag-default tag-pill tag-outline"),
+                        href(""),
+                        onclick(new Message.TagSelected(tag))
+                    ], [
                         text(tag)
                     ])
-                )])
-            ])
+                ])
+            )])
         ]);
 
     private static Node ArticleList(Model model) =>
@@ -236,17 +249,27 @@ public class Page : Element<Model, Message>
         {
             items.Add(
                 li([class_(i == model.CurrentPage ? "page-item active" : "page-item")], [
-                    a([
-                        class_("page-link"),
-                        href(""),
-                        onclick(new Message.PageSelected(i))
-                    ], [text((i + 1).ToString())])
+                    (i == model.CurrentPage
+                        ? a([
+                            class_("page-link active"),
+                            ariaCurrent("page"),
+                            href(""),
+                            onclick(new Message.PageSelected(i))
+                        ], [text((i + 1).ToString())])
+                        : a([
+                            class_("page-link"),
+                            href(""),
+                            onclick(new Message.PageSelected(i))
+                        ], [text((i + 1).ToString())]))
                 ]));
         }
 
-        return nav([], [
-            ul([class_("pagination")], [..items])
-        ]);
+    return nav([], [
+        ul([
+            class_("pagination"),
+            Abies.Html.Attributes.data("current-page", (model.CurrentPage + 1).ToString())
+        ], [..items])
+    ]);
     }
 
     private static Node TagCloud(Model model) =>
@@ -264,13 +287,18 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-        div([class_("home-page")], [
+        div([class_("home-page"), Abies.Html.Attributes.data("testid", "home-page")], [
             Banner(),
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-9")], [
                         FeedToggle(model),
-                        ArticleList(model),
+                        div([
+                                Abies.Html.Attributes.data("testid", "article-list"),
+                                Abies.Html.Attributes.data("status", model.IsLoading ? "loading" : "loaded")
+                            ], [
+                                ArticleList(model)
+                            ]),
                         Pagination(model)
                     ]),
                     div([class_("col-md-3")], [

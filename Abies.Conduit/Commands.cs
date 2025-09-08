@@ -27,6 +27,7 @@ public sealed record DeleteCommentCommand(string Slug, string CommentId) : Abies
 public sealed record CreateArticleCommand(string Title, string Description, string Body, List<string> TagList) : Abies.Command;
 
 public sealed record UpdateArticleCommand(string Slug, string Title, string Description, string Body) : Abies.Command;
+public sealed record LoadArticleForEditorCommand(string Slug) : Abies.Command;
 
 public sealed record ToggleFavoriteCommand(string Slug, bool CurrentState) : Abies.Command;
 
@@ -35,3 +36,5 @@ public sealed record LoadProfileCommand(string Username) : Abies.Command;
 public sealed record ToggleFollowCommand(string Username, bool CurrentState) : Abies.Command;
 
 public sealed record DeleteArticleCommand(string Slug) : Abies.Command;
+
+public sealed record LogoutCommand() : Abies.Command;

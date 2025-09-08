@@ -6,6 +6,7 @@ using Abies.Conduit;
 using Markdig;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
+using System.Globalization;
 
 namespace Abies.Conduit.Page.Article;
 
@@ -44,6 +45,12 @@ public record Model(
 
 public class Page : Element<Model, Message>
 {
+    private static string FormatDate(string value)
+    {
+        if (DateTime.TryParse(value, out var dt))
+            return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        return value;
+    }
     public static Model Initialize(Message argument)
     {
         return new Model(new Slug(""));
@@ -92,7 +99,7 @@ public class Page : Element<Model, Message>
                     CommentInput = "",
                     SubmittingComment = false
                 },
-                Commands.None
+                new LoadCommentsCommand(model.Slug.Value)
             ),
             Message.DeleteComment delete => (
                 model,
@@ -106,11 +113,24 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             Message.ToggleFavorite => (
-                model,
+                model.Article != null
+                    ? model with
+                    {
+                        Article = model.Article with
+                        {
+                            Favorited = !model.Article.Favorited,
+                            FavoritesCount = model.Article.Favorited
+                                ? System.Math.Max(0, model.Article.FavoritesCount - 1)
+                                : model.Article.FavoritesCount + 1
+                        }
+                    }
+                    : model,
                 model.Article != null ? new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) : Commands.None
             ),
             Message.ToggleFollow => (
-                model,
+                model.Article != null
+                    ? model with { Article = model.Article with { Author = model.Article.Author with { Following = !model.Article.Author.Following } } }
+                    : model,
                 model.Article != null ? new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) : Commands.None
             ),
             Message.DeleteArticle => (
@@ -131,7 +151,7 @@ public class Page : Element<Model, Message>
                 a([href($"/profile/{article.Author.Username}")], [
                     text(article.Author.Username)
                 ]),
-                span([class_("date")], [text(article.CreatedAt)])
+                span([class_("date")], [text(FormatDate(article.CreatedAt))])
             ]),
             showEditDelete
                 ? div([], [                    a([class_("btn btn-outline-secondary btn-sm"), 
@@ -147,8 +167,8 @@ public class Page : Element<Model, Message>
                         ])
                   ])
                 : div([], [                    button([class_(article.Author.Following 
-                        ? "btn btn-sm btn-secondary" 
-                        : "btn btn-sm btn-outline-secondary"),
+                        ? "btn btn-sm btn-secondary action-btn" 
+                        : "btn btn-sm btn-outline-secondary action-btn"),
                         onclick(new Message.ToggleFollow())],
                         [
                             i([class_("ion-plus-round")], []),
@@ -157,8 +177,8 @@ public class Page : Element<Model, Message>
                                 : $" Follow {article.Author.Username}")
                         ]),
                     text(" "),                    button([class_(article.Favorited 
-                        ? "btn btn-sm btn-primary" 
-                        : "btn btn-sm btn-outline-primary"),
+                        ? "btn btn-sm btn-primary action-btn" 
+                        : "btn btn-sm btn-outline-primary action-btn"),
                         onclick(new Message.ToggleFavorite())],
                         [
                             i([class_("ion-heart")], []),
@@ -180,7 +200,7 @@ public class Page : Element<Model, Message>
     private static Node ArticleContent(Conduit.Page.Home.Article article)
     {
         var html = Markdig.Markdown.ToHtml(article.Body);
-        return div([class_("row article-content")], [
+    return div([class_("row article-content"), Abies.Html.Attributes.data("testid", "article-content")], [
             div([class_("col-md-12")], [
                 raw(html),
                 ul([class_("tag-list")],
@@ -204,18 +224,23 @@ public class Page : Element<Model, Message>
                 ])
               ])
             : form([class_("card comment-form")], [
-                div([class_("card-block")], [                    textarea([class_("form-control"),
+                div([class_("card-block")], [
+                    textarea([
+                        class_("form-control"),
                         placeholder("Write a comment..."),
                         rows("3"),
-                        value(model.CommentInput),
-                        oninput(new Message.CommentInputChanged(model.CommentInput))],
-                        []
-                    )
+                        oninput(d => new Message.CommentInputChanged(d?.Value ?? "")),
+                        onchange(d => new Message.CommentInputChanged(d?.Value ?? ""))
+                    ], [text(model.CommentInput)])
                 ]),
-                div([class_("card-footer")], [                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),                    button([class_("btn btn-sm btn-primary"),
-                        disabled((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment).ToString()),
-                        onclick(new Message.SubmitComment())],
-                        [text("Post Comment")])
+                div([class_("card-footer")], [
+                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),
+                    button([
+                        class_("btn btn-sm btn-primary"),
+                        type("button"),
+                        ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>()),
+                        onclick(new Message.SubmitComment())
+                    ], [text("Post Comment")])
                 ])
               ]);
 
@@ -231,7 +256,7 @@ private static Node CommentCard(Model model, Comment comment) =>
                 a([class_("comment-author"), href($"/profile/{comment.Author.Username}")], [
                     text(comment.Author.Username)
                 ]),
-                span([class_("date-posted")], [text(comment.CreatedAt)]),
+                span([class_("date-posted")], [text(FormatDate(comment.CreatedAt))]),
                 comment.Author.Username == (model.CurrentUser?.Username.Value ?? "")
                     ? span([class_("mod-options")], [                        i([class_("ion-trash-a"), 
                           onclick(new Message.DeleteComment(comment.Id))], [])
@@ -251,7 +276,7 @@ private static Node CommentCard(Model model, Comment comment) =>
 
     public static Node View(Model model) =>
         model.IsLoading || model.Article == null
-            ? div([class_("article-page")], [
+            ? div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
                 div([class_("container")], [
                     div([class_("row")], [
                         div([class_("col-md-10 offset-md-1")], [
@@ -260,7 +285,7 @@ private static Node CommentCard(Model model, Comment comment) =>
                     ])
                 ])
               ])
-            : div([class_("article-page")], [
+            : div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
                 ArticleBanner(model.Article, model.CurrentUser is User u && u.Username.Value == model.Article.Author.Username),                div([class_("container page")], [                    div([], [ArticleContent(model.Article)]),
                     hr([class_("hr")]),
                     div([class_("article-actions")], [
