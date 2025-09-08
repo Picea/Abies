@@ -133,6 +133,9 @@ Thumbs.db
 .idea/
 *.sln.iml
 
+# Local scratch
+.trash/
+
 # TFS 2012 Local Workspace
 $tf/
 
