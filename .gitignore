@@ -121,6 +121,10 @@ ipch/
 # Visual Studio Trace Files
 *.e2e
 
+# Local runtime artifacts
+.apphost.pid
+.apphost.log
+
 # TFS 2012 Local Workspace
 $tf/
 
