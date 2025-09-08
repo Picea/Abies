@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 using Abies.Conduit;
+using System.Globalization;
 
 namespace Abies.Conduit.Page.Profile;
 
@@ -38,6 +39,12 @@ public record Model(
 
 public class Page : Element<Model, Message>
 {
+    private static string FormatDate(string value)
+    {
+        if (DateTime.TryParse(value, out var dt))
+            return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        return value;
+    }
     public static Model Initialize(Message argument)
     {
         return new Model(new UserName(""));
@@ -163,7 +170,7 @@ public class Page : Element<Model, Message>
                     a([class_("author"), href($"/profile/{article.Author.Username}")], [
                         text(article.Author.Username)
                     ]),
-                    span([class_("date")], [text(article.CreatedAt)])
+                    span([class_("date")], [text(FormatDate(article.CreatedAt))])
                 ]),
                 div([class_("pull-xs-right")], [
                     button([class_(article.Favorited
