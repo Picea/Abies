@@ -210,17 +210,8 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> GetAsync<T>(string endpoint)
     {
-        try
-        {
-            Console.WriteLine($"[ApiClient] GET {BaseUrl}{endpoint}");
-            var response = await Client.GetAsync($"{BaseUrl}{endpoint}");
-            return await ProcessResponseAsync<T>(response);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ApiClient] GET failed: {BaseUrl}{endpoint} :: {ex.Message}");
-            throw;
-        }
+        var response = await Client.GetAsync($"{BaseUrl}{endpoint}");
+        return await ProcessResponseAsync<T>(response);
     }
 
     private static async Task<T> PostAsync<T>(string endpoint, object? data)
@@ -228,66 +219,30 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
         var content = data != null
             ? new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json")
             : new StringContent("{}", Encoding.UTF8, "application/json");
-        try
-        {
-            Console.WriteLine($"[ApiClient] POST {BaseUrl}{endpoint}");
-            var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
-            return await ProcessResponseAsync<T>(response);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ApiClient] POST failed: {BaseUrl}{endpoint} :: {ex.Message}");
-            throw;
-        }
+        var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
+        return await ProcessResponseAsync<T>(response);
     }
 
     private static async Task<T> PutAsync<T>(string endpoint, object data)
     {
         var content = new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json");
-        try
-        {
-            Console.WriteLine($"[ApiClient] PUT {BaseUrl}{endpoint}");
-            var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
-            return await ProcessResponseAsync<T>(response);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ApiClient] PUT failed: {BaseUrl}{endpoint} :: {ex.Message}");
-            throw;
-        }
+        var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
+        return await ProcessResponseAsync<T>(response);
     }
 
     private static async Task<T> DeleteAsync<T>(string endpoint)
     {
-        try
-        {
-            Console.WriteLine($"[ApiClient] DELETE {BaseUrl}{endpoint}");
-            var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
-            return await ProcessResponseAsync<T>(response);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ApiClient] DELETE failed: {BaseUrl}{endpoint} :: {ex.Message}");
-            throw;
-        }
+        var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
+        return await ProcessResponseAsync<T>(response);
     }
 
     private static async Task DeleteAsync(string endpoint)
     {
-        try
+        var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
+        if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"[ApiClient] DELETE {BaseUrl}{endpoint}");
-            var response = await Client.DeleteAsync($"{BaseUrl}{endpoint}");
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"API error: {response.StatusCode}, {errorContent}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ApiClient] DELETE failed: {BaseUrl}{endpoint} :: {ex.Message}");
-            throw;
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"API error: {response.StatusCode}, {errorContent}");
         }
     }
 

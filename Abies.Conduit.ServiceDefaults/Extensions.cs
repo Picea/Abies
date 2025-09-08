@@ -22,6 +22,7 @@ public static class ServiceDefaultsExtensions
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(builder.Environment.ApplicationName))
             .WithTracing(t => t
+                .AddSource("Abies")
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddOtlpExporter())
