@@ -56,6 +56,20 @@ void (async () => {
         const { setGlobalTracerProvider } = api ?? await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         setGlobalTracerProvider(provider);
       } catch {}
+      // Auto-instrument browser fetch to propagate trace context to the API and capture client spans
+      try {
+        const { registerInstrumentations } = await import('https://unpkg.com/@opentelemetry/instrumentation@0.50.0/build/esm/index.js');
+        const { FetchInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-fetch@0.50.0/build/esm/index.js');
+        registerInstrumentations({
+          instrumentations: [
+            new FetchInstrumentation({
+              propagateTraceHeaderCorsUrls: [/.*/]
+            })
+          ]
+        });
+      } catch {}
+      // Refresh tracer reference now that a real provider is registered
+      try { tracer = trace.getTracer('Abies.JS'); } catch {}
     })();
 
     // Cap OTel init time so poor connectivity doesn't delay the app
@@ -64,7 +78,7 @@ void (async () => {
   } catch {}
 })();
 
-const tracer = trace.getTracer('Abies.JS');
+let tracer = trace.getTracer('Abies.JS');
 
 function withSpan(name, fn) {
     return async (...args) => {
