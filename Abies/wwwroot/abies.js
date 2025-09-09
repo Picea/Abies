@@ -60,11 +60,23 @@ void (async () => {
       try {
         const { registerInstrumentations } = await import('https://unpkg.com/@opentelemetry/instrumentation@0.50.0/build/esm/index.js');
         const { FetchInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-fetch@0.50.0/build/esm/index.js');
+        const { XMLHttpRequestInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-xml-http-request@0.50.0/build/esm/index.js');
+        const { DocumentLoadInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-document-load@0.50.0/build/esm/index.js');
+        const { UserInteractionInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-user-interaction@0.50.0/build/esm/index.js');
+        const ignore = [/\/otlp\/v1\/traces$/, /\/_framework\//];
+        const propagate = [/.*/];
         registerInstrumentations({
           instrumentations: [
             new FetchInstrumentation({
-              propagateTraceHeaderCorsUrls: [/.*/]
-            })
+              ignoreUrls: ignore,
+              propagateTraceHeaderCorsUrls: propagate
+            }),
+            new XMLHttpRequestInstrumentation({
+              ignoreUrls: ignore,
+              propagateTraceHeaderCorsUrls: propagate
+            }),
+            new DocumentLoadInstrumentation(),
+            new UserInteractionInstrumentation()
           ]
         });
       } catch {}
