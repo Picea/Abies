@@ -35,6 +35,12 @@ void (async () => {
       const guessOtlp = () => {
         // Allow explicit global override
         if (window.__OTLP_ENDPOINT) return window.__OTLP_ENDPOINT;
+        // Allow per-app meta override: <meta name="otlp-endpoint" content="https://collector:4318/v1/traces">
+        try {
+          const meta = document.querySelector('meta[name="otlp-endpoint"]');
+          const v = meta && meta.getAttribute('content');
+          if (v) return v;
+        } catch {}
         // Prefer a same-origin proxy to avoid CORS issues with collectors
         try { return new URL('/otlp/v1/traces', window.location.origin).href; } catch {}
         // Fallback to common local collector endpoints
