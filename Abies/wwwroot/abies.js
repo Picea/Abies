@@ -51,7 +51,13 @@ void (async () => {
         resource: new Resource({ [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web' })
       });
       provider.addSpanProcessor(new BatchSpanProcessor(exporter));
-      provider.register();
+      // Prefer Zone.js context manager for better async context propagation
+      try {
+        const { ZoneContextManager } = await import('https://unpkg.com/@opentelemetry/context-zone@1.18.1/build/esm/index.js');
+        provider.register({ contextManager: new ZoneContextManager() });
+      } catch {
+        provider.register();
+      }
       try {
         const { setGlobalTracerProvider } = api ?? await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         setGlobalTracerProvider(provider);
