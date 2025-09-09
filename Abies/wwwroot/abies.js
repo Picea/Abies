@@ -24,13 +24,23 @@ void (async () => {
         trace = api.trace;
         SpanStatusCode = api.SpanStatusCode;
       } catch {}
-      const [{ WebTracerProvider }] = await Promise.all([
-        import('https://unpkg.com/@opentelemetry/sdk-trace-web@1.18.1/build/esm/index.js')
+      const [
+        { WebTracerProvider },
+        traceBase,
+        exporterMod,
+        resourcesMod,
+        semconvMod
+      ] = await Promise.all([
+        import('https://unpkg.com/@opentelemetry/sdk-trace-web@1.18.1/build/esm/index.js'),
+        import('https://unpkg.com/@opentelemetry/sdk-trace-base@1.18.1/build/esm/index.js'),
+        import('https://unpkg.com/@opentelemetry/exporter-trace-otlp-http@0.50.0/build/esm/index.js'),
+        import('https://unpkg.com/@opentelemetry/resources@1.18.1/build/esm/index.js'),
+        import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js')
       ]);
-      const { BatchSpanProcessor } = await import('https://unpkg.com/@opentelemetry/sdk-trace-base@1.18.1/build/esm/index.js');
-      const { OTLPTraceExporter } = await import('https://unpkg.com/@opentelemetry/exporter-trace-otlp-http@0.50.0/build/esm/index.js');
-      const { Resource } = await import('https://unpkg.com/@opentelemetry/resources@1.18.1/build/esm/index.js');
-      const { SemanticResourceAttributes } = await import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js');
+      const { BatchSpanProcessor } = traceBase;
+      const { OTLPTraceExporter } = exporterMod;
+      const { Resource } = resourcesMod;
+      const { SemanticResourceAttributes } = semconvMod;
 
       const guessOtlp = () => {
         // Allow explicit global override
@@ -56,7 +66,8 @@ void (async () => {
       const provider = new WebTracerProvider({
         resource: new Resource({ [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web' })
       });
-      provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+      const bsp = new BatchSpanProcessor(exporter);
+      provider.addSpanProcessor(bsp);
       // Prefer Zone.js context manager for better async context propagation
       try {
         const { ZoneContextManager } = await import('https://unpkg.com/@opentelemetry/context-zone@1.18.1/build/esm/index.js');
@@ -70,11 +81,18 @@ void (async () => {
       } catch {}
       // Auto-instrument browser fetch to propagate trace context to the API and capture client spans
       try {
-        const { registerInstrumentations } = await import('https://unpkg.com/@opentelemetry/instrumentation@0.50.0/build/esm/index.js');
-        const { FetchInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-fetch@0.50.0/build/esm/index.js');
-        const { XMLHttpRequestInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-xml-http-request@0.50.0/build/esm/index.js');
-        const { DocumentLoadInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-document-load@0.50.0/build/esm/index.js');
-        const { UserInteractionInstrumentation } = await import('https://unpkg.com/@opentelemetry/instrumentation-user-interaction@0.50.0/build/esm/index.js');
+        const [core, fetchI, xhrI, docI, uiI] = await Promise.all([
+          import('https://unpkg.com/@opentelemetry/instrumentation@0.50.0/build/esm/index.js'),
+          import('https://unpkg.com/@opentelemetry/instrumentation-fetch@0.50.0/build/esm/index.js'),
+          import('https://unpkg.com/@opentelemetry/instrumentation-xml-http-request@0.50.0/build/esm/index.js'),
+          import('https://unpkg.com/@opentelemetry/instrumentation-document-load@0.50.0/build/esm/index.js'),
+          import('https://unpkg.com/@opentelemetry/instrumentation-user-interaction@0.50.0/build/esm/index.js')
+        ]);
+        const { registerInstrumentations } = core;
+        const { FetchInstrumentation } = fetchI;
+        const { XMLHttpRequestInstrumentation } = xhrI;
+        const { DocumentLoadInstrumentation } = docI;
+        const { UserInteractionInstrumentation } = uiI;
         const ignore = [/\/otlp\/v1\/traces$/, /\/_framework\//];
         const propagate = [/.*/];
         registerInstrumentations({
@@ -94,10 +112,17 @@ void (async () => {
       } catch {}
       // Refresh tracer reference now that a real provider is registered
       try { tracer = trace.getTracer('Abies.JS'); } catch {}
+      // Expose basic debug handle
+      try {
+        window.__otel = { provider, exporter, endpoint: guessOtlp() };
+        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+          console.log('[OTel] initialized exporter to', window.__otel.endpoint);
+        }
+      } catch {}
     })();
 
     // Cap OTel init time so poor connectivity doesn't delay the app
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel init timeout')), 1500));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel init timeout')), 10000));
     await Promise.race([otelInit, timeout]).catch(() => {});
   } catch {}
 })();
