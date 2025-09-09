@@ -33,10 +33,15 @@ void (async () => {
       const { SemanticResourceAttributes } = await import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js');
 
       const guessOtlp = () => {
+        // Allow explicit global override
         if (window.__OTLP_ENDPOINT) return window.__OTLP_ENDPOINT;
+        // Prefer a same-origin proxy to avoid CORS issues with collectors
+        try { return new URL('/otlp/v1/traces', window.location.origin).href; } catch {}
+        // Fallback to common local collector endpoints
         const candidates = [
-          'http://localhost:19062/v1/traces',
-          'https://localhost:21202/v1/traces'
+          'http://localhost:4318/v1/traces', // default OTLP/HTTP collector
+          'http://localhost:19062/v1/traces', // Aspire (http)
+          'https://localhost:21202/v1/traces' // Aspire (https)
         ];
         return candidates[0];
       };

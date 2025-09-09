@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -50,6 +51,61 @@ app.Use(async (ctx, next) =>
 app.MapGet("/api/ping", () => Results.Json(new { pong = true }));
 
 app.MapDefaultEndpoints();
+
+// Frontend OTLP/HTTP proxy to avoid CORS issues when exporting traces from the browser
+// Target endpoint resolution order: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces', default 'http://localhost:4318/v1/traces'
+var tracesEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+    ?? (builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] is string baseUrl && !string.IsNullOrWhiteSpace(baseUrl)
+        ? baseUrl.TrimEnd('/') + "/v1/traces"
+        : "http://localhost:4318/v1/traces");
+
+app.MapOptions("/otlp/v1/traces", (HttpContext ctx) =>
+{
+    ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+    ctx.Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+    ctx.Response.Headers["Access-Control-Allow-Headers"] = ctx.Request.Headers["Access-Control-Request-Headers"].ToString() ?? "content-type";
+    return Results.NoContent();
+});
+
+app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        using var req = new HttpRequestMessage(HttpMethod.Post, tracesEndpoint)
+        {
+            Content = new StreamContent(ctx.Request.Body)
+        };
+        // Ensure content-type is forwarded (OTLP/HTTP uses application/json)
+        req.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ctx.Request.ContentType ?? "application/json");
+
+        // Forward request
+        using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ctx.RequestAborted);
+
+        // CORS for browser
+        ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        ctx.Response.StatusCode = (int)resp.StatusCode;
+        foreach (var (name, values) in resp.Headers)
+        {
+            // Avoid duplicating hop-by-hop headers
+            if (string.Equals(name, "transfer-encoding", System.StringComparison.OrdinalIgnoreCase)) continue;
+            ctx.Response.Headers[name] = string.Join(",", values);
+        }
+        if (resp.Content != null)
+        {
+            var respContentType = resp.Content.Headers.ContentType?.ToString();
+            if (!string.IsNullOrEmpty(respContentType)) ctx.Response.ContentType = respContentType;
+            await resp.Content.CopyToAsync(ctx.Response.Body, ctx.RequestAborted);
+        }
+        return Results.Empty;
+    }
+    catch (Exception ex)
+    {
+        // Fail closed but return 500 and keep CORS; clients will drop spans
+        ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+});
 
 // RealWorld Conduit API in-memory stores
 var users = new ConcurrentDictionary<string, UserRecord>(StringComparer.OrdinalIgnoreCase);
