@@ -20,9 +20,10 @@
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.30.8" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Update="wwwroot\abies.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+  <!-- Ensure a physical wwwroot/abies.js exists for the dev server -->
+  <Target Name="SyncAbiesJs" BeforeTargets="Build">
+    <Copy SourceFiles="..\Abies\wwwroot\abies.js"
+          DestinationFiles="wwwroot\abies.js"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
