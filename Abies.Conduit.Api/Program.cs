@@ -71,6 +71,12 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
 {
     try
     {
+        try
+        {
+            var hit = $"{DateTime.UtcNow:o} hit /otlp/v1/traces len={ctx.Request.ContentLength?.ToString() ?? "?"}\\n";
+            await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "otlp_hits.log"), hit);
+        }
+        catch { /* ignore file logging errors */ }
         var client = httpClientFactory.CreateClient();
         using var req = new HttpRequestMessage(HttpMethod.Post, tracesEndpoint)
         {
