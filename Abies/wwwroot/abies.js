@@ -66,7 +66,12 @@ void (async () => {
       const provider = new WebTracerProvider({
         resource: new Resource({ [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web' })
       });
-      const bsp = new BatchSpanProcessor(exporter);
+      const bsp = new BatchSpanProcessor(exporter, {
+        scheduledDelayMillis: 500,
+        exportTimeoutMillis: 3000,
+        maxQueueSize: 2048,
+        maxExportBatchSize: 64
+      });
       provider.addSpanProcessor(bsp);
       // Prefer Zone.js context manager for better async context propagation
       try {
