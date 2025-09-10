@@ -143,6 +143,107 @@ void (async () => {
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel init timeout')), 10000));
     await Promise.race([otelInit, timeout]).catch(() => {});
   } catch {}
+  // Fallback: if OTel could not initialize (e.g., CDN blocked), install a lightweight local shim
+  try {
+    if (!window.__otel) {
+      (function initLocalOtelShim() {
+        const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
+        const nowNs = () => {
+          const t = performance.timeOrigin + performance.now();
+          return Math.round(t * 1e6).toString();
+        };
+        const endpoint = (function() {
+          const meta = document.querySelector('meta[name="otlp-endpoint"]');
+          if (meta && meta.content) return meta.content;
+          if (window.__OTLP_ENDPOINT) return window.__OTLP_ENDPOINT;
+          try { return new URL('/otlp/v1/traces', window.location.origin).href; } catch {}
+          return 'http://localhost:4318/v1/traces';
+        })();
+
+        const state = { currentSpan: null };
+        function makeSpan(name, kind = 1, parent = state.currentSpan) {
+          const traceId = parent?.traceId || hex(16);
+          const spanId = hex(8);
+          return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: [] };
+        }
+        async function exportSpan(span) {
+          const body = {
+            resourceSpans: [{
+              resource: { attributes: [{ key: 'service.name', value: { stringValue: 'Abies.Web' } }] },
+              scopeSpans: [{ scope: { name: 'local.shim' }, spans: [{
+                traceId: span.traceId,
+                spanId: span.spanId,
+                parentSpanId: span.parentSpanId,
+                name: span.name,
+                kind: span.kind,
+                startTimeUnixNano: span.start,
+                endTimeUnixNano: span.end || nowNs(),
+                attributes: span.attributes,
+                status: { code: 1 }
+              }] }]
+            }]
+          };
+          try {
+            await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+          } catch {}
+        }
+        // Minimal shim tracer used by existing code paths
+        trace = {
+          getTracer: () => ({
+            startSpan: (name) => {
+              const s = makeSpan(name);
+              const prev = state.currentSpan;
+              state.currentSpan = s;
+              return {
+                setStatus: () => {},
+                recordException: () => {},
+                end: async () => { s.end = nowNs(); state.currentSpan = prev; await exportSpan(s); }
+              };
+            }
+          })
+        };
+        SpanStatusCode = { OK: 1, ERROR: 2 };
+        tracer = trace.getTracer('Abies.JS');
+
+        // Patch fetch to create client spans and propagate traceparent
+        try {
+          const origFetch = window.fetch.bind(window);
+          window.fetch = async function(input, init) {
+            const url = (typeof input === 'string') ? input : input.url;
+            if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
+            const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
+            const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */);
+            const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
+            const i = init ? { ...init } : {};
+            const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
+            h.set('traceparent', traceparent);
+            i.headers = h;
+            try {
+              const res = await origFetch(input, i);
+              sp.end = nowNs();
+              await exportSpan(sp);
+              return res;
+            } catch (e) {
+              sp.end = nowNs();
+              await exportSpan(sp);
+              throw e;
+            }
+          };
+        } catch {}
+
+        window.__otel = { provider: { forceFlush: async () => {} }, exporter: { url: endpoint }, endpoint };
+        window.__otelSendTestSpan = async () => {
+          const s = makeSpan('frontend-test-span');
+          s.end = nowNs();
+          await exportSpan(s);
+          console.log('[OTel shim] test span sent');
+        };
+        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
+          console.log('[OTel shim] initialized at', endpoint);
+        }
+      })();
+    }
+  } catch {}
 })();
 
 let tracer = trace.getTracer('Abies.JS');
