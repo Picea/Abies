@@ -120,6 +120,19 @@ void (async () => {
       // Expose basic debug handle
       try {
         window.__otel = { provider, exporter, endpoint: guessOtlp() };
+        window.__otelSendTestSpan = async () => {
+          try {
+            const s = tracer.startSpan('frontend-test-span');
+            await new Promise(r => setTimeout(r, 20));
+            s.end();
+            if (window.__otel && window.__otel.provider && window.__otel.provider.forceFlush) {
+              await window.__otel.provider.forceFlush();
+            }
+            console.log('[OTel] test span sent');
+          } catch (e) {
+            console.log('[OTel] test span error', e);
+          }
+        };
         if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
           console.log('[OTel] initialized exporter to', window.__otel.endpoint);
         }
