@@ -17,6 +17,17 @@ let SpanStatusCode = { OK: 1, ERROR: 2 };
 void (async () => {
   try {
     const otelInit = (async () => {
+      // Allow disabling CDN-based OTel via flag or meta tag
+      const useCdn = (() => {
+        try {
+          if (window.__OTEL_USE_CDN === false) return false;
+          const m = document.querySelector('meta[name="otel-cdn"]');
+          const v = (m && m.getAttribute('content')) || '';
+          if (v && v.toLowerCase() === 'off') return false;
+        } catch {}
+        return true;
+      })();
+      if (!useCdn) throw new Error('OTel CDN disabled');
       // Try to load the OTel API first; if it fails, keep using no-op
       let api;
       try {
