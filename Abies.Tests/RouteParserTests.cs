@@ -1,51 +1,96 @@
-using Xunit;
 using System;
-using System.Reflection;
-using System.Linq;
+using ConduitRoute = Abies.Conduit.Routing.Route;
+using Xunit;
 
 namespace Abies.Tests;
 
 public class RouteParserTests
 {
-    [Fact]
-    public void Route_Parser_Definition_Should_Handle_ProfileFavorites_Before_Profile()
-    {
-        // Examine the Route.Match static property definition
-        var routeType = typeof(Abies.Conduit.Routing.Route);
-        var matchPropInfo = routeType.GetProperty("Match", BindingFlags.Public | BindingFlags.Static);
-        
-        Assert.NotNull(matchPropInfo);
-        
-        // We can't directly test the parser behavior as it's browser-only
-        // But we can verify the parser definition in Route.cs
-        // by checking that the ProfileFavorites route pattern is defined before the Profile route pattern
-        
-        // Get the source file and examine line ordering
-        var routeFilePath = routeType.Assembly.Location;
-        
-        // The actual implementation should have ProfileFavorites route pattern before Profile route pattern
-        // This is a proxy test to ensure the order is correct in the parser
-        
-        // We can't directly test the behavior here because the Route.Match parser is marked as browser-only,
-        // but our tests in ProfileFavoritesTests.cs verify the types exist and are distinct
-        
-        // This test passes if it reaches here without exceptions, as we've verified in ProfileFavoritesTests
-        // that the required types and handlers exist
-        Assert.True(true);
-    }
-    
     [Theory]
-    [InlineData("/profile/johndoe/favorites", "ProfileFavorites")]
-    [InlineData("/profile/johndoe", "Profile")]
-    public void Route_Parser_Should_Match_Expected_Route_Types(string path, string expectedRouteType)
+    [InlineData("/profile/johndoe/favorites", typeof(ConduitRoute.ProfileFavorites), "userName", "johndoe")]
+    [InlineData("/profile/johndoe", typeof(ConduitRoute.Profile), "userName", "johndoe")]
+    [InlineData("/article/how-to-build", typeof(ConduitRoute.Article), "slug", "how-to-build")]
+    [InlineData("/editor/how-to-build", typeof(ConduitRoute.EditArticle), "slug", "how-to-build")]
+    [InlineData("/editor", typeof(ConduitRoute.NewArticle), null, null)]
+    [InlineData("/home", typeof(ConduitRoute.Home), null, null)]
+    [InlineData("/login", typeof(ConduitRoute.Login), null, null)]
+    [InlineData("/settings", typeof(ConduitRoute.Settings), null, null)]
+    [InlineData("/register", typeof(ConduitRoute.Register), null, null)]
+    [InlineData("/", typeof(ConduitRoute.Home), null, null)]
+    public void Functional_router_matches_expected_paths(string path, Type expectedType, string? expectedKey, string? expectedValue)
     {
-        // We can't directly use the Route.FromUrl method as it's browser-only
-        // Instead, we're documenting the expected behavior
-        // The actual implementation should ensure that when given these paths:
-        //   - "/profile/johndoe/favorites" should be parsed as ProfileFavorites
-        //   - "/profile/johndoe" should be parsed as Profile
-        
-        // This test is primarily documentary - the actual behavior is verified in the browser
-        Assert.True(true, $"Path '{path}' should be parsed as '{expectedRouteType}'");
+        var result = ConduitRoute.Match.Parse(path.AsSpan());
+
+        Assert.True(result.Success, $"Expected path '{path}' to match the functional router.");
+        Assert.IsType(expectedType, result.Value);
+
+        if (expectedKey is not null && expectedValue is not null)
+        {
+            AssertCapturedValue(result.Value, expectedKey, expectedValue);
+        }
+    }
+
+    [Theory]
+    [InlineData("/profile/johndoe/favorites", typeof(ConduitRoute.ProfileFavorites), "userName", "johndoe")]
+    [InlineData("/profile/johndoe", typeof(ConduitRoute.Profile), "userName", "johndoe")]
+    [InlineData("/article/how-to-build", typeof(ConduitRoute.Article), "slug", "how-to-build")]
+    [InlineData("/editor/how-to-build", typeof(ConduitRoute.EditArticle), "slug", "how-to-build")]
+    [InlineData("/editor", typeof(ConduitRoute.NewArticle), null, null)]
+    [InlineData("/home", typeof(ConduitRoute.Home), null, null)]
+    [InlineData("/login", typeof(ConduitRoute.Login), null, null)]
+    [InlineData("/settings", typeof(ConduitRoute.Settings), null, null)]
+    [InlineData("/register", typeof(ConduitRoute.Register), null, null)]
+    [InlineData("/", typeof(ConduitRoute.Home), null, null)]
+    public void Template_router_matches_expected_paths(string path, Type expectedType, string? expectedKey, string? expectedValue)
+    {
+        var matched = ConduitRoute.Templates.TryMatch(path, out var route, out var match);
+
+        Assert.True(matched, $"Expected path '{path}' to match the template router.");
+        Assert.IsType(expectedType, route);
+
+        if (expectedKey is not null && expectedValue is not null)
+        {
+            var value = match.GetRequired<string>(expectedKey);
+            Assert.Equal(expectedValue, value);
+        }
+    }
+
+    [Fact]
+    public void Template_router_returns_false_for_unknown_route()
+    {
+        var matched = ConduitRoute.Templates.TryMatch("/unknown/path", out var route, out var match);
+
+        Assert.False(matched);
+        Assert.Equal(Route.RouteMatch.Empty, match);
+        Assert.Null(route);
+    }
+
+    [Fact]
+    public void Functional_router_returns_failure_for_unknown_route()
+    {
+        var result = ConduitRoute.Match.Parse("/unknown/path".AsSpan());
+
+        Assert.False(result.Success);
+    }
+
+    private static void AssertCapturedValue(ConduitRoute route, string key, string expectedValue)
+    {
+        switch (route)
+        {
+            case ConduitRoute.Profile profile when key == "userName":
+                Assert.Equal(expectedValue, profile.UserName.Value);
+                break;
+            case ConduitRoute.ProfileFavorites favorites when key == "userName":
+                Assert.Equal(expectedValue, favorites.UserName.Value);
+                break;
+            case ConduitRoute.Article article when key == "slug":
+                Assert.Equal(expectedValue, article.Slug.Value);
+                break;
+            case ConduitRoute.EditArticle editArticle when key == "slug":
+                Assert.Equal(expectedValue, editArticle.Slug.Value);
+                break;
+            default:
+                throw new InvalidOperationException($"Unexpected route type '{route.GetType().Name}' for captured key '{key}'.");
+        }
     }
 }
