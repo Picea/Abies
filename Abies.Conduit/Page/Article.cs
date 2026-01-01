@@ -223,7 +223,7 @@ public class Page : Element<Model, Message>
                     ])
                 ])
               ])
-            : form([class_("card comment-form")], [
+            : form([class_("card comment-form"), onsubmit(new Message.SubmitComment())], [
                 div([class_("card-block")], [
                     textarea([
                         class_("form-control"),
@@ -237,7 +237,7 @@ public class Page : Element<Model, Message>
                     img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),
                     button([
                         class_("btn btn-sm btn-primary"),
-                        type("button"),
+                        type("submit"),
                         ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>()),
                         onclick(new Message.SubmitComment())
                     ], [text("Post Comment")])

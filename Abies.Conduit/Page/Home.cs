@@ -169,7 +169,7 @@ public record Model(
                             ? "nav-link active"
                             : "nav-link"),
                           onclick(new Message.ToggleFeedTab(FeedTab.YourFeed)),
-                          href("")],
+                          href("#")],
                           [text("Your Feed")])
                       ])
                     : text(""),
@@ -178,13 +178,13 @@ public record Model(
                         ? "nav-link active" 
                         : "nav-link"),
                       onclick(new Message.ToggleFeedTab(FeedTab.Global)),
-                      href("")],
+                      href("#")],
                       [text("Global Feed")])
                 ]),
                 model.ActiveTab == FeedTab.Tag
                     ? li([class_("nav-item")], [
                         a([class_("nav-link active"), 
-                          href("")], 
+                          href("#")], 
                           [text($"# {model.ActiveTag}")])
                       ])
                     : text("")
@@ -223,7 +223,7 @@ public record Model(
                 li([], [
                     a([
                         class_("tag-default tag-pill tag-outline"),
-                        href(""),
+                        href("#"),
                         onclick(new Message.TagSelected(tag))
                     ], [
                         text(tag)
@@ -253,12 +253,12 @@ public record Model(
                         ? a([
                             class_("page-link active"),
                             ariaCurrent("page"),
-                            href(""),
+                            href("#"),
                             onclick(new Message.PageSelected(i))
                         ], [text((i + 1).ToString())])
                         : a([
                             class_("page-link"),
-                            href(""),
+                            href("#"),
                             onclick(new Message.PageSelected(i))
                         ], [text((i + 1).ToString())]))
                 ]));
@@ -279,7 +279,7 @@ public record Model(
                 ? [text("Loading tags...")]
                 : model.Tags.ConvertAll(tag =>
                     a([class_("tag-pill tag-default"),
-                      href(""),
+                      href("#"),
                       onclick(new Message.TagSelected(tag))],
                       [text(tag)]
                     )

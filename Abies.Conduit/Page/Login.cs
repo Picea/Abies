@@ -92,7 +92,7 @@ public class Page : Element<Model, Message>
                         
                         ErrorList(model.Errors),
 
-                        form([], [
+                        form([onsubmit(new Message.LoginSubmitted())], [
                             fieldset([], [
                                 fieldset([class_("form-group")], [
                                     input([
@@ -117,7 +117,7 @@ public class Page : Element<Model, Message>
                                     ])
                                 ]),
                                 button([class_("btn btn-lg btn-primary pull-xs-right"),
-                                    type("button"),
+                                    type("submit"),
                                     ..((model.IsSubmitting ||
                                              string.IsNullOrWhiteSpace(model.Email) ||
                                              string.IsNullOrWhiteSpace(model.Password))

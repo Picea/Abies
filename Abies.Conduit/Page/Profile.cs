@@ -209,12 +209,12 @@ public class Page : Element<Model, Message>
                         ? a([
                             class_("page-link active"),
                             ariaCurrent("page"),
-                            href(""),
+                            href("#"),
                             onclick(new Message.PageSelected(i))
                         ], [text((i + 1).ToString())])
                         : a([
                             class_("page-link"),
-                            href(""),
+                            href("#"),
                             onclick(new Message.PageSelected(i))
                         ], [text((i + 1).ToString())]))
                 ]));
