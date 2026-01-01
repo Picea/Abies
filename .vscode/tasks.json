@@ -30,7 +30,7 @@
 			"command": "bash",
 			"args": [
 				"-lc",
-				"if [ -f /tmp/abies-conduit-api-5179.log ]; then tail -n 200 /tmp/abies-conduit-api-5179.log; else echo 'No log file found at /tmp/abies-conduit-api-5179.log'; fi"
+				"if [ -f /tmp/abies-conduit-api-5179.log ]; then tail -n 200 /tmp/abies-conduit-api-5179.log; else echo \"No log file found at /tmp/abies-conduit-api-5179.log\"; fi"
 			],
 			"problemMatcher": [],
 			"group": "build"
@@ -176,6 +176,32 @@
 				"minimal",
 				"--filter",
 				"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests"
+			],
+			"options": {
+				"env": {
+					"HEADED": "1",
+					"PW_SLOWMO_MS": "150",
+					"PWDEBUG": "0",
+					"PLAYWRIGHT_BROWSERS_PATH": "0"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run E2E (headed) full suite",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
+				"-c",
+				"Debug",
+				"-v",
+				"minimal"
 			],
 			"options": {
 				"env": {

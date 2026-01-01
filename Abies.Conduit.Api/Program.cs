@@ -369,6 +369,18 @@ var users = new ConcurrentDictionary<string, UserRecord>(StringComparer.OrdinalI
 var follows = new ConcurrentDictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 var articles = new ConcurrentDictionary<string, ArticleRecord>(StringComparer.OrdinalIgnoreCase);
 int nextCommentId = 1;
+// Safety helpers: this API is an in-memory stub for E2E and should never 500 due to missing keys.
+HashSet<string> FollowSetFor(string username)
+{
+    // Avoid KeyNotFoundException when looking up relationships for a username that exists in the
+    // users/articles store but hasn't had its follow set initialized for some reason.
+    return follows.GetOrAdd(username, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+}
+
+static bool IsFollowing(ConcurrentDictionary<string, HashSet<string>> follows, string targetUsername, string followerUsername)
+{
+    return follows.TryGetValue(targetUsername, out var set) && set.Contains(followerUsername);
+}
 // Helper to get current user from Authorization header: 'Token {email}'
 UserRecord? GetCurrentUser(HttpContext ctx)
 {
@@ -519,25 +531,25 @@ app.MapGet("/api/profiles/{username}", (string username, HttpContext ctx) =>
     var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
     if (user == null) return Results.NotFound();
     var current = GetCurrentUser(ctx);
-    var following = current != null && follows[username].Contains(current.Username);
+    var following = current != null && IsFollowing(follows, username, current.Username);
     return Results.Ok(new { profile = new ProfileResponse(user, following) });
 });
 app.MapPost("/api/profiles/{username}/follow", (string username, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
     if (current == null) return Results.Unauthorized();
-    if (!follows.ContainsKey(username)) return Results.NotFound();
-    follows[username].Add(current.Username);
-    var user = users.Values.First(u => u.Username == username);
+    var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+    if (user is null) return Results.NotFound();
+    FollowSetFor(username).Add(current.Username);
     return Results.Ok(new { profile = new ProfileResponse(user, true) });
 });
 app.MapDelete("/api/profiles/{username}/follow", (string username, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
     if (current == null) return Results.Unauthorized();
-    if (!follows.ContainsKey(username)) return Results.NotFound();
-    follows[username].Remove(current.Username);
-    var user = users.Values.First(u => u.Username == username);
+    var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+    if (user is null) return Results.NotFound();
+    FollowSetFor(username).Remove(current.Username);
     return Results.Ok(new { profile = new ProfileResponse(user, false) });
 });
 
@@ -564,7 +576,9 @@ app.MapGet("/api/articles", (int? limit, int? offset, string? tag, string? autho
         a.UpdatedAt.ToString("o"),
         current != null && a.FavoritedBy.Contains(current),
         a.FavoritedBy.Count,
-        new ProfileResponse(users.Values.First(u => u.Username == a.Author), current != null && follows[a.Author].Contains(current))
+        new ProfileResponse(
+            users.Values.First(u => u.Username == a.Author),
+            current != null && IsFollowing(follows, a.Author, current))
     ));
     return Results.Ok(new { articles = list, articlesCount = total });
 });
@@ -597,7 +611,9 @@ app.MapGet("/api/articles/feed", (int? limit, int? offset, HttpContext ctx) =>
         a.UpdatedAt.ToString("o"),
         current != null && a.FavoritedBy.Contains(current),
         a.FavoritedBy.Count,
-        new ProfileResponse(users.Values.First(u => u.Username == a.Author), current != null && follows[a.Author].Contains(current))
+        new ProfileResponse(
+            users.Values.First(u => u.Username == a.Author),
+            current != null && IsFollowing(follows, a.Author, current))
     ));
     return Results.Ok(new { articles = list, articlesCount = total });
 });
@@ -606,7 +622,9 @@ app.MapGet("/api/articles/{slug}", (string slug, HttpContext ctx) =>
 {
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     var current = GetCurrentUser(ctx)?.Username;
-    var authorProfile = new ProfileResponse(users.Values.First(u => u.Username == a.Author), current != null && follows[a.Author].Contains(current));
+    var authorProfile = new ProfileResponse(
+        users.Values.First(u => u.Username == a.Author),
+        current != null && IsFollowing(follows, a.Author, current));
     return Results.Ok(new { article = new ArticleResponse(
         a.Slug,
         a.Title,
@@ -754,7 +772,7 @@ app.MapPut("/api/articles/{slug}", (string slug, UpdateArticleRequest req, HttpC
     
     articles[newSlug] = updated;
     var authorProfile = new ProfileResponse(users.Values.First(u => u.Username == updated.Author), 
-        follows[updated.Author].Contains(current.Username));
+    IsFollowing(follows, updated.Author, current.Username));
     
     return Results.Ok(new { article = new ArticleResponse(
         updated.Slug,
@@ -792,7 +810,7 @@ app.MapGet("/api/articles/{slug}/comments", (string slug, HttpContext ctx) =>
         c.Body,
         new ProfileResponse(
             users.Values.First(u => u.Username == c.Author),
-            current != null && follows[c.Author].Contains(current)
+            current != null && IsFollowing(follows, c.Author, current)
         )
     ));
     return Results.Ok(new { comments = list });
@@ -842,7 +860,9 @@ app.MapPost("/api/articles/{slug}/favorite", (string slug, HttpContext ctx) =>
         a.UpdatedAt.ToString("o"),
         a.FavoritedBy.Contains(user.Username),
         a.FavoritedBy.Count,
-        new ProfileResponse(users.Values.First(u => u.Username == a.Author), follows[a.Author].Contains(user.Username))
+        new ProfileResponse(
+            users.Values.First(u => u.Username == a.Author),
+            IsFollowing(follows, a.Author, user.Username))
     ) });
 });
 
@@ -864,7 +884,9 @@ app.MapDelete("/api/articles/{slug}/favorite", (string slug, HttpContext ctx) =>
         a.UpdatedAt.ToString("o"),
         a.FavoritedBy.Contains(user.Username),
         a.FavoritedBy.Count,
-        new ProfileResponse(users.Values.First(u => u.Username == a.Author), follows[a.Author].Contains(user.Username))
+        new ProfileResponse(
+            users.Values.First(u => u.Username == a.Author),
+            IsFollowing(follows, a.Author, user.Username))
     ) });
 });
 
