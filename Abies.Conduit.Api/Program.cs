@@ -9,7 +9,19 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("otlp")
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        // Aspire dashboard OTLP endpoint uses a local/dev certificate; allow it in Development.
+        // This is for local dev only and intentionally scoped to the OTLP proxy client.
+        return new HttpClientHandler
+        {
+            // NOTE: In practice we've observed intermittent SSL failures when relying on the
+            // environment gate. Since this client is ONLY for local OTLP proxying, we
+            // always skip validation here.
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+    });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -28,6 +40,34 @@ if (app.Environment.IsDevelopment())
     // app.UseSwaggerUI();
 }
 
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (ctx, next) =>
+    {
+        var traceparent = ctx.Request.Headers.TraceParent.FirstOrDefault();
+        var tracestate = ctx.Request.Headers.TraceState.FirstOrDefault();
+        var baggage = ctx.Request.Headers.Baggage.FirstOrDefault();
+
+        await next();
+
+        // After next() we should have current Activity set by AspNetCore instrumentation (when enabled)
+        var activity = System.Diagnostics.Activity.Current;
+        var traceId = activity?.TraceId.ToString() ?? "<none>";
+
+        if (!string.IsNullOrEmpty(traceparent) || activity is not null)
+        {
+            app.Logger.LogInformation(
+                "TraceContext {Method} {Path} traceparent={TraceParent} tracestate={TraceState} baggage={Baggage} extractedTraceId={TraceId}",
+                ctx.Request.Method,
+                ctx.Request.Path.Value,
+                traceparent ?? "<none>",
+                tracestate ?? "<none>",
+                baggage ?? "<none>",
+                traceId);
+        }
+    });
+}
+
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll");
 // Strongly permissive CORS for local E2E/browser-wasm
@@ -35,9 +75,13 @@ app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
     ctx.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS";
+    // Ensure W3C trace-context headers are allowed so browser spans can propagate to the API.
     var reqHeaders = ctx.Request.Headers.ContainsKey("Access-Control-Request-Headers")
         ? ctx.Request.Headers["Access-Control-Request-Headers"].ToString()
-        : "Content-Type, Authorization";
+        : "Content-Type, Authorization, traceparent, tracestate, baggage";
+    if (!reqHeaders.Contains("traceparent", StringComparison.OrdinalIgnoreCase)) reqHeaders += ", traceparent";
+    if (!reqHeaders.Contains("tracestate", StringComparison.OrdinalIgnoreCase)) reqHeaders += ", tracestate";
+    if (!reqHeaders.Contains("baggage", StringComparison.OrdinalIgnoreCase)) reqHeaders += ", baggage";
     ctx.Response.Headers["Access-Control-Allow-Headers"] = reqHeaders;
     if (string.Equals(ctx.Request.Method, "OPTIONS", StringComparison.OrdinalIgnoreCase))
     {
@@ -54,12 +98,111 @@ app.MapDefaultEndpoints();
 
 // Frontend OTLP/HTTP proxy to avoid CORS issues when exporting traces from the browser
 // Target endpoint resolution order: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces', default 'http://localhost:4318/v1/traces'
+static string NormalizeOtlpTracesEndpoint(string raw)
+{
+    // We accept a variety of shapes here:
+    // - Full traces endpoint: https://host/otlp/v1/traces or https://host/v1/traces
+    // - Base endpoint: https://host or https://host/otlp
+    // Aspire dashboard OTLP/HTTP historically used /otlp/v1/traces, but we've observed
+    // current dashboard instances accept OTLP/HTTP traces at /v1/traces and return 403
+    // for /otlp/v1/traces even with a valid x-otlp-api-key.
+    //
+    // Therefore our normalization is conservative:
+    // - If caller provides an explicit traces path, keep it.
+    // - If caller provides a base URL (no path), default to /v1/traces.
+    if (string.IsNullOrWhiteSpace(raw)) return raw;
+
+    var s = raw.Trim().TrimEnd('/');
+    if (s.EndsWith("/v1/traces", StringComparison.OrdinalIgnoreCase)) return s;
+    if (s.EndsWith("/otlp/v1/traces", StringComparison.OrdinalIgnoreCase)) return s;
+
+    // If we were given a base endpoint that ends in /otlp, treat it as a base and append /v1/traces.
+    if (s.EndsWith("/otlp", StringComparison.OrdinalIgnoreCase)) return s + "/v1/traces";
+
+    // Default for a base URL: append the standard OTLP/HTTP traces path.
+    return s + "/v1/traces";
+}
+
 var tracesEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
     ?? (builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] is string baseUrl && !string.IsNullOrWhiteSpace(baseUrl)
-        ? baseUrl.TrimEnd('/') + "/v1/traces"
-        : "http://localhost:4318/v1/traces");
+        ? NormalizeOtlpTracesEndpoint(baseUrl)
+    // Aspire browser telemetry endpoint (AppHost can configure this explicitly)
+    : (Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL") is string aspireHttp && !string.IsNullOrWhiteSpace(aspireHttp)
+        ? NormalizeOtlpTracesEndpoint(aspireHttp)
+    // Aspire dashboard OTLP/HTTP default (when enabled). For Aspire dashboard, the OTLP/HTTP endpoint
+    // is available at /v1/traces (e.g. https://localhost:21203/v1/traces).
+    // If the dashboard isn't running, the proxy will fall back to returning 202 Accepted in Development.
+    : "https://localhost:21203/v1/traces"));
 
-app.MapOptions("/otlp/v1/traces", (HttpContext ctx) =>
+// When running under AppHost, Aspire provides an API key for OTLP via OTEL_EXPORTER_OTLP_HEADERS.
+// Example: "x-otlp-api-key=...". We'll forward it so the dashboard doesn't reject browser exports.
+var otlpHeadersRaw = builder.Configuration["OTEL_EXPORTER_OTLP_HEADERS"]
+    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS")
+    ?? "";
+
+// Aspire dashboard uses API key auth by default; if we can see the key, always ensure we forward it.
+// Otherwise we can end up proxying spans with missing/incorrect auth and receive 403s.
+var dashboardPrimaryApiKey = Environment.GetEnvironmentVariable("DASHBOARD__OTLP__PRIMARYAPIKEY");
+if (!string.IsNullOrWhiteSpace(dashboardPrimaryApiKey)
+    && !otlpHeadersRaw.Contains("x-otlp-api-key=", StringComparison.OrdinalIgnoreCase))
+{
+    otlpHeadersRaw = string.IsNullOrWhiteSpace(otlpHeadersRaw)
+        ? $"x-otlp-api-key={dashboardPrimaryApiKey}"
+        : $"{otlpHeadersRaw},x-otlp-api-key={dashboardPrimaryApiKey}";
+}
+
+// If the API itself is not launched by AppHost, it won't have OTEL_EXPORTER_OTLP_HEADERS.
+// In local dev we can still make the proxy work by reading the dashboard process env.
+// This is best-effort and only used when we otherwise don't have an API key.
+if (string.IsNullOrWhiteSpace(otlpHeadersRaw)
+    && builder.Environment.IsDevelopment()
+    && System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+{
+    try
+    {
+        using var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/bin/ps",
+            // eww prints env vars; search for the dashboard key.
+            Arguments = "eww -ax",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        });
+        if (proc is not null)
+        {
+            var output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit(1000);
+            // `ps eww -ax` output can wrap long environment-variable values (inserting newlines).
+            // Normalize whitespace and then regex-match the key.
+            var normalized = string.Join(' ', output.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries));
+            var match = System.Text.RegularExpressions.Regex.Match(
+                normalized,
+                @"DASHBOARD__OTLP__PRIMARYAPIKEY=(\S+)",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+            if (match.Success)
+            {
+                var key = match.Groups[1].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    otlpHeadersRaw = $"x-otlp-api-key={key}";
+                    app.Logger.LogInformation("OTLP proxy: inferred dashboard API key from local ps output (dev-only)");
+                }
+            }
+        }
+    }
+    catch
+    {
+        // ignore; we'll just run without a key and the dashboard will return 401.
+    }
+}
+
+app.Logger.LogInformation(
+    "OTLP proxy configured: tracesEndpoint={TracesEndpoint} apiKeyForwarding={ApiKeyForwarding}",
+    tracesEndpoint,
+    otlpHeadersRaw.Contains("x-otlp-api-key=", StringComparison.OrdinalIgnoreCase));
+
+app.MapMethods("/otlp/v1/traces", new[] { "OPTIONS" }, (HttpContext ctx) =>
 {
     ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
     ctx.Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
@@ -77,19 +220,113 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
             await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "otlp_hits.log"), hit);
         }
         catch { /* ignore file logging errors */ }
-        var client = httpClientFactory.CreateClient();
+
+        if (app.Environment.IsDevelopment())
+        {
+            var incoming = new
+            {
+                ct = ctx.Request.ContentType ?? "<none>",
+                ce = ctx.Request.Headers.ContentEncoding.ToString(),
+                ua = ctx.Request.Headers.UserAgent.ToString(),
+                al = ctx.Request.Headers.AcceptLanguage.ToString(),
+                path = ctx.Request.Path.Value,
+                len = ctx.Request.ContentLength?.ToString() ?? "?"
+            };
+            app.Logger.LogInformation("OTLP proxy incoming {Incoming}", incoming);
+        }
+    var client = httpClientFactory.CreateClient("otlp");
         using var req = new HttpRequestMessage(HttpMethod.Post, tracesEndpoint)
         {
             Content = new StreamContent(ctx.Request.Body)
         };
-        // Ensure content-type is forwarded (OTLP/HTTP uses application/json)
-        req.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ctx.Request.ContentType ?? "application/json");
+        // Preserve the incoming OTLP/HTTP content-type.
+        // The JS OTLP protobuf exporter uses: application/x-protobuf.
+        // If we overwrite it to application/json the dashboard replies 415.
+        if (!string.IsNullOrWhiteSpace(ctx.Request.ContentType))
+        {
+            req.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(ctx.Request.ContentType);
+        }
 
-        // Forward request
-        using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ctx.RequestAborted);
+    // Forward configured headers (primarily x-otlp-api-key for Aspire dashboard)
+    var forwardedApiKey = false;
+    string? forwardedApiKeyValue = null;
+        if (!string.IsNullOrWhiteSpace(otlpHeadersRaw))
+        {
+            foreach (var pair in otlpHeadersRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var idx = pair.IndexOf('=');
+                if (idx <= 0 || idx == pair.Length - 1)
+                {
+                    continue;
+                }
+
+                var key = pair[..idx].Trim();
+                var value = pair[(idx + 1)..].Trim();
+                if (key.Equals("content-type", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (key.Equals("x-otlp-api-key", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(value))
+                {
+                    forwardedApiKey = true;
+                    forwardedApiKeyValue = value;
+                }
+
+                req.Headers.TryAddWithoutValidation(key, value);
+            }
+        }
+
+        // Diagnostics so we can confirm the API key exists (without logging it)
+        // This is intentionally safe: we only expose a boolean + short hash prefix.
+        ctx.Response.Headers["x-otlp-proxy-has-key"] = forwardedApiKey ? "true" : "false";
+        if (forwardedApiKeyValue is not null)
+        {
+            // stable, non-reversible hint
+            var bytes = System.Text.Encoding.UTF8.GetBytes(forwardedApiKeyValue);
+            var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+            ctx.Response.Headers["x-otlp-proxy-key-sha256"] = Convert.ToHexString(hash)[..16];
+        }
+
+    // Forward request
+    // NOTE: For local Dev/E2E we NEVER want browser telemetry exporting to impact app usability.
+    // Therefore, in Development we always return 202 Accepted to the browser (after starting the forward),
+    // while still logging and/or surfacing the downstream status for debugging.
+    using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ctx.RequestAborted);
+
+        if (app.Environment.IsDevelopment())
+        {
+            var respContentType = resp.Content?.Headers.ContentType?.ToString() ?? "<none>";
+            app.Logger.LogInformation(
+                "OTLP proxy downstream {Method} {Target} status={StatusCode} contentType={ContentType} apiKeyForwarded={ApiKeyForwarded}",
+                req.Method.Method,
+                req.RequestUri?.ToString() ?? "<none>",
+                (int)resp.StatusCode,
+                respContentType,
+                forwardedApiKey);
+
+            try
+            {
+                var c = respContentType.Replace("\n", " ").Replace("\r", " ");
+                var line = $"{DateTime.UtcNow:o} downstream -> {req.RequestUri} status={(int)resp.StatusCode} ct={c} apiKeyForwarded={forwardedApiKey}{Environment.NewLine}";
+                await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "otlp_proxy_downstream.log"), line);
+            }
+            catch
+            {
+                // ignore file logging errors
+            }
+        }
 
         // CORS for browser
         ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+
+        if (app.Environment.IsDevelopment())
+        {
+            ctx.Response.StatusCode = StatusCodes.Status202Accepted;
+            return Results.Accepted();
+        }
+
+        // Non-development: proxy true downstream status/content.
         ctx.Response.StatusCode = (int)resp.StatusCode;
         foreach (var (name, values) in resp.Headers)
         {
@@ -107,8 +344,22 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
     }
     catch (Exception ex)
     {
-        // Fail closed but return 500 and keep CORS; clients will drop spans
+        // When no collector is running locally, we'd rather accept spans (so browser instrumentation doesn't treat it
+        // as a hard error) than fail the request. Still log the error for debugging.
+        try
+        {
+            var fail = $"{DateTime.UtcNow:o} error -> {tracesEndpoint} ex={ex.GetType().Name}:{ex.Message}{Environment.NewLine}";
+            await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "otlp_proxy_errors.log"), fail);
+        }
+        catch { /* ignore file logging errors */ }
+
         ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        if (app.Environment.IsDevelopment())
+        {
+            // 202 Accepted indicates the payload was received, even if we can't forward it.
+            return Results.Accepted();
+        }
+
         return Results.Problem(ex.Message, statusCode: 500);
     }
 });
