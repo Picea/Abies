@@ -18,7 +18,15 @@ public IBrowser Browser { get; private set; } = null!;
     {
         Microsoft.Playwright.Program.Main(new[] { "install" });
         _playwright = await Playwright.CreateAsync();
-        Browser = await _playwright.Chromium.LaunchAsync(new() { Headless = true });
+        var headed = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HEADED"));
+        var slowMoRaw = Environment.GetEnvironmentVariable("PW_SLOWMO_MS");
+        _ = int.TryParse(slowMoRaw, out var slowMoMs);
+
+        Browser = await _playwright.Chromium.LaunchAsync(new()
+        {
+            Headless = !headed,
+            SlowMo = slowMoMs > 0 ? slowMoMs : null,
+        });
 
         var apiDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Abies.Conduit.Api"));
     var apiStart = new ProcessStartInfo("dotnet", $"run --project {apiDir} --no-launch-profile --urls http://localhost:5179")

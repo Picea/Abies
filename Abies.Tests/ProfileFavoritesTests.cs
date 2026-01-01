@@ -1,5 +1,6 @@
-using Xunit;
 using System;
+using Xunit;
+using ConduitRoute = Abies.Conduit.Routing.Route;
 
 namespace Abies.Tests;
 
@@ -9,7 +10,7 @@ public class ProfileFavoritesTests
     public void ProfileFavorites_Route_Type_Should_Exist()
     {
         // Verify ProfileFavorites route type exists in the routing namespace
-        var routingAssembly = typeof(Abies.Conduit.Routing.Route).Assembly;
+        var routingAssembly = typeof(ConduitRoute).Assembly;
         var profileFavoritesType = routingAssembly.GetType("Abies.Conduit.Routing.Route+ProfileFavorites");
         
         Assert.NotNull(profileFavoritesType);
@@ -17,22 +18,21 @@ public class ProfileFavoritesTests
     }
     
     [Fact]
-    public void ProfileFavorites_Handler_Should_Exist()
+    public void ProfileFavorites_Template_Route_Should_Match()
     {
-        // Verify the ProfileFavorites handler method exists
-        var handlersType = typeof(Abies.Conduit.Routing.Handlers);
-        var handlerMethod = handlersType.GetMethod("ProfileFavorites");
-        
-        Assert.NotNull(handlerMethod);
-        Assert.True(handlerMethod.IsStatic);
-        Assert.Equal("ProfileFavorites", handlerMethod.Name);
+        var matched = ConduitRoute.Templates.TryMatch("/profile/janedoe/favorites", out var route, out var match);
+
+        Assert.True(matched);
+        var profileFavorites = Assert.IsType<ConduitRoute.ProfileFavorites>(route);
+        Assert.Equal("janedoe", profileFavorites.UserName.Value);
+        Assert.Equal("janedoe", match.GetRequired<string>("userName"));
     }
     
     [Fact]
     public void Profile_And_ProfileFavorites_Routes_Should_Be_Distinct_Types()
     {
         // Verify that Profile and ProfileFavorites are distinct route types
-        var routingAssembly = typeof(Abies.Conduit.Routing.Route).Assembly;
+        var routingAssembly = typeof(ConduitRoute).Assembly;
         var profileType = routingAssembly.GetType("Abies.Conduit.Routing.Route+Profile");
         var profileFavoritesType = routingAssembly.GetType("Abies.Conduit.Routing.Route+ProfileFavorites");
         

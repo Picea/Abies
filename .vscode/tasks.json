@@ -2,27 +2,50 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Run E2E tests",
+			"label": "Stop API server (5179)",
 			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"problemMatcher": [
-				"$msCompile"
+			"command": "bash",
+			"args": [
+				"-lc",
+				"pid=$(lsof -t -iTCP:5179 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"${pid:-}\" ]; then kill \"$pid\" || true; fi"
 			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start API server (5179) (detached)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"set -euo pipefail; cd \"${workspaceFolder}\"; pid=$(lsof -t -iTCP:5179 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"${pid:-}\" ]; then kill \"$pid\" || true; sleep 1; fi; nohup dotnet run --project Abies.Conduit.Api --no-build --urls http://localhost:5179 > /tmp/abies-conduit-api-5179.log 2>&1 & echo $! > /tmp/abies-conduit-api-5179.pid; echo \"API started (detached). Log: /tmp/abies-conduit-api-5179.log\""
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Show API server log (5179)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"if [ -f /tmp/abies-conduit-api-5179.log ]; then tail -n 200 /tmp/abies-conduit-api-5179.log; else echo 'No log file found at /tmp/abies-conduit-api-5179.log'; fi"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "OTLP proxy smoke test (API 5179 → Dashboard)",
+			"type": "shell",
+			"command": "python3 scripts/otlp_smoke_test.py",
+			"problemMatcher": [],
 			"group": "test"
 		},
 		{
 			"label": "Run E2E tests",
 			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
-				"-c",
-				"Debug",
-				"-v",
-				"minimal"
-			],
-			"isBackground": false,
+			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
 			"problemMatcher": [
 				"$msCompile"
 			],
@@ -45,26 +68,6 @@
 			"isBackground": true,
 			"problemMatcher": [],
 			"group": "build"
-		},
-		{
-			"label": "Run E2E tests",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "test"
-		},
-		{
-			"label": "Run E2E tests (fresh)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "test"
 		},
 		{
 			"label": "Run E2E tests (fresh)",
@@ -127,7 +130,7 @@
 			"group": "build"
 		},
 		{
-			"label": "Run E2E tests",
+			"label": "Run E2E tests (verbosity m)",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
@@ -153,7 +156,7 @@
 			"group": "build"
 		},
 		{
-			"label": "Run E2E Favorite and Pagination tests",
+			"label": "Run E2E Favorite and Pagination tests (fully qualified)",
 			"type": "shell",
 			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -v minimal --filter \"FullyQualifiedName~Abies.Conduit.E2E.FavoriteTests|FullyQualifiedName~Abies.Conduit.E2E.PaginationTests\"",
 			"isBackground": false,
@@ -161,6 +164,32 @@
 				"$msCompile"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Run E2E (headed + slowmo) Favorite and Pagination",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests"
+			],
+			"options": {
+				"env": {
+					"HEADED": "1",
+					"PW_SLOWMO_MS": "150",
+					"PWDEBUG": "0",
+					"PLAYWRIGHT_BROWSERS_PATH": "0"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
 		},
 		{
 			"label": "Run single E2E test",
