@@ -52,7 +52,7 @@ public class Page : Element<Model, Message>
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-        => TraceUpdate(message switch
+        => message switch
         {
             Message.TitleChanged titleChanged => (
                 model with { Title = titleChanged.Value },
@@ -116,17 +116,7 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-        });
-
-    private static (Model model, Command command) TraceUpdate((Model model, Command command) result)
-    {
-        try
-        {
-            System.Console.WriteLine($"[abies] editor model: title='{result.model.Title}', desc='{result.model.Description}', body-len={(result.model.Body ?? "").Length}, submitting={result.model.IsSubmitting}, slug={(result.model.Slug ?? "\u2205")} ");
-        }
-        catch { }
-        return result;
-    }
+    };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
@@ -154,7 +144,7 @@ public class Page : Element<Model, Message>
                 div([class_("row")], [
                     div([class_("col-md-10 offset-md-1 col-xs-12")], [
                         ErrorList(model.Errors),
-                        form([], [
+                        form([onsubmit(new Message.ArticleSubmitted())], [
                             fieldset([], [
                                 fieldset([class_("form-group")], [
                                     input([
@@ -206,7 +196,7 @@ public class Page : Element<Model, Message>
                                 ]),
                                 button([
                                     class_("btn btn-lg pull-xs-right btn-primary"),
-                                    type("button"),
+                                    type("submit"),
                                     ..((model.IsSubmitting ||
                                              string.IsNullOrWhiteSpace(model.Title) ||
                                              string.IsNullOrWhiteSpace(model.Description) ||

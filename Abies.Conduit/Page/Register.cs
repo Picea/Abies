@@ -46,7 +46,7 @@ public class Page : Element<Model, Message>
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
-        => TraceUpdate(message switch
+        => message switch
         {
             Message.UsernameChanged usernameChanged => (
                 model with { Username = usernameChanged.Value },
@@ -72,17 +72,7 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-        });
-
-    private static (Model model, Command command) TraceUpdate((Model model, Command command) result)
-    {
-        try
-        {
-            System.Console.WriteLine($"[abies] register model: user='{result.model.Username}', email='{result.model.Email}', pwd-len={(result.model.Password ?? "").Length}, submitting={result.model.IsSubmitting}");
-        }
-        catch { }
-        return result;
-    }
+        };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors == null
@@ -105,7 +95,7 @@ public class Page : Element<Model, Message>
                         
                         ErrorList(model.Errors),
 
-                        form([], [
+                        form([onsubmit(new Message.RegisterSubmitted())], [
                             fieldset([], [                                fieldset([class_("form-group")], [
                                     input([
                                         class_("form-control form-control-lg"),
@@ -139,7 +129,7 @@ public class Page : Element<Model, Message>
                                         ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
-                                    type("button"),
+                                    type("submit"),
                                     ..((model.IsSubmitting ||
                                              string.IsNullOrWhiteSpace(model.Username) ||
                                              string.IsNullOrWhiteSpace(model.Email) ||
