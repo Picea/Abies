@@ -124,7 +124,7 @@ public class Page : Element<Model, Message>
                                             value(model.ImageUrl),
                                             oninput(d => new Message.ImageUrlChanged(d?.Value ?? "")),
                                             onchange(d => new Message.ImageUrlChanged(d?.Value ?? "")),
-                                            ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                            ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                         ])
                                     ]),
                                     fieldset([class_("form-group")], [
@@ -135,7 +135,7 @@ public class Page : Element<Model, Message>
                                             value(model.Username),
                                             oninput(d => new Message.UsernameChanged(d?.Value ?? "")),
                                             onchange(d => new Message.UsernameChanged(d?.Value ?? "")),
-                                            ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                            ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                         ])
                                     ]),
                                     fieldset([class_("form-group")], [
@@ -145,7 +145,7 @@ public class Page : Element<Model, Message>
                                             placeholder("Short bio about you"),
                                             oninput(d => new Message.BioChanged(d?.Value ?? "")),
                                             onchange(d => new Message.BioChanged(d?.Value ?? "")),
-                                            ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                            ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                         ],
                                             [text(model.Bio)]
                                         )
@@ -158,7 +158,7 @@ public class Page : Element<Model, Message>
                                             value(model.Email),
                                             oninput(d => new Message.EmailChanged(d?.Value ?? "")),
                                             onchange(d => new Message.EmailChanged(d?.Value ?? "")),
-                                            ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                            ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                         ])
                                     ]),
                                     fieldset([class_("form-group")], [
@@ -169,7 +169,7 @@ public class Page : Element<Model, Message>
                                             value(model.Password),
                                             oninput(d => new Message.PasswordChanged(d?.Value ?? "")),
                                             onchange(d => new Message.PasswordChanged(d?.Value ?? "")),
-                                            ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                            ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                         ])
                                     ]),
                                     button([
@@ -178,8 +178,8 @@ public class Page : Element<Model, Message>
                                             ..((model.IsSubmitting ||
                                                      string.IsNullOrWhiteSpace(model.Username) ||
                                                      string.IsNullOrWhiteSpace(model.Email))
-                                                ? new[] { disabled() }
-                                                : System.Array.Empty<DOM.Attribute>()),
+                                                ? (DOM.Attribute[])[disabled()]
+                                                : []),
                                             onclick(new Message.SettingsSubmitted())
                                         ],
                                         [text(model.IsSubmitting ? "Updating Settings..." : "Update Settings")]

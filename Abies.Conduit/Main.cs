@@ -190,7 +190,7 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (ApiException)
                 {
-                    dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "Invalid email or password" }));
+                    dispatch(new Conduit.Page.Login.Message.LoginError(["Invalid email or password"]));
                 }
                 catch (UnauthorizedException)
                 {
@@ -198,7 +198,7 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (Exception)
                 {
-                    dispatch(new Conduit.Page.Login.Message.LoginError(new[] { "An unexpected error occurred" }));
+                    dispatch(new Conduit.Page.Login.Message.LoginError(["An unexpected error occurred"]));
                 }
                 break;
             case RegisterCommand register:
@@ -219,7 +219,7 @@ public class Program : Program<Model, Arguments>
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
-                        { "error", new[] { "An unexpected error occurred" } }
+                        { "error", ["An unexpected error occurred"] }
                     };
                     dispatch(new Conduit.Page.Register.Message.RegisterError(errors));
                 }
@@ -242,7 +242,7 @@ public class Program : Program<Model, Arguments>
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
-                        { "error", new[] { "An unexpected error occurred" } }
+                        { "error", ["An unexpected error occurred"] }
                     };
                     dispatch(new Conduit.Page.Settings.Message.SettingsError(errors));
                 }
@@ -272,15 +272,15 @@ public class Program : Program<Model, Arguments>
                 {
                     if (!string.IsNullOrEmpty(loadArticles.Author))
                     {
-                        dispatch(new Conduit.Page.Profile.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                        dispatch(new Conduit.Page.Profile.Message.ArticlesLoaded([], 0));
                     }
                     else if (!string.IsNullOrEmpty(loadArticles.FavoritedBy))
                     {
-                        dispatch(new Conduit.Page.Profile.Message.FavoritedArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                        dispatch(new Conduit.Page.Profile.Message.FavoritedArticlesLoaded([], 0));
                     }
                     else
                     {
-                        dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                        dispatch(new Conduit.Page.Home.Message.ArticlesLoaded([], 0));
                     }
                 }
                 break;
@@ -292,7 +292,7 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (Exception)
                 {
-                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(new System.Collections.Generic.List<Conduit.Page.Home.Article>(), 0));
+                    dispatch(new Conduit.Page.Home.Message.ArticlesLoaded([], 0));
                 }
                 break;
             case LoadTagsCommand:
@@ -307,7 +307,7 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (Exception)
                 {
-                    dispatch(new Conduit.Page.Home.Message.TagsLoaded(new System.Collections.Generic.List<string>()));
+                    dispatch(new Conduit.Page.Home.Message.TagsLoaded([]));
                 }
                 break;
             case LoadArticleCommand loadArticle:
@@ -365,7 +365,7 @@ public class Program : Program<Model, Arguments>
                 }
                 catch (Exception)
                 {
-                    dispatch(new Conduit.Page.Article.Message.CommentsLoaded(new System.Collections.Generic.List<Conduit.Page.Article.Comment>()));
+                    dispatch(new Conduit.Page.Article.Message.CommentsLoaded([]));
                 }
                 break;
             case SubmitCommentCommand submitComment:
@@ -416,7 +416,7 @@ public class Program : Program<Model, Arguments>
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
-                        { "error", new[] { "An unexpected error occurred" } }
+                        { "error", ["An unexpected error occurred"] }
                     };
                     dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(errors));
                 }
@@ -439,7 +439,7 @@ public class Program : Program<Model, Arguments>
                 {
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
-                        { "error", new[] { "An unexpected error occurred" } }
+                        { "error", ["An unexpected error occurred"] }
                     };
                     dispatch(new Conduit.Page.Editor.Message.ArticleSubmitError(errors));
                 }

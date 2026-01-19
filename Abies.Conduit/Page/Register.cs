@@ -104,7 +104,7 @@ public class Page : Element<Model, Message>
                                         value(model.Username),
                                         oninput(d => new Message.UsernameChanged(d?.Value ?? "")),
                                         onchange(d => new Message.UsernameChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -115,7 +115,7 @@ public class Page : Element<Model, Message>
                                         value(model.Email),
                                         oninput(d => new Message.EmailChanged(d?.Value ?? "")),
                                         onchange(d => new Message.EmailChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -126,7 +126,7 @@ public class Page : Element<Model, Message>
                                         value(model.Password),
                                         oninput(d => new Message.PasswordChanged(d?.Value ?? "")),
                                         onchange(d => new Message.PasswordChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ])
                                 ]),                                button([class_("btn btn-lg btn-primary pull-xs-right"),
                                     type("submit"),
@@ -134,8 +134,8 @@ public class Page : Element<Model, Message>
                                              string.IsNullOrWhiteSpace(model.Username) ||
                                              string.IsNullOrWhiteSpace(model.Email) ||
                                              string.IsNullOrWhiteSpace(model.Password))
-                                        ? new[] { disabled() }
-                                        : System.Array.Empty<DOM.Attribute>()),
+                                        ? (DOM.Attribute[])[disabled()]
+                                        : []),
                                     onclick(new Message.RegisterSubmitted())],
                                     [text(model.IsSubmitting ? "Signing up..." : "Sign up")]
                                 )

@@ -154,7 +154,7 @@ public class Page : Element<Model, Message>
                                         value(model.Title),
                                         oninput(d => new Message.TitleChanged(d?.Value ?? "")),
                                         onchange(d => new Message.TitleChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -165,7 +165,7 @@ public class Page : Element<Model, Message>
                                         value(model.Description),
                                         oninput(d => new Message.DescriptionChanged(d?.Value ?? "")),
                                         onchange(d => new Message.DescriptionChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -176,7 +176,7 @@ public class Page : Element<Model, Message>
                                         value(model.Body),
                                         oninput(d => new Message.BodyChanged(d?.Value ?? "")),
                                         onchange(d => new Message.BodyChanged(d?.Value ?? "")),
-                                        ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                        ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ], [])
                                 ]),
                                 fieldset([class_("form-group")], [
@@ -188,7 +188,7 @@ public class Page : Element<Model, Message>
                                         oninput(d => new Message.TagInputChanged(d?.Value ?? "")),
                                         onchange(d => new Message.TagInputChanged(d?.Value ?? "")),
                                           onkeydown(e => e is not null && e.Key == "Enter" ? new Message.AddTag() : new Message.NoOp()),
-                                          ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
+                                          ..(model.IsSubmitting ? (DOM.Attribute[])[disabled()] : [])
                                     ]),
                                     div([class_("tag-list")], [
                                         TagInputSection(model)
@@ -201,8 +201,8 @@ public class Page : Element<Model, Message>
                                              string.IsNullOrWhiteSpace(model.Title) ||
                                              string.IsNullOrWhiteSpace(model.Description) ||
                                              string.IsNullOrWhiteSpace(model.Body))
-                                          ? new[] { disabled() }
-                                          : System.Array.Empty<DOM.Attribute>()),
+                                          ? (DOM.Attribute[])[disabled()]
+                                          : []),
                                     onclick(new Message.ArticleSubmitted())],
                                     [text(model.IsSubmitting 
                                         ? "Publishing Article..." 

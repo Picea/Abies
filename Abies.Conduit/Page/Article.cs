@@ -238,7 +238,7 @@ public class Page : Element<Model, Message>
                     button([
                         class_("btn btn-sm btn-primary"),
                         type("submit"),
-                        ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>()),
+                        ..((string.IsNullOrWhiteSpace(model.CommentInput) || model.SubmittingComment) ? (DOM.Attribute[])[disabled()] : []),
                         onclick(new Message.SubmitComment())
                     ], [text("Post Comment")])
                 ])

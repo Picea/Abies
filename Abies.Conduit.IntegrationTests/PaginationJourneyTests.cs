@@ -20,7 +20,7 @@ public class PaginationJourneyTests
         // Home also loads tags on init.
         handler.When(HttpMethod.Get, "/api/tags", HttpStatusCode.OK, new
         {
-            tags = new[] { "pages" }
+            tags = (string[])["pages"]
         });
 
         // Page 1 (offset 0)
@@ -35,7 +35,7 @@ public class PaginationJourneyTests
                     title: "Page 1",
                     description: "Desc",
                     body: "Body",
-                    tagList: new[] { "pages" })
+                    tagList: ["pages"])
             )
         );
 
@@ -51,7 +51,7 @@ public class PaginationJourneyTests
                     title: "Page 2",
                     description: "Desc",
                     body: "Body",
-                    tagList: new[] { "pages" })
+                    tagList: ["pages"])
             )
         );
 

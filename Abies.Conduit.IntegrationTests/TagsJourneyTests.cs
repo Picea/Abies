@@ -22,7 +22,7 @@ public class TagsJourneyTests
             HttpStatusCode.OK,
             new
             {
-                tags = new[] { "a", "b" }
+                tags = (string[])["a", "b"]
             });
 
         var http = new HttpClient(handler)
@@ -38,6 +38,6 @@ public class TagsJourneyTests
 
         // Assert
         Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/tags");
-        Assert.Equal(new[] { "a", "b" }, tags.ToArray());
+        Assert.Equal(["a", "b"], tags.ToArray());
     }
 }

@@ -200,7 +200,7 @@ public class Page : Element<Model, Message>
         int pageCount = (int)System.Math.Ceiling(model.ArticlesCount / 10.0);
         if (pageCount <= 1) return text("");
 
-        var items = new List<Node>();
+        List<Node> items = [];
         for (int i = 0; i < pageCount; i++)
         {
             var isActive = i == model.CurrentPage;
