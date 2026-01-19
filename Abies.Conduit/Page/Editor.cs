@@ -75,10 +75,10 @@ public class Page : Element<Model, Message>
                     ? model with 
                     { 
             TagList = (model.TagList is null
-                                ? new List<string> { model.TagInput }
+                                ? [model.TagInput]
                                 : (model.TagList.Contains(model.TagInput)
                                     ? model.TagList
-                                    : new List<string>(model.TagList) { model.TagInput })),
+                                    : [..model.TagList, model.TagInput])),
                         TagInput = model.TagList is null || !model.TagList.Contains(model.TagInput) ? "" : model.TagInput
                     }
                     : model,
@@ -91,8 +91,8 @@ public class Page : Element<Model, Message>
             Message.NoOp => (model, Commands.None),
             Message.ArticleSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                model.Slug == null
-                    ?  new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? new List<string>()) 
+                model.Slug is null
+                    ?  new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? []) 
                     :  new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body) 
             ),
             Message.ArticleSubmitSuccess slug => (
@@ -119,7 +119,7 @@ public class Page : Element<Model, Message>
     };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
-        errors == null
+        errors is null
             ? text("")
             : ul([class_("error-messages")],
                 [.. errors.SelectMany(e => e.Value.Select(msg => 
@@ -187,7 +187,7 @@ public class Page : Element<Model, Message>
                                         value(model.TagInput),
                                         oninput(d => new Message.TagInputChanged(d?.Value ?? "")),
                                         onchange(d => new Message.TagInputChanged(d?.Value ?? "")),
-                                          onkeydown(e => e != null && e.Key == "Enter" ? new Message.AddTag() : new Message.NoOp()),
+                                          onkeydown(e => e is not null && e.Key == "Enter" ? new Message.AddTag() : new Message.NoOp()),
                                           ..(model.IsSubmitting ? new[] { disabled() } : System.Array.Empty<DOM.Attribute>())
                                     ]),
                                     div([class_("tag-list")], [
@@ -206,7 +206,7 @@ public class Page : Element<Model, Message>
                                     onclick(new Message.ArticleSubmitted())],
                                     [text(model.IsSubmitting 
                                         ? "Publishing Article..." 
-                                        : model.Slug != null 
+                                        : model.Slug is not null 
                                             ? "Update Article" 
                                             : "Publish Article")]
                                 )

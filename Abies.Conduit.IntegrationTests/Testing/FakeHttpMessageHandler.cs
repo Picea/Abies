@@ -12,9 +12,9 @@ namespace Abies.Conduit.IntegrationTests.Testing;
 
 public sealed class FakeHttpMessageHandler : HttpMessageHandler
 {
-    private readonly Dictionary<(HttpMethod Method, string PathAndQuery), HttpResponseMessage> _routes = new();
+    private readonly Dictionary<(HttpMethod Method, string PathAndQuery), HttpResponseMessage> _routes = [];
 
-    public List<(HttpMethod Method, Uri Uri, string? Body)> Requests { get; } = new();
+    public List<(HttpMethod Method, Uri Uri, string? Body)> Requests { get; } = [];
 
     /// <summary>
     /// When true, the handler throws an exception for unregistered routes instead of returning 404.

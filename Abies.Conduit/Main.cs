@@ -80,7 +80,7 @@ public class Program : Program<Model, Arguments>
         Routing.Route currentRoute = Routing.Route.FromUrl(Routing.Route.Match, url);
         return currentRoute switch
         {
-            Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model(new List<Conduit.Page.Home.Article>(), 0, new List<string>(), Conduit.Page.Home.FeedTab.Global, "", true, 0, currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.Home => (new(new Page.Home(new Conduit.Page.Home.Model([], 0, [], Conduit.Page.Home.FeedTab.Global, "", true, 0, currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.NotFound => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None),
             Routing.Route.Settings => (new(new Page.Settings(new Conduit.Page.Settings.Model(
                 ImageUrl: currentUser?.Image ?? string.Empty,
@@ -98,7 +98,7 @@ public class Program : Program<Model, Arguments>
             Routing.Route.ProfileFavorites profileFavorites => (new(new Page.ProfileFavorites(new Conduit.Page.Profile.Model(profileFavorites.UserName, ActiveTab: Conduit.Page.Profile.ProfileTab.FavoritedArticles, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.Article article => (new(new Page.Article(new Conduit.Page.Article.Model(article.Slug, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.Redirect => (new(new Page.Redirect(), currentRoute, currentUser), Commands.None),
-            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(TagList: new List<string>(), CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
+            Routing.Route.NewArticle => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(TagList: [], CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             Routing.Route.EditArticle edit => (new(new Page.NewArticle(new Conduit.Page.Editor.Model(IsLoading: true, Slug: edit.Slug.Value, CurrentUser: currentUser)), currentRoute, currentUser), Commands.None),
             _ => (new(new Page.NotFound(), currentRoute, currentUser), Commands.None)
         };
@@ -113,7 +113,7 @@ public class Program : Program<Model, Arguments>
     private static (Model model, Command) HandleUrlChanged(Url url, Model model)
     {
         var (nextModel, _) = GetNextModel(url, model.CurrentUser);
-        if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser == null)
+        if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser is null)
         {
             var loginUrl = Url.Create("/login");
             var (loginModel, _) = GetNextModel(loginUrl, null);
@@ -133,7 +133,7 @@ public class Program : Program<Model, Arguments>
         if (urlRequest is Internal @internal)
         {
             var (nextModel, _) = GetNextModel(@internal.Url, model.CurrentUser);
-            if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser == null)
+            if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser is null)
             {
                 var loginUrl = Url.Create("/login");
                 var (loginModel, _) = GetNextModel(loginUrl, null);
@@ -172,7 +172,7 @@ public class Program : Program<Model, Arguments>
                 try
                 {
                     var user = await AuthService.LoadUserFromLocalStorageAsync();
-                    if (user != null)
+                    if (user is not null)
                     {
                         dispatch(new UserLoggedIn(user));
                     }
@@ -344,7 +344,7 @@ public class Program : Program<Model, Arguments>
                             Title: "",
                             Description: "",
                             Body: "",
-                            TagList: new List<string>(),
+                            TagList: [],
                             CreatedAt: "",
                             UpdatedAt: "",
                             Favorited: false,

@@ -16,7 +16,7 @@ public static class Navigation
     public static Node View(Model model)
     {
         Node[] userLinks;
-        if (model.CurrentUser == null)
+        if (model.CurrentUser is null)
         {
             userLinks = new Node[]
             {

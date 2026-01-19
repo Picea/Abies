@@ -75,7 +75,7 @@ public class Page : Element<Model, Message>
         };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
-        errors == null
+        errors is null
             ? text("")
             : ul([class_("error-messages")], 
                 [..errors.SelectMany(e => e.Value.Select(msg => 

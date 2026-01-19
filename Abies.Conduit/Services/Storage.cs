@@ -68,7 +68,7 @@ public sealed record BrowserStorageProvider : StorageProvider
 /// </summary>
 public sealed record InMemoryStorageProvider : StorageProvider
 {
-    private readonly Dictionary<string, string> _store = new();
+    private readonly Dictionary<string, string> _store = [];
 
     public override Task SetAsync(string key, string value)
     {

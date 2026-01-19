@@ -31,7 +31,7 @@ internal static class ConduitApiFixtures
             title,
             description,
             body,
-            tagList = tagList is null ? new List<string>() : new List<string>(tagList),
+            tagList = tagList is null ? [] : new List<string>(tagList),
             createdAt,
             updatedAt,
             favorited,

@@ -108,7 +108,7 @@ public static class ApiClient
 
 public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
     {
-        var queryParams = new List<string>();
+        List<string> queryParams = [];
         if (!string.IsNullOrEmpty(tag)) queryParams.Add($"tag={tag}");
         if (!string.IsNullOrEmpty(author)) queryParams.Add($"author={author}");
         if (!string.IsNullOrEmpty(favoritedBy)) queryParams.Add($"favorited={favoritedBy}");
@@ -235,7 +235,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> PostAsync<T>(string endpoint, object? data)
     {
-        var content = data != null
+        var content = data is not null
             ? new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json")
             : new StringContent("{}", Encoding.UTF8, "application/json");
         var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
@@ -279,7 +279,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
             try
             {
                 var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(content, JsonOptions);
-                if (errorResponse == null || errorResponse.Errors.Count == 0)
+                if (errorResponse is null || errorResponse.Errors.Count == 0)
                 {
                     throw new HttpRequestException($"API error: {response.StatusCode}, {content}");
                 }
@@ -300,7 +300,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 // Response models
 public class ErrorResponse
 {
-    public Dictionary<string, string[]> Errors { get; set; } = new();
+    public Dictionary<string, string[]> Errors { get; set; } = [];
 }
 
 public class UserResponse
@@ -319,7 +319,7 @@ public class UserData
 
 public class ArticlesResponse
 {
-    public List<ArticleData> Articles { get; set; } = new();
+    public List<ArticleData> Articles { get; set; } = [];
     public int ArticlesCount { get; set; }
 }
 
@@ -334,7 +334,7 @@ public class ArticleData
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
-    public List<string> TagList { get; set; } = new();
+    public List<string> TagList { get; set; } = [];
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
     public bool Favorited { get; set; }
@@ -344,7 +344,7 @@ public class ArticleData
 
 public class CommentsResponse
 {
-    public List<CommentData> Comments { get; set; } = new();
+    public List<CommentData> Comments { get; set; } = [];
 }
 
 public class CommentResponse
@@ -376,7 +376,7 @@ public class ProfileData
 
 public class TagsResponse
 {
-    public List<string> Tags { get; set; } = new();
+    public List<string> Tags { get; set; } = [];
 }
 
 public class ApiException : Exception

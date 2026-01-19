@@ -45,7 +45,7 @@ internal static class MvuLoopRuntime
         options ??= new Options();
 
         var model = initialModel;
-        var steps = new List<StepLog>();
+        List<StepLog> steps = [];
 
         var pendingMessages = new Queue<Abies.Message>();
         pendingMessages.Enqueue(initialMessage);

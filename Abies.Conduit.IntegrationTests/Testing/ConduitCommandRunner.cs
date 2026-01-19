@@ -16,7 +16,7 @@ internal static class ConduitCommandRunner
 {
     public static async Task<IReadOnlyList<Abies.Message>> RunAsync(Abies.Command command)
     {
-        var dispatched = new List<Abies.Message>();
+        List<Abies.Message> dispatched = [];
 
     await Abies.Conduit.Main.Program.HandleCommand(command, msg =>
         {
@@ -29,7 +29,7 @@ internal static class ConduitCommandRunner
 
     public static async Task<IReadOnlyList<Abies.Message>> RunAsync(IEnumerable<Abies.Command> commands)
     {
-        var dispatched = new List<Abies.Message>();
+        List<Abies.Message> dispatched = [];
         foreach (var cmd in commands)
         {
             dispatched.AddRange(await RunAsync(cmd));

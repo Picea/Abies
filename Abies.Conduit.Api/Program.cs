@@ -334,7 +334,7 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
             if (string.Equals(name, "transfer-encoding", System.StringComparison.OrdinalIgnoreCase)) continue;
             ctx.Response.Headers[name] = string.Join(",", values);
         }
-        if (resp.Content != null)
+        if (resp.Content is not null)
         {
             var respContentType = resp.Content.Headers.ContentType?.ToString();
             if (!string.IsNullOrEmpty(respContentType)) ctx.Response.ContentType = respContentType;
@@ -400,19 +400,19 @@ app.MapPost("/api/users", (RegisterRequest request) =>
     var u = request.User;
     
     // Validate required fields
-    var errors = new Dictionary<string, string[]>();
+    Dictionary<string, string[]> errors = [];
     if (string.IsNullOrWhiteSpace(u.Email))
-        errors["email"] = new[] { "can't be empty" };
+        errors["email"] = ["can't be empty"];
     else if (!u.Email.Contains("@"))
-        errors["email"] = new[] { "is invalid" };
+        errors["email"] = ["is invalid"];
     
     if (string.IsNullOrWhiteSpace(u.Username))
-        errors["username"] = new[] { "can't be empty" };
+        errors["username"] = ["can't be empty"];
     
     if (string.IsNullOrWhiteSpace(u.Password))
-        errors["password"] = new[] { "can't be empty" };
+        errors["password"] = ["can't be empty"];
     else if (u.Password.Length < 8)
-        errors["password"] = new[] { "is too short (minimum is 8 characters)" };
+        errors["password"] = ["is too short (minimum is 8 characters)"];
     
     if (errors.Count > 0)
         return Results.UnprocessableEntity(new { errors });
@@ -437,21 +437,22 @@ app.MapPost("/api/users/login", (LoginRequest request) =>
     var u = request.User;
     
     // Validate required fields
-    var errors = new Dictionary<string, string[]>();
+    Dictionary<string, string[]> errors = [];
     if (string.IsNullOrWhiteSpace(u.Email))
-        errors["email"] = new[] { "can't be empty" };
+        errors["email"] = ["can't be empty"];
     
     if (string.IsNullOrWhiteSpace(u.Password))
-        errors["password"] = new[] { "can't be empty" };
+        errors["password"] = ["can't be empty"];
     
     if (errors.Count > 0)
         return Results.UnprocessableEntity(new { errors });
       // Find user by email
     var user = users.Values.FirstOrDefault(x => x.Email.Equals(u.Email, StringComparison.OrdinalIgnoreCase));
-    if (user == null || user.Password != u.Password)
+    if (user is null || user.Password != u.Password)
     {
-        var errorDict = new Dictionary<string, string[]> {
-            ["email or password"] = new[] { "is invalid" }
+        Dictionary<string, string[]> errorDict = new()
+        {
+            ["email or password"] = ["is invalid"]
         };
         return Results.UnprocessableEntity(new { errors = errorDict });
     }
@@ -510,12 +511,12 @@ app.MapPut("/api/user", (UpdateUserRequest request, HttpContext ctx) =>
         currentUser = currentUser with { Password = u.Password };
     }
     
-    if (u.Bio != null) // Allow empty string to clear the bio
+    if (u.Bio is not null) // Allow empty string to clear the bio
     {
         currentUser = currentUser with { Bio = u.Bio };
     }
     
-    if (u.Image != null) // Allow empty string to clear the image
+    if (u.Image is not null) // Allow empty string to clear the image
     {
         currentUser = currentUser with { Image = u.Image };
     }
@@ -529,15 +530,15 @@ app.MapPut("/api/user", (UpdateUserRequest request, HttpContext ctx) =>
 app.MapGet("/api/profiles/{username}", (string username, HttpContext ctx) =>
 {
     var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
-    if (user == null) return Results.NotFound();
+    if (user is null) return Results.NotFound();
     var current = GetCurrentUser(ctx);
-    var following = current != null && IsFollowing(follows, username, current.Username);
+    var following = current is not null && IsFollowing(follows, username, current.Username);
     return Results.Ok(new { profile = new ProfileResponse(user, following) });
 });
 app.MapPost("/api/profiles/{username}/follow", (string username, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
     if (user is null) return Results.NotFound();
     FollowSetFor(username).Add(current.Username);
@@ -546,7 +547,7 @@ app.MapPost("/api/profiles/{username}/follow", (string username, HttpContext ctx
 app.MapDelete("/api/profiles/{username}/follow", (string username, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     var user = users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
     if (user is null) return Results.NotFound();
     FollowSetFor(username).Remove(current.Username);
@@ -574,11 +575,11 @@ app.MapGet("/api/articles", (int? limit, int? offset, string? tag, string? autho
         a.TagList,
         a.CreatedAt.ToString("o"),
         a.UpdatedAt.ToString("o"),
-        current != null && a.FavoritedBy.Contains(current),
+        current is not null && a.FavoritedBy.Contains(current),
         a.FavoritedBy.Count,
         new ProfileResponse(
             users.Values.First(u => u.Username == a.Author),
-            current != null && IsFollowing(follows, a.Author, current))
+            current is not null && IsFollowing(follows, a.Author, current))
     ));
     return Results.Ok(new { articles = list, articlesCount = total });
 });
@@ -586,7 +587,7 @@ app.MapGet("/api/articles", (int? limit, int? offset, string? tag, string? autho
 app.MapGet("/api/articles/feed", (int? limit, int? offset, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx)?.Username;
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     // Compute the set of authors the current user follows
     var authorsFollowedByCurrent = follows
         .Where(kvp => kvp.Value.Contains(current))
@@ -609,11 +610,11 @@ app.MapGet("/api/articles/feed", (int? limit, int? offset, HttpContext ctx) =>
         a.TagList,
         a.CreatedAt.ToString("o"),
         a.UpdatedAt.ToString("o"),
-        current != null && a.FavoritedBy.Contains(current),
+        current is not null && a.FavoritedBy.Contains(current),
         a.FavoritedBy.Count,
         new ProfileResponse(
             users.Values.First(u => u.Username == a.Author),
-            current != null && IsFollowing(follows, a.Author, current))
+            current is not null && IsFollowing(follows, a.Author, current))
     ));
     return Results.Ok(new { articles = list, articlesCount = total });
 });
@@ -624,7 +625,7 @@ app.MapGet("/api/articles/{slug}", (string slug, HttpContext ctx) =>
     var current = GetCurrentUser(ctx)?.Username;
     var authorProfile = new ProfileResponse(
         users.Values.First(u => u.Username == a.Author),
-        current != null && IsFollowing(follows, a.Author, current));
+        current is not null && IsFollowing(follows, a.Author, current));
     return Results.Ok(new { article = new ArticleResponse(
         a.Slug,
         a.Title,
@@ -633,7 +634,7 @@ app.MapGet("/api/articles/{slug}", (string slug, HttpContext ctx) =>
         a.TagList,
         a.CreatedAt.ToString("o"),
         a.UpdatedAt.ToString("o"),
-        current != null && a.FavoritedBy.Contains(current),
+        current is not null && a.FavoritedBy.Contains(current),
         a.FavoritedBy.Count,
         authorProfile
     ) });
@@ -642,7 +643,7 @@ app.MapGet("/api/articles/{slug}", (string slug, HttpContext ctx) =>
 app.MapPost("/api/articles", (CreateArticleRequest req, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     var d = req.Article;
     
     // Validation
@@ -686,7 +687,7 @@ app.MapPost("/api/articles", (CreateArticleRequest req, HttpContext ctx) =>
     }
     
     var now = DateTime.UtcNow;
-    var tagList = d.TagList ?? new List<string>();
+    var tagList = d.TagList ?? [];
     var record = new ArticleRecord(slug, d.Title, d.Description, d.Body, tagList, now, now, current.Username);
     articles[slug] = record;
     var authorProfile = new ProfileResponse(current, false);
@@ -707,7 +708,7 @@ app.MapPost("/api/articles", (CreateArticleRequest req, HttpContext ctx) =>
 app.MapPut("/api/articles/{slug}", (string slug, UpdateArticleRequest req, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     if (a.Author != current.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     
@@ -791,7 +792,7 @@ app.MapPut("/api/articles/{slug}", (string slug, UpdateArticleRequest req, HttpC
 app.MapDelete("/api/articles/{slug}", (string slug, HttpContext ctx) =>
 {
     var current = GetCurrentUser(ctx);
-    if (current == null) return Results.Unauthorized();
+    if (current is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     if (a.Author != current.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     articles.TryRemove(slug, out _);
@@ -810,7 +811,7 @@ app.MapGet("/api/articles/{slug}/comments", (string slug, HttpContext ctx) =>
         c.Body,
         new ProfileResponse(
             users.Values.First(u => u.Username == c.Author),
-            current != null && IsFollowing(follows, c.Author, current)
+            current is not null && IsFollowing(follows, c.Author, current)
         )
     ));
     return Results.Ok(new { comments = list });
@@ -818,7 +819,7 @@ app.MapGet("/api/articles/{slug}/comments", (string slug, HttpContext ctx) =>
 app.MapPost("/api/articles/{slug}/comments", (string slug, PostCommentRequest req, HttpContext ctx) =>
 {
     var user = GetCurrentUser(ctx);
-    if (user == null) return Results.Unauthorized();
+    if (user is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     var c = new CommentRecord(nextCommentId++, req.Comment.Body, DateTime.UtcNow, user.Username);
     a.Comments.Add(c);
@@ -834,10 +835,10 @@ app.MapPost("/api/articles/{slug}/comments", (string slug, PostCommentRequest re
 app.MapDelete("/api/articles/{slug}/comments/{id}", (string slug, int id, HttpContext ctx) =>
 {
     var user = GetCurrentUser(ctx);
-    if (user == null) return Results.Unauthorized();
+    if (user is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     var c = a.Comments.FirstOrDefault(x => x.Id == id);
-    if (c == null) return Results.NotFound();
+    if (c is null) return Results.NotFound();
     if (c.Author != user.Username) return Results.StatusCode(StatusCodes.Status403Forbidden);
     a.Comments.Remove(c);
     return Results.NoContent();
@@ -847,7 +848,7 @@ app.MapDelete("/api/articles/{slug}/comments/{id}", (string slug, int id, HttpCo
 app.MapPost("/api/articles/{slug}/favorite", (string slug, HttpContext ctx) =>
 {
     var user = GetCurrentUser(ctx);
-    if (user == null) return Results.Unauthorized();
+    if (user is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     a.FavoritedBy.Add(user.Username);
     return Results.Ok(new { article = new ArticleResponse(
@@ -871,7 +872,7 @@ app.MapPost("/api/articles/{slug}/favorite", (string slug, HttpContext ctx) =>
 app.MapDelete("/api/articles/{slug}/favorite", (string slug, HttpContext ctx) =>
 {
     var user = GetCurrentUser(ctx);
-    if (user == null) return Results.Unauthorized();
+    if (user is null) return Results.Unauthorized();
     if (!articles.TryGetValue(slug, out var a)) return Results.NotFound();
     a.FavoritedBy.Remove(user.Username);
     return Results.Ok(new { article = new ArticleResponse(
@@ -938,7 +939,7 @@ public record ArticleRecord(
 )
 {
     public HashSet<string> FavoritedBy { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public List<CommentRecord> Comments { get; } = new();
+    public List<CommentRecord> Comments { get; } = [];
 }
 public record CommentRecord(int Id, string Body, DateTime CreatedAt, string Author);
 

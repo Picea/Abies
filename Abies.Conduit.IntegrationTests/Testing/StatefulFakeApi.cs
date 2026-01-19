@@ -25,18 +25,18 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     };
 
     // State stores
-    private readonly Dictionary<string, FakeUser> _users = new();
-    private readonly Dictionary<string, FakeArticle> _articles = new();
-    private readonly Dictionary<string, List<FakeComment>> _comments = new(); // slug -> comments
-    private readonly HashSet<(string Username, string Slug)> _favorites = new();
-    private readonly HashSet<(string Follower, string Followed)> _follows = new();
+    private readonly Dictionary<string, FakeUser> _users = [];
+    private readonly Dictionary<string, FakeArticle> _articles = [];
+    private readonly Dictionary<string, List<FakeComment>> _comments = []; // slug -> comments
+    private readonly HashSet<(string Username, string Slug)> _favorites = [];
+    private readonly HashSet<(string Follower, string Followed)> _follows = [];
 
     private int _nextCommentId = 1;
 
     // Current authenticated user (set via Authorization header)
     private string? _currentUsername;
 
-    public List<(HttpMethod Method, Uri Uri, string? Body, string? AuthUser)> Requests { get; } = new();
+    public List<(HttpMethod Method, Uri Uri, string? Body, string? AuthUser)> Requests { get; } = [];
 
     #region Setup Methods
 
@@ -68,7 +68,7 @@ public sealed class StatefulFakeApi : HttpMessageHandler
             authorUsername);
         
         _articles[slug] = article;
-        _comments[slug] = new List<FakeComment>();
+        _comments[slug] = [];
         return article;
     }
 

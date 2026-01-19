@@ -63,7 +63,7 @@ public class Page : Element<Model, Message>
     {
         return (
             new Model(slug, true),
-            new List<Command> { new LoadArticleCommand(slug.Value), new LoadCommentsCommand(slug.Value) }
+            [new LoadArticleCommand(slug.Value), new LoadCommentsCommand(slug.Value)]
         );
     }
 
@@ -93,9 +93,9 @@ public class Page : Element<Model, Message>
             Message.CommentSubmitted commentSubmitted => (
                 model with 
                 { 
-                    Comments = model.Comments != null 
-                        ? new List<Comment>(model.Comments) { commentSubmitted.Comment }
-                        : new List<Comment> { commentSubmitted.Comment },
+                    Comments = model.Comments is not null 
+                        ? [..model.Comments, commentSubmitted.Comment]
+                        : [commentSubmitted.Comment],
                     CommentInput = "",
                     SubmittingComment = false
                 },
@@ -113,7 +113,7 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             Message.ToggleFavorite => (
-                model.Article != null
+                model.Article is not null
                     ? model with
                     {
                         Article = model.Article with
@@ -125,17 +125,17 @@ public class Page : Element<Model, Message>
                         }
                     }
                     : model,
-                model.Article != null ? new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) : Commands.None
+                model.Article is not null ? new ToggleFavoriteCommand(model.Article.Slug, model.Article.Favorited) : Commands.None
             ),
             Message.ToggleFollow => (
-                model.Article != null
+                model.Article is not null
                     ? model with { Article = model.Article with { Author = model.Article.Author with { Following = !model.Article.Author.Following } } }
                     : model,
-                model.Article != null ? new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) : Commands.None
+                model.Article is not null ? new ToggleFollowCommand(model.Article.Author.Username, model.Article.Author.Following) : Commands.None
             ),
             Message.DeleteArticle => (
                 model,
-                model.Article != null ? new DeleteArticleCommand(model.Article.Slug) : Commands.None
+                model.Article is not null ? new DeleteArticleCommand(model.Article.Slug) : Commands.None
             ),
             Message.ArticleDeleted => (
                 model,
@@ -213,7 +213,7 @@ public class Page : Element<Model, Message>
     }
 
     private static Node CommentForm(Model model) =>
-        model.CurrentUser == null
+        model.CurrentUser is null
             ? div([class_("row")], [
                 div([class_("col-xs-12 col-md-8 offset-md-2")], [
                     p([], [                        a([href("/login")], [text("Sign in")]),
@@ -270,12 +270,12 @@ private static Node CommentCard(Model model, Comment comment) =>
             div([class_("col-xs-12 col-md-8 offset-md-2")], [
                 CommentForm(model),
                 ..(model.Comments?.ConvertAll(c => CommentCard(model, c)) ??
-                    new List<Node> { text("Loading comments...") })
+                    [text("Loading comments...")])
             ])
         ]);
 
     public static Node View(Model model) =>
-        model.IsLoading || model.Article == null
+        model.IsLoading || model.Article is null
             ? div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
                 div([class_("container")], [
                     div([class_("row")], [
