@@ -30,7 +30,7 @@ public class ArticleCrudJourneyTests
                     title: "Created",
                     description: "Desc",
                     body: "Body",
-                    tagList: new[] { "one", "two" })
+                    tagList: ["one", "two"])
             });
 
         // Update
@@ -45,7 +45,7 @@ public class ArticleCrudJourneyTests
                     title: "Updated",
                     description: "Desc2",
                     body: "Body2",
-                    tagList: new[] { "one" })
+                    tagList: ["one"])
             });
 
         // Delete (NoContent)

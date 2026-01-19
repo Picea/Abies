@@ -42,8 +42,8 @@ public class CombinedArticleCommentJourneyTests
             HttpStatusCode.OK,
             new
             {
-                comments = new[]
-                {
+                comments = (object[])
+                [
                     new
                     {
                         id = 1,
@@ -52,7 +52,7 @@ public class CombinedArticleCommentJourneyTests
                         body = "Hello",
                         author = new { username = "alice", bio = "", image = "", following = false }
                     }
-                }
+                ]
             });
 
     // Note: SubmitCommentCommand in Main.HandleCommand only POSTs and dispatches CommentSubmitted.

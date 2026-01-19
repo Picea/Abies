@@ -50,7 +50,7 @@ public class CombinedJourneyTests
                     title = "Test",
                     description = "Desc",
                     body = "Body",
-                    tagList = new[] { "tag1" },
+                    tagList = (string[])["tag1"],
                     createdAt = "2020-01-01T00:00:00.000Z",
                     updatedAt = "2020-01-01T00:00:00.000Z",
                     favorited = true,
@@ -130,7 +130,7 @@ public class CombinedJourneyTests
                     title = "Test",
                     description = "Desc",
                     body = "Body",
-                    tagList = new[] { "tag1" },
+                    tagList = (string[])["tag1"],
                     createdAt = "2020-01-01T00:00:00.000Z",
                     updatedAt = "2020-01-01T00:00:00.000Z",
                     favorited = false,
@@ -341,22 +341,22 @@ public class CombinedJourneyTests
             HttpStatusCode.OK,
             new
             {
-                articles = new[]
-                {
+                articles = (object[])
+                [
                     new
                     {
                         slug = "csharp-article",
                         title = "C# Tips",
                         description = "Learn C#",
                         body = "...",
-                        tagList = new[] { "csharp" },
+                        tagList = (string[])["csharp"],
                         createdAt = "2020-01-01T00:00:00.000Z",
                         updatedAt = "2020-01-01T00:00:00.000Z",
                         favorited = false,
                         favoritesCount = 5,
                         author = new { username = "dev", bio = "", image = "", following = false }
                     }
-                },
+                ],
                 articlesCount = 1
             });
 
@@ -407,22 +407,22 @@ public class CombinedJourneyTests
             HttpStatusCode.OK,
             new
             {
-                articles = new[]
-                {
+                articles = (object[])
+                [
                     new
                     {
                         slug = "page2-article",
                         title = "Page 2 Article",
                         description = "...",
                         body = "...",
-                        tagList = System.Array.Empty<string>(),
+                        tagList = (string[])[],
                         createdAt = "2020-01-01T00:00:00.000Z",
                         updatedAt = "2020-01-01T00:00:00.000Z",
                         favorited = false,
                         favoritesCount = 0,
                         author = new { username = "writer", bio = "", image = "", following = false }
                     }
-                },
+                ],
                 articlesCount = 15
             });
 
@@ -523,7 +523,7 @@ public class CombinedJourneyTests
             HttpStatusCode.UnprocessableEntity,
             new
             {
-                errors = new { email_or_password = new[] { "is invalid" } }
+                errors = new { email_or_password = (string[])["is invalid"] }
             });
 
         ConfigureFakeApi(handler);
@@ -574,7 +574,7 @@ public class CombinedJourneyTests
                     title = "My New Article",
                     description = "About something",
                     body = "Content here",
-                    tagList = new[] { "csharp", "dotnet" },
+                    tagList = (string[])["csharp", "dotnet"],
                     createdAt = "2020-01-01T00:00:00.000Z",
                     updatedAt = "2020-01-01T00:00:00.000Z",
                     favorited = false,
@@ -633,7 +633,7 @@ public class CombinedJourneyTests
                     title = "Updated Title",
                     description = "Updated desc",
                     body = "Updated body",
-                    tagList = new[] { "updated" },
+                    tagList = (string[])["updated"],
                     createdAt = "2020-01-01T00:00:00.000Z",
                     updatedAt = "2020-01-02T00:00:00.000Z",
                     favorited = false,
@@ -685,7 +685,7 @@ public class CombinedJourneyTests
             HttpStatusCode.UnprocessableEntity,
             new
             {
-                errors = new { title = new[] { "can't be blank" }, body = new[] { "can't be blank" } }
+                errors = new { title = (string[])["can't be blank"], body = (string[])["can't be blank"] }
             });
 
         ConfigureFakeApi(handler);
@@ -787,8 +787,8 @@ public class CombinedJourneyTests
             {
                 errors = new
                 {
-                    email = new[] { "has already been taken" },
-                    username = new[] { "has already been taken" }
+                    email = (string[])["has already been taken"],
+                    username = (string[])["has already been taken"]
                 }
             });
 

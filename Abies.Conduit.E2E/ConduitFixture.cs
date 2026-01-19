@@ -30,7 +30,7 @@ public ApiClient Api { get; private set; } = null!;
         var skipPwInstall = string.Equals(Environment.GetEnvironmentVariable("SKIP_PW_INSTALL"), "1", StringComparison.OrdinalIgnoreCase);
         if (!skipPwInstall)
         {
-            Microsoft.Playwright.Program.Main(new[] { "install" });
+            Microsoft.Playwright.Program.Main(["install"]);
         }
         _playwright = await Playwright.CreateAsync();
         var headed = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HEADED"));

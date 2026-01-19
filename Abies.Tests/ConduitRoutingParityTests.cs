@@ -78,13 +78,13 @@ public class ConduitRoutingParityTests
 
     private static object[] Case(string path, Type expectedType, params (string key, string value)[] captures)
     {
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> dict = new(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in captures)
         {
             dict[key] = value;
         }
 
-        return new object[] { path, expectedType, dict };
+        return [path, expectedType, dict];
     }
 
     private static string GetCaptureFromRoute(ConduitRoute route, string key)

@@ -28,7 +28,7 @@ public static class Elements
         => element("desc", attributes, children, id);
 
     public static Node ellipse(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("ellipse", attributes, Array.Empty<Node>(), id);
+        => element("ellipse", attributes, [], id);
 
     public static Node text(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("text", attributes, children, id);
@@ -40,55 +40,55 @@ public static class Elements
         => element("filter", attributes, children, id);
 
     public static Node feBlend(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feBlend", attributes, Array.Empty<Node>(), id);
+        => element("feBlend", attributes, [], id);
 
     public static Node feColorMatrix(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feColorMatrix", attributes, Array.Empty<Node>(), id);
+        => element("feColorMatrix", attributes, [], id);
 
     public static Node feComponentTransfer(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("feComponentTransfer", attributes, children, id);
 
     public static Node feComposite(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feComposite", attributes, Array.Empty<Node>(), id);
+        => element("feComposite", attributes, [], id);
 
     public static Node feConvolveMatrix(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feConvolveMatrix", attributes, Array.Empty<Node>(), id);
+        => element("feConvolveMatrix", attributes, [], id);
 
     public static Node feDiffuseLighting(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("feDiffuseLighting", attributes, children, id);
 
     public static Node feDisplacementMap(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feDisplacementMap", attributes, Array.Empty<Node>(), id);
+        => element("feDisplacementMap", attributes, [], id);
 
     public static Node feFlood(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feFlood", attributes, Array.Empty<Node>(), id);
+        => element("feFlood", attributes, [], id);
 
     public static Node feGaussianBlur(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feGaussianBlur", attributes, Array.Empty<Node>(), id);
+        => element("feGaussianBlur", attributes, [], id);
 
     public static Node feImage(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feImage", attributes, Array.Empty<Node>(), id);
+        => element("feImage", attributes, [], id);
 
     public static Node feMerge(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("feMerge", attributes, children, id);
 
     public static Node feMergeNode(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feMergeNode", attributes, Array.Empty<Node>(), id);
+        => element("feMergeNode", attributes, [], id);
 
     public static Node feMorphology(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feMorphology", attributes, Array.Empty<Node>(), id);
+        => element("feMorphology", attributes, [], id);
 
     public static Node feOffset(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feOffset", attributes, Array.Empty<Node>(), id);
+        => element("feOffset", attributes, [], id);
 
     public static Node feSpecularLighting(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("feSpecularLighting", attributes, children, id);
 
     public static Node feTile(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feTile", attributes, Array.Empty<Node>(), id);
+        => element("feTile", attributes, [], id);
 
     public static Node feTurbulence(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("feTurbulence", attributes, Array.Empty<Node>(), id);
+        => element("feTurbulence", attributes, [], id);
 
     public static Node symbol(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("symbol", attributes, children, id);
@@ -115,13 +115,13 @@ public static class Elements
         => element("picture", attributes, children, id);
 
     public static Node source(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("source", attributes, Array.Empty<Node>(), id);
+        => element("source", attributes, [], id);
 
     public static Node track(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("track", attributes, Array.Empty<Node>(), id);
+        => element("track", attributes, [], id);
 
     public static Node wbr(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("wbr", attributes, Array.Empty<Node>(), id);
+        => element("wbr", attributes, [], id);
 
     // Obsolete but sometimes still found
     public static Node menu(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
@@ -140,13 +140,13 @@ public static class Elements
         => element("svg", attributes, children, id);
 
     public static Node line(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("line", attributes, Array.Empty<Node>(), id);
+        => element("line", attributes, [], id);
 
     public static Node polyline(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("polyline", attributes, Array.Empty<Node>(), id);
+        => element("polyline", attributes, [], id);
 
     public static Node polygon(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("polygon", attributes, Array.Empty<Node>(), id);
+        => element("polygon", attributes, [], id);
 
     public static Node g(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("g", attributes, children, id);
@@ -155,10 +155,10 @@ public static class Elements
         => element("defs", attributes, children, id);
 
     public static Node use(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("use", attributes, Array.Empty<Node>(), id);
+        => element("use", attributes, [], id);
 
     public static Node stop(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("stop", attributes, Array.Empty<Node>(), id);
+        => element("stop", attributes, [], id);
 
     public static Node linearGradient(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("linearGradient", attributes, children, id);
@@ -209,10 +209,10 @@ public static class Elements
         => element("span", attributes, children, id);
 
     public static Node img(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("img", attributes, Array.Empty<Node>(), id);
+        => element("img", attributes, [], id);
 
     public static Node input(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("input", attributes, Array.Empty<Node>(), id);
+        => element("input", attributes, [], id);
 
     public static Node form(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("form", attributes, children, id);
@@ -230,10 +230,10 @@ public static class Elements
         => element("label", attributes, children, id);
 
     public static Node br(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("br", attributes, Array.Empty<Node>(), id);
+        => element("br", attributes, [], id);
 
     public static Node hr(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("hr", attributes, Array.Empty<Node>(), id);
+        => element("hr", attributes, [], id);
 
     public static Node ul(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("ul", attributes, children, id);
@@ -399,16 +399,16 @@ public static class Elements
         => element("map", attributes, children, id);
 
     public static Node area(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("area", attributes, Array.Empty<Node>(), id);
+        => element("area", attributes, [], id);
 
     public static Node object_(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("object", attributes, children, id);
 
     public static Node param(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("param", attributes, Array.Empty<Node>(), id);
+        => element("param", attributes, [], id);
 
     public static Node embed(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("embed", attributes, Array.Empty<Node>(), id);
+        => element("embed", attributes, [], id);
 
     public static Node script(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("script", attributes, children, id);
@@ -420,16 +420,16 @@ public static class Elements
         => element("title", attributes, children, id);
 
     public static Node meta(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("meta", attributes, Array.Empty<Node>(), id);
+        => element("meta", attributes, [], id);
 
     public static Node @base(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("base", attributes, Array.Empty<Node>(), id);
+        => element("base", attributes, [], id);
 
     public static Node caption(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("caption", attributes, children, id);
 
     public static Node col(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("col", attributes, Array.Empty<Node>(), id);
+        => element("col", attributes, [], id);
 
     public static Node colgroup(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("colgroup", attributes, children, id);
@@ -474,13 +474,13 @@ public static class Elements
 
     // Canvas and SVG-related
     public static Node path(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("path", attributes, Array.Empty<Node>(), id);
+        => element("path", attributes, [], id);
 
     public static Node circle(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("circle", attributes, Array.Empty<Node>(), id);
+        => element("circle", attributes, [], id);
 
     public static Node rect(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => element("rect", attributes, Array.Empty<Node>(), id);
+        => element("rect", attributes, [], id);
 
     public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => new DOM.RawHtml(id.ToString(), html);

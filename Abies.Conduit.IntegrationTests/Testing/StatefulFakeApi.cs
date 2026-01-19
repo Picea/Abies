@@ -508,7 +508,7 @@ public sealed class StatefulFakeApi : HttpMessageHandler
         new(HttpStatusCode.UnprocessableEntity)
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { errors = new Dictionary<string, string[]> { [field] = [message] } }, _jsonOptions),
+                JsonSerializer.Serialize(new { errors = (Dictionary<string, string[]>)new() { [field] = [message] } }, _jsonOptions),
                 Encoding.UTF8, "application/json")
         };
 

@@ -108,7 +108,7 @@ public static class Route
         /// <summary>
         /// Matches the root path (<c>/</c> or empty).
         /// </summary>
-        public static Parser<RouteMatch> Root => new PathParser(Array.Empty<PathSegment>());
+        public static Parser<RouteMatch> Root => new PathParser([]);
 
         /// <summary>
         /// Provides helpers for creating path segments.
@@ -477,7 +477,7 @@ public static class Route
                 throw new ArgumentException("Route templates must start with '/'.", nameof(template));
             }
 
-            var segments = new List<Parse.PathSegment>();
+            List<Parse.PathSegment> segments = [];
             var optionalEncountered = false;
             var index = 0;
 

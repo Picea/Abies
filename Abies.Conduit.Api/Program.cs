@@ -175,7 +175,7 @@ if (string.IsNullOrWhiteSpace(otlpHeadersRaw)
             proc.WaitForExit(1000);
             // `ps eww -ax` output can wrap long environment-variable values (inserting newlines).
             // Normalize whitespace and then regex-match the key.
-            var normalized = string.Join(' ', output.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries));
+            var normalized = string.Join(' ', output.Split([' ', '\n', '\r', '\t'], StringSplitOptions.RemoveEmptyEntries));
             var match = System.Text.RegularExpressions.Regex.Match(
                 normalized,
                 @"DASHBOARD__OTLP__PRIMARYAPIKEY=(\S+)",
@@ -202,7 +202,7 @@ app.Logger.LogInformation(
     tracesEndpoint,
     otlpHeadersRaw.Contains("x-otlp-api-key=", StringComparison.OrdinalIgnoreCase));
 
-app.MapMethods("/otlp/v1/traces", new[] { "OPTIONS" }, (HttpContext ctx) =>
+app.MapMethods("/otlp/v1/traces", ["OPTIONS"], (HttpContext ctx) =>
 {
     ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
     ctx.Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
@@ -419,11 +419,11 @@ app.MapPost("/api/users", (RegisterRequest request) =>
     
     // Check if email is already taken
     if (users.Values.Any(x => x.Email.Equals(u.Email, StringComparison.OrdinalIgnoreCase)))
-        return Results.UnprocessableEntity(new { errors = new { email = new[] { "has already been taken" } } });
+        return Results.UnprocessableEntity(new { errors = new { email = (string[])["has already been taken"] } });
     
     // Check if username is already taken
     if (users.Values.Any(x => x.Username.Equals(u.Username, StringComparison.OrdinalIgnoreCase)))
-        return Results.UnprocessableEntity(new { errors = new { username = new[] { "has already been taken" } } });
+        return Results.UnprocessableEntity(new { errors = new { username = (string[])["has already been taken"] } });
     
     var user = new UserRecord(u.Username, u.Email, u.Password, null, null);
     users[u.Email] = user;
@@ -480,7 +480,7 @@ app.MapPut("/api/user", (UpdateUserRequest request, HttpContext ctx) =>
     if (!string.IsNullOrEmpty(u.Email) && u.Email != currentUser.Email)
     {
         if (users.ContainsKey(u.Email)) 
-            return Results.UnprocessableEntity(new { errors = new { email = new[] { "already taken" } } });
+            return Results.UnprocessableEntity(new { errors = new { email = (string[])["already taken"] } });
         
         users.TryRemove(currentUser.Email, out _);
         currentUser = currentUser with { Email = u.Email };
@@ -648,11 +648,11 @@ app.MapPost("/api/articles", (CreateArticleRequest req, HttpContext ctx) =>
     
     // Validation
     if (string.IsNullOrWhiteSpace(d.Title)) 
-        return Results.UnprocessableEntity(new { errors = new { title = new[] { "can't be empty" } } });
+        return Results.UnprocessableEntity(new { errors = new { title = (string[])["can't be empty"] } });
     if (string.IsNullOrWhiteSpace(d.Description)) 
-        return Results.UnprocessableEntity(new { errors = new { description = new[] { "can't be empty" } } });
+        return Results.UnprocessableEntity(new { errors = new { description = (string[])["can't be empty"] } });
     if (string.IsNullOrWhiteSpace(d.Body)) 
-        return Results.UnprocessableEntity(new { errors = new { body = new[] { "can't be empty" } } });
+        return Results.UnprocessableEntity(new { errors = new { body = (string[])["can't be empty"] } });
     
     // Generate slug from title - replace spaces with dashes, remove special chars, ensure lowercase
     var slug = d.Title.ToLowerInvariant()
