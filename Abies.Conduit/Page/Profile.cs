@@ -203,20 +203,18 @@ public class Page : Element<Model, Message>
         var items = new List<Node>();
         for (int i = 0; i < pageCount; i++)
         {
+            var isActive = i == model.CurrentPage;
+            var attrs = new List<DOM.Attribute>
+            {
+                class_(isActive ? "page-link active" : "page-link"),
+                type("button"),
+                onclick(new Message.PageSelected(i))
+            };
+            if (isActive) attrs.Add(ariaCurrent("page"));
+
             items.Add(
-                li([class_(i == model.CurrentPage ? "page-item active" : "page-item")], [
-                    (i == model.CurrentPage
-                        ? a([
-                            class_("page-link active"),
-                            ariaCurrent("page"),
-                            href("#"),
-                            onclick(new Message.PageSelected(i))
-                        ], [text((i + 1).ToString())])
-                        : a([
-                            class_("page-link"),
-                            href("#"),
-                            onclick(new Message.PageSelected(i))
-                        ], [text((i + 1).ToString())]))
+                li([class_(isActive ? "page-item active" : "page-item")], [
+                    button([..attrs], [text((i + 1).ToString())])
                 ]));
         }
 

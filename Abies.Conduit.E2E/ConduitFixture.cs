@@ -8,24 +8,36 @@ namespace Abies.Conduit.E2E;
 
 public class ConduitFixture : IAsyncLifetime
 {
+    private const string DefaultUiUrl = "http://localhost:5209";
+    private const string DefaultApiPingUrl = "http://localhost:5179/api/ping";
+
 public IBrowser Browser { get; private set; } = null!;
+    public IBrowserContext SharedContext { get; private set; } = null!;
+public ApiClient Api { get; private set; } = null!;
     private IPlaywright? _playwright;
-    private Process? _server;
-    private Process? _apiServer;
+    private Process? _appHost;
     public string AppBaseUrl { get; private set; } = string.Empty;
+    public string ApiBaseUrl { get; private set; } = string.Empty;
 
     private readonly string _logDir = System.IO.Path.Combine(AppContext.BaseDirectory, "e2e-logs");
     private string UiStdOutLogPath => System.IO.Path.Combine(_logDir, "ui-stdout.log");
     private string UiStdErrLogPath => System.IO.Path.Combine(_logDir, "ui-stderr.log");
     private string ApiLogPath => System.IO.Path.Combine(_logDir, "api.log");
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Diagnostics.Stopwatch> _reqTimers = new();
 
     public async Task InitializeAsync()
     {
-        Microsoft.Playwright.Program.Main(new[] { "install" });
+        var skipPwInstall = string.Equals(Environment.GetEnvironmentVariable("SKIP_PW_INSTALL"), "1", StringComparison.OrdinalIgnoreCase);
+        if (!skipPwInstall)
+        {
+            Microsoft.Playwright.Program.Main(new[] { "install" });
+        }
         _playwright = await Playwright.CreateAsync();
         var headed = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HEADED"));
         var slowMoRaw = Environment.GetEnvironmentVariable("PW_SLOWMO_MS");
         _ = int.TryParse(slowMoRaw, out var slowMoMs);
+        var defaultTimeoutRaw = Environment.GetEnvironmentVariable("PW_DEFAULT_TIMEOUT_MS");
+        _ = int.TryParse(defaultTimeoutRaw, out var defaultTimeoutMs);
 
     Directory.CreateDirectory(_logDir);
     TryDelete(UiStdOutLogPath);
@@ -38,56 +50,61 @@ public IBrowser Browser { get; private set; } = null!;
             SlowMo = slowMoMs > 0 ? slowMoMs : null,
         });
 
-        var apiDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Abies.Conduit.Api"));
-        // If an API server is already running (e.g. started via VS Code task), reuse it to avoid port conflicts.
-        if (!await IsServerUpAsync("http://localhost:5179/api/ping"))
+        // If caller supplies base URLs, reuse them and skip Aspire startup.
+        var uiBase = Environment.GetEnvironmentVariable("E2E_UI_BASE_URL");
+        var apiBase = Environment.GetEnvironmentVariable("E2E_API_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(uiBase) && !string.IsNullOrWhiteSpace(apiBase))
         {
-            var apiStart = new ProcessStartInfo("dotnet", $"run --project {apiDir} --no-launch-profile --urls http://localhost:5179")
-            {
-                WorkingDirectory = apiDir,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-            };
-            _apiServer = Process.Start(apiStart);
-            if (_apiServer == null)
-                throw new InvalidOperationException("Failed to start API process.");
-            _apiServer.EnableRaisingEvents = true;
-            _apiServer.Exited += (_, __) => File.AppendAllText(ApiLogPath, $"{DateTime.UtcNow:o} API process exited code={_apiServer.ExitCode}\n");
-            _apiServer.OutputDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(ApiLogPath, e.Data + Environment.NewLine); };
-            _apiServer.ErrorDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(ApiLogPath, e.Data + Environment.NewLine); };
-            _apiServer.BeginOutputReadLine();
-            _apiServer.BeginErrorReadLine();
-        }
-
-        await WaitForServerAsync("http://localhost:5179/api/ping");
-
-        var projectDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Abies.Conduit"));
-        // If UI server is already running, reuse it.
-        if (await IsServerUpAsync("http://localhost:5209"))
-        {
-            AppBaseUrl = "http://localhost:5209";
+            AppBaseUrl = uiBase.TrimEnd('/');
+            ApiBaseUrl = apiBase.TrimEnd('/');
+            await WaitForServerAsync(AppBaseUrl);
+            await WaitForServerAsync($"{ApiBaseUrl}/api/ping");
+            Api = new ApiClient(ApiBaseUrl);
+            SharedContext = await CreateContextInternalAsync(defaultTimeoutMs > 0 ? defaultTimeoutMs : 30000);
+            await WarmUpAsync(SharedContext);
             return;
         }
 
-        var startInfo = new ProcessStartInfo("dotnet", $"run --project {projectDir} --no-launch-profile --urls http://localhost:5209")
+        // Otherwise start the full distributed app via Aspire AppHost.
+    var appHostDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "../../../../Abies.Conduit.Apphost"));
+    var appHostProject = System.IO.Path.Combine(appHostDir, "Abies.Conduit.AppHost.csproj");
+
+        var psi = new ProcessStartInfo("dotnet", $"run --project \"{appHostProject}\" --no-launch-profile")
         {
-            WorkingDirectory = projectDir,
+            WorkingDirectory = appHostDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        _server = Process.Start(startInfo);
-        if (_server == null)
-            throw new InvalidOperationException("Failed to start UI process.");
-        _server.EnableRaisingEvents = true;
-        _server.Exited += (_, __) => File.AppendAllText(UiStdErrLogPath, $"{DateTime.UtcNow:o} UI process exited code={_server.ExitCode}\n");
+        // We configure the dashboard port to avoid collisions across runs.
+        psi.Environment["DOTNET_DASHBOARD_PORT"] = Environment.GetEnvironmentVariable("DOTNET_DASHBOARD_PORT") ?? "18888";
+        // Aspire Hosting validates dashboard configuration even when you don't actively open the dashboard.
+        // When launched via the Aspire CLI these are usually set automatically, but from tests we need to set them.
+        psi.Environment["ASPNETCORE_URLS"] = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:0";
+        psi.Environment["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"] =
+            Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL") ?? "http://127.0.0.1:0";
+        // AppHost projects often assume local dev launch profiles (which may default to https). For E2E we use http.
+        psi.Environment["ASPIRE_ALLOW_UNSECURED_TRANSPORT"] =
+            Environment.GetEnvironmentVariable("ASPIRE_ALLOW_UNSECURED_TRANSPORT") ?? "true";
 
-        _server.OutputDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(UiStdOutLogPath, e.Data + Environment.NewLine); };
-        _server.ErrorDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(UiStdErrLogPath, e.Data + Environment.NewLine); };
+        _appHost = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start Aspire AppHost process.");
+        _appHost.EnableRaisingEvents = true;
+        _appHost.Exited += (_, __) => File.AppendAllText(UiStdErrLogPath, $"{DateTime.UtcNow:o} AppHost process exited code={_appHost.ExitCode}\n");
+        _appHost.OutputDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(UiStdOutLogPath, e.Data + Environment.NewLine); };
+        _appHost.ErrorDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(UiStdErrLogPath, e.Data + Environment.NewLine); };
+        _appHost.BeginOutputReadLine();
+        _appHost.BeginErrorReadLine();
 
-    AppBaseUrl = await WaitForAppUrlAsync(_server);
+    var (uiUrl, apiUrl) = await WaitForAspireUrlsAsync(_appHost, UiStdErrLogPath);
+        AppBaseUrl = uiUrl;
+        ApiBaseUrl = apiUrl;
+
         await WaitForServerAsync(AppBaseUrl);
+        await WaitForServerAsync($"{ApiBaseUrl}/api/ping");
+
+        Api = new ApiClient(ApiBaseUrl);
+        SharedContext = await CreateContextInternalAsync(defaultTimeoutMs > 0 ? defaultTimeoutMs : 30000);
+        await WarmUpAsync(SharedContext);
     }
 
     private static void TryDelete(string path)
@@ -118,89 +135,157 @@ public IBrowser Browser { get; private set; } = null!;
 
     private static async Task WaitForServerAsync(string url)
     {
-        using var client = new HttpClient();
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
         for (int i = 0; i < 60; i++)
         {
             try
             {
-                await client.GetAsync(url);
-                return;
+                using var resp = await client.GetAsync(url);
+                if (resp.IsSuccessStatusCode)
+                    return;
             }
             catch
             {
-                await Task.Delay(1000);
             }
+            await Task.Delay(1000);
         }
         throw new InvalidOperationException($"Server at {url} did not start.");
     }
 
     public async Task DisposeAsync()
     {
-        // Only kill processes we started. If we re-used externally started servers, _server/_apiServer stays null.
-        if (_server != null && !_server.HasExited)
-            _server.Kill(true);
-        if (_apiServer != null && !_apiServer.HasExited)
-            _apiServer.Kill(true);
+        if (_appHost != null && !_appHost.HasExited)
+        {
+            _appHost.Kill(true);
+            await _appHost.WaitForExitAsync();
+        }
+        if (SharedContext != null)
+            await SharedContext.CloseAsync();
         if (Browser != null)
             await Browser.CloseAsync();
         _playwright?.Dispose();
     }
 
-    private static async Task<string> WaitForAppUrlAsync(Process serverProcess)
+    public async Task<IBrowserContext> CreateContextAsync()
     {
-        var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var urlRegex = new System.Text.RegularExpressions.Regex(@"https?://[^\s]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    void TryParse(string? line)
+        if (SharedContext != null)
         {
-            if (string.IsNullOrEmpty(line)) return;
-            // WebAssembly dev host prints: "App url: http://127.0.0.1:55009/?arg=..."
-            var appIdx = line.IndexOf("App url:", StringComparison.OrdinalIgnoreCase);
-            if (appIdx >= 0)
-            {
-                var match = urlRegex.Match(line, appIdx);
-                if (match.Success)
-                {
-                    var raw = match.Value;
-                    var q = raw.IndexOf('?');
-            var baseUrl = q >= 0 ? raw.Substring(0, q) : raw;
-            if (baseUrl.EndsWith('/')) baseUrl = baseUrl.TrimEnd('/');
-                    tcs.TrySetResult(baseUrl);
-                    return;
-                }
-            }
-
-            // Kestrel-style output: "Now listening on: http://127.0.0.1:52901"
-            var listenIdx = line.IndexOf("Now listening on:", StringComparison.OrdinalIgnoreCase);
-            if (listenIdx >= 0)
-            {
-                var match = urlRegex.Match(line, listenIdx);
-                if (match.Success)
-                {
-                    var url = match.Value;
-                    if (url.EndsWith('/')) url = url.TrimEnd('/');
-                    tcs.TrySetResult(url);
-                    return;
-                }
-            }
-            // Ignore other URLs (e.g., echoed --urls)
+            return SharedContext;
         }
 
-        serverProcess.OutputDataReceived += (_, e) => TryParse(e.Data);
-        serverProcess.ErrorDataReceived += (_, e) => TryParse(e.Data);
-        serverProcess.BeginOutputReadLine();
-        serverProcess.BeginErrorReadLine();
+        var ms = ParseDefaultTimeoutMs();
+        return await CreateContextInternalAsync(ms);
+    }
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-        await using (cts.Token.Register(() => tcs.TrySetCanceled()))
+    private int ParseDefaultTimeoutMs()
+    {
+        if (!int.TryParse(Environment.GetEnvironmentVariable("PW_DEFAULT_TIMEOUT_MS"), out var ms) || ms <= 0)
+            ms = 30000;
+        return ms;
+    }
+
+    private async Task<IBrowserContext> CreateContextInternalAsync(int timeoutMs)
+    {
+        var context = await Browser.NewContextAsync();
+        context.SetDefaultTimeout(timeoutMs);
+        return context;
+    }
+
+    private async Task WarmUpAsync(IBrowserContext context)
+    {
+        var page = await context.NewPageAsync();
+        try
+        {
+            await page.GotoAsync(AppBaseUrl, new() { WaitUntil = WaitUntilState.NetworkIdle });
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        }
+        catch
+        {
+            // ignore warm-up failures; main tests will surface issues
+        }
+        finally
+        {
+            await page.CloseAsync();
+        }
+    }
+
+    public void AttachPageDiagnostics(IPage page)
+    {
+        page.Console += (_, msg) => System.Console.WriteLine($"[console:{msg.Type}] {msg.Text}");
+        page.RequestFailed += (_, req) => System.Console.WriteLine($"[requestfailed] {req.Method} {req.Url} - {req.Failure}");
+        page.Request += (_, req) =>
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _reqTimers[req.Url] = sw;
+        };
+        page.Response += async (_, resp) =>
+        {
+            if (_reqTimers.TryRemove(resp.Url, out var sw))
+            {
+                sw.Stop();
+                if (!resp.Ok || sw.Elapsed > TimeSpan.FromSeconds(2))
+                {
+                    string body = string.Empty;
+                    try { body = await resp.TextAsync(); } catch { }
+                    System.Console.WriteLine($"[response] {resp.Request.Method} {resp.Url} -> {(int)resp.Status} in {sw.ElapsedMilliseconds}ms :: {body}");
+                }
+            }
+        };
+    }
+
+    private static async Task<(string UiUrl, string ApiUrl)> WaitForAspireUrlsAsync(Process appHostProcess, string diagnosticsLogPath)
+    {
+        // Aspire prints lines like:
+        //   Resource "conduit-app" ... bindings: http://localhost:5209
+        //   Resource "conduit-api" ... bindings: http://localhost:5179
+        // The exact format can vary. We do a best-effort parse for the two project names used by the AppHost.
+        var uiTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var apiTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var urlRegex = new System.Text.RegularExpressions.Regex(@"https?://[^\s]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+        var uiNameRegex = new System.Text.RegularExpressions.Regex(@"\bconduit-app\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+        var apiNameRegex = new System.Text.RegularExpressions.Regex(@"\bconduit-api\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        void TryParse(string? line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return;
+
+            var match = urlRegex.Match(line);
+            if (!match.Success) return;
+
+            var url = match.Value;
+            if (url.EndsWith('/')) url = url.TrimEnd('/');
+
+            if (uiNameRegex.IsMatch(line))
+                uiTcs.TrySetResult(url);
+            if (apiNameRegex.IsMatch(line))
+                apiTcs.TrySetResult(url);
+        }
+
+        appHostProcess.OutputDataReceived += (_, e) => TryParse(e.Data);
+        appHostProcess.ErrorDataReceived += (_, e) => TryParse(e.Data);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        await using (cts.Token.Register(() =>
+        {
+            uiTcs.TrySetCanceled();
+            apiTcs.TrySetCanceled();
+        }))
         {
             try
             {
-                return await tcs.Task.ConfigureAwait(false);
+                var ui = await uiTcs.Task.ConfigureAwait(false);
+                var api = await apiTcs.Task.ConfigureAwait(false);
+                return (ui, api);
             }
             catch (TaskCanceledException)
             {
-                throw new InvalidOperationException("Timed out waiting for UI app URL from dev server output.");
+                var msg = "Timed out discovering Aspire service URLs from AppHost output. " +
+                          $"See logs: {diagnosticsLogPath}.";
+                throw new InvalidOperationException(msg);
             }
         }
     }
