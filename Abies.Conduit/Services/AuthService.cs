@@ -1,5 +1,4 @@
 using Abies.Conduit.Main;
-using Abies.Conduit.Services;
 using System.Threading.Tasks;
 
 namespace Abies.Conduit.Services;
@@ -11,11 +10,11 @@ public static class AuthService
 
     public static User? GetCurrentUser() => _currentUser;
 
-    private static Task SaveTokenAsync(string token) => Interop.SetLocalStorage(TokenKey, token);
+    private static Task SaveTokenAsync(string token) => Storage.SetAsync(TokenKey, token);
 
-    private static string? GetSavedToken() => Interop.GetLocalStorage(TokenKey);
+    private static string? GetSavedToken() => Storage.Get(TokenKey);
 
-    private static Task RemoveTokenAsync() => Interop.RemoveLocalStorage(TokenKey);
+    private static Task RemoveTokenAsync() => Storage.RemoveAsync(TokenKey);
 
     public static async Task<User> LoginAsync(string email, string password)
     {

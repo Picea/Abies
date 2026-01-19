@@ -11,14 +11,33 @@ namespace Abies.Conduit.Services;
 
 public static class ApiClient
 {
-    private static readonly HttpClient Client = new();
+    private static HttpClient Client = new();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
     
-    private const string BaseUrl = "http://localhost:5179/api";
+    private static string BaseUrl = "http://localhost:5179/api";
+
+    /// <summary>
+    /// Override the underlying <see cref="HttpClient"/> used by the Conduit UI.
+    /// Intended for tests (near-E2E integration) to plug in a fake handler.
+    /// </summary>
+    public static void ConfigureHttpClient(HttpClient httpClient)
+    {
+        Client = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+    }
+
+    /// <summary>
+    /// Override the API base URL used by the Conduit UI.
+    /// Intended for tests or custom deployments.
+    /// </summary>
+    public static void ConfigureBaseUrl(string baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl)) throw new ArgumentException("Base URL cannot be empty", nameof(baseUrl));
+        BaseUrl = baseUrl.TrimEnd('/');
+    }
 
     public static void SetAuthToken(string? token)
     {
