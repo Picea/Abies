@@ -10,46 +10,53 @@ using OpenTelemetry.Logs;
 
 namespace Abies.Conduit.ServiceDefaults;
 
+/// <summary>
+/// Extension members for service defaults configuration.
+/// </summary>
 public static class ServiceDefaultsExtensions
 {
-    /// <summary>
-    /// Configure shared defaults for all services.
-    /// </summary>
-    public static void AddServiceDefaults(this IHostApplicationBuilder builder)
+    extension(IHostApplicationBuilder builder)
     {
-        // Health checks available to all
-        builder.Services.AddHealthChecks();
-
-        // OpenTelemetry (Aspire sets OTLP env vars; exporter picks them up)
-        builder.Services.AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService(builder.Environment.ApplicationName))
-            .WithTracing(t => t
-                .AddSource("Abies")
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddOtlpExporter())
-            .WithMetrics(m => m
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddOtlpExporter());
-
-        // Route logs to OpenTelemetry (visible in Aspire dashboard)
-        builder.Logging.ClearProviders();
-        builder.Logging.AddOpenTelemetry(o =>
+        /// <summary>
+        /// Configure shared defaults for all services.
+        /// </summary>
+        public void AddServiceDefaults()
         {
-            o.IncludeFormattedMessage = true;
-            o.ParseStateValues = true;
-            o.IncludeScopes = true;
-            o.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.Environment.ApplicationName));
-            o.AddOtlpExporter();
-        });
+            // Health checks available to all
+            builder.Services.AddHealthChecks();
+
+            // OpenTelemetry (Aspire sets OTLP env vars; exporter picks them up)
+            builder.Services.AddOpenTelemetry()
+                .ConfigureResource(r => r.AddService(builder.Environment.ApplicationName))
+                .WithTracing(t => t
+                    .AddSource("Abies")
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter())
+                .WithMetrics(m => m
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter());
+
+            // Route logs to OpenTelemetry (visible in Aspire dashboard)
+            builder.Logging.ClearProviders();
+            builder.Logging.AddOpenTelemetry(o =>
+            {
+                o.IncludeFormattedMessage = true;
+                o.ParseStateValues = true;
+                o.IncludeScopes = true;
+                o.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.Environment.ApplicationName));
+                o.AddOtlpExporter();
+            });
+        }
     }
 
-    /// <summary>
-    /// Map common health endpoints.
-    /// </summary>
-    public static void MapDefaultEndpoints(this IEndpointRouteBuilder endpoints)
+    extension(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health");
+        /// <summary>
+        /// Map common health endpoints.
+        /// </summary>
+        public void MapDefaultEndpoints() =>
+            endpoints.MapHealthChecks("/health");
     }
 }
