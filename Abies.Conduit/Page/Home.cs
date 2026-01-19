@@ -68,14 +68,14 @@ public record Model(
         }
     public static Model Initialize(Message argument)
     {
-        return new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true, 0, null);
+        return new Model([], 0, [], FeedTab.Global, "", true, 0, null);
     }
     
     public static (Model model, IEnumerable<Command> commands) Init()
     {
         return (
-            new Model(new List<Article>(), 0, new List<string>(), FeedTab.Global, "", true, 0, null),
-            new List<Command> { new LoadArticlesCommand(), new LoadTagsCommand() }
+            new Model([], 0, [], FeedTab.Global, "", true, 0, null),
+            [new LoadArticlesCommand(), new LoadTagsCommand()]
         );
     }
       public static Subscription Subscriptions(Model model)
@@ -163,7 +163,7 @@ public record Model(
     private static Node FeedToggle(Model model) =>
         div([class_("feed-toggle")], [
             ul([class_("nav nav-pills outline-active")], [
-                model.CurrentUser != null
+                model.CurrentUser is not null
                     ? li([class_("nav-item")], [
                         a([class_(model.ActiveTab == FeedTab.YourFeed
                             ? "nav-link active"
@@ -235,7 +235,7 @@ public record Model(
     private static Node ArticleList(Model model) =>
         model.IsLoading
             ? div([class_("article-preview")], [text("Loading articles...")])
-            : model.Articles == null || model.Articles.Count == 0
+            : model.Articles is null || model.Articles.Count == 0
                 ? div([class_("article-preview")], [text("No articles are here... yet.")])
                 : div([], [..model.Articles.ConvertAll(article => ArticlePreview(article))]);
 
@@ -248,12 +248,12 @@ public record Model(
         for (int i = 0; i < pageCount; i++)
         {
             var isActive = i == model.CurrentPage;
-            var attrs = new List<DOM.Attribute>
-            {
+            List<DOM.Attribute> attrs =
+            [
                 class_(isActive ? "page-link active" : "page-link"),
                 type("button"),
                 onclick(new Message.PageSelected(i))
-            };
+            ];
             if (isActive) attrs.Add(ariaCurrent("page"));
 
             items.Add(
@@ -273,7 +273,7 @@ public record Model(
     private static Node TagCloud(Model model) =>
         div([class_("sidebar")], [
             p([], [text("Popular Tags")]),
-            div([class_("tag-list")], [ .. model.Tags == null
+            div([class_("tag-list")], [ .. model.Tags is null
                 ? [text("Loading tags...")]
                 : model.Tags.ConvertAll(tag =>
                     a([class_("tag-pill tag-default"),

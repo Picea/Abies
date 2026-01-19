@@ -356,7 +356,7 @@ namespace Abies.DOM
 
                 if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
                 {
-                    if (parent == null)
+                    if (parent is null)
                         patches.Add(new AddRoot(newElement));
                     else
                         patches.Add(new ReplaceChild(oldElement, newElement));
@@ -369,7 +369,7 @@ namespace Abies.DOM
             }
 
             // Fallback for node type mismatch
-            if (parent != null)
+            if (parent is not null)
             {
                 if (oldNode is Element oe && newNode is Element ne)
                 {

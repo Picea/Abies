@@ -157,21 +157,21 @@ public ApiClient Api { get; private set; } = null!;
 
     public async Task DisposeAsync()
     {
-        if (_appHost != null && !_appHost.HasExited)
+        if (_appHost is not null && !_appHost.HasExited)
         {
             _appHost.Kill(true);
             await _appHost.WaitForExitAsync();
         }
-        if (SharedContext != null)
+        if (SharedContext is not null)
             await SharedContext.CloseAsync();
-        if (Browser != null)
+        if (Browser is not null)
             await Browser.CloseAsync();
         _playwright?.Dispose();
     }
 
     public async Task<IBrowserContext> CreateContextAsync()
     {
-        if (SharedContext != null)
+        if (SharedContext is not null)
         {
             return SharedContext;
         }

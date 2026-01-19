@@ -207,13 +207,13 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var existingComments = new List<Abies.Conduit.Page.Article.Comment>
-        {
+        List<Abies.Conduit.Page.Article.Comment> existingComments =
+        [
             new("42", "2020-01-01", "2020-01-01", "First comment", 
                 new Abies.Conduit.Page.Home.Profile("alice", "", "", false)),
             new("99", "2020-01-02", "2020-01-02", "Second comment", 
                 new Abies.Conduit.Page.Home.Profile("bob", "", "", false))
-        };
+        ];
 
         var article = new Abies.Conduit.Page.Home.Article(
             Slug: "test-slug",

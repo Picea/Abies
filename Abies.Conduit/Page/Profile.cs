@@ -88,10 +88,10 @@ public class Page : Element<Model, Message>
                     : new LoadArticlesCommand(null, model.UserName.Value, Offset: 0)
             ),
             Message.ToggleFollow => (
-                model.Profile != null
+                model.Profile is not null
                     ? model with { Profile = model.Profile with { Following = !model.Profile.Following } }
                     : model,
-                model.Profile != null ?  new ToggleFollowCommand(model.UserName.Value, model.Profile.Following)  : Commands.None
+                model.Profile is not null ?  new ToggleFollowCommand(model.UserName.Value, model.Profile.Following)  : Commands.None
             ),
             Message.ToggleFavorite fav => (
                 model,
@@ -191,7 +191,7 @@ public class Page : Element<Model, Message>
         ]);
 
     private static Node ArticleList(Model model) =>
-        model.Articles == null || model.Articles.Count == 0
+        model.Articles is null || model.Articles.Count == 0
             ? div([class_("article-preview")], [text("No articles are here... yet.")])
             : div([], [ ..model.Articles.ConvertAll(article => ArticlePreview(article)) ]);
 
@@ -204,12 +204,12 @@ public class Page : Element<Model, Message>
         for (int i = 0; i < pageCount; i++)
         {
             var isActive = i == model.CurrentPage;
-            var attrs = new List<DOM.Attribute>
-            {
+            List<DOM.Attribute> attrs =
+            [
                 class_(isActive ? "page-link active" : "page-link"),
                 type("button"),
                 onclick(new Message.PageSelected(i))
-            };
+            ];
             if (isActive) attrs.Add(ariaCurrent("page"));
 
             items.Add(
