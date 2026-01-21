@@ -122,6 +122,11 @@ ipch/
 
 # Visual Studio Trace Files
 *.e2e
+!Abies.Conduit.E2E/
+!Abies.Conduit.E2E/**/*.cs
+Abies.Conduit.E2E/bin/
+Abies.Conduit.E2E/obj/
+Abies.Conduit.E2E/TestResults/
 
 # Local runtime artifacts
 .apphost.pid
