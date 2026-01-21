@@ -1,9 +1,12 @@
-﻿using FsCheck;
+﻿using System.Runtime.Versioning;
+using FsCheck;
 using FsCheck.Xunit;
 
+#pragma warning disable CA1416 // Tests call browser-only parser APIs.
 namespace Abies.Tests;
 
-public class UnitTest1
+[SupportedOSPlatform("browser")]
+public class ParserBehaviorTests
 {
     // Custom Arbitrary Generators
     public class DifferentCharsGenerator
@@ -413,6 +416,5 @@ public class UnitTest1
     }
 
 }
-
-
+#pragma warning restore CA1416
 

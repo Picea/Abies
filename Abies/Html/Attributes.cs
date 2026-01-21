@@ -292,7 +292,7 @@ public static class Attributes
     public static DOM.Attribute start(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => attribute("start", value, id);
     public static DOM.Attribute attribute(string name, string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(id, name, value);
+        => new(id ?? string.Empty, name, value);
     public static DOM.Attribute id(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => attribute("id", value, id);
 

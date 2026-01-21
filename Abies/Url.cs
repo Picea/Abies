@@ -65,8 +65,8 @@ public record Url
         
     private readonly Uri _uri;
     
-    public Protocol Scheme { get; }
-    public Host Host { get; }
+    public Protocol? Scheme { get; }
+    public Host? Host { get; }
     public Port? Port { get; }
     public Path Path { get; }
     public Query Query { get; }

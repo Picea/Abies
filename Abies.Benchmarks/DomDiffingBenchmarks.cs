@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Abies;
 using Abies.DOM;
 using Abies.Html;
+using System.Runtime.Versioning;
 using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 
@@ -9,6 +10,7 @@ namespace Abies.Benchmarks;
 
 [MemoryDiagnoser]
 [MarkdownExporter]
+[SupportedOSPlatform("browser")]
 public class DomDiffingBenchmarks
 {
     private Node _oldElement = new Node("");

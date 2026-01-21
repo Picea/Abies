@@ -36,6 +36,7 @@ public class DomBehaviorTests
         var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
+        Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
     }
 
@@ -57,6 +58,7 @@ public class DomBehaviorTests
         var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
+        Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
     }
 
@@ -74,6 +76,7 @@ public class DomBehaviorTests
         var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
+        Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
     }
 
@@ -101,6 +104,7 @@ public class DomBehaviorTests
         var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
+        Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
 
         // Verify that an UpdateText patch was generated
@@ -126,6 +130,7 @@ public class DomBehaviorTests
         var patches = Operations.Diff(oldDom, newDomAfterPreservation);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
+        Assert.NotNull(result);
         Assert.Equal(Render.Html(newDomAfterPreservation), Render.Html(result));
 
         // Verify that an UpdateText patch was generated

@@ -1,9 +1,11 @@
 using System;
+using System.Runtime.Versioning;
 using Xunit;
 using ConduitRoute = Abies.Conduit.Routing.Route;
 
 namespace Abies.Tests;
 
+[SupportedOSPlatform("browser")]
 public class ProfileFavoritesTests
 {
     [Fact]
