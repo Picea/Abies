@@ -2,10 +2,12 @@ using Xunit;
 using Abies.DOM;
 using System.Linq;
 using System.Collections.Generic;
+using System.Runtime.Versioning;
 using DOMAttribute = Abies.DOM.Attribute;
 
 namespace Abies.Tests;
 
+[SupportedOSPlatform("browser")]
 public class DomBehaviorTests
 {
     private record DummyMessage() : Message;
@@ -190,4 +192,3 @@ public class DomBehaviorTests
         return node;
     }
 }
-
