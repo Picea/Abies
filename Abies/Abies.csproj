@@ -45,7 +45,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Praefixum" Version="1.1.8-tags-v1-1-7.1" />
+    <PackageReference Include="Praefixum" Version="1.1.9-tags-v1-1-8.1" />
   </ItemGroup>
 
 </Project>
