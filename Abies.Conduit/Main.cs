@@ -4,12 +4,27 @@ using Abies.DOM;
 using Abies;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using static Abies.Conduit.Main.Message.Event;
 using static Abies.UrlRequest;
 using static Abies.Navigation.Command;
 
 namespace Abies.Conduit.Main;
+
+/// <summary>
+/// Simple logging utility for WASM debugging.
+/// </summary>
+internal static class Log
+{
+    [Conditional("DEBUG")]
+    internal static void Error(string context, Exception ex) =>
+        Console.Error.WriteLine($"[Conduit] {context}: {ex.GetType().Name} - {ex.Message}");
+    
+    [Conditional("DEBUG")]
+    internal static void Warn(string message) =>
+        Console.WriteLine($"[Conduit] WARN: {message}");
+}
 
 public record struct UserName(string Value);
 
@@ -177,9 +192,9 @@ public class Program : Program<Model, Arguments>
                         dispatch(new UserLoggedIn(user));
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // ignore invalid token
+                    Log.Error("LoadCurrentUser", ex);
                 }
                 break;
             case LoginCommand login:
@@ -196,8 +211,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("Login", ex);
                     dispatch(new Conduit.Page.Login.Message.LoginError(["An unexpected error occurred"]));
                 }
                 break;
@@ -215,8 +231,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("Register", ex);
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
@@ -238,8 +255,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("UpdateUser", ex);
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
@@ -268,8 +286,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadArticles", ex);
                     if (!string.IsNullOrEmpty(loadArticles.Author))
                     {
                         dispatch(new Conduit.Page.Profile.Message.ArticlesLoaded([], 0));
@@ -290,8 +309,9 @@ public class Program : Program<Model, Arguments>
                     var (articles, count) = await ArticleService.GetFeedArticlesAsync(loadFeed.Limit, loadFeed.Offset);
                     dispatch(new Conduit.Page.Home.Message.ArticlesLoaded(articles, count));
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadFeed", ex);
                     dispatch(new Conduit.Page.Home.Message.ArticlesLoaded([], 0));
                 }
                 break;
@@ -305,8 +325,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadTags", ex);
                     dispatch(new Conduit.Page.Home.Message.TagsLoaded([]));
                 }
                 break;
@@ -320,8 +341,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadArticle", ex);
                     dispatch(new Conduit.Page.Article.Message.ArticleLoaded(null));
                 }
                 break;
@@ -335,9 +357,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // If failed, keep editor in loading=false with empty fields
+                    Log.Error("LoadArticleForEditor", ex);
                     dispatch(new Conduit.Page.Editor.Message.ArticleLoaded(
                         new Conduit.Page.Home.Article(
                             Slug: "",
@@ -363,8 +385,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadComments", ex);
                     dispatch(new Conduit.Page.Article.Message.CommentsLoaded([]));
                 }
                 break;
@@ -378,8 +401,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("SubmitComment", ex);
                     dispatch(new Conduit.Page.Article.Message.SubmitComment());
                 }
                 break;
@@ -393,8 +417,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("DeleteComment", ex);
                     dispatch(new Conduit.Page.Article.Message.CommentDeleted(""));
                 }
                 break;
@@ -412,8 +437,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("CreateArticle", ex);
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
@@ -435,8 +461,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("UpdateArticle", ex);
                     var errors = new System.Collections.Generic.Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
@@ -454,8 +481,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("ToggleFavorite", ex);
                     dispatch(new Conduit.Page.Article.Message.ToggleFavorite());
                 }
                 break;
@@ -465,9 +493,9 @@ public class Program : Program<Model, Arguments>
                     await AuthService.Logout();
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // ignore logout failures
+                    Log.Error("Logout", ex);
                 }
                 break;
             case LoadProfileCommand loadProfile:
@@ -480,8 +508,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("LoadProfile", ex);
                     dispatch(new Conduit.Page.Profile.Message.ProfileLoaded(new Conduit.Page.Home.Profile(loadProfile.Username, "", "", false)));
                 }
                 break;
@@ -495,8 +524,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("ToggleFollow", ex);
                     dispatch(new Conduit.Page.Profile.Message.ToggleFollow());
                 }
                 break;
@@ -510,8 +540,9 @@ public class Program : Program<Model, Arguments>
                 {
                     dispatch(new UserLoggedOut());
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Log.Error("DeleteArticle", ex);
                     dispatch(new Conduit.Page.Article.Message.ArticleDeleted());
                 }
                 break;

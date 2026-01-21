@@ -97,7 +97,7 @@ public static class Elements
         => element("pattern", attributes, children, id);
 
     public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(id.ToString(), tag, [Attributes.id(id.ToString()), .. attributes], children);
+        => new(id ?? string.Empty, tag, [Attributes.id(id ?? string.Empty), .. attributes], children);
 
     public static Node output(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     => element("output", attributes, children, id);
@@ -182,7 +182,7 @@ public static class Elements
         => element("button", attributes, children, id);
 
     public static Node text(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new Text(id.ToString(), value);
+        => new Text(id ?? string.Empty, value);
 
     public static Node h1(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("h1", attributes, children, id);
@@ -483,6 +483,6 @@ public static class Elements
         => element("rect", attributes, [], id);
 
     public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new DOM.RawHtml(id.ToString(), html);
+        => new DOM.RawHtml(id ?? string.Empty, html);
 
 }

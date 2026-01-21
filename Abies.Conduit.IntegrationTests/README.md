@@ -1,12 +1,12 @@
 # Abies.Conduit.IntegrationTests
 
-Deze tests zijn bedoeld als **near‑E2E integratietests**: ze testen Conduit’s update/view logic en API-calls zonder Playwright en zonder Aspire AppHost.
+These tests are intended as **near-E2E integration tests**: they verify Conduit's update/view logic and API calls without Playwright and without Aspire AppHost.
 
-## Idee
+## Idea
 
-- We injecteren een fake `HttpClient` in `Abies.Conduit.Services.ApiClient`.
-- We testen deterministisch:
-  - welke API endpoints aangeroepen worden
-  - welke state/DOM-renders ontstaan na responses
+- We inject a fake `HttpClient` into `Abies.Conduit.Services.ApiClient`.
+- We test deterministically:
+  - which API endpoints are called
+  - which state/DOM renders result from responses
 
-> Let op: dit is expres géén browser-testlaag. Voor echte browser-behavior houden we een kleine Playwright smoke suite.
+> Note: this is intentionally not a browser test layer. For real browser behavior, we keep a small Playwright smoke suite.
