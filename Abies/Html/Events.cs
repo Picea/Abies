@@ -258,10 +258,10 @@ public static class Events
         => on("fullscreenerror", factory, id);
 
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, Guid.NewGuid().ToString(), command, id);
+        => new(name, Guid.NewGuid().ToString(), command, id ?? string.Empty);
 
     public static Handler on<T>(string name, Func<T?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, Guid.NewGuid().ToString(), null, id, o => factory((T?)o), typeof(T));
+        => new(name, Guid.NewGuid().ToString(), null, id ?? string.Empty, o => factory((T?)o), typeof(T));
 
     public static Handler on(string name, Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on<string?>(name, factory, id);

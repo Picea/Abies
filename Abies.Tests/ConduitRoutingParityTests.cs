@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.Versioning;
 using ConduitRoute = Abies.Conduit.Routing.Route;
 using Xunit;
 
 namespace Abies.Tests;
 
+[SupportedOSPlatform("browser")]
 public class ConduitRoutingParityTests
 {
     public static IEnumerable<object[]> KnownPaths()

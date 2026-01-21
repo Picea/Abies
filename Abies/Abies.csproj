@@ -45,7 +45,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Praefixum" Version="1.1.5-tags-v1-1-4.1" />
+    <PackageReference Include="Praefixum" Version="1.1.5-tags-v1-1-4.1" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

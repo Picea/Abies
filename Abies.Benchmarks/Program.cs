@@ -1,5 +1,15 @@
-﻿using Abies.Benchmarks;
+﻿using System.Runtime.Versioning;
+using Abies.Benchmarks;
 using BenchmarkDotNet.Running;
 
-//BenchmarkRunner.Run<UrlParsingBenchmarks>();
-BenchmarkRunner.Run<DomDiffingBenchmarks>();
+[SupportedOSPlatform("browser")]
+internal class Program
+{
+
+    private static void Main(string[] args)
+    {
+        
+        //BenchmarkRunner.Run<UrlParsingBenchmarks>();
+        BenchmarkRunner.Run<DomDiffingBenchmarks>();
+    }
+}

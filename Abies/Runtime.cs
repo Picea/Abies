@@ -216,7 +216,12 @@ public static partial class Runtime
 
         static bool AreSameOrigin(Url currentUrl, Url newUrl)
         {
-            return currentUrl.Scheme.GetType() == newUrl.Scheme.GetType()
+            if (newUrl.Scheme is null || newUrl.Host is null)
+            {
+                return true;
+            }
+
+            return currentUrl.Scheme?.GetType() == newUrl.Scheme.GetType()
                    && currentUrl.Host == newUrl.Host
                    && currentUrl.Port == newUrl.Port;
         }

@@ -131,4 +131,4 @@ Abies is a Latin name meaning "fir tree".
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)

@@ -1,6 +1,8 @@
-﻿using Xunit;
+﻿using System.Runtime.Versioning;
+using Xunit;
 using static Abies.ParserExtensions;
 
+[SupportedOSPlatform("browser")]
 public class StringValueParserTests
 {
     [Fact]
