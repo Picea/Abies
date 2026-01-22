@@ -37,11 +37,6 @@ namespace Abies
     }
 
 
-    public record Subscription
-    {
-
-    }
-
     public interface Message;
 
     public interface Command

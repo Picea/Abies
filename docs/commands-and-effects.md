@@ -61,3 +61,9 @@ Supported navigation commands:
 - Keep `Update` pure. All IO belongs in `HandleCommand`.
 - Return `Commands.None` when there are no effects to run.
 - Commands can be simple records; no special base class is required.
+
+## Subscriptions
+
+For long-lived external event sources (timers, browser events, sockets), use
+`Subscriptions` instead of one-off commands. See
+[Program and Runtime](./runtime-program.md) for details.

@@ -54,9 +54,11 @@ public class Page : Element<Model, Message>
     public static Model Initialize(Message argument)
     {
         return new Model(new Slug(""));
-    }    public static Subscription Subscriptions(Model model)
+    }
+
+    public static Subscription Subscriptions(Model model)
     {
-        return new Subscription();
+        return SubscriptionModule.None;
     }
     
     public static (Model model, IEnumerable<Command> commands) Init(Slug slug)

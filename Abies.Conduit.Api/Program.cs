@@ -70,7 +70,7 @@ if (app.Environment.IsDevelopment())
 
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll");
-// Strongly permissive CORS for local E2E/browser-wasm
+// Strongly permissive CORS for local browser-wasm
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
@@ -289,7 +289,7 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
         }
 
     // Forward request
-    // NOTE: For local Dev/E2E we NEVER want browser telemetry exporting to impact app usability.
+    // NOTE: For local Dev we NEVER want browser telemetry exporting to impact app usability.
     // Therefore, in Development we always return 202 Accepted to the browser (after starting the forward),
     // while still logging and/or surfacing the downstream status for debugging.
     using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ctx.RequestAborted);
@@ -369,7 +369,7 @@ var users = new ConcurrentDictionary<string, UserRecord>(StringComparer.OrdinalI
 var follows = new ConcurrentDictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 var articles = new ConcurrentDictionary<string, ArticleRecord>(StringComparer.OrdinalIgnoreCase);
 int nextCommentId = 1;
-// Safety helpers: this API is an in-memory stub for E2E and should never 500 due to missing keys.
+// Safety helpers: this API is an in-memory stub for tests and should never 500 due to missing keys.
 HashSet<string> FollowSetFor(string username)
 {
     // Avoid KeyNotFoundException when looking up relationships for a username that exists in the

@@ -59,7 +59,7 @@ public class Counter : Program<Model, Arguments>
 
     public static Message OnUrlChanged(Url url) => new Increment();
     public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-    public static Subscription Subscriptions(Model model) => new();
+    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
     public static Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch)
         => Task.CompletedTask;
 }
@@ -69,6 +69,30 @@ Notes:
 - `Initialize`, `Update`, and `View` are the core MVU loop.
 - `HandleCommand` runs side effects. The minimal example has none.
 - `OnUrlChanged` and `OnLinkClicked` are required for navigation support.
+
+## Subscriptions
+
+Subscriptions let you listen to external event sources (timers, browser events).
+They are diffed by key each update, so keep keys stable when you want a
+subscription to persist.
+
+```csharp
+public record Tick : Message;
+
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick());
+```
+
+WebSocket subscriptions follow the same pattern:
+
+```csharp
+public record SocketEvent(WebSocketEvent Event) : Message;
+
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.WebSocket(
+        new WebSocketOptions("wss://example.com/socket"),
+        evt => new SocketEvent(evt));
+```
 
 ## Next steps
 

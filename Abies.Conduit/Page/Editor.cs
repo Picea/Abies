@@ -48,7 +48,7 @@ public class Page : Element<Model, Message>
 
     public static Subscription Subscriptions(Model model)
     {
-        return new Subscription();
+        return SubscriptionModule.None;
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)

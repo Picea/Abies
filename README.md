@@ -53,10 +53,30 @@ public class Counter : Program<Model, Arguments>
 
     public static Message OnUrlChanged(Url url) => new Increment();
     public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-    public static Subscription Subscriptions(Model model) => new();
+    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
     public static Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch)
         => Task.CompletedTask;
 }
+```
+
+## Subscriptions
+
+Subscriptions let you react to external event sources (timers, browser events)
+without putting side effects in `Update`.
+
+```csharp
+public record Tick : Message;
+public record ViewportChanged(ViewportSize Size) : Message;
+public record SocketEvent(WebSocketEvent Event) : Message;
+
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.Batch([
+        SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()),
+        SubscriptionModule.OnResize(size => new ViewportChanged(size)),
+        SubscriptionModule.WebSocket(
+            new WebSocketOptions("wss://example.com/socket"),
+            evt => new SocketEvent(evt))
+    ]);
 ```
 
 ## Example Application
@@ -77,8 +97,10 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 | `Abies.Conduit`       | RealWorld example app (frontend) |
 | `Abies.Conduit.Api`   | RealWorld example app (backend)  |
 | `Abies.Counter`       | Minimal counter example          |
+| `Abies.SubscriptionsDemo` | Subscriptions demo app       |
 | `Abies.Tests`         | Unit tests                       |
-| `Abies.Conduit.E2E`   | End-to-end Playwright tests      |
+
+See `docs/subscriptions-demo.md` for the demo walkthrough (including the mock WebSocket feed).
 
 ## Requirements
 
@@ -111,6 +133,7 @@ See the [docs](./docs/) folder for:
 - [Routing](./docs/routing.md)
 - [Commands and Side Effects](./docs/commands-and-effects.md)
 - [Components (Elements)](./docs/components.md)
+- [Subscriptions Demo](./docs/subscriptions-demo.md)
 - [Testing](./docs/testing.md)
 - [Program and Runtime](./docs/runtime-program.md)
 - [HTML API](./docs/html-api.md)
