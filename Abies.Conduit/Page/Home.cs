@@ -78,9 +78,9 @@ public record Model(
             [new LoadArticlesCommand(), new LoadTagsCommand()]
         );
     }
-      public static Subscription Subscriptions(Model model)
+    public static Subscription Subscriptions(Model model)
     {
-        return new Subscription();
+        return SubscriptionModule.None;
     }
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)

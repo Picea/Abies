@@ -22,7 +22,7 @@ public static class ApiClient
 
     /// <summary>
     /// Override the underlying <see cref="HttpClient"/> used by the Conduit UI.
-    /// Intended for tests (near-E2E integration) to plug in a fake handler.
+    /// Intended for integration tests to plug in a fake handler.
     /// </summary>
     public static void ConfigureHttpClient(HttpClient httpClient)
     {

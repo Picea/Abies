@@ -39,7 +39,7 @@ public class ArticleCard : Element<CardModel, CardInput>
             p([], [text(model.Description)])
         ]);
 
-    public static Subscription Subscriptions(CardModel model) => new();
+    public static Subscription Subscriptions(CardModel model) => SubscriptionModule.None;
 }
 ```
 
@@ -51,3 +51,5 @@ pages under `Abies.Conduit/Page/*` and composes them in the main view.
 
 If you adopt elements, keep their models small and pass in the minimum data
 needed for rendering. Let the top-level `Program` own routing and global state.
+If an element needs subscriptions, expose them and compose into the top-level
+`Program.Subscriptions` value.

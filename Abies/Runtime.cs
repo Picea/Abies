@@ -12,6 +12,7 @@ public static partial class Runtime
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
     private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
+    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
     
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
@@ -37,6 +38,9 @@ public static partial class Runtime
 
         var model = initialModel;
         var dom = document.Body;
+
+        // Start subscriptions immediately after initialization (Elm-style).
+        var subscriptionState = SubscriptionManager.Start(TProgram.Subscriptions(model), Dispatch);
 
         using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
         {
@@ -68,6 +72,9 @@ public static partial class Runtime
 
             dom = alignedBody;
             await Interop.SetTitle(newDom.Title);
+
+            // Update subscriptions after the model changes.
+            subscriptionState = SubscriptionManager.Update(subscriptionState, TProgram.Subscriptions(model), Dispatch);
 
             // Handle the command
             switch (command)
@@ -304,6 +311,28 @@ public static partial class Runtime
             }
         }
     }
+
+    // Registers a subscription handler keyed by a stable subscription identifier.
+    internal static void RegisterSubscriptionHandler(string key, Func<object?, Message> handler, Type dataType)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Subscription key must be non-empty.", nameof(key));
+        }
+
+        _subscriptionHandlers[key] = (handler ?? throw new ArgumentNullException(nameof(handler)), dataType);
+    }
+
+    // Removes a subscription handler keyed by its identifier.
+    internal static void UnregisterSubscriptionHandler(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        _subscriptionHandlers.TryRemove(key, out _);
+    }
     
     private static System.ValueTuple Dispatch(Message message)
     {
@@ -340,5 +369,22 @@ public static partial class Runtime
             return;
         }
     // Ignore missing handlers gracefully
+    }
+
+    [JSExport]
+    /// <summary>
+    /// Dispatches subscription data from JavaScript into the MVU loop.
+    /// </summary>
+    public static void DispatchSubscriptionData(string key, string? json)
+    {
+        if (_subscriptionHandlers.TryGetValue(key, out var entry))
+        {
+            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            var message = entry.handler(data);
+            Dispatch(message);
+            return;
+        }
+
+        // Ignore missing handlers gracefully
     }
 }

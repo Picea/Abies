@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+  <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishTrimmed>false</PublishTrimmed>
+<InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Abies\Abies.csproj" />
+  </ItemGroup>
+  <!-- Ensure a physical wwwroot/abies.js exists for the dev server -->
+  <ItemGroup>
+    <UpToDateCheckInput Include="..\Abies\wwwroot\abies.js" />
+    <Watch Include="..\Abies\wwwroot\abies.js" />
+  </ItemGroup>
+  <Target Name="SyncAbiesJs" BeforeTargets="Build;Publish" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
+    <Copy SourceFiles="..\Abies\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
+  </Target>
+</Project>

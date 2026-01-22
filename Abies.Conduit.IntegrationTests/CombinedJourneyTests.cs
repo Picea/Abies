@@ -15,7 +15,7 @@ namespace Abies.Conduit.IntegrationTests;
 /// Combined journey tests that exercise the full MVU loop:
 /// UI interaction → Update → Command → HandleCommand → Message → Update → ... → Quiescence
 /// 
-/// These tests use the real command handler with fake HTTP, providing E2E-like coverage
+/// These tests use the real command handler with fake HTTP, providing end-to-end-like coverage
 /// without browser/process overhead.
 /// </summary>
 public class CombinedJourneyTests

@@ -14,6 +14,7 @@ patterns, and APIs, while keeping the examples small and practical.
 - [Routing](./routing.md)
 - [Commands and Side Effects](./commands-and-effects.md)
 - [Components (Elements)](./components.md)
+- [Subscriptions Demo](./subscriptions-demo.md)
 - [Testing](./testing.md)
 
 ## Reference

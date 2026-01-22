@@ -169,7 +169,7 @@ public class Program : Program<Model, Arguments>
     /// </summary>
     /// <param name="model">The current model.</param>
     /// <returns>The subscription.</returns>
-    public static Subscription Subscriptions(Model model) => new();
+    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
 
     public static async Task HandleCommand(Command command, Func<Abies.Message, System.ValueTuple> dispatch)
     {

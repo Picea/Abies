@@ -76,5 +76,11 @@ namespace Abies
 
         [JSImport("onFormSubmit", "abies.js")]
         internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
+
+        [JSImport("subscribe", "abies.js")]
+        internal static partial void Subscribe(string key, string kind, string? data);
+
+        [JSImport("unsubscribe", "abies.js")]
+        internal static partial void Unsubscribe(string key);
     }
 }

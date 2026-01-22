@@ -1,6 +1,6 @@
 # Abies.Conduit.IntegrationTests
 
-These tests are intended as **near-E2E integration tests**: they verify Conduit's update/view logic and API calls without Playwright and without Aspire AppHost.
+These tests are intended as integration tests: they verify Conduit's update/view logic and API calls without Playwright and without Aspire AppHost.
 
 ## Idea
 

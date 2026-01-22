@@ -38,7 +38,7 @@ public class Counter : Program<Model, Arguments>
     }
 
     public static Subscription Subscriptions(Model model)
-        => new();
+        => SubscriptionModule.None;
 
     public static Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch) => Task.CompletedTask;
 

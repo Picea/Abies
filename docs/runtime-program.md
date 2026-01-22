@@ -44,5 +44,27 @@ push or replace history state.
 ## Subscriptions
 
 `Subscriptions` exists to support external event sources (timers, sockets,
-custom JS), but `Subscription` is currently an empty record. Use commands for
-most side effects today.
+custom JS). Subscriptions are diffed by key and started/stopped as the model
+changes, so keep keys stable when you want a subscription to persist.
+
+Built-in helpers:
+
+- `SubscriptionModule.Every(...)` for periodic ticks
+- `SubscriptionModule.OnAnimationFrame(...)` / `OnAnimationFrameDelta(...)` for RAF ticks
+- `SubscriptionModule.OnResize(...)` for viewport changes
+- `SubscriptionModule.OnVisibilityChange(...)` for page visibility
+- `SubscriptionModule.OnKeyDown(...)` / `OnKeyUp(...)` for keyboard events
+- `SubscriptionModule.OnMouseDown(...)` / `OnMouseUp(...)` / `OnMouseMove(...)` / `OnClick(...)` for mouse events
+- `SubscriptionModule.WebSocket(...)` for WebSocket events
+
+Browser subscriptions are only supported in the WebAssembly runtime.
+
+Example:
+
+```csharp
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.Batch([
+        SubscriptionModule.Every(TimeSpan.FromSeconds(5), _ => new Tick()),
+        SubscriptionModule.Create($"ws:{model.RoomId}", (dispatch, ct) => ConnectSocket(model.RoomId, dispatch, ct))
+    ]);
+```
