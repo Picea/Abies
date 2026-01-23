@@ -137,10 +137,10 @@ public class SubscriptionsDemo : Program<Model, Arguments>
     public static Subscription Subscriptions(Model model)
     {
         var subscriptions = new List<Subscription>
-        [
+        {
             SubscriptionModule.OnResize(size => new Message.Resized(size, DateTimeOffset.UtcNow)),
             SubscriptionModule.OnVisibilityChange(evt => new Message.VisibilityChanged(evt.State, DateTimeOffset.UtcNow))
-        ];
+        };
 
         if (model.AutoTick)
         {
