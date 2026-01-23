@@ -8,8 +8,9 @@ This document describes the current diff/patch logic in `Abies.DOM.Operations`.
    of `Patch` values.
 2. `Operations.Apply` executes each patch via JavaScript interop.
 
-The diff is recursive and prioritizes simple, ordered updates over keyed
-reconciliation.
+The diff is recursive and prioritizes simple, ordered updates. Keyed child
+lists are detected and handled with a conservative replace strategy when keys
+change order.
 
 ## Node types
 
@@ -23,12 +24,15 @@ reconciliation.
 - If both nodes are `RawHtml`, it emits `UpdateRaw` when HTML or id changed.
 - If both are `Element` and the tag differs, it emits `ReplaceChild` (or
   `AddRoot` if there is no parent).
-- Attributes are compared by id using a dictionary for O(n) lookup.
-- Children are diffed in order. Extra old children are removed, extra new
-  children are appended.
+- Attributes are compared by name (not attribute id) for stable updates even
+  when attributes are produced by different call-sites.
+- Children are diffed in order by default. If any child has a `data-key` (or
+  `key`) attribute, Abies treats the list as keyed. When the keyed sequence
+  changes, Abies replaces the entire child list to preserve order.
 
-This means Abies does not currently do key-based reordering. Child position is
-significant.
+This means Abies does not do in-place key-based reordering; it replaces keyed
+lists when order changes. Child position is still significant for non-keyed
+lists.
 
 ## Patch types
 

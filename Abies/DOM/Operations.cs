@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace Abies.DOM
 {
@@ -450,13 +451,13 @@ namespace Abies.DOM
                     oldMap.EnsureCapacity(oldAttrs.Length);
 
                 foreach (var attr in oldAttrs)
-                    oldMap[attr.Id] = attr;
+                    oldMap[attr.Name] = attr;
 
                 foreach (var newAttr in newAttrs)
                 {
-                    if (oldMap.TryGetValue(newAttr.Id, out var oldAttr))
+                    if (oldMap.TryGetValue(newAttr.Name, out var oldAttr))
                     {
-                        oldMap.Remove(newAttr.Id);
+                        oldMap.Remove(newAttr.Name);
                         if (!newAttr.Equals(oldAttr))
                         {
                             if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
@@ -500,7 +501,9 @@ namespace Abies.DOM
             {
                 ReturnAttributeMap(oldMap);
             }
-        }        private static void DiffChildren(Element oldParent, Element newParent, List<Patch> patches)
+        }
+
+        private static void DiffChildren(Element oldParent, Element newParent, List<Patch> patches)
         {
             var oldChildren = oldParent.Children;
             var newChildren = newParent.Children;
@@ -512,6 +515,38 @@ namespace Abies.DOM
             var oldLength = oldChildren.Length;
             var newLength = newChildren.Length;
             var shared = Math.Min(oldLength, newLength);
+
+            var hasKeyedChildren = HasKeyedChildren(oldChildren) || HasKeyedChildren(newChildren);
+            if (hasKeyedChildren)
+            {
+                var oldKeys = BuildKeySequence(oldChildren);
+                var newKeys = BuildKeySequence(newChildren);
+
+                if (!oldKeys.SequenceEqual(newKeys))
+                {
+                    // Key order or membership changed: replace the entire child list to preserve order.
+                    for (int i = oldLength - 1; i >= 0; i--)
+                    {
+                        if (oldChildren[i] is Element oldChild)
+                            patches.Add(new RemoveChild(oldParent, oldChild));
+                        else if (oldChildren[i] is RawHtml oldRaw)
+                            patches.Add(new RemoveRaw(oldParent, oldRaw));
+                        else if (oldChildren[i] is Text oldText)
+                            patches.Add(new RemoveText(oldParent, oldText));
+                    }
+
+                    for (int i = 0; i < newLength; i++)
+                    {
+                        if (newChildren[i] is Element newChild)
+                            patches.Add(new AddChild(newParent, newChild));
+                        else if (newChildren[i] is RawHtml newRaw)
+                            patches.Add(new AddRaw(newParent, newRaw));
+                        else if (newChildren[i] is Text newText)
+                            patches.Add(new AddText(newParent, newText));
+                    }
+                    return;
+                }
+            }
 
             // Diff children that exist in both trees
             for (int i = 0; i < shared; i++)
@@ -538,6 +573,33 @@ namespace Abies.DOM
                 else if (newChildren[i] is Text newText)
                     patches.Add(new AddText(newParent, newText));
             }
+        }
+
+        private static bool HasKeyedChildren(Node[] children)
+            => children.Any(child => GetKey(child) is not null);
+
+        private static string? GetKey(Node node)
+        {
+            if (node is not Element element)
+                return null;
+
+            foreach (var attr in element.Attributes)
+            {
+                if (attr.Name == "data-key" || attr.Name == "key")
+                    return attr.Value;
+            }
+
+            return null;
+        }
+
+        private static string[] BuildKeySequence(Node[] children)
+        {
+            var keys = new string[children.Length];
+            for (int i = 0; i < children.Length; i++)
+            {
+                keys[i] = GetKey(children[i]) ?? $"__index:{i}";
+            }
+            return keys;
         }
     }
 }

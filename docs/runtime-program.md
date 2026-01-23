@@ -59,6 +59,10 @@ Built-in helpers:
 
 Browser subscriptions are only supported in the WebAssembly runtime.
 
+Note: `OnKeyDown` ignores repeated keydown events (when a key is held down) so
+you receive a single message per key press. Use `OnKeyUp` if you need every
+repeat event.
+
 Example:
 
 ```csharp
