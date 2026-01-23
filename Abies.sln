@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Conduit.ServiceDefaul
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Conduit.AppHost", "Abies.Conduit.AppHost\Abies.Conduit.AppHost.csproj", "{96A83474-0871-4A52-BF4A-D636BC9FCC9C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Presentation", "Abies.Presentation\Abies.Presentation.csproj", "{2D44C0E7-0791-4E89-8781-90B8869E9870}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{96A83474-0871-4A52-BF4A-D636BC9FCC9C}.Release|x64.Build.0 = Release|Any CPU
 		{96A83474-0871-4A52-BF4A-D636BC9FCC9C}.Release|x86.ActiveCfg = Release|Any CPU
 		{96A83474-0871-4A52-BF4A-D636BC9FCC9C}.Release|x86.Build.0 = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|x64.Build.0 = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Debug|x86.Build.0 = Debug|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|x64.ActiveCfg = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|x64.Build.0 = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|x86.ActiveCfg = Release|Any CPU
+		{2D44C0E7-0791-4E89-8781-90B8869E9870}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

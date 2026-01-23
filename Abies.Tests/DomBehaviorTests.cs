@@ -81,6 +81,46 @@ public class DomBehaviorTests
     }
 
     [Fact]
+    public void AttributeIdChange_WithValueChange_ShouldUpdateAttribute()
+    {
+        var oldDom = new Element("1", "div",
+            new DOMAttribute[] { new DOMAttribute("a1", "class", "inactive") },
+            []);
+
+        var newDom = new Element("1", "div",
+            new DOMAttribute[] { new DOMAttribute("a2", "class", "active") },
+            []);
+
+        var alignedNew = PreserveIdsForTest(oldDom, newDom);
+        var patches = Operations.Diff(oldDom, alignedNew);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.Equal(Render.Html(alignedNew), Render.Html(result));
+        Assert.Contains(patches, p => p is UpdateAttribute);
+        Assert.DoesNotContain(patches, p => p is RemoveAttribute);
+    }
+
+    [Fact]
+    public void HandlerIdChange_ShouldUpdateHandler()
+    {
+        var oldDom = new Element("1", "button",
+            new DOMAttribute[] { new Handler("click", "cmd-old", new DummyMessage(), "h1") },
+            []);
+
+        var newDom = new Element("1", "button",
+            new DOMAttribute[] { new Handler("click", "cmd-new", new DummyMessage(), "h2") },
+            []);
+
+        var alignedNew = PreserveIdsForTest(oldDom, newDom);
+        var patches = Operations.Diff(oldDom, alignedNew);
+
+        Assert.Contains(patches, p => p is UpdateHandler);
+        Assert.DoesNotContain(patches, p => p is RemoveHandler);
+        Assert.DoesNotContain(patches, p => p is AddHandler);
+    }
+
+    [Fact]
     public void Render_ShouldIncludeElementIds()
     {
         var dom = new Element("el1", "div", [],
@@ -140,6 +180,80 @@ public class DomBehaviorTests
         Assert.Equal("2", textPatch.Node.Id); // Should use the preserved ID
     }
 
+    [Fact]
+    public void KeyedChildren_Reorder_ShouldReplaceList()
+    {
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka", "data-key", "a"),
+                new DOMAttribute("ca", "class", "item")
+            }, new Text("ta", "A")),
+            new Element("b", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb", "data-key", "b"),
+                new DOMAttribute("cb", "class", "item")
+            }, new Text("tb", "B")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("b2", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb2", "data-key", "b"),
+                new DOMAttribute("cb2", "class", "item")
+            }, new Text("tb2", "B")),
+            new Element("a2", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka2", "data-key", "a"),
+                new DOMAttribute("ca2", "class", "item")
+            }, new Text("ta2", "A")));
+
+        var alignedNew = PreserveIdsForTest(oldDom, newDom);
+        var patches = Operations.Diff(oldDom, alignedNew);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.Equal(Render.Html(alignedNew), Render.Html(result));
+        Assert.Contains(patches, p => p is RemoveChild);
+        Assert.Contains(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_SameOrder_ShouldDiffInPlace()
+    {
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka", "data-key", "a"),
+                new DOMAttribute("ca", "class", "item")
+            }, new Text("ta", "Old")),
+            new Element("b", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb", "data-key", "b"),
+                new DOMAttribute("cb", "class", "item")
+            }, new Text("tb", "Old")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("a2", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka2", "data-key", "a"),
+                new DOMAttribute("ca2", "class", "item")
+            }, new Text("ta2", "New")),
+            new Element("b2", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb2", "data-key", "b"),
+                new DOMAttribute("cb2", "class", "item")
+            }, new Text("tb2", "New")));
+
+        var alignedNew = PreserveIdsForTest(oldDom, newDom);
+        var patches = Operations.Diff(oldDom, alignedNew);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.Equal(Render.Html(alignedNew), Render.Html(result));
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
     private static Node? ApplyPatches(Node? root, IEnumerable<Patch> patches, Node? initialRoot)
     {
         var current = root;
@@ -158,9 +272,28 @@ public class DomBehaviorTests
             ReplaceChild rc => ReplaceNode(root!, rc.OldElement, rc.NewElement),
             AddChild ac => UpdateElement(root!, ac.Parent.Id, e => e with { Children = e.Children.Append(ac.Child).ToArray() }),
             RemoveChild rc => UpdateElement(root!, rc.Parent.Id, e => e with { Children = e.Children.Where(c => c.Id != rc.Child.Id).ToArray() }),
-            UpdateAttribute ua => UpdateElement(root!, ua.Element.Id, e => e with { Attributes = e.Attributes.Select(a => a.Id == ua.Attribute.Id ? ua.Attribute with { Value = ua.Value } : a).ToArray() }),
-            AddAttribute aa => UpdateElement(root!, aa.Element.Id, e => e with { Attributes = e.Attributes.Append(aa.Attribute).ToArray() }),
-            RemoveAttribute ra => UpdateElement(root!, ra.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Id != ra.Attribute.Id).ToArray() }),
+            UpdateAttribute ua => UpdateElement(root!, ua.Element.Id, e =>
+            {
+                var updated = false;
+                var attrs = e.Attributes.Select(a =>
+                {
+                    if (a.Name == ua.Attribute.Name)
+                    {
+                        updated = true;
+                        return a with { Value = ua.Value };
+                    }
+                    return a;
+                }).ToArray();
+                if (!updated)
+                    attrs = attrs.Append(ua.Attribute with { Value = ua.Value }).ToArray();
+                return e with { Attributes = attrs };
+            }),
+            AddAttribute aa => UpdateElement(root!, aa.Element.Id, e =>
+            {
+                var attrs = e.Attributes.Where(a => a.Name != aa.Attribute.Name).Append(aa.Attribute).ToArray();
+                return e with { Attributes = attrs };
+            }),
+            RemoveAttribute ra => UpdateElement(root!, ra.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Name != ra.Attribute.Name).ToArray() }),
             AddHandler ah => UpdateElement(root!, ah.Element.Id, e => e with { Attributes = e.Attributes.Append(ah.Handler).ToArray() }),
             RemoveHandler rh => UpdateElement(root!, rh.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Id != rh.Handler.Id).ToArray() }),
             UpdateText ut => ReplaceNode(root!, ut.Node, new Text(ut.NewId, ut.Text)),
@@ -179,6 +312,47 @@ public class DomBehaviorTests
             return el with { Children = newChildren };
         }
         return node;
+    }
+
+    private static Node PreserveIdsForTest(Node? oldNode, Node newNode)
+    {
+        if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag == newElement.Tag)
+        {
+            var attrs = new DOMAttribute[newElement.Attributes.Length];
+            for (int i = 0; i < newElement.Attributes.Length; i++)
+            {
+                var attr = newElement.Attributes[i];
+                var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == attr.Name);
+                var attrId = oldAttr?.Id ?? attr.Id;
+
+                if (attr.Name == "id")
+                    attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
+                else
+                    attrs[i] = attr with { Id = attrId };
+            }
+
+            var children = new Node[newElement.Children.Length];
+            for (int i = 0; i < newElement.Children.Length; i++)
+            {
+                var oldChild = i < oldElement.Children.Length ? oldElement.Children[i] : null;
+                children[i] = PreserveIdsForTest(oldChild, newElement.Children[i]);
+            }
+
+            return new Element(oldElement.Id, newElement.Tag, attrs, children);
+        }
+
+        if (oldNode is Text oldText && newNode is Text newText)
+            return new Text(oldText.Id, newText.Value);
+
+        if (newNode is Element newElem)
+        {
+            var children = new Node[newElem.Children.Length];
+            for (int i = 0; i < newElem.Children.Length; i++)
+                children[i] = PreserveIdsForTest(null, newElem.Children[i]);
+            return new Element(newElem.Id, newElem.Tag, newElem.Attributes, children);
+        }
+
+        return newNode;
     }
 
     private static Node UpdateElement(Node node, string targetId, System.Func<Element, Element> update)

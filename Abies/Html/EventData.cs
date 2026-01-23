@@ -9,6 +9,7 @@ public record InputEventData([
 /// <summary>Data for keyboard events.</summary>
 public record KeyEventData([
     property: JsonPropertyName("key")] string Key,
+    [property: JsonPropertyName("repeat")] bool Repeat,
     [property: JsonPropertyName("altKey")] bool AltKey,
     [property: JsonPropertyName("ctrlKey")] bool CtrlKey,
     [property: JsonPropertyName("shiftKey")] bool ShiftKey);
@@ -24,6 +25,7 @@ public record GenericEventData([
     property: JsonPropertyName("value")] string? Value,
     [property: JsonPropertyName("checked")] bool? Checked,
     [property: JsonPropertyName("key")] string? Key,
+    [property: JsonPropertyName("repeat")] bool? Repeat,
     [property: JsonPropertyName("altKey")] bool AltKey,
     [property: JsonPropertyName("ctrlKey")] bool CtrlKey,
     [property: JsonPropertyName("shiftKey")] bool ShiftKey,

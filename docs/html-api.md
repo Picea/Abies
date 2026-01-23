@@ -59,7 +59,7 @@ input([oninput(data => new QueryChanged(data?.Value ?? ""))], []);
 
 Event helpers can deserialize common payloads:
 - `InputEventData` (value)
-- `KeyEventData` (key + modifier keys)
+- `KeyEventData` (key + repeat + modifier keys)
 - `PointerEventData` (clientX/clientY/button)
 - `GenericEventData` (union of common fields)
 
