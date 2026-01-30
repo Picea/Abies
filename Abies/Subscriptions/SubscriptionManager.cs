@@ -1,3 +1,16 @@
+// =============================================================================
+// Subscription Manager
+// =============================================================================
+// Manages the lifecycle of subscriptions: starting new ones, stopping removed
+// ones, and maintaining a stable set of running subscriptions across updates.
+// Uses key-based diffing to determine which subscriptions changed.
+//
+// Architecture Decision Records:
+// - ADR-007: Subscriptions for External Events (docs/adr/ADR-007-subscriptions.md)
+// - ADR-001: MVU Architecture (docs/adr/ADR-001-mvu-architecture.md)
+// - ADR-013: OpenTelemetry Observability (docs/adr/ADR-013-opentelemetry.md)
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +23,15 @@ internal readonly record struct SubscriptionState(IReadOnlyDictionary<Subscripti
 
 internal sealed record RunningSubscription(SubscriptionKey Key, CancellationTokenSource CancellationTokenSource, Task Task);
 
+/// <summary>
+/// Manages subscription lifecycle: starting, stopping, and diffing subscriptions.
+/// </summary>
+/// <remarks>
+/// The subscription manager uses key-based diffing (Elm-style) to determine
+/// which subscriptions need to be started or stopped when the model changes.
+/// 
+/// See ADR-007: Subscriptions for External Events
+/// </remarks>
 internal static class SubscriptionManager
 {
     public static SubscriptionState Start(Subscription subscription, Dispatch dispatch)

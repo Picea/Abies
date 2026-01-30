@@ -12,6 +12,27 @@ namespace Abies.Tests;
 public sealed class SubscriptionManagerTests
 {
     /// <summary>
+    /// Ensures timer subscriptions dispatch messages on each tick.
+    /// </summary>
+    [Fact]
+    public async Task Every_DispatchesMessagesOnTick()
+    {
+        var dispatched = new ConcurrentBag<Message>();
+        Dispatch dispatch = msg => { dispatched.Add(msg); return new ValueTuple(); };
+
+        var subscription = SubscriptionModule.Every(TimeSpan.FromMilliseconds(50), now => new TimerTick(now));
+        var state = SubscriptionManager.Start(subscription, dispatch);
+
+        // Wait for at least 3 ticks
+        await WaitUntil(() => dispatched.Count >= 3, TimeSpan.FromSeconds(2));
+
+        await SubscriptionManager.Stop(state);
+
+        Assert.True(dispatched.Count >= 3, $"Expected at least 3 ticks, got {dispatched.Count}");
+        Assert.All(dispatched, msg => Assert.IsType<TimerTick>(msg));
+    }
+
+    /// <summary>
     /// Ensures subscription diffing starts new sources and stops removed ones.
     /// </summary>
     [Fact]
@@ -145,4 +166,5 @@ public sealed class SubscriptionManagerTests
     }
 
     private sealed record TestMessage : Message;
+    private sealed record TimerTick(DateTimeOffset Now) : Message;
 }

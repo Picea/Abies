@@ -1,3 +1,23 @@
+// =============================================================================
+// Subscriptions
+// =============================================================================
+// Subscriptions represent external event sources (timers, browser events, 
+// WebSockets) that feed messages into the MVU loop. They are declarative:
+// you describe what you want to subscribe to, and the runtime manages the
+// lifecycle (starting/stopping) automatically based on state changes.
+//
+// Key concepts:
+// - Subscription.None: No subscriptions
+// - Subscription.Batch: Multiple subscriptions grouped together
+// - Subscription.Source: A concrete subscription with key and start function
+// - SubscriptionManager: Diffs and manages active subscriptions
+//
+// Architecture Decision Records:
+// - ADR-007: Subscriptions for External Events (docs/adr/ADR-007-subscriptions.md)
+// - ADR-001: MVU Architecture (docs/adr/ADR-001-mvu-architecture.md)
+// - ADR-006: Command Pattern for Side Effects (docs/adr/ADR-006-command-pattern.md)
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,6 +45,12 @@ public readonly record struct SubscriptionKey(string Value);
 /// <summary>
 /// Represents external event sources that feed messages into the MVU loop.
 /// </summary>
+/// <remarks>
+/// Subscriptions are the Elm-style way to handle external events. Unlike Commands
+/// (which fire once), Subscriptions produce a stream of messages over time.
+/// 
+/// See ADR-007: Subscriptions for External Events
+/// </remarks>
 public abstract record Subscription
 {
     /// <summary>
@@ -310,9 +336,11 @@ public static class SubscriptionModule
         {
             Runtime.RegisterSubscriptionHandler(
                 key,
-                data => data is T typed
-                    ? toMessage(typed)
-                    : throw new InvalidOperationException($"Subscription data mismatch for key '{key}'."),
+                data => {
+                    return data is T typed
+                        ? toMessage(typed)
+                        : throw new InvalidOperationException($"Subscription data mismatch for key '{key}'.");
+                },
                 typeof(T));
 
             SubscriptionInterop.Subscribe(key, kind, payload);
