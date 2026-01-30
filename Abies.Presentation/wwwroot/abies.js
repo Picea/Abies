@@ -319,14 +319,27 @@ function ensureEventListener(eventName) {
     registeredEvents.add(eventName);
 }
 
-function genericEventHandler(event) {
-    const name = event.type;
-    // Normalize to an Element for closest(); handle rare Text node targets
+// Helper to find an element with a specific attribute, traversing through shadow DOM boundaries
+function findEventTarget(event, attributeName) {
+    // First try the composed path to handle shadow DOM (for Web Components like fluent-button)
+    const path = event.composedPath ? event.composedPath() : [];
+    for (const el of path) {
+        if (el.nodeType === 1 /* ELEMENT_NODE */ && el.hasAttribute && el.hasAttribute(attributeName)) {
+            return el;
+        }
+    }
+    // Fallback to closest() for non-shadow DOM cases
     let origin = event.target;
     if (origin && origin.nodeType === 3 /* TEXT_NODE */) {
         origin = origin.parentElement;
     }
-    const target = origin && origin.closest ? origin.closest(`[data-event-${name}]`) : null;
+    return origin && origin.closest ? origin.closest(`[${attributeName}]`) : null;
+}
+
+function genericEventHandler(event) {
+    const name = event.type;
+    const attributeName = `data-event-${name}`;
+    const target = findEventTarget(event, attributeName);
     if (!target) return;
     // Ignore events coming from nodes that have been detached/replaced
     if (!target.isConnected) return;
@@ -338,7 +351,7 @@ function genericEventHandler(event) {
             if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
         } catch { /* ignore */ }
     }
-    const message = target.getAttribute(`data-event-${name}`);
+    const message = target.getAttribute(attributeName);
     try {
         dbgLog('[Abies Debug] genericEventHandler', { name, targetId: target.id, message, isConnected: target.isConnected });
         try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'genericEventHandler', name, targetId: target.id, message, isConnected: target.isConnected, time: Date.now() }); } catch {}
@@ -523,9 +536,28 @@ function subscribe(key, kind, data) {
             break;
         }
         case 'mouseMove': {
-            const handler = (event) => dispatchSubscription(key, buildEventData(event, event.target));
+            // Throttle mouse move to once per animation frame (~60fps max) to prevent flooding
+            let pending = null;
+            let rafId = null;
+            const handler = (event) => {
+                pending = buildEventData(event, event.target);
+                if (rafId === null) {
+                    rafId = requestAnimationFrame(() => {
+                        if (pending) {
+                            dispatchSubscription(key, pending);
+                            pending = null;
+                        }
+                        rafId = null;
+                    });
+                }
+            };
             window.addEventListener('mousemove', handler);
-            dispose = () => window.removeEventListener('mousemove', handler);
+            dispose = () => {
+                window.removeEventListener('mousemove', handler);
+                if (rafId !== null) {
+                    cancelAnimationFrame(rafId);
+                }
+            };
             break;
         }
         case 'click': {
