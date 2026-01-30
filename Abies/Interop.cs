@@ -1,9 +1,30 @@
+// =============================================================================
+// JavaScript Interop
+// =============================================================================
+// Declares all JavaScript functions imported from abies.js.
+// Uses modern [JSImport]/[JSExport] attributes for type-safe interop.
+//
+// Architecture Decision Records:
+// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
+// - ADR-005: WebAssembly Runtime (docs/adr/ADR-005-webassembly-runtime.md)
+// =============================================================================
+
 using System.Runtime.InteropServices.JavaScript;
 
 namespace Abies
 {
+    /// <summary>
+    /// JavaScript interop declarations for browser APIs.
+    /// </summary>
+    /// <remarks>
+    /// All browser interactions go through this class via JSImport.
+    /// The corresponding JavaScript implementation is in abies.js.
+    /// 
+    /// See ADR-011: JavaScript Interop Strategy
+    /// </remarks>
     public static partial class Interop
     {
+        // Navigation APIs
         [JSImport("forward", "abies.js")]
         public static partial Task Forward(int steps);
 
@@ -25,6 +46,7 @@ namespace Abies
         [JSImport("replaceState", "abies.js")]
         public static partial Task ReplaceState(string url);
 
+        // DOM manipulation APIs (see ADR-003: Virtual DOM)
         [JSImport("setAppContent", "abies.js")]
         public static partial Task SetAppContent(string html);
 
@@ -52,6 +74,7 @@ namespace Abies
         [JSImport("getValue", "abies.js")]
         public static partial string? GetValue(string id);
 
+        // Storage APIs
         [JSImport("setLocalStorage", "abies.js")]
         public static partial Task SetLocalStorage(string key, string value);
 
@@ -64,7 +87,7 @@ namespace Abies
         [JSImport("setTitle", "abies.js")]
         public static partial Task SetTitle(string title);
 
-
+        // Event handlers (callbacks from JS to C#)
         [JSImport("onUrlChange", "abies.js")]
         public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
 
@@ -77,6 +100,7 @@ namespace Abies
         [JSImport("onFormSubmit", "abies.js")]
         internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
 
+        // Subscription APIs (see ADR-007: Subscriptions)
         [JSImport("subscribe", "abies.js")]
         internal static partial void Subscribe(string key, string kind, string? data);
 

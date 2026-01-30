@@ -1,9 +1,33 @@
+// =============================================================================
+// HTML Events
+// =============================================================================
+// Provides functions for attaching event handlers to virtual DOM elements.
+// Event handlers return Handler records which are special Attributes that
+// map DOM events to MVU Messages.
+//
+// Uses Praefixum source generator for compile-time unique IDs.
+//
+// Architecture Decision Records:
+// - ADR-001: MVU Architecture (docs/adr/ADR-001-mvu-architecture.md)
+// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-006: Command Pattern for Side Effects (docs/adr/ADR-006-command-pattern.md)
+// - ADR-014: Compile-Time Unique IDs (docs/adr/ADR-014-compile-time-ids.md)
+// =============================================================================
+
 using System.Runtime.CompilerServices;
 using Abies.DOM;
 using Praefixum;
 
 namespace Abies.Html;
 
+/// <summary>
+/// Provides factory functions for creating event handlers.
+/// </summary>
+/// <remarks>
+/// Event handlers connect DOM events to MVU Messages.
+/// When an event fires, the corresponding Message is dispatched to the update function.
+/// See ADR-001: MVU Architecture.
+/// </remarks>
 public static class Events
 {
     // Rarely used touch/pointer/mobile events
