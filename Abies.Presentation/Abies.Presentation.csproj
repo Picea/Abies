@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />
+    <PackageReference Include="Praefixum" Version="1.1.9-tags-v1-1-8.1" />
   </ItemGroup>
   <!-- Ensure a physical wwwroot/abies.js exists for the dev server -->
   <ItemGroup>
