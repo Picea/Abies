@@ -1,3 +1,15 @@
+// =============================================================================
+// Routing Utilities
+// =============================================================================
+// High-level routing built on top of the parser combinator library.
+// Provides both functional-style route parsing and ASP.NET-style template
+// routing (e.g., "/article/{slug}" or "/profile/{id:int}").
+//
+// Architecture Decision Records:
+// - ADR-004: Parser Combinators for Routing (docs/adr/ADR-004-parser-combinators.md)
+// - ADR-009: Sum Types for State Representation (docs/adr/ADR-009-sum-types.md)
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,6 +23,12 @@ namespace Abies;
 /// <summary>
 /// Provides routing utilities built on top of the parser combinator library.
 /// </summary>
+/// <remarks>
+/// Routes are defined as parser combinators that can be composed together.
+/// This approach provides type-safety and composability without regex.
+/// 
+/// See ADR-004: Parser Combinators for Routing
+/// </remarks>
 public static class Route
 {
     /// <summary>

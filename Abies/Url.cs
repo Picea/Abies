@@ -1,3 +1,18 @@
+// =============================================================================
+// URL Types and Parsing
+// =============================================================================
+// Provides strongly-typed URL representation using records for each component.
+// URLs are immutable and parsed once on creation.
+//
+// The Protocol interface uses sum types (sealed records) to represent
+// HTTP/HTTPS protocols in a type-safe manner.
+//
+// Architecture Decision Records:
+// - ADR-008: Immutable State Management (docs/adr/ADR-008-immutable-state.md)
+// - ADR-009: Sum Types for State Representation (docs/adr/ADR-009-sum-types.md)
+// - ADR-004: Parser Combinators for Routing (docs/adr/ADR-004-parser-combinators.md)
+// =============================================================================
+
 using Abies;
 using System.Globalization;
 

@@ -1,3 +1,18 @@
+// =============================================================================
+// Parser Combinators
+// =============================================================================
+// A functional parser combinator library used for URL routing.
+// Parsers are composable building blocks that can be combined using
+// LINQ syntax (from/select) or fluent methods (Slash, Or, Many).
+//
+// This approach is inspired by functional parsing in Haskell (Parsec)
+// and Elm's URL parser, providing type-safe routing without regex.
+//
+// Architecture Decision Records:
+// - ADR-004: Parser Combinators for Routing (docs/adr/ADR-004-parser-combinators.md)
+// - ADR-002: Pure Functional Programming (docs/adr/ADR-002-pure-functional-programming.md)
+// =============================================================================
+
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;

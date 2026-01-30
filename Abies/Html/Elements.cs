@@ -1,9 +1,33 @@
+// =============================================================================
+// HTML Elements
+// =============================================================================
+// Provides functions for creating virtual DOM elements. Each function returns
+// an Element node that can be composed into a virtual DOM tree.
+//
+// Uses Praefixum source generator for compile-time unique IDs, ensuring
+// stable DOM element identification for efficient diffing.
+//
+// Architecture Decision Records:
+// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-014: Compile-Time Unique IDs (docs/adr/ADR-014-compile-time-ids.md)
+// - ADR-002: Pure Functional Programming (docs/adr/ADR-002-pure-functional-programming.md)
+// =============================================================================
+
 using System.Runtime.CompilerServices;
 using Abies.DOM;
 using Praefixum;
 
 namespace Abies.Html;
 
+/// <summary>
+/// Provides factory functions for creating HTML elements as virtual DOM nodes.
+/// </summary>
+/// <remarks>
+/// All element functions are pure: they take data and return a Node.
+/// Element IDs are generated at compile-time using the Praefixum source generator.
+/// 
+/// See ADR-003: Virtual DOM, ADR-014: Compile-Time Unique IDs
+/// </remarks>
 public static class Elements
 {
     // Math-related and scientific content elements
@@ -97,7 +121,7 @@ public static class Elements
         => element("pattern", attributes, children, id);
 
     public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(id ?? string.Empty, tag, [Attributes.id(id ?? string.Empty), .. attributes], children);
+        => new(id.ToString(), tag, [Attributes.id(id.ToString()), .. attributes], children);
 
     public static Node output(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     => element("output", attributes, children, id);
@@ -182,7 +206,7 @@ public static class Elements
         => element("button", attributes, children, id);
 
     public static Node text(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new Text(id ?? string.Empty, value);
+        => new Text(id.ToString(), value);
 
     public static Node h1(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("h1", attributes, children, id);
@@ -483,6 +507,6 @@ public static class Elements
         => element("rect", attributes, [], id);
 
     public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new DOM.RawHtml(id ?? string.Empty, html);
+        => new DOM.RawHtml(id.ToString(), html);
 
 }

@@ -1,9 +1,29 @@
+// =============================================================================
+// HTML Attributes
+// =============================================================================
+// Provides functions for creating HTML attributes for virtual DOM elements.
+// Each function returns a DOM.Attribute that can be attached to elements.
+//
+// Uses Praefixum source generator for compile-time unique IDs.
+//
+// Architecture Decision Records:
+// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-014: Compile-Time Unique IDs (docs/adr/ADR-014-compile-time-ids.md)
+// =============================================================================
+
 using System;
 using System.Runtime.CompilerServices;
 using Praefixum;
 
 namespace Abies.Html;
 
+/// <summary>
+/// Provides factory functions for creating HTML attributes.
+/// </summary>
+/// <remarks>
+/// All attribute functions are pure and return immutable Attribute records.
+/// See ADR-003: Virtual DOM.
+/// </remarks>
 public static class Attributes
 {
 
