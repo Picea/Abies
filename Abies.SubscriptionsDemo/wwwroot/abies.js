@@ -13,9 +13,23 @@ let trace = {
 };
 let SpanStatusCode = { OK: 1, ERROR: 2 };
 
+const isOtelDisabled = (() => {
+  try {
+    if (window.__OTEL_DISABLED === true) return true;
+    const enabledMeta = document.querySelector('meta[name="otel-enabled"]');
+    const enabledValue = enabledMeta && enabledMeta.getAttribute('content');
+    if (enabledValue && enabledValue.toLowerCase() === 'off') return true;
+    const cdnMeta = document.querySelector('meta[name="otel-cdn"]');
+    const cdnValue = cdnMeta && cdnMeta.getAttribute('content');
+    if (cdnValue && cdnValue.toLowerCase() === 'off') return true;
+  } catch {}
+  return false;
+})();
+
 // Optional: wire browser spans to Aspire via OTLP/HTTP if available, but never block app startup
 void (async () => {
   try {
+    if (isOtelDisabled) return;
     const otelInit = (async () => {
       // Allow disabling CDN-based OTel via flag or meta tag
       const useCdn = (() => {
@@ -305,14 +319,27 @@ function ensureEventListener(eventName) {
     registeredEvents.add(eventName);
 }
 
-function genericEventHandler(event) {
-    const name = event.type;
-    // Normalize to an Element for closest(); handle rare Text node targets
+// Helper to find an element with a specific attribute, traversing through shadow DOM boundaries
+function findEventTarget(event, attributeName) {
+    // First try the composed path to handle shadow DOM (for Web Components like fluent-button)
+    const path = event.composedPath ? event.composedPath() : [];
+    for (const el of path) {
+        if (el.nodeType === 1 /* ELEMENT_NODE */ && el.hasAttribute && el.hasAttribute(attributeName)) {
+            return el;
+        }
+    }
+    // Fallback to closest() for non-shadow DOM cases
     let origin = event.target;
     if (origin && origin.nodeType === 3 /* TEXT_NODE */) {
         origin = origin.parentElement;
     }
-    const target = origin && origin.closest ? origin.closest(`[data-event-${name}]`) : null;
+    return origin && origin.closest ? origin.closest(`[${attributeName}]`) : null;
+}
+
+function genericEventHandler(event) {
+    const name = event.type;
+    const attributeName = `data-event-${name}`;
+    const target = findEventTarget(event, attributeName);
     if (!target) return;
     // Ignore events coming from nodes that have been detached/replaced
     if (!target.isConnected) return;
@@ -324,7 +351,7 @@ function genericEventHandler(event) {
             if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
         } catch { /* ignore */ }
     }
-    const message = target.getAttribute(`data-event-${name}`);
+    const message = target.getAttribute(attributeName);
     try {
         dbgLog('[Abies Debug] genericEventHandler', { name, targetId: target.id, message, isConnected: target.isConnected });
         try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'genericEventHandler', name, targetId: target.id, message, isConnected: target.isConnected, time: Date.now() }); } catch {}
@@ -373,6 +400,7 @@ function buildEventData(event, target) {
     if (target && 'checked' in target) data.checked = target.checked;
     if ('key' in event) {
         data.key = event.key;
+        data.repeat = event.repeat === true;
         data.altKey = event.altKey;
         data.ctrlKey = event.ctrlKey;
         data.shiftKey = event.shiftKey;
@@ -469,9 +497,24 @@ function subscribe(key, kind, data) {
             break;
         }
         case 'keyDown': {
-            const handler = (event) => dispatchSubscription(key, buildEventData(event, event.target));
-            window.addEventListener('keydown', handler);
-            dispose = () => window.removeEventListener('keydown', handler);
+            const pressed = new Set();
+            const down = (event) => {
+                if (event && event.repeat) return;
+                const k = event?.key ?? '';
+                if (pressed.has(k)) return;
+                pressed.add(k);
+                dispatchSubscription(key, buildEventData(event, event.target));
+            };
+            const up = (event) => {
+                const k = event?.key ?? '';
+                pressed.delete(k);
+            };
+            window.addEventListener('keydown', down);
+            window.addEventListener('keyup', up);
+            dispose = () => {
+                window.removeEventListener('keydown', down);
+                window.removeEventListener('keyup', up);
+            };
             break;
         }
         case 'keyUp': {
