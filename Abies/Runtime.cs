@@ -1,3 +1,19 @@
+// =============================================================================
+// Abies Runtime
+// =============================================================================
+// The runtime implements the MVU message loop and coordinates all framework
+// subsystems: virtual DOM, commands, subscriptions, and JavaScript interop.
+//
+// Architecture Decision Records:
+// - ADR-001: Model-View-Update Architecture (docs/adr/ADR-001-mvu-architecture.md)
+// - ADR-003: Virtual DOM Implementation (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-005: WebAssembly Runtime (docs/adr/ADR-005-webassembly-runtime.md)
+// - ADR-006: Command Pattern for Side Effects (docs/adr/ADR-006-command-pattern.md)
+// - ADR-007: Subscription Model (docs/adr/ADR-007-subscriptions.md)
+// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
+// - ADR-013: OpenTelemetry Instrumentation (docs/adr/ADR-013-opentelemetry.md)
+// =============================================================================
+
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -7,16 +23,47 @@ using Abies.DOM;
 
 namespace Abies;
 
+/// <summary>
+/// The Abies runtime implements the MVU message loop.
+/// </summary>
+/// <remarks>
+/// The runtime coordinates:
+/// - Message dispatch via an unbounded channel
+/// - Virtual DOM diffing and patching
+/// - Command execution (side effects)
+/// - Subscription lifecycle management
+/// - JavaScript interop for browser APIs
+/// 
+/// See ADR-001: Model-View-Update Architecture
+/// See ADR-005: WebAssembly Runtime
+/// </remarks>
 public static partial class Runtime
 {
+    // Message queue for ordered processing (see ADR-001: unidirectional data flow)
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
+    
+    // Handler registries for event dispatch (see ADR-011: JavaScript interop)
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
     private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
     private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
     
+    /// <summary>
+    /// Starts the MVU runtime loop for the specified program.
+    /// </summary>
+    /// <remarks>
+    /// The runtime loop:
+    /// 1. Initializes model and runs initial commands
+    /// 2. Renders initial virtual DOM
+    /// 3. Starts subscriptions
+    /// 4. Processes messages: Update → View → Diff → Patch → Commands
+    /// 
+    /// See ADR-001: Model-View-Update Architecture
+    /// See ADR-013: OpenTelemetry Instrumentation
+    /// </remarks>
     public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
         where TProgram : Program<TModel, TArguments>
     {
+        // ADR-013: Trace the entire runtime lifecycle
         using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
 
         // Register the URL change handler
@@ -24,10 +71,10 @@ public static partial class Runtime
 
         var currentUrl = Url.Create(new(Interop.GetCurrentUrl()));
 
-        // Initialize the state
+        // Initialize the state (ADR-001: Initialize returns model + command)
         var (initialModel, initialCommand) = TProgram.Initialize(currentUrl, arguments);
 
-        // Generate the virtual DOM
+        // Generate the virtual DOM (ADR-003: View is pure function)
         var document = TProgram.View(initialModel);
 
     var html = Render.Html(document.Body);
@@ -40,8 +87,10 @@ public static partial class Runtime
         var dom = document.Body;
 
         // Start subscriptions immediately after initialization (Elm-style).
+        // See ADR-007: Subscriptions are state-driven
         var subscriptionState = SubscriptionManager.Start(TProgram.Subscriptions(model), Dispatch);
 
+        // ADR-006: Commands are executed outside the pure Update function
         using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
         {
             await TProgram.HandleCommand(initialCommand, Dispatch);

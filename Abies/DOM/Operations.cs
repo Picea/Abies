@@ -1,3 +1,22 @@
+// =============================================================================
+// Virtual DOM Implementation
+// =============================================================================
+// Provides diffing and patching utilities for the virtual DOM.
+// The implementation is inspired by Elm's VirtualDom diff algorithm
+// and is written with performance in mind (object pooling, minimal allocations).
+//
+// Key concepts:
+// - Node: Base type for all DOM nodes (Element, Text, RawHtml)
+// - Patch: Represents a single DOM modification operation
+// - Diff: Computes patches needed to transform old tree to new tree
+// - Apply: Applies patches to real DOM via JavaScript interop
+//
+// Architecture Decision Records:
+// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-008: Immutable State Management (docs/adr/ADR-008-immutable-state.md)
+// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -6,14 +25,56 @@ using System.Linq;
 
 namespace Abies.DOM
 {
+    /// <summary>
+    /// Represents a document in the Abies DOM.
+    /// </summary>
+    /// <param name="Title">The title of the document.</param>
+    /// <param name="Body">The body content of the document.</param>
     public record Document(string Title, Node Body);
     
+    /// <summary>
+    /// Represents a node in the Abies DOM.
+    /// </summary>
+    /// <param name="Id">The unique identifier for the node.</param>
+    /// <remarks>
+    /// Nodes are immutable records used to build the virtual DOM tree.
+    /// See ADR-003: Virtual DOM and ADR-008: Immutable State Management.
+    /// </remarks>
     public record Node(string Id);
+
+    /// <summary>
+    /// Represents a raw (unprocessed) HTML node in the Abies DOM.
+    /// </summary>
+    /// <param name="Id">The unique identifier for the node.</param>
+    /// <param name="Html">The raw HTML content.</param>
     public record RawHtml(string Id, string Html) : Node(Id);
+
+    /// <summary>
+    /// Represents an attribute of an element in the Abies DOM.
+    /// </summary>
+    /// <param name="Id">The unique identifier for the attribute.</param>
+    /// <param name="Name">The name of the attribute.</param>
+    /// <param name="Value">The value of the attribute.</param>
     public record Attribute(string Id, string Name, string Value);
 
+    /// <summary>
+    /// Represents an element in the Abies DOM.
+    /// </summary>
+    /// <param name="Id">The unique identifier for the element.</param>
+    /// <param name="Tag">The tag name of the element.</param>
+    /// <param name="Attributes">The attributes of the element.</param>
+    /// <param name="Children">The child nodes of the element.</param>
     public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
+    /// <summary>
+    /// Represents a command handler for an element in the Abies DOM. 
+    /// </summary>
+    /// <param name="Name">The name of the handler.</param>
+    /// <param name="CommandId">The unique identifier for the command.</param>
+    /// <param name="Command">The command associated with the handler.</param>
+    /// <param name="Id">The unique identifier for the handler.</param>
+    /// <param name="WithData">A function to provide additional data for the command.</param>
+    /// <param name="DataType">The type of the data provided by the WithData function.</param>
     public record Handler(
         string Name,
         string CommandId,
@@ -272,7 +333,8 @@ namespace Abies.DOM
                     // 1) Register the new handler command id
                     Abies.Runtime.RegisterHandler(updateHandler.NewHandler);
                     // 2) Update the DOM attribute value to the new command id
-                    await Interop.UpdateAttribute(updateHandler.Element.Id, ((Attribute)updateHandler.NewHandler).Name, updateHandler.NewHandler.Value);
+                    var attrNameToUpdate = ((Attribute)updateHandler.NewHandler).Name;
+                    await Interop.UpdateAttribute(updateHandler.Element.Id, attrNameToUpdate, updateHandler.NewHandler.Value);
                     // 3) Unregister the old handler command id
                     Abies.Runtime.UnregisterHandler(updateHandler.OldHandler);
                     break;
@@ -451,11 +513,15 @@ namespace Abies.DOM
                     oldMap.EnsureCapacity(oldAttrs.Length);
 
                 foreach (var attr in oldAttrs)
-                    oldMap[attr.Name] = attr;
+                {
+                    var attrName = attr is Handler h ? ((Attribute)h).Name : attr.Name;
+                    oldMap[attrName] = attr;
+                }
 
                 foreach (var newAttr in newAttrs)
                 {
-                    if (oldMap.TryGetValue(newAttr.Name, out var oldAttr))
+                    var newAttrName = newAttr is Handler nh ? ((Attribute)nh).Name : newAttr.Name;
+                    if (oldMap.TryGetValue(newAttrName, out var oldAttr))
                     {
                         oldMap.Remove(newAttr.Name);
                         if (!newAttr.Equals(oldAttr))
