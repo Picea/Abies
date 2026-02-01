@@ -63,6 +63,22 @@ public static class Attributes
     public static DOM.Attribute data(string name, string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => attribute($"data-{name}", value, id);
 
+    /// <summary>
+    /// Creates a key attribute for stable identity in DOM diffing.
+    /// Elements with keys are matched by key value instead of position,
+    /// enabling correct updates when lists are reordered or items change.
+    /// </summary>
+    /// <param name="value">The unique key value for this element within its parent.</param>
+    /// <param name="id">Auto-generated unique ID for the attribute.</param>
+    /// <returns>A data-key attribute with the specified value.</returns>
+    /// <remarks>
+    /// Use keys when rendering lists where items may be added, removed, or reordered.
+    /// The key should be stable and unique among siblings (e.g., a URL, database ID, or slug).
+    /// See ADR-003: Virtual DOM for diffing algorithm details.
+    /// </remarks>
+    public static DOM.Attribute key(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => attribute("data-key", value, id);
+
     // SVG-specific attributes
     public static DOM.Attribute viewBox(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => attribute("viewBox", value, id);

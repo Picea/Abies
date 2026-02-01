@@ -111,6 +111,9 @@ internal static class MvuDomTestHarness
     public static Element FindFirstElement(Node root, Func<Element, bool> predicate)
         => EnumerateElements(root).First(predicate);
 
+    public static Element? TryFindFirstElement(Node root, Func<Element, bool> predicate)
+        => EnumerateElements(root).FirstOrDefault(predicate);
+
     public static IEnumerable<Element> EnumerateElements(Node root)
     {
         if (root is Element el)
