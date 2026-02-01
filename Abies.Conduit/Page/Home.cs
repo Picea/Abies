@@ -230,7 +230,7 @@ public record Model(
                     ])
                 ])
             )])
-        ]);
+        ], id: $"article-{article.Slug}");
 
     private static Node ArticleList(Model model) =>
         model.IsLoading
