@@ -94,7 +94,7 @@ await Runtime.Run<MyApp, Args, Model>(args);
 
 Output appears in the browser's developer console:
 
-```
+```text
 [Abies Telemetry] Console tracing enabled for source 'Abies'
 [10:30:45.123] ▶ Run
 [10:30:45.130] ▶ Message
@@ -166,6 +166,36 @@ seamlessly with Aspire's strict protobuf requirement.
 **Note**: The official `OpenTelemetry.Exporter.OpenTelemetryProtocol` package keeps proto
 types internal. We use `IF.APM.OpenTelemetry.Proto` (a third-party package) which exposes
 the necessary `OpenTelemetry.Proto.*` namespaces.
+
+#### Distributed Trace Context Propagation
+
+To correlate browser spans with backend API spans in a single distributed trace:
+
+1. **Browser UI Event Span** - When a user clicks a button, the `UI Event` span is created
+2. **HTTP Client Span** - When the WebAssembly code makes a `fetch()` call, a child span is created
+3. **traceparent Header** - The `traceparent` W3C header is injected with the trace ID and span ID
+4. **Backend Span** - The API receives the header and creates spans under the same trace
+
+**CDN Mode** (when OpenTelemetry CDN loads successfully):
+
+- Uses `tracer.startActiveSpan()` to set the span as active in context
+- `FetchInstrumentation` automatically creates child spans with correct parent
+- `ZoneContextManager` propagates context through async operations
+
+**Shim Mode** (when CDN is blocked or times out):
+
+- Tracks `activeTraceContext` that persists briefly after span ends
+- Patched `fetch()` uses this context to create child HTTP spans
+- Manually injects `traceparent` header into outgoing requests
+
+The result is a complete distributed trace showing:
+
+```text
+UI Event (Click Button: Sign In)
+  └── HTTP POST /api/users/login
+        └── POST /api/users/login (API server span)
+              └── ... (database, other backend operations)
+```
 
 **Endpoint Resolution Priority** (for browser-compatible HTTP):
 
