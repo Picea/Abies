@@ -580,17 +580,33 @@ namespace Abies.DOM
 
             var oldLength = oldChildren.Length;
             var newLength = newChildren.Length;
-            var shared = Math.Min(oldLength, newLength);
 
-            var hasKeyedChildren = HasKeyedChildren(oldChildren) || HasKeyedChildren(newChildren);
-            if (hasKeyedChildren)
+            // ADR-016: Use ID-based keyed diffing for all elements.
+            // Build maps of old and new children by their keys (element Id or data-key).
+            var oldKeys = BuildKeySequence(oldChildren);
+            var newKeys = BuildKeySequence(newChildren);
+
+            // Check if keys differ at all
+            if (!oldKeys.SequenceEqual(newKeys))
             {
-                var oldKeys = BuildKeySequence(oldChildren);
-                var newKeys = BuildKeySequence(newChildren);
+                // Build lookup maps for efficient matching
+                var oldKeyToIndex = new Dictionary<string, int>(oldLength);
+                for (int i = 0; i < oldLength; i++)
+                    oldKeyToIndex[oldKeys[i]] = i;
 
-                if (!oldKeys.SequenceEqual(newKeys))
+                var newKeyToIndex = new Dictionary<string, int>(newLength);
+                for (int i = 0; i < newLength; i++)
+                    newKeyToIndex[newKeys[i]] = i;
+
+                // Check if this is a reorder (same keys, different order) or a membership change
+                var oldKeySet = new HashSet<string>(oldKeys);
+                var newKeySet = new HashSet<string>(newKeys);
+                var isReorder = oldKeySet.SetEquals(newKeySet) && oldLength == newLength;
+
+                if (isReorder)
                 {
-                    // Key order or membership changed: replace the entire child list to preserve order.
+                    // Reorder detected: remove all old children and add all new children
+                    // to ensure correct DOM order
                     for (int i = oldLength - 1; i >= 0; i--)
                     {
                         if (oldChildren[i] is Element oldChild)
@@ -612,9 +628,60 @@ namespace Abies.DOM
                     }
                     return;
                 }
+
+                // Membership change: some keys added, some removed
+                // Find keys that exist in old but not in new (to remove)
+                // Find keys that exist in new but not in old (to add)
+                // Find keys that exist in both (to diff)
+                var keysToRemove = new List<int>();
+                var keysToAdd = new List<int>();
+                var keysToDiff = new List<(int oldIndex, int newIndex)>();
+
+                for (int i = 0; i < oldLength; i++)
+                {
+                    if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
+                        keysToDiff.Add((i, newIndex));
+                    else
+                        keysToRemove.Add(i);
+                }
+
+                for (int i = 0; i < newLength; i++)
+                {
+                    if (!oldKeyToIndex.ContainsKey(newKeys[i]))
+                        keysToAdd.Add(i);
+                }
+
+                // Remove old children that don't exist in new (iterate backwards to maintain order)
+                for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                {
+                    var idx = keysToRemove[i];
+                    if (oldChildren[idx] is Element oldChild)
+                        patches.Add(new RemoveChild(oldParent, oldChild));
+                    else if (oldChildren[idx] is RawHtml oldRaw)
+                        patches.Add(new RemoveRaw(oldParent, oldRaw));
+                    else if (oldChildren[idx] is Text oldText)
+                        patches.Add(new RemoveText(oldParent, oldText));
+                }
+
+                // Diff children that exist in both trees
+                foreach (var (oldIndex, newIndex) in keysToDiff)
+                    DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
+
+                // Add new children that don't exist in old
+                foreach (var idx in keysToAdd)
+                {
+                    if (newChildren[idx] is Element newChild)
+                        patches.Add(new AddChild(newParent, newChild));
+                    else if (newChildren[idx] is RawHtml newRaw)
+                        patches.Add(new AddRaw(newParent, newRaw));
+                    else if (newChildren[idx] is Text newText)
+                        patches.Add(new AddText(newParent, newText));
+                }
+                return;
             }
 
-            // Diff children that exist in both trees
+            // Keys are identical: diff in place
+            var shared = Math.Min(oldLength, newLength);
             for (int i = 0; i < shared; i++)
                 DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
 
@@ -641,21 +708,32 @@ namespace Abies.DOM
             }
         }
 
-        private static bool HasKeyedChildren(Node[] children)
-            => children.Any(child => GetKey(child) is not null);
-
+        /// <summary>
+        /// Gets the key for a node used in keyed diffing.
+        /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+        /// </summary>
         private static string? GetKey(Node node)
         {
             if (node is not Element element)
                 return null;
 
+            // ADR-016: Use element Id as the primary key for diffing.
+            // This allows developers to set stable IDs on elements,
+            // and the diff algorithm will correctly match elements by ID.
+            // The Id is always present, so we use it directly.
+            // Only treat auto-generated IDs (from Praefixum) as non-keyed
+            // by checking for data-key attribute as an explicit override.
+            
+            // First, check for explicit data-key attribute (backward compatibility)
             foreach (var attr in element.Attributes)
             {
                 if (attr.Name == "data-key" || attr.Name == "key")
                     return attr.Value;
             }
 
-            return null;
+            // Use element Id as the key
+            // Element IDs are always unique, making them ideal for keyed diffing
+            return element.Id;
         }
 
         private static string[] BuildKeySequence(Node[] children)

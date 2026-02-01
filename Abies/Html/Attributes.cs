@@ -64,18 +64,28 @@ public static class Attributes
         => attribute($"data-{name}", value, id);
 
     /// <summary>
-    /// Creates a key attribute for stable identity in DOM diffing.
-    /// Elements with keys are matched by key value instead of position,
-    /// enabling correct updates when lists are reordered or items change.
+    /// Creates a data-key attribute for explicit keyed DOM diffing.
     /// </summary>
     /// <param name="value">The unique key value for this element within its parent.</param>
     /// <param name="id">Auto-generated unique ID for the attribute.</param>
     /// <returns>A data-key attribute with the specified value.</returns>
     /// <remarks>
-    /// Use keys when rendering lists where items may be added, removed, or reordered.
-    /// The key should be stable and unique among siblings (e.g., a URL, database ID, or slug).
-    /// See ADR-003: Virtual DOM for diffing algorithm details.
+    /// <para>
+    /// <b>Per ADR-016:</b> The element's <c>id:</c> parameter is now the preferred way to provide
+    /// stable identity for DOM diffing. The diff algorithm uses element IDs as keys by default.
+    /// </para>
+    /// <para>
+    /// This <c>key()</c> function is retained for backward compatibility and edge cases where
+    /// you want a separate diffing key that differs from the element's DOM id.
+    /// </para>
+    /// <para>
+    /// <b>Recommended approach:</b> Use the <c>id:</c> parameter instead:
+    /// <code>
+    /// li([class_("nav-item")], [...], id: $"nav-{url}")
+    /// </code>
+    /// </para>
     /// </remarks>
+    [Obsolete("Prefer using the id: parameter for keyed diffing. See ADR-016.")]
     public static DOM.Attribute key(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => attribute("data-key", value, id);
 

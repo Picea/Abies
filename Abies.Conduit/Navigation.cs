@@ -10,8 +10,8 @@ public static class Navigation
 {
     /// <summary>
     /// Creates a navigation link with a stable, content-based identity.
-    /// Uses the URL to generate unique element IDs so DOM diffing can correctly 
-    /// identify and update individual nav items.
+    /// Per ADR-016: Uses the element's Id for keyed DOM diffing, so DOM updates
+    /// correctly identify and update individual nav items.
     /// </summary>
     private static Node NavLink(string url, string label, bool active)
     {
@@ -22,7 +22,9 @@ public static class Navigation
         if (string.IsNullOrEmpty(stableId) || stableId == "nav-")
             stableId = "nav-home";
         
-        return li([class_("nav-item"), key(url)], [
+        // ADR-016: The id: parameter serves as both the DOM id and the diffing key.
+        // No separate key() attribute needed.
+        return li([class_("nav-item")], [
             a([class_(active ? "nav-link active" : "nav-link"), href(url)], [text(label)])
         ], id: stableId);
     }

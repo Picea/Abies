@@ -367,20 +367,18 @@ public class TodoApp : Program<Model, Arguments>
         ul([class_("todo-list")], 
             todos.Select(TodoItemView).ToArray());
 
-    static Node TodoItemView(TodoItem todo) =>
-        li([class_(todo.Completed ? "completed" : "")], [
-            div([class_("view")], [
-                input([
-                    class_("toggle"),
-                    type("checkbox"),
-                    onclick(new ToggleTodo(todo.Id))
-                ], []),
-                label([], [text(todo.Text)]),
-                button([class_("destroy"), onclick(new DeleteTodo(todo.Id))], [])
-            ])
-        ]);
-
-    static Node Footer(Filter currentFilter, int activeCount, int completedCount) =>
+static Node TodoItemView(TodoItem todo) =>
+    li([class_(todo.Completed ? "completed" : "")], [
+        div([class_("view")], [
+            input([
+                class_("toggle"),
+                type("checkbox"),
+                onclick(new ToggleTodo(todo.Id))
+            ], []),
+            label([], [text(todo.Text)]),
+            button([class_("destroy"), onclick(new DeleteTodo(todo.Id))], [])
+        ])
+    ], id: $"todo-{todo.Id}");  // Stable ID for efficient list diffing    static Node Footer(Filter currentFilter, int activeCount, int completedCount) =>
         footer([class_("footer")], [
             span([class_("todo-count")], [
                 text($"{activeCount} item{(activeCount == 1 ? "" : "s")} left")

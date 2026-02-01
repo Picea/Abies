@@ -280,41 +280,62 @@ private static Node PreserveIds(Node? oldNode, Node newNode)
 }
 ```
 
-## Keyed Reconciliation
+## Keyed Reconciliation (ADR-016)
 
-Keys enable efficient list reordering:
+Element IDs enable efficient list diffing. Per ADR-016, the element's `Id` is used
+as the primary key for matching elements across renders:
 
 ```csharp
+/// <summary>
+/// Gets the key for a node used in keyed diffing.
+/// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+/// </summary>
 private static string? GetKey(Node node)
 {
     if (node is not Element element)
         return null;
     
+    // Check for explicit data-key attribute (backward compatibility)
     foreach (var attr in element.Attributes)
     {
         if (attr.Name == "data-key" || attr.Name == "key")
             return attr.Value;
     }
     
-    return null;
+    // Use element Id as the key
+    return element.Id;
 }
-
-private static bool HasKeyedChildren(Node[] children)
-    => children.Any(child => GetKey(child) is not null);
 ```
 
-When key order changes, all children are replaced to preserve correct ordering:
+When key sets differ, the algorithm:
+
+1. Removes elements whose IDs don't exist in the new list
+2. Diffs elements whose IDs exist in both lists
+3. Adds elements whose IDs don't exist in the old list
+
+When key order changes (same keys, different positions), all children are replaced
+to preserve correct DOM ordering:
 
 ```csharp
 if (!oldKeys.SequenceEqual(newKeys))
 {
-    // Remove all old children
-    for (int i = oldLength - 1; i >= 0; i--)
-        patches.Add(new RemoveChild(oldParent, oldChildren[i]));
+    var oldKeySet = new HashSet<string>(oldKeys);
+    var newKeySet = new HashSet<string>(newKeys);
+    var isReorder = oldKeySet.SetEquals(newKeySet);
     
-    // Add all new children
-    for (int i = 0; i < newLength; i++)
-        patches.Add(new AddChild(newParent, newChildren[i]));
+    if (isReorder)
+    {
+        // Reorder: remove all and add all
+        for (int i = oldLength - 1; i >= 0; i--)
+            patches.Add(new RemoveChild(oldParent, oldChildren[i]));
+        for (int i = 0; i < newLength; i++)
+            patches.Add(new AddChild(newParent, newChildren[i]));
+    }
+    else
+    {
+        // Membership change: only remove/add what's needed
+        // ... diff matching elements, remove missing, add new
+    }
 }
 ```
 
@@ -365,6 +386,7 @@ private static void RenderNode(Node node, StringBuilder sb)
 | Apply single patch | O(1) | O(1) |
 
 Where:
+
 - n = number of nodes
 - h = tree height
 - a = number of attributes

@@ -15,30 +15,50 @@ This guide covers optimization techniques for when you need maximum performance.
 
 ## Virtual DOM Optimization
 
-### Use Keyed Lists
+### Use Stable IDs for Dynamic Lists
 
-For lists that reorder, add `data-key` attributes:
+For lists that can reorder, add, or remove items, use the `id:` parameter:
 
 ```csharp
-// ❌ Without keys - full re-render on reorder
-ul(todos.Select(todo => 
-    li(text(todo.Title))
+// ❌ Without stable IDs - position-based diffing, inefficient
+ul([], todos.Select(todo => 
+    li([], [text(todo.Title)])
 ).ToArray())
 
-// ✅ With keys - efficient reorder
-ul(todos.Select(todo => 
-    li(
-        attribute("data-key", todo.Id.ToString()),
-        text(todo.Title)
-    )
+// ✅ With stable IDs - keyed diffing, efficient
+ul([], todos.Select(todo => 
+    li([], [text(todo.Title)], id: $"todo-{todo.Id}")
 ).ToArray())
 ```
 
-Keys enable:
+Stable IDs enable:
 
-- Efficient list reordering
+- Efficient list reordering (move DOM nodes instead of recreating)
 - Preserved element state (focus, scroll position)
 - Fewer DOM operations
+
+#### Why `id:` Instead of a Separate `key` Attribute?
+
+Unlike React, Vue, or Elm, Abies doesn't use a separate `key` attribute. Instead, the element's `id` serves double duty:
+
+| Framework  | Keying Approach           | Key Attribute             |
+| ---------- | ------------------------- | ------------------------- |
+| React      | Separate `key` prop       | `key={item.id}`           |
+| Vue        | Separate `:key` binding   | `:key="item.id"`          |
+| Elm        | Separate `Keyed.node`     | `(id, element)` tuple     |
+| **Abies**  | **Unified `id:`**         | `id: $"item-{item.Id}"`   |
+
+**Why can Abies do this when others can't?**
+
+1. **Praefixum generates unique IDs**: The compile-time source generator ensures every element has a guaranteed-unique ID.
+
+2. **IDs are already required for patching**: Abies uses `getElementById` to apply DOM patches, so every element needs an ID anyway.
+
+3. **No HTML ID collision**: Abies IDs are internal and unique within the app, unlike HTML IDs which must be globally unique and are used for CSS/accessibility.
+
+4. **Simpler mental model**: One concept (`id:`) instead of two (`id:` for patching + `key` for diffing).
+
+For full details, see [ADR-016: ID-Based DOM Diffing](../adr/ADR-016-keyed-dom-diffing.md).
 
 ### Avoid Unnecessary Nesting
 

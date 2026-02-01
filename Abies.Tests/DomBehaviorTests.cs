@@ -183,36 +183,34 @@ public class DomBehaviorTests
     [Fact]
     public void KeyedChildren_Reorder_ShouldReplaceList()
     {
+        // Per ADR-016: Element Id is used for keyed diffing, not data-key attribute.
+        // When children have different IDs in different order, the algorithm detects reordering.
         var oldDom = new Element("root", "div", [],
-            new Element("a", "div", new DOMAttribute[]
+            new Element("item-a", "div", new DOMAttribute[]
             {
-                new DOMAttribute("ka", "data-key", "a"),
                 new DOMAttribute("ca", "class", "item")
             }, new Text("ta", "A")),
-            new Element("b", "div", new DOMAttribute[]
+            new Element("item-b", "div", new DOMAttribute[]
             {
-                new DOMAttribute("kb", "data-key", "b"),
                 new DOMAttribute("cb", "class", "item")
             }, new Text("tb", "B")));
 
         var newDom = new Element("root", "div", [],
-            new Element("b2", "div", new DOMAttribute[]
+            new Element("item-b", "div", new DOMAttribute[]
             {
-                new DOMAttribute("kb2", "data-key", "b"),
                 new DOMAttribute("cb2", "class", "item")
             }, new Text("tb2", "B")),
-            new Element("a2", "div", new DOMAttribute[]
+            new Element("item-a", "div", new DOMAttribute[]
             {
-                new DOMAttribute("ka2", "data-key", "a"),
                 new DOMAttribute("ca2", "class", "item")
             }, new Text("ta2", "A")));
 
-        var alignedNew = PreserveIdsForTest(oldDom, newDom);
-        var patches = Operations.Diff(oldDom, alignedNew);
+        var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
         Assert.NotNull(result);
-        Assert.Equal(Render.Html(alignedNew), Render.Html(result));
+        Assert.Equal(Render.Html(newDom), Render.Html(result));
+        // When IDs are reordered, the algorithm removes and re-adds to preserve order
         Assert.Contains(patches, p => p is RemoveChild);
         Assert.Contains(patches, p => p is AddChild);
     }
@@ -220,38 +218,144 @@ public class DomBehaviorTests
     [Fact]
     public void KeyedChildren_SameOrder_ShouldDiffInPlace()
     {
+        // Per ADR-016: Element Id is used for keyed diffing.
+        // When children have the same IDs in the same order, diff in place.
         var oldDom = new Element("root", "div", [],
-            new Element("a", "div", new DOMAttribute[]
+            new Element("item-a", "div", new DOMAttribute[]
             {
-                new DOMAttribute("ka", "data-key", "a"),
                 new DOMAttribute("ca", "class", "item")
             }, new Text("ta", "Old")),
-            new Element("b", "div", new DOMAttribute[]
+            new Element("item-b", "div", new DOMAttribute[]
             {
-                new DOMAttribute("kb", "data-key", "b"),
                 new DOMAttribute("cb", "class", "item")
             }, new Text("tb", "Old")));
 
         var newDom = new Element("root", "div", [],
-            new Element("a2", "div", new DOMAttribute[]
+            new Element("item-a", "div", new DOMAttribute[]
             {
-                new DOMAttribute("ka2", "data-key", "a"),
                 new DOMAttribute("ca2", "class", "item")
             }, new Text("ta2", "New")),
-            new Element("b2", "div", new DOMAttribute[]
+            new Element("item-b", "div", new DOMAttribute[]
             {
-                new DOMAttribute("kb2", "data-key", "b"),
                 new DOMAttribute("cb2", "class", "item")
             }, new Text("tb2", "New")));
 
-        var alignedNew = PreserveIdsForTest(oldDom, newDom);
-        var patches = Operations.Diff(oldDom, alignedNew);
+        var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
         Assert.NotNull(result);
-        Assert.Equal(Render.Html(alignedNew), Render.Html(result));
+        Assert.Equal(Render.Html(newDom), Render.Html(result));
+        // Same IDs, same order: should update in place, not remove/add
         Assert.DoesNotContain(patches, p => p is RemoveChild);
         Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_DifferentIds_ShouldReplaceList()
+    {
+        // Per ADR-016: When child IDs change completely, remove old and add new.
+        // This is the navigation scenario: unauthenticated (login, register) -> authenticated (editor, settings, profile)
+        var oldDom = new Element("root", "ul", [],
+            new Element("nav-home", "li", [], new Text("t1", "Home")),
+            new Element("nav-login", "li", [], new Text("t2", "Sign in")),
+            new Element("nav-register", "li", [], new Text("t3", "Sign up")));
+
+        var newDom = new Element("root", "ul", [],
+            new Element("nav-home", "li", [], new Text("t1", "Home")),
+            new Element("nav-editor", "li", [], new Text("t4", "New Article")),
+            new Element("nav-settings", "li", [], new Text("t5", "Settings")),
+            new Element("nav-profile-bob", "li", [], new Text("t6", "bob")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.Equal(Render.Html(newDom), Render.Html(result));
+        
+        // Should remove nav-login and nav-register
+        var removePatches = patches.OfType<RemoveChild>().ToList();
+        Assert.Equal(2, removePatches.Count);
+        Assert.Contains(removePatches, p => p.Child.Id == "nav-login");
+        Assert.Contains(removePatches, p => p.Child.Id == "nav-register");
+        
+        // Should add nav-editor, nav-settings, nav-profile-bob
+        var addPatches = patches.OfType<AddChild>().ToList();
+        Assert.Equal(3, addPatches.Count);
+        Assert.Contains(addPatches, p => p.Child.Id == "nav-editor");
+        Assert.Contains(addPatches, p => p.Child.Id == "nav-settings");
+        Assert.Contains(addPatches, p => p.Child.Id == "nav-profile-bob");
+    }
+
+    [Fact]
+    public void KeyedChildren_SharedHomeLink_ShouldBePreserved()
+    {
+        // Per ADR-016: Elements with matching IDs should be diffed in place, not replaced.
+        // The "Home" link has the same ID in both states, so it should be updated, not replaced.
+        var oldDom = new Element("root", "ul", [],
+            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item") }, 
+                new Text("t1", "Home")),
+            new Element("nav-login", "li", new DOMAttribute[] { new DOMAttribute("c2", "class", "nav-item") }, 
+                new Text("t2", "Sign in")));
+
+        var newDom = new Element("root", "ul", [],
+            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item active") }, 
+                new Text("t1", "Home")),
+            new Element("nav-editor", "li", new DOMAttribute[] { new DOMAttribute("c3", "class", "nav-item") }, 
+                new Text("t3", "New Article")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        
+        // nav-home should have an attribute update (class changed), not be removed/added
+        var removePatches = patches.OfType<RemoveChild>().ToList();
+        var addPatches = patches.OfType<AddChild>().ToList();
+        
+        // Only nav-login should be removed
+        Assert.Single(removePatches);
+        Assert.Equal("nav-login", removePatches[0].Child.Id);
+        
+        // Only nav-editor should be added
+        Assert.Single(addPatches);
+        Assert.Equal("nav-editor", addPatches[0].Child.Id);
+        
+        // nav-home's class should be updated
+        var attrPatches = patches.OfType<UpdateAttribute>().ToList();
+        Assert.Contains(attrPatches, p => p.Element.Id == "nav-home" && p.Attribute.Name == "class");
+    }
+
+    [Fact]
+    public void LegacyDataKey_ShouldStillWork()
+    {
+        // Backward compatibility: data-key attribute should still work for keyed diffing
+        // even though ADR-016 recommends using element Id instead.
+        var oldDom = new Element("root", "div", [],
+            new Element("1", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka", "data-key", "a"),
+                new DOMAttribute("ca", "class", "item")
+            }, new Text("ta", "A")),
+            new Element("2", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb", "data-key", "b"),
+                new DOMAttribute("cb", "class", "item")
+            }, new Text("tb", "B")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("3", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("kb2", "data-key", "b"),
+                new DOMAttribute("cb2", "class", "item")
+            }, new Text("tb2", "B")),
+            new Element("4", "div", new DOMAttribute[]
+            {
+                new DOMAttribute("ka2", "data-key", "a"),
+                new DOMAttribute("ca2", "class", "item")
+            }, new Text("ta2", "A")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        
+        // Keys are reordered, so should remove and add
+        Assert.Contains(patches, p => p is RemoveChild);
+        Assert.Contains(patches, p => p is AddChild);
     }
 
     private static Node? ApplyPatches(Node? root, IEnumerable<Patch> patches, Node? initialRoot)

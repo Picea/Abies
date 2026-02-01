@@ -347,6 +347,8 @@ public class MainUpdateJourneyTests
     /// <summary>
     /// Detailed test to inspect what patches are generated when navigating 
     /// from unauthenticated to authenticated state.
+    /// Per ADR-016: Element IDs are used for keyed diffing, not data-key attributes.
+    /// Elements with the same ID should be diffed in place, not replaced.
     /// </summary>
     [Fact]
     public void Navigation_DomDiff_InspectPatches()
@@ -388,6 +390,23 @@ public class MainUpdateJourneyTests
         // Authenticated: Home, New Article, Settings, username = 4 items
         Assert.Equal(4, liAfter.Count);
 
+        // Verify element IDs are stable and unique
+        var beforeIds = liBefore.Select(li => li.Id).ToList();
+        var afterIds = liAfter.Select(li => li.Id).ToList();
+        
+        // Home should have the same ID in both states
+        Assert.Contains("nav-home", beforeIds);
+        Assert.Contains("nav-home", afterIds);
+        
+        // Unauthenticated IDs
+        Assert.Contains("nav-login", beforeIds);
+        Assert.Contains("nav-register", beforeIds);
+        
+        // Authenticated IDs
+        Assert.Contains("nav-editor", afterIds);
+        Assert.Contains("nav-settings", afterIds);
+        Assert.Contains("nav-profile-testuser", afterIds);
+
         // Compute patches for just the navigation ul
         var patches = Abies.DOM.Operations.Diff(ulBefore, ulAfter);
 
@@ -410,40 +429,38 @@ public class MainUpdateJourneyTests
             });
         }
 
-        // This assertion will fail and show us what patches are generated
-        // We expect:
-        // - Some UpdateText patches to change "Sign in" -> "New Article", etc.
-        // - An AddChild patch for the 4th item (username)
-        // - Possibly UpdateAttribute patches for href changes
-        
-        // Print all patches for debugging (can be enabled when needed)
         var patchSummary = string.Join("\n", patchDescriptions);
         
-        // Verify key patches exist
-        // Since we go from 3 -> 4 items with different keys, 
-        // the algorithm removes all old children and adds all new children
+        // Per ADR-016: ID-based diffing
+        // Elements with different IDs should be removed and added.
+        // Elements with same ID (nav-home) should be diffed in place.
         var addChildPatches = patches.OfType<AddChild>().ToList();
         var removeChildPatches = patches.OfType<RemoveChild>().ToList();
         
-        // Should remove the old nav items (Home, Sign in, Sign up = 3 items)
-        Assert.Equal(3, removeChildPatches.Count);
+        // Should remove only nav-login and nav-register (2 items, not 3)
+        // nav-home has the same ID so it should NOT be removed
+        Assert.Equal(2, removeChildPatches.Count);
+        Assert.Contains(removeChildPatches, p => p.Child.Id == "nav-login");
+        Assert.Contains(removeChildPatches, p => p.Child.Id == "nav-register");
+        Assert.DoesNotContain(removeChildPatches, p => p.Child.Id == "nav-home");
         
-        // Should add the new nav items (Home, New Article, Settings, username = 4 items)
-        Assert.Equal(4, addChildPatches.Count);
+        // Should add nav-editor, nav-settings, nav-profile-testuser (3 items, not 4)
+        // nav-home is already present so it should NOT be added
+        Assert.Equal(3, addChildPatches.Count);
+        Assert.Contains(addChildPatches, p => p.Child.Id == "nav-editor");
+        Assert.Contains(addChildPatches, p => p.Child.Id == "nav-settings");
+        Assert.Contains(addChildPatches, p => p.Child.Id == "nav-profile-testuser");
+        Assert.DoesNotContain(addChildPatches, p => p.Child.Id == "nav-home");
         
         // Verify the specific items being removed/added have unique IDs
         var removedIds = removeChildPatches.Select(p => p.Child.Id).Distinct().ToList();
         var addedIds = addChildPatches.Select(p => p.Child.Id).Distinct().ToList();
         
         // All removed items should have unique IDs
-        Assert.Equal(3, removedIds.Count); // nav-home, nav-login, nav-register
+        Assert.Equal(2, removedIds.Count); // nav-login, nav-register
         
         // All added items should have unique IDs
-        Assert.Equal(4, addedIds.Count); // nav-home, nav-editor, nav-settings, nav-profile-testuser
-        
-        // The first item (Home) should remain unchanged or have minimal patches
-        // Items 2-3 should have text/href updates
-        // Item 4 should be added
+        Assert.Equal(3, addedIds.Count); // nav-editor, nav-settings, nav-profile-testuser
     }
 
     #endregion
