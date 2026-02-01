@@ -79,11 +79,7 @@ public class CommentTests : PlaywrightFixture
         await Expect(Page.GetByText(commentText)).ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
-    /// <summary>
-    /// Skipped: Delete functionality needs investigation - the UI may not update after delete.
-    /// The core commenting functionality is already validated by other tests.
-    /// </summary>
-    [Fact(Skip = "Delete functionality needs investigation - comment may not be removed from DOM immediately")]
+    [Fact]
     public async Task DeleteComment_CommentIsRemoved()
     {
         // Register a user
@@ -93,29 +89,53 @@ public class CommentTests : PlaywrightFixture
         var title = $"Test Article {Guid.NewGuid():N}";
         await CreateTestArticleAsync(title, "Test Description", "Test Body", "test-tag");
 
+        // Helper to add a comment
+        async Task AddCommentAsync(string commentText)
+        {
+            var textarea = Page.GetByPlaceholder("Write a comment...");
+            await textarea.FillAsync(commentText);
+            await Page.WaitForTimeoutAsync(200); // Wait for state update
+            var button = Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" });
+            await Expect(button).ToBeEnabledAsync(new() { Timeout = 5000 });
+            await button.ClickAsync();
+            await Expect(Page.GetByText(commentText)).ToBeVisibleAsync(new() { Timeout = 10000 });
+        }
+
         // Add first comment
         var firstComment = "Comment to keep";
-        await Page.GetByPlaceholder("Write a comment...").FillAsync(firstComment);
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
-        await Expect(Page.GetByText(firstComment)).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await AddCommentAsync(firstComment);
 
         // Add second comment that we'll delete
         var secondComment = "Comment to delete";
-        await Page.GetByPlaceholder("Write a comment...").FillAsync(secondComment);
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
-        await Expect(Page.GetByText(secondComment)).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await AddCommentAsync(secondComment);
 
-        // Find the delete button for the second comment (trash icon)
-        // The delete icon should be inside the comment card that contains the text
+        // Count comment cards before delete
+        var cardsBefore = await Page.Locator("[id^='comment-']").CountAsync();
+        Assert.Equal(2, cardsBefore);
+
+        // Find the second comment card
         var secondCommentCard = Page.Locator("[id^='comment-']").Filter(new() { HasText = secondComment });
-        var deleteButton = secondCommentCard.Locator(".ion-trash-a");
-        await deleteButton.ClickAsync();
+        await Expect(secondCommentCard).ToBeVisibleAsync();
+        
+        var trashIcon = secondCommentCard.Locator("i.ion-trash-a");
+        await Expect(trashIcon).ToBeVisibleAsync(new() { Timeout = 5000 });
+        
+        // Use JavaScript click which works more reliably for this element
+        var trashId = await trashIcon.GetAttributeAsync("id");
+        await Page.EvaluateAsync($"() => document.getElementById('{trashId}').click()");
+        
+        // Wait for the delete to complete
+        await Page.WaitForTimeoutAsync(1000);
 
         // Second comment should be removed
         await Expect(Page.GetByText(secondComment)).Not.ToBeVisibleAsync(new() { Timeout = 10000 });
 
         // First comment should still be visible
         await Expect(Page.GetByText(firstComment)).ToBeVisibleAsync();
+        
+        // Should only have 1 comment card remaining
+        var cardsAfter = await Page.Locator("[id^='comment-']").CountAsync();
+        Assert.Equal(1, cardsAfter);
     }
 
     [Fact]
