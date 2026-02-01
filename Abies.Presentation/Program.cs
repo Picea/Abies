@@ -306,10 +306,10 @@ public class Presentation : Program<Model, Arguments>
                 "View returns a virtual DOM tree (just data)",
                 "Abies diffs old vs new virtual DOM",
                 "Only changed elements are updated in browser",
-                "Keys help with list reordering"
+                "Use id: for keyed diffing (unlike React's key=)"
             ],
-            Code: "// Diff algorithm produces minimal patches:\n// - AddChild, RemoveChild\n// - UpdateAttribute, RemoveAttribute\n// - UpdateText\n// - ReplaceElement\n\n// Keys optimize list updates\nul([], model.Items.Select(item =>\n    li([key(item.Id)], [text(item.Name)])\n))",
-            Callout: "You write declarative code, Abies does the heavy lifting",
+            Code: "// Use id: for stable element identity in lists\n// Unlike React/Vue/Elm, no separate \"key\" attribute needed!\nul([], model.Items.Select(item =>\n    li([], [text(item.Name)], id: $\"item-{item.Id}\")\n))\n\n// Why? Praefixum generates unique IDs at compile time\n// so every element already has an ID for patching.\n// ADR-016 explains the full design.",
+            Callout: "One concept (id:) instead of two (key + id)",
             Takeaway: "Performance without manual optimization",
             NextStep: "Handle side effects",
             Kind: SlideKind.Concept
@@ -608,12 +608,12 @@ public class Presentation : Program<Model, Arguments>
             Points:
             [
                 "Virtual DOM diff is O(n) - very fast",
-                "Use keys for dynamic lists",
+                "Use id: for dynamic lists (not key= like React)",
                 "Avoid deep nesting in view trees",
                 "Memoize expensive static content"
             ],
-            Code: "// Keys help with list reordering\nul([], model.Items.Select(item =>\n    li([key(item.Id)], [text(item.Name)])\n))\n\n// Memoize static content\nstatic readonly Node _footer = footer([], [\n    text(\"2026 My Company\")\n]);\n\n// Use in View\ndiv([], [content, _footer])",
-            Callout: "Premature optimization is still the root of all evil",
+            Code: "// Use id: for stable element identity\n// (Unlike React/Vue, no separate 'key' needed)\nul([], model.Items.Select(item =>\n    li([], [text(item.Name)], id: $\"item-{item.Id}\")\n))\n\n// Why no key()? Praefixum already gives every element\n// a unique ID. See ADR-016 for details.",
+            Callout: "One concept (id:) instead of two (key + id)",
             Takeaway: "Declarative code is usually fast enough",
             NextStep: "WebAssembly deployment",
             Kind: SlideKind.Concept

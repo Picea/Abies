@@ -221,12 +221,14 @@ ol([start("5")], [
 ])
 ```
 
-### Dynamic Lists
+### Dynamic Lists (ADR-016)
+
+For dynamic lists, use the `id:` parameter for stable element identity:
 
 ```csharp
 ul([], [
     ..model.Items.Select(item => 
-        li([key(item.Id)], [text(item.Name)])
+        li([], [text(item.Name)], id: $"item-{item.Id}")
     )
 ])
 ```
@@ -413,13 +415,13 @@ table([class_("data-table")], [
     ]),
     tbody([], [
         ..model.Users.Select(user => 
-            tr([key(user.Id)], [
+            tr([], [
                 td([], [text(user.Name)]),
                 td([], [text(user.Email)]),
                 td([], [
                     button([onclick(new EditUser(user.Id))], [text("Edit")])
                 ])
-            ])
+            ], id: $"user-row-{user.Id}")
         )
     ])
 ])
@@ -496,11 +498,11 @@ public static Document View(Model model)
                     ? div([class_("loading")], [text("Loading...")])
                     : div([class_("articles")], [
                         ..model.Articles.Select(article =>
-                            article_([key(article.Slug), class_("article-card")], [
+                            article_([class_("article-card")], [
                                 h2([], [text(article.Title)]),
                                 p([], [text(article.Description)]),
                                 a([href($"/article/{article.Slug}")], [text("Read more")])
-                            ])
+                            ], id: $"article-{article.Slug}")
                         )
                     ])
             ]),
@@ -510,6 +512,7 @@ public static Document View(Model model)
         ]));
 
 // Note: article_() for the <article> element to avoid C# keyword conflict
+// Note: Use id: parameter for stable element identity in dynamic lists (ADR-016)
 ```
 
 ## See Also

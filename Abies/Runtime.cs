@@ -180,7 +180,12 @@ public static partial class Runtime
     
     private static Node PreserveIds(Node? oldNode, Node newNode)
         {
-            if (oldNode is Element oldElement && newNode is Element newElement && oldElement.Tag == newElement.Tag)
+            // Only preserve IDs when elements have the same tag AND the same element ID.
+            // This is critical for keyed diffing (ADR-016): elements with different IDs
+            // should NOT have their IDs swapped, as that would break key-based matching.
+            if (oldNode is Element oldElement && newNode is Element newElement 
+                && oldElement.Tag == newElement.Tag 
+                && oldElement.Id == newElement.Id)  // Key match required!
             {
                 // Preserve attribute IDs so DiffAttributes can emit UpdateAttribute
                 // instead of a remove/add pair. This avoids wiping attributes when
@@ -202,22 +207,50 @@ public static partial class Runtime
                     }
                 }
 
+                // For children, use key-based matching instead of positional matching.
+                // Build a dictionary of old children by their element ID for O(1) lookup.
+                var oldChildrenById = new System.Collections.Generic.Dictionary<string, Node>();
+                foreach (var child in oldElement.Children)
+                {
+                    if (child is Element childElem)
+                    {
+                        oldChildrenById[childElem.Id] = child;
+                    }
+                    else if (child is Text textNode)
+                    {
+                        oldChildrenById[textNode.Id] = child;
+                    }
+                }
+
                 var children = new Node[newElement.Children.Length];
                 for (int i = 0; i < newElement.Children.Length; i++)
                 {
-                    var oldChild = i < oldElement.Children.Length ? oldElement.Children[i] : null;
-                    children[i] = PreserveIds(oldChild, newElement.Children[i]);
+                    var newChild = newElement.Children[i];
+                    Node? matchingOldChild = null;
+                    
+                    // Find matching old child by key (element ID)
+                    if (newChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
+                    {
+                        matchingOldChild = oldMatch;
+                    }
+                    else if (newChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
+                    {
+                        matchingOldChild = oldTextMatch;
+                    }
+                    
+                    children[i] = PreserveIds(matchingOldChild, newChild);
                 }
 
                 return new Element(oldElement.Id, newElement.Tag, attrs, children);
             }
-            else if (oldNode is Text oldText && newNode is Text newText)
+            else if (oldNode is Text oldText && newNode is Text newText && oldText.Id == newText.Id)
             {
-                // Preserve text node IDs so they can be properly updated
+                // Preserve text node IDs only when they match
                 return new Text(oldText.Id, newText.Value);
             }
             else if (newNode is Element newElem)
             {
+                // No matching old element, recursively process children without preserving IDs
                 var children = new Node[newElem.Children.Length];
                 for (int i = 0; i < newElem.Children.Length; i++)
                 {

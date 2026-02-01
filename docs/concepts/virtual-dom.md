@@ -186,19 +186,21 @@ Children are compared in order by default:
 // Patches: Replace child at index 1
 ```
 
-### Keyed Lists
+### Keyed Lists (ADR-016)
 
-For dynamic lists, use keys to help the differ:
+For dynamic lists, use the `id:` parameter to provide stable element identity:
 
 ```csharp
 ul([], [
     ..model.Items.Select(item =>
-        li([key(item.Id)], [text(item.Name)])
+        li([], [text(item.Name)], id: $"item-{item.Id}")
     )
 ])
 ```
 
-When keys change order, Abies replaces the entire list to preserve consistency.
+The element's `id` is used by the diff algorithm to match elements across renders.
+When the set of IDs changes, Abies correctly identifies which elements to add or remove.
+When IDs are reordered, Abies replaces the entire list to preserve consistency.
 
 ## Patch Types
 
@@ -253,17 +255,37 @@ IDs are generated during tree construction and used to locate elements during pa
 
 ## Performance Considerations
 
-### 1. Key Your Lists
+### 1. Use Stable IDs for Dynamic Lists (ADR-016)
 
-Unkeyed lists require O(n) comparisons:
+Elements without stable IDs may not be matched correctly:
 
 ```csharp
-// ❌ Unkeyed: inefficient for reorders
+// ❌ No stable ID: may have issues with dynamic lists
 ul([], model.Items.Select(i => li([], [text(i.Name)])))
 
-// ✅ Keyed: efficient updates
-ul([], model.Items.Select(i => li([key(i.Id)], [text(i.Name)])))
+// ✅ Stable ID: efficient updates and correct matching
+ul([], model.Items.Select(i => li([], [text(i.Name)], id: $"item-{i.Id}")))
 ```
+
+#### Why `id:` Instead of a Separate `key` Attribute?
+
+Unlike React (`key={...}`), Vue (`:key="..."`), or Elm (`Keyed.node`), Abies uses the element's `id:` parameter for both diffing and patching:
+
+| Framework  | Keying Approach           |
+| ---------- | ------------------------- |
+| React      | Separate `key` prop       |
+| Vue        | Separate `:key` binding   |
+| Elm        | Separate `Keyed.node`     |
+| **Abies**  | **Unified `id:`**         |
+
+**Why can Abies unify these?**
+
+1. **Praefixum generates unique IDs at compile time** — every element already has a guaranteed-unique ID
+2. **IDs are required for patching** — Abies uses `getElementById` to apply DOM patches
+3. **No HTML ID collisions** — Abies IDs are internal, not used for CSS or accessibility
+4. **Simpler API** — developers learn one concept instead of two
+
+For the full comparison with other frameworks, see [ADR-016: ID-Based DOM Diffing](../adr/ADR-016-keyed-dom-diffing.md).
 
 ### 2. Avoid Unnecessary Nesting
 

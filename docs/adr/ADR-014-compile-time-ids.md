@@ -106,7 +106,7 @@ Rejected because it breaks the fundamental diffing optimization.
 Require developers to specify keys (React-style):
 
 ```csharp
-div([key("main-content")], [...]);
+div([], [...], id: "main-content");
 ```
 
 - Maximum control
@@ -115,6 +115,10 @@ div([key("main-content")], [...]);
 - Verbose
 
 Rejected as too burdensome for simple cases.
+
+**Note:** Per ADR-016, for dynamic lists where elements may change,
+developers should use the `id:` parameter to provide stable element identity.
+This is only necessary for dynamic lists, not static content.
 
 ### Alternative 3: Hash-Based IDs
 
