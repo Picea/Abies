@@ -35,6 +35,25 @@ The `abies.js` file includes browser-side OpenTelemetry that:
 - Propagates `traceparent` header on fetch requests
 - Exports to `/otlp/v1/traces` proxy endpoint
 
+### Verbosity Levels
+
+Tracing supports three verbosity levels:
+
+| Level | Traces | Use Case |
+|-------|--------|----------|
+| `off` | Nothing | Disable tracing entirely |
+| `user` | UI Events + HTTP calls | **Default** - Production |
+| `debug` | Everything (DOM, attrs) | Framework debugging |
+
+Configure via:
+```html
+<meta name="otel-verbosity" content="user">
+```
+Or at runtime:
+```javascript
+window.__otel.setVerbosity('debug');
+```
+
 ### .NET Runtime Tracing
 
 The `Runtime.cs` file creates spans for:
