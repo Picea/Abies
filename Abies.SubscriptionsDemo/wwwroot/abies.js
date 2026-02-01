@@ -195,7 +195,7 @@ void (async () => {
           const t = performance.timeOrigin + performance.now();
           return Math.round(t * 1e6).toString();
         };
-    const endpoint = (function() {
+        const endpoint = (function() {
           const meta = document.querySelector('meta[name="otlp-endpoint"]');
           if (meta && meta.content) return meta.content;
           if (window.__OTLP_ENDPOINT) return window.__OTLP_ENDPOINT;
@@ -203,8 +203,14 @@ void (async () => {
           return 'http://localhost:4318/v1/traces';
         })();
 
-        const state = { currentSpan: null, pendingSpans: [] };
-        function makeSpan(name, kind = 1, parent = state.currentSpan) {
+        // Track the active span stack for proper parent-child relationships
+        // currentSpan: the span that is currently active (for creating children)
+        // activeTraceContext: persists trace context even after span ends (for fetch calls)
+        const state = { currentSpan: null, activeTraceContext: null, pendingSpans: [] };
+        
+        function makeSpan(name, kind = 1, explicitParent = undefined) {
+          // Use explicit parent if provided, otherwise use current span, otherwise use active trace context
+          const parent = explicitParent !== undefined ? explicitParent : (state.currentSpan || state.activeTraceContext);
           const traceId = parent?.traceId || hex(16);
           const spanId = hex(8);
           return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: {} };
@@ -267,6 +273,7 @@ void (async () => {
           state.pendingSpans.push(span);
           scheduleFlush();
         }
+        
         // Minimal shim tracer used by existing code paths
         trace = {
           getTracer: () => ({
@@ -278,11 +285,25 @@ void (async () => {
               }
               const prev = state.currentSpan;
               state.currentSpan = s;
+              // Also set as active trace context so fetch calls can use it
+              state.activeTraceContext = s;
               return {
+                spanContext: () => ({ traceId: s.traceId, spanId: s.spanId }),
                 setAttribute: (key, value) => { s.attributes[key] = value; },
                 setStatus: () => {},
                 recordException: () => {},
-                end: async () => { s.end = nowNs(); state.currentSpan = prev; await exportSpan(s); }
+                end: async () => { 
+                  s.end = nowNs(); 
+                  state.currentSpan = prev;
+                  // Keep activeTraceContext alive briefly for async operations (fetch)
+                  // Clear it after a short delay to allow pending fetches to inherit context
+                  setTimeout(() => {
+                    if (state.activeTraceContext === s) {
+                      state.activeTraceContext = prev;
+                    }
+                  }, 100);
+                  await exportSpan(s); 
+                }
               };
             }
           })
@@ -291,20 +312,30 @@ void (async () => {
         tracer = trace.getTracer('Abies.JS');
 
         // Patch fetch to create client spans and propagate traceparent
+        // This runs BEFORE any fetch call, so it can inherit the active trace context
         try {
           const origFetch = window.fetch.bind(window);
           window.fetch = async function(input, init) {
             const url = (typeof input === 'string') ? input : input.url;
+            // Don't instrument OTLP export calls (would cause infinite loop)
             if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
+            
             const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
-            const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */);
+            
+            // Create HTTP span as child of current span OR active trace context
+            // This ensures fetch calls made after span.end() still link to the trace
+            const parent = state.currentSpan || state.activeTraceContext;
+            const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */, parent);
             sp.attributes['http.method'] = method;
             sp.attributes['http.url'] = url;
+            
+            // Build W3C traceparent header to propagate to backend
             const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
             const i = init ? { ...init } : {};
             const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
             h.set('traceparent', traceparent);
             i.headers = h;
+            
             try {
               const res = await origFetch(input, i);
               sp.attributes['http.status_code'] = res.status;
@@ -320,7 +351,13 @@ void (async () => {
           };
         } catch {}
 
-        window.__otel = { provider: { forceFlush: async () => {} }, exporter: { url: endpoint }, endpoint };
+        // Expose state for debugging
+        window.__otel = { 
+          provider: { forceFlush: async () => { await flushSpans(); } }, 
+          exporter: { url: endpoint }, 
+          endpoint,
+          getState: () => state 
+        };
         window.__otelSendTestSpan = async () => {
           const s = makeSpan('frontend-test-span');
           s.end = nowNs();
@@ -477,7 +514,7 @@ function genericEventHandler(event) {
         action = `${name}: ${tag}${elId ? '#' + elId : ''}`;
     }
     
-    const span = tracer.startSpan('UI Event', {
+    const spanOptions = {
         attributes: {
             'ui.event.type': name,
             'ui.element.tag': tag,
@@ -488,19 +525,41 @@ function genericEventHandler(event) {
             'ui.action': action,
             'abies.message_id': message
         }
-    });
-    try {
-        const data = buildEventData(event, target);
-        exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
-    // Keydown Enter prevention is handled above; click default already prevented
-        span.setStatus({ code: SpanStatusCode.OK });
-    } catch (err) {
-        span.recordException(err);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-        // Do not rethrow to avoid crashing the page when handler IDs are stale
-        console.error(err);
-    } finally {
-        span.end();
+    };
+    
+    // Use startActiveSpan if available (CDN mode) to properly set context for nested spans
+    // This ensures FetchInstrumentation creates child spans under this UI Event
+    if (typeof tracer.startActiveSpan === 'function') {
+        tracer.startActiveSpan('UI Event', spanOptions, (span) => {
+            try {
+                const data = buildEventData(event, target);
+                exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
+                span.setStatus({ code: SpanStatusCode.OK });
+            } catch (err) {
+                span.recordException(err);
+                span.setStatus({ code: SpanStatusCode.ERROR });
+                console.error(err);
+            } finally {
+                // Delay ending the span slightly to allow async fetch calls to start within this context
+                // The FetchInstrumentation will capture the parent span at fetch() call time
+                setTimeout(() => span.end(), 50);
+            }
+        });
+    } else {
+        // Shim mode - use startSpan (shim handles context tracking internally)
+        const span = tracer.startSpan('UI Event', spanOptions);
+        try {
+            const data = buildEventData(event, target);
+            exports.Abies.Runtime.DispatchData(message, JSON.stringify(data));
+            span.setStatus({ code: SpanStatusCode.OK });
+        } catch (err) {
+            span.recordException(err);
+            span.setStatus({ code: SpanStatusCode.ERROR });
+            console.error(err);
+        } finally {
+            // Shim uses activeTraceContext which persists briefly after span.end()
+            span.end();
+        }
     }
 }
 
