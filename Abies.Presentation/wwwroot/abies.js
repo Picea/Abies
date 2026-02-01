@@ -26,14 +26,10 @@ const isOtelDisabled = (() => {
   return false;
 })();
 
-// Always log OTel status to console for debugging
-console.log('[Abies OTel] Initializing browser telemetry...');
-
-// Optional: wire browser spans to Aspire via OTLP/HTTP if available, but never block app startup
+// Wire browser spans to Aspire via OTLP/HTTP if available, but never block app startup
 void (async () => {
   try {
     if (isOtelDisabled) {
-      console.log('[Abies OTel] Disabled via flag/meta tag');
       return;
     }
     const otelInit = (async () => {
@@ -51,12 +47,11 @@ void (async () => {
       // Try to load the OTel API first; if it fails, keep using no-op
       let api;
       try {
-        console.log('[Abies OTel] Loading CDN modules...');
         api = await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         trace = api.trace;
         SpanStatusCode = api.SpanStatusCode;
       } catch (e) {
-        console.warn('[Abies OTel] Failed to load OTel API from CDN:', e.message);
+        // CDN API load failed, continue with no-op tracer
       }
       const [
         { WebTracerProvider },
@@ -71,7 +66,6 @@ void (async () => {
         import('https://unpkg.com/@opentelemetry/resources@1.18.1/build/esm/index.js'),
         import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js')
       ]);
-      console.log('[Abies OTel] CDN modules loaded successfully');
       const { BatchSpanProcessor } = traceBase;
       const { OTLPTraceExporter } = exporterMod;
       const { Resource } = resourcesMod;
@@ -98,7 +92,6 @@ void (async () => {
       };
 
       const endpoint = guessOtlp();
-      console.log('[Abies OTel] OTLP endpoint:', endpoint);
       const exporter = new OTLPTraceExporter({ url: endpoint });
       const provider = new WebTracerProvider({
         resource: new Resource({ [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web' })
@@ -121,7 +114,6 @@ void (async () => {
         const { setGlobalTracerProvider } = api ?? await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         setGlobalTracerProvider(provider);
       } catch {}
-      console.log('[Abies OTel] CDN provider registered successfully');
       // Auto-instrument browser fetch to propagate trace context to the API and capture client spans
       try {
         const [core, fetchI, xhrI, docI, uiI] = await Promise.all([
@@ -155,40 +147,21 @@ void (async () => {
       } catch {}
       // Refresh tracer reference now that a real provider is registered
       try { tracer = trace.getTracer('Abies.JS'); } catch {}
-      // Expose basic debug handle
+      // Expose OTel handle for forceFlush on page unload
       try {
         window.__otel = { provider, exporter, endpoint: guessOtlp() };
-        window.__otelSendTestSpan = async () => {
-          try {
-            const s = tracer.startSpan('frontend-test-span');
-            await new Promise(r => setTimeout(r, 20));
-            s.end();
-            if (window.__otel && window.__otel.provider && window.__otel.provider.forceFlush) {
-              await window.__otel.provider.forceFlush();
-            }
-            console.log('[OTel] test span sent');
-          } catch (e) {
-            console.log('[OTel] test span error', e);
-          }
-        };
-        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
-          console.log('[OTel] initialized exporter to', window.__otel.endpoint);
-        }
       } catch {}
     })();
 
     // Cap OTel init time so poor connectivity doesn't delay the app
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel init timeout')), 10000));
-    await Promise.race([otelInit, timeout]).catch((e) => {
-      console.warn('[Abies OTel] CDN init failed or timed out:', e.message);
-    });
+    await Promise.race([otelInit, timeout]).catch(() => {});
   } catch (e) {
-    console.warn('[Abies OTel] Outer catch:', e.message);
+    // OTel initialization failed, continue with no-op tracer
   }
   // Fallback: if OTel could not initialize (e.g., CDN blocked), install a lightweight local shim
   try {
     if (!window.__otel) {
-      console.log('[Abies OTel] CDN failed, installing local shim...');
       (function initLocalOtelShim() {
         const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
         const nowNs = () => {
@@ -351,26 +324,16 @@ void (async () => {
           };
         } catch {}
 
-        // Expose state for debugging
+        // Expose OTel handle for forceFlush on page unload
         window.__otel = { 
           provider: { forceFlush: async () => { await flushSpans(); } }, 
           exporter: { url: endpoint }, 
-          endpoint,
-          getState: () => state 
+          endpoint
         };
-        window.__otelSendTestSpan = async () => {
-          const s = makeSpan('frontend-test-span');
-          s.end = nowNs();
-          await exportSpan(s);
-          console.log('[OTel shim] test span sent');
-        };
-        console.log('[Abies OTel] Shim initialized, endpoint:', endpoint);
       })();
-    } else {
-      console.log('[Abies OTel] CDN provider active, endpoint:', window.__otel.endpoint);
     }
   } catch (e) {
-    console.error('[Abies OTel] Shim init error:', e);
+    // Shim initialization failed, continue with no-op tracer
   }
 })();
 
@@ -394,37 +357,13 @@ function withSpan(name, fn) {
 }
 
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet
-    .withDiagnosticTracing(true)
-    .withConfig({
-        environmentVariables: {
-            "MONO_LOG_LEVEL": "debug", //enable Mono VM detailed logging by
-            "MONO_LOG_MASK": "all", // categories, could be also gc,aot,type,...
-        }
-    })
+    .withDiagnosticTracing(false)
     .create();
 
 const registeredEvents = new Set();
 
-// Lightweight debug bridge always available; can enable console via consoleEnabled
-if (typeof window !== 'undefined' && !window.__abiesDebug) {
-    try {
-        window.__abiesDebug = { logs: [], registeredEvents: [], events: [], replacements: [], attributes: [], consoleEnabled: false };
-    } catch (e) { /* ignore */ }
-}
-
-function dbgLog() {
-    try {
-        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
-            // eslint-disable-next-line no-console
-            console.log.apply(console, arguments);
-        }
-    } catch { /* ignore */ }
-}
-
 function ensureEventListener(eventName) {
     if (registeredEvents.has(eventName)) return;
-    dbgLog('[Abies Debug] ensureEventListener for', eventName);
-    try { window.__abiesDebug && window.__abiesDebug.registeredEvents.push(eventName); } catch {}
     // Attach to document to survive body innerHTML changes and use capture for early handling
     const opts = (eventName === 'click') ? { capture: true } : undefined;
     document.addEventListener(eventName, genericEventHandler, opts);
@@ -464,26 +403,13 @@ function genericEventHandler(event) {
         } catch { /* ignore */ }
     }
     const message = target.getAttribute(attributeName);
-    try {
-        dbgLog('[Abies Debug] genericEventHandler', { name, targetId: target.id, message, isConnected: target.isConnected });
-        try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'genericEventHandler', name, targetId: target.id, message, isConnected: target.isConnected, time: Date.now() }); } catch {}
-        // Structured event entry when debugging is enabled
-        if (name === 'click' && window.__abiesDebug) {
-            try {
-                const text = (target.textContent || '').trim();
-                window.__abiesDebug.events.push({ type: 'click', targetId: target.id || null, text, at: Date.now() });
-            } catch { /* ignore */ }
-        }
-        // Prevent default only for Abies-managed Enter keydown events (scoped)
-        if (name === 'keydown' && event && event.key === 'Enter') {
-                try { event.preventDefault(); } catch { /* ignore */ }
-            }
-    } catch (err) {
-        dbgLog('[Abies Debug] genericEventHandler failed to stringify target', err);
-    }
     if (!message) {
         console.error(`No message id found in data-event-${name} attribute.`);
         return;
+    }
+    // Prevent default only for Abies-managed Enter keydown events (scoped)
+    if (name === 'keydown' && event && event.key === 'Enter') {
+        try { event.preventDefault(); } catch { /* ignore */ }
     }
     
     // Build rich UI context for tracing
@@ -810,14 +736,6 @@ function addEventListeners(root) {
         for (const attr of el.attributes) {
             if (attr.name.startsWith('data-event-')) {
                 const name = attr.name.substring('data-event-'.length);
-                try {
-                    if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
-                        console.log('[Abies Debug] addEventListeners found', attr.name, 'on', el.id || el.tagName);
-                    }
-                    try { window.__abiesDebug && window.__abiesDebug.logs.push({ type: 'addEventListeners', attr: attr.name, el: el.id || el.tagName, time: Date.now() }); } catch {}
-                } catch (err) {
-                    /* ignore logging errors */
-                }
                 ensureEventListener(name);
             }
         }
@@ -951,12 +869,6 @@ setModuleImports('abies.js', {
             const name = propertyName.substring('data-event-'.length);
             ensureEventListener(name);
         }
-        // Optional attribute debug logging
-        try {
-            if (window.__abiesDebug) {
-                window.__abiesDebug.attributes.push({ op: 'update', name: propertyName, value: propertyValue, nodeId, el: node.id || node.tagName, at: Date.now() });
-            }
-        } catch { /* ignore */ }
     }),
 
     addAttribute: withSpan('addAttribute', async (nodeId, propertyName, propertyValue) => {
@@ -984,12 +896,6 @@ setModuleImports('abies.js', {
             const name = propertyName.substring('data-event-'.length);
             ensureEventListener(name);
         }
-        // Optional attribute debug logging
-        try {
-            if (window.__abiesDebug) {
-                window.__abiesDebug.attributes.push({ op: 'add', name: propertyName, value: propertyValue, nodeId, el: node.id || node.tagName, at: Date.now() });
-            }
-        } catch { /* ignore */ }
     }),
 
     /**
@@ -1010,7 +916,6 @@ setModuleImports('abies.js', {
             if (isBooleanAttr) {
                 try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
             }
-            try { window.__abiesDebug && window.__abiesDebug.attributes.push({ op: 'remove', name: propertyName, nodeId, el: node.id || node.tagName, at: Date.now() }); } catch { /* ignore */ }
         } else {
             console.error(`Node with ID ${nodeId} not found.`);
         }
