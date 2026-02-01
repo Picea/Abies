@@ -188,9 +188,23 @@ public class PlaywrightFixture : IAsyncLifetime
     /// </summary>
     protected async Task WaitForAppReadyAsync()
     {
-        // Wait for Blazor to be loaded - look for a known element
-        // The app shows the navbar when fully loaded
-        await Expect(Page.Locator("nav")).ToBeVisibleAsync(new() { Timeout = 60000 });
+        // Wait for Blazor to be loaded - look for the navbar specifically
+        // The app shows the navbar when fully loaded (use .navbar to avoid matching pagination nav elements)
+        await Expect(Page.Locator("nav.navbar")).ToBeVisibleAsync(new() { Timeout = 60000 });
+    }
+
+    /// <summary>
+    /// Waits for the authenticated user state to be loaded after a page navigation.
+    /// This is needed because authentication state is loaded asynchronously from localStorage.
+    /// </summary>
+    protected async Task WaitForAuthenticatedStateAsync()
+    {
+        // Wait for the app to be ready
+        await WaitForAppReadyAsync();
+        
+        // When authenticated, "Settings" link appears instead of "Sign in"
+        // Wait for this to confirm auth state is loaded
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Settings" })).ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     /// <summary>
@@ -233,6 +247,7 @@ public class PlaywrightFixture : IAsyncLifetime
         // Wait for the editor form to be ready
         await Expect(Page.GetByPlaceholder("Article Title")).ToBeVisibleAsync(new() { Timeout = 30000 });
         
+        // Fill form fields - use type to ensure input events fire properly
         await Page.GetByPlaceholder("Article Title").FillAsync(title);
         await Page.GetByPlaceholder("What's this article about?").FillAsync(description);
         await Page.GetByPlaceholder("Write your article (in markdown)").FillAsync(body);
@@ -243,7 +258,14 @@ public class PlaywrightFixture : IAsyncLifetime
             await Page.GetByPlaceholder("Enter tags").PressAsync("Enter");
         }
 
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Publish Article" }).ClickAsync();
+        // Wait a moment for form validation to update after input events
+        await Page.WaitForTimeoutAsync(200);
+
+        // Wait for button to be enabled (form validation complete)
+        var publishButton = Page.GetByRole(AriaRole.Button, new() { Name = "Publish Article" });
+        await Expect(publishButton).ToBeEnabledAsync(new() { Timeout = 5000 });
+        
+        await publishButton.ClickAsync();
 
         // Wait for redirect to article page and extract slug from URL
         await Page.WaitForURLAsync("**/article/**", new() { Timeout = 30000 });
