@@ -8,10 +8,24 @@ namespace Abies.Conduit;
 
 public static class Navigation
 {
-    private static Node NavLink(string url, string label, bool active) =>
-        li([class_("nav-item")], [
+    /// <summary>
+    /// Creates a navigation link with a stable, content-based identity.
+    /// Uses the URL to generate unique element IDs so DOM diffing can correctly 
+    /// identify and update individual nav items.
+    /// </summary>
+    private static Node NavLink(string url, string label, bool active)
+    {
+        // Generate a stable ID based on the URL to make each li element unique.
+        // This ensures DOM diffing can correctly match old and new nav items,
+        // and the browser's getElementById returns the correct element.
+        var stableId = $"nav-{url.Replace("/", "-").TrimStart('-').TrimEnd('-')}";
+        if (string.IsNullOrEmpty(stableId) || stableId == "nav-")
+            stableId = "nav-home";
+        
+        return li([class_("nav-item"), key(url)], [
             a([class_(active ? "nav-link active" : "nav-link"), href(url)], [text(label)])
-        ]);
+        ], id: stableId);
+    }
 
     public static Node View(Model model)
     {
