@@ -523,7 +523,7 @@ namespace Abies.DOM
                     var newAttrName = newAttr is Handler nh ? ((Attribute)nh).Name : newAttr.Name;
                     if (oldMap.TryGetValue(newAttrName, out var oldAttr))
                     {
-                        oldMap.Remove(newAttr.Name);
+                        oldMap.Remove(newAttrName);
                         if (!newAttr.Equals(oldAttr))
                         {
                             if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
