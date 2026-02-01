@@ -265,7 +265,7 @@ private static Node CommentCard(Model model, Comment comment) =>
                       ])
                     : text("")
             ])
-        ]);
+        ], id: $"comment-{comment.Id}");
 
     private static Node CommentSection(Model model) =>
         div([class_("row")], [

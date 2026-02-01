@@ -188,7 +188,7 @@ public class Page : Element<Model, Message>
                 p([], [text(article.Description)]),
                 span([], [text("Read more...")])
             ])
-        ]);
+        ], id: $"article-{article.Slug}");
 
     private static Node ArticleList(Model model) =>
         model.Articles is null || model.Articles.Count == 0
