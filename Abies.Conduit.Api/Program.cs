@@ -123,16 +123,25 @@ static string NormalizeOtlpTracesEndpoint(string raw)
     return s + "/v1/traces";
 }
 
+// For browser telemetry proxy, we MUST use OTLP/HTTP (not gRPC), because browsers cannot use HTTP/2 gRPC.
+// Priority order:
+// 1. OTEL_EXPORTER_OTLP_TRACES_ENDPOINT - explicit traces endpoint (may be HTTP or gRPC)
+// 2. ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL - Aspire's HTTP endpoint (preferred for browser)
+// 3. DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL - alternative env var name
+// 4. OTEL_EXPORTER_OTLP_ENDPOINT - base OTLP endpoint (typically gRPC, but try anyway)
+// 5. Default fallback
 var tracesEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
-    ?? (builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] is string baseUrl && !string.IsNullOrWhiteSpace(baseUrl)
-        ? NormalizeOtlpTracesEndpoint(baseUrl)
-    // Aspire browser telemetry endpoint (AppHost can configure this explicitly)
-    : (Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL") is string aspireHttp && !string.IsNullOrWhiteSpace(aspireHttp)
+    // Prefer the HTTP endpoint for browser telemetry (Aspire sets this separately from gRPC)
+    ?? (Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL") is string aspireHttp && !string.IsNullOrWhiteSpace(aspireHttp)
         ? NormalizeOtlpTracesEndpoint(aspireHttp)
-    // Aspire dashboard OTLP/HTTP default (when enabled). For Aspire dashboard, the OTLP/HTTP endpoint
-    // is available at /v1/traces (e.g. https://localhost:21203/v1/traces).
-    // If the dashboard isn't running, the proxy will fall back to returning 202 Accepted in Development.
-    : "https://localhost:21203/v1/traces"));
+    // Alternative env var name used by some Aspire versions
+    : (Environment.GetEnvironmentVariable("DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL") is string dotnetHttp && !string.IsNullOrWhiteSpace(dotnetHttp)
+        ? NormalizeOtlpTracesEndpoint(dotnetHttp)
+    // Fall back to base OTLP endpoint (may be gRPC, which won't work for browser, but try anyway)
+    : (builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] is string baseUrl && !string.IsNullOrWhiteSpace(baseUrl)
+        ? NormalizeOtlpTracesEndpoint(baseUrl)
+    // Default: Aspire dashboard OTLP/HTTP default port
+    : "https://localhost:21203/v1/traces")));
 
 // When running under AppHost, Aspire provides an API key for OTLP via OTEL_EXPORTER_OTLP_HEADERS.
 // Example: "x-otlp-api-key=...". We'll forward it so the dashboard doesn't reject browser exports.
@@ -234,17 +243,63 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
             };
             app.Logger.LogInformation("OTLP proxy incoming {Incoming}", incoming);
         }
-    var client = httpClientFactory.CreateClient("otlp");
+        
+        var client = httpClientFactory.CreateClient("otlp");
+        
+        // Detect if the incoming request is JSON (from browser) and convert to protobuf
+        // because Aspire 13.x OTLP/HTTP only supports application/x-protobuf
+        var contentType = ctx.Request.ContentType ?? "";
+        var isJson = contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase);
+        
+        HttpContent requestContent;
+        string outgoingContentType;
+        
+        if (isJson)
+        {
+            // Read JSON body and convert to protobuf
+            using var reader = new StreamReader(ctx.Request.Body);
+            var jsonBody = await reader.ReadToEndAsync(ctx.RequestAborted);
+            
+            if (app.Environment.IsDevelopment())
+            {
+                app.Logger.LogInformation("OTLP proxy converting JSON to protobuf, body length={Length}", jsonBody.Length);
+            }
+            
+            try
+            {
+                var protobufBytes = Abies.Conduit.Api.OtlpJsonToProtobuf.ConvertTracesToProtobuf(jsonBody);
+                requestContent = new ByteArrayContent(protobufBytes);
+                outgoingContentType = "application/x-protobuf";
+                
+                if (app.Environment.IsDevelopment())
+                {
+                    app.Logger.LogInformation("OTLP proxy JSON->protobuf conversion successful, output size={Size} bytes", protobufBytes.Length);
+                }
+            }
+            catch (Exception convEx)
+            {
+                app.Logger.LogWarning(convEx, "OTLP proxy JSON->protobuf conversion failed, forwarding as-is");
+                // Fall back to forwarding as-is
+                requestContent = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
+                outgoingContentType = "application/json";
+            }
+        }
+        else
+        {
+            // Already protobuf or unknown, forward as-is
+            requestContent = new StreamContent(ctx.Request.Body);
+            outgoingContentType = contentType;
+        }
+        
         using var req = new HttpRequestMessage(HttpMethod.Post, tracesEndpoint)
         {
-            Content = new StreamContent(ctx.Request.Body)
+            Content = requestContent
         };
-        // Preserve the incoming OTLP/HTTP content-type.
-        // The JS OTLP protobuf exporter uses: application/x-protobuf.
-        // If we overwrite it to application/json the dashboard replies 415.
-        if (!string.IsNullOrWhiteSpace(ctx.Request.ContentType))
+        
+        // Set the outgoing content type
+        if (!string.IsNullOrWhiteSpace(outgoingContentType))
         {
-            req.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(ctx.Request.ContentType);
+            req.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(outgoingContentType);
         }
 
     // Forward configured headers (primarily x-otlp-api-key for Aspire dashboard)
@@ -297,18 +352,32 @@ app.MapPost("/otlp/v1/traces", async (HttpContext ctx, IHttpClientFactory httpCl
         if (app.Environment.IsDevelopment())
         {
             var respContentType = resp.Content?.Headers.ContentType?.ToString() ?? "<none>";
+            
+            // For non-success status codes, read and log the response body for debugging
+            string? responseBody = null;
+            if (!resp.IsSuccessStatusCode && resp.Content is not null)
+            {
+                try
+                {
+                    responseBody = await resp.Content.ReadAsStringAsync(ctx.RequestAborted);
+                }
+                catch { /* ignore */ }
+            }
+            
             app.Logger.LogInformation(
-                "OTLP proxy downstream {Method} {Target} status={StatusCode} contentType={ContentType} apiKeyForwarded={ApiKeyForwarded}",
+                "OTLP proxy downstream {Method} {Target} status={StatusCode} contentType={ContentType} apiKeyForwarded={ApiKeyForwarded} responseBody={ResponseBody}",
                 req.Method.Method,
                 req.RequestUri?.ToString() ?? "<none>",
                 (int)resp.StatusCode,
                 respContentType,
-                forwardedApiKey);
+                forwardedApiKey,
+                responseBody ?? "(not captured)");
 
             try
             {
                 var c = respContentType.Replace("\n", " ").Replace("\r", " ");
-                var line = $"{DateTime.UtcNow:o} downstream -> {req.RequestUri} status={(int)resp.StatusCode} ct={c} apiKeyForwarded={forwardedApiKey}{Environment.NewLine}";
+                var body = responseBody?.Replace("\n", " ").Replace("\r", " ") ?? "";
+                var line = $"{DateTime.UtcNow:o} downstream -> {req.RequestUri} status={(int)resp.StatusCode} ct={c} apiKeyForwarded={forwardedApiKey} body={body}{Environment.NewLine}";
                 await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "otlp_proxy_downstream.log"), line);
             }
             catch

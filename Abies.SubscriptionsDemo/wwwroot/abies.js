@@ -26,10 +26,16 @@ const isOtelDisabled = (() => {
   return false;
 })();
 
+// Always log OTel status to console for debugging
+console.log('[Abies OTel] Initializing browser telemetry...');
+
 // Optional: wire browser spans to Aspire via OTLP/HTTP if available, but never block app startup
 void (async () => {
   try {
-    if (isOtelDisabled) return;
+    if (isOtelDisabled) {
+      console.log('[Abies OTel] Disabled via flag/meta tag');
+      return;
+    }
     const otelInit = (async () => {
       // Allow disabling CDN-based OTel via flag or meta tag
       const useCdn = (() => {
@@ -45,10 +51,13 @@ void (async () => {
       // Try to load the OTel API first; if it fails, keep using no-op
       let api;
       try {
+        console.log('[Abies OTel] Loading CDN modules...');
         api = await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         trace = api.trace;
         SpanStatusCode = api.SpanStatusCode;
-      } catch {}
+      } catch (e) {
+        console.warn('[Abies OTel] Failed to load OTel API from CDN:', e.message);
+      }
       const [
         { WebTracerProvider },
         traceBase,
@@ -62,6 +71,7 @@ void (async () => {
         import('https://unpkg.com/@opentelemetry/resources@1.18.1/build/esm/index.js'),
         import('https://unpkg.com/@opentelemetry/semantic-conventions@1.18.1/build/esm/index.js')
       ]);
+      console.log('[Abies OTel] CDN modules loaded successfully');
       const { BatchSpanProcessor } = traceBase;
       const { OTLPTraceExporter } = exporterMod;
       const { Resource } = resourcesMod;
@@ -87,7 +97,9 @@ void (async () => {
         return candidates[0];
       };
 
-      const exporter = new OTLPTraceExporter({ url: guessOtlp() });
+      const endpoint = guessOtlp();
+      console.log('[Abies OTel] OTLP endpoint:', endpoint);
+      const exporter = new OTLPTraceExporter({ url: endpoint });
       const provider = new WebTracerProvider({
         resource: new Resource({ [SemanticResourceAttributes.SERVICE_NAME]: 'Abies.Web' })
       });
@@ -109,6 +121,7 @@ void (async () => {
         const { setGlobalTracerProvider } = api ?? await import('https://unpkg.com/@opentelemetry/api@1.8.0/build/esm/index.js');
         setGlobalTracerProvider(provider);
       } catch {}
+      console.log('[Abies OTel] CDN provider registered successfully');
       // Auto-instrument browser fetch to propagate trace context to the API and capture client spans
       try {
         const [core, fetchI, xhrI, docI, uiI] = await Promise.all([
@@ -166,11 +179,16 @@ void (async () => {
 
     // Cap OTel init time so poor connectivity doesn't delay the app
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel init timeout')), 10000));
-    await Promise.race([otelInit, timeout]).catch(() => {});
-  } catch {}
+    await Promise.race([otelInit, timeout]).catch((e) => {
+      console.warn('[Abies OTel] CDN init failed or timed out:', e.message);
+    });
+  } catch (e) {
+    console.warn('[Abies OTel] Outer catch:', e.message);
+  }
   // Fallback: if OTel could not initialize (e.g., CDN blocked), install a lightweight local shim
   try {
     if (!window.__otel) {
+      console.log('[Abies OTel] CDN failed, installing local shim...');
       (function initLocalOtelShim() {
         const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
         const nowNs = () => {
@@ -185,32 +203,83 @@ void (async () => {
           return 'http://localhost:4318/v1/traces';
         })();
 
-        const state = { currentSpan: null };
+        const state = { currentSpan: null, pendingSpans: [] };
         function makeSpan(name, kind = 1, parent = state.currentSpan) {
           const traceId = parent?.traceId || hex(16);
           const spanId = hex(8);
-          return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: [] };
+          return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: {} };
         }
-                async function exportSpan(span) {
-                    // The API proxy endpoint expects OTLP/HTTP protobuf: application/x-protobuf.
-                    // Our shim can't realistically build a protobuf payload, so we send a tiny valid
-                    // (empty) protobuf message to exercise the proxy plumbing.
-                    // 
-                    // This keeps the Conduit UI usable while still producing a steady stream of
-                    // "proxy hit" events for debugging.
-                    try {
-                        const emptyProtobuf = new Uint8Array([0x0a, 0x00]);
-                        await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/x-protobuf' }, body: emptyProtobuf });
-                    } catch {}
-                }
+        
+        // Batch and export spans in OTLP JSON format
+        let exportTimer = null;
+        async function flushSpans() {
+          if (state.pendingSpans.length === 0) return;
+          const spans = state.pendingSpans.splice(0, state.pendingSpans.length);
+          
+          // Build OTLP JSON payload
+          const payload = {
+            resourceSpans: [{
+              resource: {
+                attributes: [
+                  { key: 'service.name', value: { stringValue: 'Abies.Web' } }
+                ]
+              },
+              scopeSpans: [{
+                scope: { name: 'Abies.JS.Shim', version: '1.0.0' },
+                spans: spans.map(s => ({
+                  traceId: s.traceId,
+                  spanId: s.spanId,
+                  parentSpanId: s.parentSpanId || '',
+                  name: s.name,
+                  kind: s.kind,
+                  startTimeUnixNano: s.start,
+                  endTimeUnixNano: s.end,
+                  attributes: Object.entries(s.attributes).map(([k, v]) => ({
+                    key: k,
+                    value: typeof v === 'number' ? { intValue: v } : { stringValue: String(v) }
+                  })),
+                  status: { code: 1 } // OK
+                }))
+              }]
+            }]
+          };
+          
+          try {
+            await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          } catch (e) {
+            // Silently ignore export errors
+          }
+        }
+        
+        function scheduleFlush() {
+          if (exportTimer) return;
+          exportTimer = setTimeout(() => {
+            exportTimer = null;
+            flushSpans();
+          }, 500);
+        }
+        
+        async function exportSpan(span) {
+          state.pendingSpans.push(span);
+          scheduleFlush();
+        }
         // Minimal shim tracer used by existing code paths
         trace = {
           getTracer: () => ({
-            startSpan: (name) => {
+            startSpan: (name, options) => {
               const s = makeSpan(name);
+              // Copy attributes from options if provided
+              if (options && options.attributes) {
+                Object.assign(s.attributes, options.attributes);
+              }
               const prev = state.currentSpan;
               state.currentSpan = s;
               return {
+                setAttribute: (key, value) => { s.attributes[key] = value; },
                 setStatus: () => {},
                 recordException: () => {},
                 end: async () => { s.end = nowNs(); state.currentSpan = prev; await exportSpan(s); }
@@ -229,6 +298,8 @@ void (async () => {
             if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
             const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
             const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */);
+            sp.attributes['http.method'] = method;
+            sp.attributes['http.url'] = url;
             const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
             const i = init ? { ...init } : {};
             const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
@@ -236,10 +307,12 @@ void (async () => {
             i.headers = h;
             try {
               const res = await origFetch(input, i);
+              sp.attributes['http.status_code'] = res.status;
               sp.end = nowNs();
               await exportSpan(sp);
               return res;
             } catch (e) {
+              sp.attributes['error'] = true;
               sp.end = nowNs();
               await exportSpan(sp);
               throw e;
@@ -254,12 +327,14 @@ void (async () => {
           await exportSpan(s);
           console.log('[OTel shim] test span sent');
         };
-        if (window.__abiesDebug && window.__abiesDebug.consoleEnabled) {
-          console.log('[OTel shim] initialized at', endpoint);
-        }
+        console.log('[Abies OTel] Shim initialized, endpoint:', endpoint);
       })();
+    } else {
+      console.log('[Abies OTel] CDN provider active, endpoint:', window.__otel.endpoint);
     }
-  } catch {}
+  } catch (e) {
+    console.error('[Abies OTel] Shim init error:', e);
+  }
 })();
 
 let tracer = trace.getTracer('Abies.JS');
@@ -373,10 +448,45 @@ function genericEventHandler(event) {
         console.error(`No message id found in data-event-${name} attribute.`);
         return;
     }
-    const span = tracer.startSpan('dispatchEvent', {
+    
+    // Build rich UI context for tracing
+    const tag = (target.tagName || '').toLowerCase();
+    const text = (target.textContent || '').trim().substring(0, 50); // Truncate long text
+    const classes = target.className || '';
+    const ariaLabel = target.getAttribute('aria-label') || '';
+    const elId = target.id || '';
+    
+    // Build human-readable action description
+    let action = '';
+    if (name === 'click') {
+        if (tag === 'button' || tag === 'a' || tag === 'fluent-button') {
+            action = `Click ${tag === 'a' ? 'Link' : 'Button'}: ${text || ariaLabel || elId || '(unnamed)'}`;
+        } else if (tag === 'input') {
+            const inputType = target.getAttribute('type') || 'text';
+            action = `Click Input (${inputType})`;
+        } else {
+            action = `Click ${tag}: ${text || elId || '(element)'}`;
+        }
+    } else if (name === 'input' || name === 'change') {
+        action = `Input: ${tag}${elId ? '#' + elId : ''}`;
+    } else if (name === 'submit') {
+        action = `Submit Form: ${elId || '(form)'}`;
+    } else if (name === 'keydown' || name === 'keyup') {
+        action = `Key ${name === 'keydown' ? 'Down' : 'Up'}: ${event.key || ''}`;
+    } else {
+        action = `${name}: ${tag}${elId ? '#' + elId : ''}`;
+    }
+    
+    const span = tracer.startSpan('UI Event', {
         attributes: {
-            event: name,
-            messageId: message
+            'ui.event.type': name,
+            'ui.element.tag': tag,
+            'ui.element.id': elId,
+            'ui.element.text': text,
+            'ui.element.classes': classes,
+            'ui.element.aria_label': ariaLabel,
+            'ui.action': action,
+            'abies.message_id': message
         }
     });
     try {
@@ -536,9 +646,28 @@ function subscribe(key, kind, data) {
             break;
         }
         case 'mouseMove': {
-            const handler = (event) => dispatchSubscription(key, buildEventData(event, event.target));
+            // Throttle mouse move to once per animation frame (~60fps max) to prevent flooding
+            let pending = null;
+            let rafId = null;
+            const handler = (event) => {
+                pending = buildEventData(event, event.target);
+                if (rafId === null) {
+                    rafId = requestAnimationFrame(() => {
+                        if (pending) {
+                            dispatchSubscription(key, pending);
+                            pending = null;
+                        }
+                        rafId = null;
+                    });
+                }
+            };
             window.addEventListener('mousemove', handler);
-            dispose = () => window.removeEventListener('mousemove', handler);
+            dispose = () => {
+                window.removeEventListener('mousemove', handler);
+                if (rafId !== null) {
+                    cancelAnimationFrame(rafId);
+                }
+            };
             break;
         }
         case 'click': {

@@ -20,8 +20,8 @@ applyTo: '**/*.cs'
 
 ## Pure functional programming
 - Using pure functional programming practices. 
-- Do not use object orientation!
-- Ignore these guidelines for code in performance critical (hot) paths. Then use what you need to optimize performance.
+- Do NOT use object orientation!
+- Ignore these guidelines for code in performance critical (hot) paths. Then use what you need to optimize performance. Comment why you made these choices.
 
 ## Naming Conventions
 
@@ -62,6 +62,5 @@ applyTo: '**/*.cs'
 - Always measure and benchmark API performance for performance critical paths.
 - Use the outcomes to guide optimizations.
 - Use the BenchmarkDotNet library for micro-benchmarks.
-- Optimize performance in hot paths.
 - Extensively comment on performance-critical code sections and motivate design decisions.
 - Prefer asynchronous programming models to improve scalability.

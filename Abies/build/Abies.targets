@@ -1,5 +1,7 @@
 <Project>
     <Target Name="CopyAbiesJs" BeforeTargets="Build" Condition="!Exists('$(ProjectDir)wwwroot\abies.js')">
+      <Message Importance="high" Text="Copying abies.js to wwwroot..." />
+      <!-- Copy the abies.js file to the wwwroot folder -->
       <Copy SourceFiles="$(MSBuildThisFileDirectory)..\contentFiles\any\any\wwwroot\abies.js" 
             DestinationFolder="$(ProjectDir)wwwroot\" />
     </Target>
