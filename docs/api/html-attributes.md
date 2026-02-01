@@ -1,7 +1,6 @@
 # HTML Attributes API Reference
 
 The `Abies.Html.Attributes` static class provides functions for creating HTML attributes. 
-Please note that attribute names that are C# keywords have an underscore as a suffix.
 
 ## Usage
 

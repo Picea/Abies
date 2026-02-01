@@ -13,3 +13,7 @@ All specifications for the Conduit application can be found at the web stie : ht
 ## Testing
 
 All user journeys MUST have an E2E test and integration tests. The user journeys are described in the specifications.
+
+## Editing abies.js
+
+Always edit the root wwwroot/abies.js file for changes related to the Abies framework. It will / should be copied to the demo project at build time
