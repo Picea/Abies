@@ -651,6 +651,24 @@ public class Presentation : Program<Model, Arguments>
             Code: "// Automatic tracing in Runtime:\nusing var activity = Instrumentation\n    .ActivitySource\n    .StartActivity(\"Message\");\n\nactivity?.SetTag(\"message.type\", msg.GetType().Name);\n\n// View traces in Aspire dashboard,\n// Jaeger, Zipkin, or any OTLP collector",
             Callout: "Production debugging with full context",
             Takeaway: "Observability built into the framework",
+            NextStep: "Browser-to-backend tracing",
+            Kind: SlideKind.Concept
+        ),
+        new(
+            Id: "distributed-tracing",
+            Kicker: "End-to-End",
+            Title: "Distributed Tracing: Browser to Backend",
+            Subtitle: "Follow user journeys across the entire stack",
+            Points:
+            [
+                "UI Events create parent spans in browser",
+                "HTTP calls inherit trace context automatically",
+                "W3C traceparent header propagates to API",
+                "Verbosity levels: 'user' (default) or 'debug'"
+            ],
+            Code: "// User clicks button → trace begins\nUI Event: Click Button \"Submit\"     [Browser]\n├── HTTP POST /api/articles          [Browser]\n│   └── POST /api/articles           [API]\n│       └── INSERT article           [Database]\n\n// Configure verbosity:\n<meta name=\"otel-verbosity\" content=\"user\">\n// or at runtime:\nwindow.__otel.setVerbosity('debug');",
+            Callout: "\"user\" traces actions, \"debug\" traces everything",
+            Takeaway: "Trace context flows seamlessly across boundaries",
             NextStep: "The Abies ecosystem",
             Kind: SlideKind.Concept
         ),

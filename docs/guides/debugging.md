@@ -1,3 +1,4 @@
+````markdown
 # Debugging Guide
 
 Strategies for debugging Abies applications.
@@ -11,6 +12,52 @@ Debugging MVU applications follows a predictable pattern:
 3. **Trace the Update** — How did the model change?
 4. **Check the View** — Is the DOM correct?
 5. **Verify Commands** — Did side effects execute?
+
+## Distributed Tracing (Recommended)
+
+Abies includes built-in OpenTelemetry tracing that shows the complete flow from user interaction to API response.
+
+### Quick Start
+
+1. Open your app with Aspire AppHost running
+2. Go to the Aspire dashboard (Traces tab)
+3. Click through your app - traces appear automatically
+4. Click a trace to see the full waterfall
+
+### Verbosity Levels
+
+Control how much detail is captured:
+
+| Level | What's Traced | How to Enable |
+|-------|---------------|---------------|
+| `user` | UI Events + HTTP (default) | Production default |
+| `debug` | Everything (DOM updates, etc.) | `?otel_verbosity=debug` in URL |
+| `off` | Nothing | `<meta name="otel-verbosity" content="off">` |
+
+### Quick Debug URL
+
+Add `?otel_verbosity=debug` to see all spans including DOM mutations:
+
+```
+https://localhost:5209/?otel_verbosity=debug
+```
+
+### Runtime Toggle
+
+Open browser console and run:
+
+```javascript
+// Enable debug mode
+window.__otel.setVerbosity('debug');
+
+// Check current level
+window.__otel.getVerbosity();
+
+// Force flush pending spans
+await window.__otel.provider.forceFlush();
+```
+
+For the complete tracing tutorial, see [Tutorial: Distributed Tracing](../tutorials/08-tracing.md).
 
 ## Browser DevTools
 

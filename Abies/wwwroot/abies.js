@@ -1,6 +1,69 @@
 // wwwroot/js/pine.js
 
 import { dotnet } from './_framework/dotnet.js';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRACING VERBOSITY SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+// Controls how much detail is traced. End users typically want 'user' level,
+// while framework developers debugging Abies itself may want 'debug' level.
+//
+// Levels:
+//   'off'   - No tracing at all
+//   'user'  - UI Events and HTTP calls only (default for production)
+//   'debug' - Everything including DOM mutations, attribute updates, etc.
+//
+// Configuration priority (highest to lowest):
+//   1. window.__OTEL_VERBOSITY = 'debug'
+//   2. <meta name="otel-verbosity" content="user">
+//   3. URL parameter: ?otel_verbosity=debug
+//   4. Default: 'user'
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const VERBOSITY_LEVELS = { off: 0, user: 1, debug: 2 };
+
+const getVerbosity = (() => {
+  let cached = null;
+  return () => {
+    if (cached !== null) return cached;
+    try {
+      // Priority 1: Global variable
+      if (window.__OTEL_VERBOSITY) {
+        const v = String(window.__OTEL_VERBOSITY).toLowerCase();
+        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
+      }
+      // Priority 2: Meta tag
+      const meta = document.querySelector('meta[name="otel-verbosity"]');
+      if (meta) {
+        const v = (meta.getAttribute('content') || '').toLowerCase();
+        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
+      }
+      // Priority 3: URL parameter
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get('otel_verbosity');
+      if (urlParam) {
+        const v = urlParam.toLowerCase();
+        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
+      }
+    } catch {}
+    // Default
+    cached = 'user';
+    return cached;
+  };
+})();
+
+// Check if a span should be recorded based on verbosity level
+// 'user' spans: UI Event, HTTP (fetch/XHR)
+// 'debug' spans: DOM mutations, attribute updates, etc.
+function shouldTrace(spanName) {
+  const verbosity = getVerbosity();
+  if (verbosity === 'off') return false;
+  if (verbosity === 'debug') return true;
+  // 'user' level: only trace user interactions and HTTP calls
+  const userLevelSpans = ['UI Event', 'HTTP GET', 'HTTP POST', 'HTTP PUT', 'HTTP DELETE', 'HTTP PATCH', 'HTTP OPTIONS', 'HTTP HEAD'];
+  return userLevelSpans.some(prefix => spanName.startsWith(prefix)) || spanName === 'UI Event';
+}
+
 // Initialize a minimal no-op tracing API; upgrade to real OTel asynchronously if available
 let trace = {
     getTracer: () => ({
@@ -16,6 +79,7 @@ let SpanStatusCode = { OK: 1, ERROR: 2 };
 const isOtelDisabled = (() => {
   try {
     if (window.__OTEL_DISABLED === true) return true;
+    if (getVerbosity() === 'off') return true;
     const enabledMeta = document.querySelector('meta[name="otel-enabled"]');
     const enabledValue = enabledMeta && enabledMeta.getAttribute('content');
     if (enabledValue && enabledValue.toLowerCase() === 'off') return true;
@@ -149,7 +213,18 @@ void (async () => {
       try { tracer = trace.getTracer('Abies.JS'); } catch {}
       // Expose OTel handle for forceFlush on page unload
       try {
-        window.__otel = { provider, exporter, endpoint: guessOtlp() };
+        window.__otel = { 
+          provider, 
+          exporter, 
+          endpoint: guessOtlp(),
+          // Expose verbosity controls
+          getVerbosity,
+          setVerbosity: (level) => {
+            if (level in VERBOSITY_LEVELS) {
+              window.__OTEL_VERBOSITY = level;
+            }
+          }
+        };
       } catch {}
     })();
 
@@ -328,7 +403,16 @@ void (async () => {
         window.__otel = { 
           provider: { forceFlush: async () => { await flushSpans(); } }, 
           exporter: { url: endpoint }, 
-          endpoint
+          endpoint,
+          // Expose verbosity controls
+          getVerbosity,
+          setVerbosity: (level) => {
+            if (level in VERBOSITY_LEVELS) {
+              window.__OTEL_VERBOSITY = level;
+              // Clear cache to pick up new value
+              cached = null;
+            }
+          }
         };
       })();
     }
@@ -339,8 +423,13 @@ void (async () => {
 
 let tracer = trace.getTracer('Abies.JS');
 
+// Wrap a function with tracing, respecting verbosity settings
 function withSpan(name, fn) {
     return async (...args) => {
+        // Skip tracing if verbosity level doesn't include this span
+        if (!shouldTrace(name)) {
+            return await fn(...args);
+        }
         const span = tracer.startSpan(name);
         try {
             const result = await fn(...args);
