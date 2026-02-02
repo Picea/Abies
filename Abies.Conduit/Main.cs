@@ -36,7 +36,12 @@ public record struct Token(string Value);
 
 public record User(UserName Username, Email Email, Token Token, string Image, string Bio);
 
-public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = null);
+/// <summary>
+/// Main application model.
+/// IsInitializing is true until the initial user check from localStorage completes.
+/// This prevents the UI from briefly showing "Sign in" before auth state loads.
+/// </summary>
+public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = null, bool IsInitializing = false);
 
 public interface Message : Abies.Message
 {
@@ -52,6 +57,10 @@ public interface Message : Abies.Message
         public sealed record LinkClicked(UrlRequest UrlRequest) : Event;
         public sealed record UserLoggedIn(User User) : Event;
         public sealed record UserLoggedOut : Event;
+        /// <summary>
+        /// Dispatched when the initial user check from localStorage completes with no user found.
+        /// </summary>
+        public sealed record InitializationComplete : Event;
     }
 }
 
@@ -191,10 +200,15 @@ public class Program : Program<Model, Arguments>
                     {
                         dispatch(new UserLoggedIn(user));
                     }
+                    else
+                    {
+                        dispatch(new Message.Event.InitializationComplete());
+                    }
                 }
                 catch (Exception ex)
                 {
                     Log.Error("LoadCurrentUser", ex);
+                    dispatch(new Message.Event.InitializationComplete());
                 }
                 break;
             case LoginCommand login:
@@ -571,11 +585,14 @@ public class Program : Program<Model, Arguments>
     public static (Model, Command) Initialize(Url url, Arguments argument)
     {
         var (model, _) = GetNextModel(url, null);
+        // Set IsInitializing=true until LoadCurrentUser completes
+        model = model with { IsInitializing = true };
         Command redirectCommand = Commands.None;
         if (RequiresAuth(model.CurrentRoute))
         {
             var loginUrl = Url.Create("/login");
             (model, _) = GetNextModel(loginUrl, null);
+            model = model with { IsInitializing = true };
             redirectCommand = new PushState(loginUrl);
         }
         var init = GetInitCommandForRoute(model);
@@ -614,9 +631,13 @@ public class Program : Program<Model, Arguments>
                     model with
                     {
                         CurrentUser = loggedIn.User,
+                        IsInitializing = false,
                         Page = SetUser(model.Page, loggedIn.User)
                     },
                     Commands.None);
+
+            case Message.Event.InitializationComplete:
+                return (model with { IsInitializing = false }, Commands.None);
 
             case UserLoggedOut:
                 return (

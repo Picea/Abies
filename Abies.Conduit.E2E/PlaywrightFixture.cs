@@ -194,12 +194,28 @@ public class PlaywrightFixture : IAsyncLifetime
     }
 
     /// <summary>
+    /// Waits for the app initialization to complete (user check from localStorage finished).
+    /// After initialization, either "Sign in" (unauthenticated) or "Settings" (authenticated) link appears.
+    /// </summary>
+    protected async Task WaitForInitializationCompleteAsync()
+    {
+        await WaitForAppReadyAsync();
+        
+        // Wait for either "Sign in" or "Settings" to appear - this indicates IsInitializing=false
+        var signInLink = Page.GetByRole(AriaRole.Link, new() { Name = "Sign in" });
+        var settingsLink = Page.GetByRole(AriaRole.Link, new() { Name = "Settings" });
+        
+        // Use a custom wait that checks for either condition
+        await Expect(signInLink.Or(settingsLink)).ToBeVisibleAsync(new() { Timeout = 15000 });
+    }
+
+    /// <summary>
     /// Waits for the authenticated user state to be loaded after a page navigation.
     /// This is needed because authentication state is loaded asynchronously from localStorage.
     /// </summary>
     protected async Task WaitForAuthenticatedStateAsync()
     {
-        // Wait for the app to be ready
+        // Wait for the app to be ready and initialization complete
         await WaitForAppReadyAsync();
         
         // When authenticated, "Settings" link appears instead of "Sign in"
@@ -217,7 +233,9 @@ public class PlaywrightFixture : IAsyncLifetime
         var password = "TestPassword123!";
 
         await Page.GotoAsync("/register");
-        await WaitForAppReadyAsync();
+        
+        // Wait for initialization to complete before interacting with the page
+        await WaitForInitializationCompleteAsync();
         
         // Wait for the registration form to be ready
         await Expect(Page.GetByPlaceholder("Username")).ToBeVisibleAsync(new() { Timeout = 10000 });

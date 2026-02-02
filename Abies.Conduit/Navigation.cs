@@ -32,7 +32,14 @@ public static class Navigation
     public static Node View(Model model)
     {
         Node[] userLinks;
-        if (model.CurrentUser is null)
+        
+        // While initializing (checking localStorage for user), don't show auth links
+        // This prevents a brief flash of "Sign in" before user state loads
+        if (model.IsInitializing)
+        {
+            userLinks = [];
+        }
+        else if (model.CurrentUser is null)
         {
             userLinks = new Node[]
             {
