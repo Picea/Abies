@@ -41,9 +41,12 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test Abies.Tests/Abies.Tests.csproj --no-build --verbosity normal
-    - name: Pack Abies Only
+    - name: Pack Abies
       if: github.event_name != 'pull_request'
       run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Abies.Templates
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Abies.Templates/Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
     - name: Publish to NuGet
       if: github.event_name != 'pull_request'
-      run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

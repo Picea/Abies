@@ -13,6 +13,7 @@ New to Abies? Start here.
 | Guide | Description |
 |-------|-------------|
 | [Installation](./getting-started/installation.md) | Prerequisites, SDK setup, and project creation |
+| [Project Templates](./getting-started/templates.md) | `dotnet new abies` templates for quick scaffolding |
 | [Your First App](./getting-started/your-first-app.md) | Build a counter app step-by-step |
 | [Project Structure](./getting-started/project-structure.md) | Understanding the Abies project layout |
 | [Next Steps](./getting-started/next-steps.md) | Where to go from here |
@@ -132,5 +133,8 @@ Design decisions and their rationale.
 | [ADR-012](./adr/ADR-012-test-strategy.md) | Test Strategy |
 | [ADR-013](./adr/ADR-013-opentelemetry.md) | OpenTelemetry |
 | [ADR-014](./adr/ADR-014-compile-time-ids.md) | Compile-Time IDs |
+| [ADR-015](./adr/ADR-015-tracing-verbosity.md) | Tracing Verbosity |
+| [ADR-016](./adr/ADR-016-keyed-dom-diffing.md) | Keyed DOM Diffing |
+| [ADR-017](./adr/ADR-017-dotnet-new-templates.md) | dotnet new Templates |
 
 [View all ADRs →](./adr/README.md)

@@ -16,6 +16,20 @@ Abies is a pure functional web framework for .NET that brings the **Model-View-U
 
 ## Quick Start
 
+### Using Templates (Recommended)
+
+```bash
+# Install the Abies templates (one-time)
+dotnet new install Abies.Templates
+
+# Create a new Abies application
+dotnet new abies -n MyApp
+cd MyApp
+dotnet run
+```
+
+### Counter Example
+
 ```csharp
 using Abies;
 using static Abies.Html.Elements;
@@ -94,6 +108,7 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 | Project               | Description                      |
 | --------------------- | -------------------------------- |
 | `Abies`               | Core framework library           |
+| `Abies.Templates`     | `dotnet new` project templates   |
 | `Abies.Conduit`       | RealWorld example app (frontend) |
 | `Abies.Conduit.Api`   | RealWorld example app (backend)  |
 | `Abies.Counter`       | Minimal counter example          |

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageId>Abies.Templates</PackageId>
+    <Title>Abies Templates</Title>
+    <Authors>Maurice CGP Peters</Authors>
+    <Description>Templates for creating Abies MVU-style WebAssembly applications with .NET. Use 'dotnet new abies' to create a new Abies application.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>dotnet-new;templates;abies;webassembly;wasm;mvu;elm;blazor</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://github.com/Picea/Abies/releases</PackageReleaseNotes>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    
+    <!-- Template package settings -->
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**\*" Exclude="templates\**\bin\**;templates\**\obj\**" />
+    <Compile Remove="**\*" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>
