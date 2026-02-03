@@ -73,7 +73,11 @@ public class CommentTests : PlaywrightFixture
         // Add a comment
         var commentText = "This is a test comment";
         await Page.GetByPlaceholder("Write a comment...").FillAsync(commentText);
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
+        
+        // Wait for form validation - button should be enabled once text is entered
+        var publishButton = Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" });
+        await Expect(publishButton).ToBeEnabledAsync(new() { Timeout = 5000 });
+        await publishButton.ClickAsync();
 
         // Comment should appear immediately (this is the critical functionality)
         await Expect(Page.GetByText(commentText)).ToBeVisibleAsync(new() { Timeout = 10000 });

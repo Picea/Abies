@@ -880,7 +880,7 @@ public class Presentation : Program<Model, Arguments>
                 [
                     div([class_("brand")],
                     [
-                        img([class_("brand-logo"), src("abies-logo.svg"), alt("Abies logo")]),
+                        img([class_("brand-logo"), src("abies-logo.png"), alt("Abies logo")]),
                         div([class_("brand-meta")],
                         [
                             div([class_("brand-line")],
