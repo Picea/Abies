@@ -55,59 +55,51 @@ public class MyProgram : Program<Model>
 
 ## Built-in Subscriptions
 
+All subscription helpers are available on the `SubscriptionModule` class:
+
+```csharp
+using Abies;
+```
+
 ### Timer Subscriptions
 
 ```csharp
-using static Abies.Subscriptions.Timer;
-
 // Fire every interval
-Every(TimeSpan.FromSeconds(1), now => new SecondPassed(now))
-
-// Fire once after delay
-After(TimeSpan.FromSeconds(5), () => new TimeoutReached())
+SubscriptionModule.Every(TimeSpan.FromSeconds(1), now => new SecondPassed(now))
 ```
 
 ### Browser Event Subscriptions
 
 ```csharp
-using static Abies.Subscriptions.Browser;
-
 // Window resize
-OnResize((width, height) => new WindowResized(width, height))
+SubscriptionModule.OnResize(size => new WindowResized(size.Width, size.Height))
 
 // Visibility change (tab focus)
-OnVisibilityChange(visible => new VisibilityChanged(visible))
-
-// Before page unload
-OnBeforeUnload(() => new PageUnloading())
+SubscriptionModule.OnVisibilityChange(evt => new VisibilityChanged(evt.State))
 ```
 
 ### Keyboard Subscriptions
 
 ```csharp
-using static Abies.Subscriptions.Keyboard;
-
 // Key down anywhere
-OnKeyDown(key => new KeyPressed(key))
+SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
 
 // Key up anywhere
-OnKeyUp(key => new KeyReleased(key))
+SubscriptionModule.OnKeyUp(data => new KeyReleased(data?.Key ?? ""))
 
 // Specific key combinations
-OnKeyDown(key => key == "Escape" ? new EscapePressed() : null)
+SubscriptionModule.OnKeyDown(data => data?.Key == "Escape" ? new EscapePressed() : null)
 ```
 
 ### Mouse Subscriptions
 
 ```csharp
-using static Abies.Subscriptions.Mouse;
-
 // Mouse movement
-OnMouseMove((x, y) => new MouseMoved(x, y))
+SubscriptionModule.OnMouseMove(data => new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0))
 
 // Mouse buttons
-OnMouseDown(button => new MousePressed(button))
-OnMouseUp(button => new MouseReleased(button))
+SubscriptionModule.OnMouseDown(data => new MousePressed(data?.Button ?? 0))
+SubscriptionModule.OnMouseUp(data => new MouseReleased(data?.Button ?? 0))
 ```
 
 ## Creating Custom Subscriptions

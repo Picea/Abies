@@ -135,8 +135,7 @@ JavaScript implementation:
 
 ```javascript
 export function setAppContent(html) {
-    const app = document.getElementById('app');
-    app.innerHTML = html;
+    document.body.innerHTML = html;
 }
 ```
 

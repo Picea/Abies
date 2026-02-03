@@ -167,7 +167,7 @@ public static async Task HandleCommand(Command command, Func<Message, ValueTuple
 Abies runtime orchestrates the MVU loop:
 
 ```text
-1. Initialize model via Program.Init()
+1. Initialize model via Program.Initialize()
 2. Render initial view via Program.View(model)
 3. User interacts → Message dispatched
 4. Call Program.Update(message, model) → (newModel, command)
@@ -178,7 +178,7 @@ Abies runtime orchestrates the MVU loop:
 ```
 
 ```csharp
-Runtime.Run<Program>(browser, onError);
+await Runtime.Run<MyProgram, Arguments, Model>(new Arguments());
 ```
 
 ## Why MVU?

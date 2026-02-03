@@ -33,6 +33,7 @@ Hands-on, progressive learning paths.
 | [5. Forms](./tutorials/05-forms.md) | Form handling, input binding, validation |
 | [6. Subscriptions](./tutorials/06-subscriptions.md) | Timers, browser events, WebSockets |
 | [7. Real-World App](./tutorials/07-real-world-app.md) | Conduit sample walkthrough |
+| [8. Tracing](./tutorials/08-tracing.md) | OpenTelemetry integration |
 
 ---
 

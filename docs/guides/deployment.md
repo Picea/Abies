@@ -19,7 +19,7 @@ Abies applications are .NET WebAssembly apps that can be deployed to any static 
 dotnet publish -c Release
 ```
 
-This produces optimized output in `bin/Release/net9.0/publish/wwwroot/`.
+This produces optimized output in `bin/Release/net10.0/publish/wwwroot/`.
 
 ### Build Options
 
@@ -44,7 +44,7 @@ Configure in your `.csproj`:
 After publishing:
 
 ```text
-bin/Release/net9.0/publish/wwwroot/
+bin/Release/net10.0/publish/wwwroot/
 ├── _framework/
 │   ├── dotnet.js
 │   ├── dotnet.wasm
@@ -107,7 +107,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
       
       - name: Publish
         run: dotnet publish -c Release
@@ -116,7 +116,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./bin/Release/net9.0/publish/wwwroot
+          publish_dir: ./bin/Release/net10.0/publish/wwwroot
 ```
 
 #### Netlify
@@ -126,7 +126,7 @@ Add `netlify.toml`:
 ```toml
 [build]
   command = "dotnet publish -c Release"
-  publish = "bin/Release/net9.0/publish/wwwroot"
+  publish = "bin/Release/net10.0/publish/wwwroot"
 
 [[redirects]]
   from = "/*"
@@ -152,7 +152,7 @@ Create a `Dockerfile`:
 
 ```dockerfile
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
 RUN dotnet publish -c Release -o /app
@@ -199,7 +199,7 @@ Deploy with Azure CLI:
 az webapp up \
     --name myapp \
     --resource-group mygroup \
-    --runtime "DOTNET|9.0"
+    --runtime "DOTNET|10.0"
 ```
 
 ## Configuration
