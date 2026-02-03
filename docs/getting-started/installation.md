@@ -33,11 +33,30 @@ dotnet run --project Abies.Counter
 
 This starts a minimal counter app at `http://localhost:5000`.
 
-### Option 2: Start from a Template (Coming Soon)
+### Option 2: Start from a Template
+
+The recommended way to create a new Abies project is using the `dotnet new` templates:
 
 ```bash
-# Future: dotnet new abies -n MyApp
+# Install the Abies templates (one-time)
+dotnet new install Abies.Templates
+
+# Create a new project with counter example
+dotnet new abies -n MyApp
+
+# Or create an empty project
+dotnet new abies-empty -n MyApp
+
+# Run your new app
+cd MyApp
+dotnet run
 ```
+
+This creates a fully configured Abies project with:
+- WebAssembly project structure
+- Sample counter application (or empty template)
+- Development server configuration
+- Launch settings for debugging
 
 ### Option 3: Add to Existing Project
 
