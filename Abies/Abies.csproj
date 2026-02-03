@@ -7,7 +7,7 @@
 
     <!-- Package metadata -->
     <Authors>Maurice CGP Peters</Authors>
-    <Description>Abies - A WebAssembly library for building MVP style web applications with .NET</Description>
+    <Description>Abies - A WebAssembly library for building MVU style web applications with .NET</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
@@ -45,7 +45,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Praefixum" Version="1.1.9-tags-v1-1-8.1" />
+    <PackageReference Include="Praefixum" Version="1.2.1-tags-v1-2-0.1" />
   </ItemGroup>
 
 </Project>
