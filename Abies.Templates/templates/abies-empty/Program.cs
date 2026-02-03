@@ -40,10 +40,15 @@ public class App : Program<Model, Arguments>
     /// </summary>
     public static Document View(Model model)
         => new("AbiesApp",
-            div([],
+            div([class_("container")],
             [
                 h1([], [text("Welcome to Abies!")]),
-                p([], [text("Start building your MVU application.")])
+                p([], [text("Start building your MVU application.")]),
+                p([], 
+                [
+                    text("Learn more at "),
+                    a([href("https://github.com/Picea/Abies")], [text("github.com/Picea/Abies")])
+                ])
             ])
         );
 

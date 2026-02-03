@@ -53,33 +53,55 @@ public class Counter : Program<Model, Arguments>
     /// Render the view based on the current model.
     /// </summary>
     public static Document View(Model model)
-        => new("Counter",
-            div([class_("container")],
+        => new("Counter - Abies",
+            div([class_("app")],
             [
-                h1([], [text("Counter")]),
-                div([class_("counter")],
+                // Header
+                header([class_("topbar")],
                 [
-                    button(
+                    div([class_("brand")],
+                    [
+                        img([class_("brand-logo"), src("https://avatars.githubusercontent.com/u/188364441?v=4"), alt("Abies logo")]),
+                        div([class_("brand-meta")],
                         [
-                            type("button"),
-                            onclick(new Decrement()),
-                            class_("btn")
-                        ],
-                        [text("-")]
-                    ),
-                    span([class_("count")], [text(model.Count.ToString())]),
-                    button(
-                        [
-                            type("button"),
-                            onclick(new Increment()),
-                            class_("btn")
-                        ],
-                        [text("+")]
-                    )
+                            span([class_("brand-wordmark")], [text("Abies")]),
+                            span([class_("brand-subtitle")], [text("MVU Counter Example")])
+                        ])
+                    ]),
+                    span([class_("badge")], [text("Demo")])
                 ]),
-                p([class_("description")], 
+
+                // Main content
+                main([class_("content")],
                 [
-                    text("Click the buttons to increment or decrement the counter.")
+                    h1([], [text("Counter")]),
+                    p([class_("subtitle")], [text("Model-View-Update in action")]),
+                    
+                    div([class_("counter")],
+                    [
+                        button(
+                            [type("button"), onclick(new Decrement()), class_("btn")],
+                            [text("−")]
+                        ),
+                        span([class_("count")], [text(model.Count.ToString())]),
+                        button(
+                            [type("button"), onclick(new Increment()), class_("btn")],
+                            [text("+")]
+                        )
+                    ]),
+
+                    div([class_("info-panel")],
+                    [
+                        p([], [text("Each button click dispatches a message. The Update function creates a new immutable model. The View renders the current state.")])
+                    ])
+                ]),
+
+                // Footer
+                footer([class_("footer")],
+                [
+                    text("Built with "),
+                    a([href("https://github.com/Picea/Abies")], [text("Abies")]),
+                    text(" — Functional web apps in .NET")
                 ])
             ])
         );
