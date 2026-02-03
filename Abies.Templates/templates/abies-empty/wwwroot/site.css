@@ -1,0 +1,79 @@
+/* Abies Design System - Minimal */
+
+:root {
+    color-scheme: light;
+    
+    /* Abies Brand Colors */
+    --abies-brand-100: #E7F1CC;
+    --abies-brand-200: #D0E39B;
+    --abies-brand-500: #89B42B;
+    --abies-brand-600: #71922D;
+    --abies-brand-800: #4C641A;
+
+    /* Neutrals */
+    --abies-neutral-0: #FFFFFF;
+    --abies-neutral-100: #F2F4F7;
+    --abies-neutral-200: #E4E7EC;
+    --abies-neutral-500: #667085;
+    --abies-neutral-600: #475467;
+    --abies-neutral-900: #101828;
+
+    /* Typography */
+    --font-family-base: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+
+    /* Semantic */
+    --bg: var(--abies-neutral-0);
+    --bg-soft: var(--abies-neutral-100);
+    --text: var(--abies-neutral-900);
+    --text-muted: var(--abies-neutral-600);
+    --border: var(--abies-neutral-200);
+    --accent: var(--abies-brand-500);
+    --accent-tint: var(--abies-brand-100);
+
+    /* Mica background gradient */
+    --mica: radial-gradient(circle at 20% 20%, rgba(137, 180, 43, 0.18) 0%, rgba(46, 144, 250, 0.10) 35%, rgba(0, 0, 0, 0.00) 70%);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family-base);
+    color: var(--text);
+    background: var(--mica), radial-gradient(circle at top, var(--bg) 0%, var(--bg-soft) 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.container {
+    text-align: center;
+    max-width: 600px;
+}
+
+h1 {
+    font-size: 40px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--abies-brand-800);
+}
+
+p {
+    color: var(--text-muted);
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}

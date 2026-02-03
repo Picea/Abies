@@ -1,0 +1,291 @@
+/* Abies Design System - Counter App */
+
+:root {
+    color-scheme: light;
+    
+    /* Abies Brand Colors */
+    --abies-brand-50: #F4F8EA;
+    --abies-brand-100: #E7F1CC;
+    --abies-brand-200: #D0E39B;
+    --abies-brand-300: #B7D56A;
+    --abies-brand-400: #9FC744;
+    --abies-brand-500: #89B42B;
+    --abies-brand-600: #71922D;
+    --abies-brand-700: #6D9026;
+    --abies-brand-800: #4C641A;
+    --abies-brand-900: #2E3D10;
+
+    /* Neutrals */
+    --abies-neutral-0: #FFFFFF;
+    --abies-neutral-50: #FAFAFA;
+    --abies-neutral-100: #F2F4F7;
+    --abies-neutral-200: #E4E7EC;
+    --abies-neutral-300: #D0D5DD;
+    --abies-neutral-400: #98A2B3;
+    --abies-neutral-500: #667085;
+    --abies-neutral-600: #475467;
+    --abies-neutral-700: #344054;
+    --abies-neutral-800: #1D2939;
+    --abies-neutral-900: #101828;
+
+    /* Typography */
+    --font-family-base: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --font-family-mono: "Cascadia Mono", "Fira Code", ui-monospace, monospace;
+
+    /* Spacing */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+    --space-8: 40px;
+
+    /* Radii */
+    --radius-2: 6px;
+    --radius-3: 10px;
+    --radius-4: 14px;
+
+    /* Shadows */
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --shadow-4: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-8: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+    /* Semantic */
+    --bg: var(--abies-neutral-0);
+    --bg-elevated: #F8FAFC;
+    --bg-soft: var(--abies-neutral-100);
+    --text: var(--abies-neutral-900);
+    --text-muted: var(--abies-neutral-600);
+    --text-subtle: var(--abies-neutral-500);
+    --border: var(--abies-neutral-200);
+    --border-strong: var(--abies-neutral-300);
+    --accent: var(--abies-brand-500);
+    --accent-hover: var(--abies-brand-600);
+    --accent-tint: var(--abies-brand-100);
+    --accent-tint-border: var(--abies-brand-200);
+    --focus-ring: rgba(137, 180, 43, 0.42);
+
+    /* Mica background gradient */
+    --mica: radial-gradient(circle at 20% 20%, rgba(137, 180, 43, 0.18) 0%, rgba(46, 144, 250, 0.10) 35%, rgba(0, 0, 0, 0.00) 70%);
+
+    --transition-fast: 0.2s ease;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family-base);
+    color: var(--text);
+    background: var(--mica), radial-gradient(circle at top, var(--bg) 0%, var(--bg-elevated) 45%, var(--bg-soft) 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-8) var(--space-8);
+    width: 100%;
+}
+
+/* Header / Topbar */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-2);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-2);
+}
+
+.brand-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.brand-wordmark {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--abies-brand-800);
+}
+
+.brand-subtitle {
+    font-size: 12px;
+    color: var(--text-subtle);
+}
+
+.badge {
+    padding: var(--space-1) var(--space-2);
+    border-radius: 999px;
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-tint-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--abies-brand-800);
+}
+
+/* Main Content */
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    margin-top: var(--space-6);
+    border-radius: var(--radius-4);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-8);
+}
+
+.content h1 {
+    font-size: 40px;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 17px;
+    margin-bottom: var(--space-7);
+}
+
+/* Counter Controls */
+.counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5);
+    margin-bottom: var(--space-6);
+}
+
+.count {
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 120px;
+    text-align: center;
+    padding: var(--space-4) var(--space-6);
+    background: var(--bg-soft);
+    border-radius: var(--radius-3);
+    border: 1px solid var(--border);
+}
+
+.btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-3);
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow: var(--shadow-4);
+}
+
+.btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-8);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-2);
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* Info Panel */
+.info-panel {
+    padding: var(--space-4);
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-tint-border);
+    border-radius: var(--radius-3);
+    max-width: 400px;
+    text-align: center;
+}
+
+.info-panel p {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: var(--space-4);
+    color: var(--text-subtle);
+    font-size: 12px;
+}
+
+.footer a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .app {
+        padding: var(--space-4);
+    }
+
+    .content {
+        padding: var(--space-6);
+    }
+
+    .count {
+        font-size: 48px;
+        min-width: 100px;
+    }
+
+    .btn {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .btn {
+        transition: none;
+    }
+}
