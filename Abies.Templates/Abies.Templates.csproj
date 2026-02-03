@@ -11,7 +11,7 @@
     <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>dotnet-new;templates;abies;webassembly;wasm;mvu;elm;blazor</PackageTags>
+    <PackageTags>dotnet-new;templates;abies;webassembly;wasm;mvu;elm;</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>https://github.com/Picea/Abies/releases</PackageReleaseNotes>
     <TargetFramework>netstandard2.0</TargetFramework>
