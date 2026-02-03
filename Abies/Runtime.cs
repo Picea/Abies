@@ -316,6 +316,11 @@ public static partial class Runtime
         }
     }
 
+    /// <summary>
+    /// Registers event handlers for a virtual DOM node.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <exception cref="InvalidOperationException"></exception>
     internal static void RegisterHandlers(Node node)
     {
         

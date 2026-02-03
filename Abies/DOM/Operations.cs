@@ -84,39 +84,75 @@ namespace Abies.DOM
         Type? DataType = null)
         : Attribute(Id, $"data-event-{Name}", CommandId);
 
+    /// <summary>
+    /// Represents a text node in the Abies DOM.
+    /// </summary>
+    /// <param name="Id">The unique identifier for the text node.</param>
+    /// <param name="Value">The text content of the node.</param>
     public record Text(string Id, string Value) : Node(Id)
     {
         public static implicit operator string(Text text) => text.Value;
         public static implicit operator Text(string text) => new(text, text);
     };
 
+    /// <summary>
+    /// Represents an empty node in the Abies DOM.
+    /// </summary>
     public record Empty() : Node("");
 
+    /// <summary>
+    /// Represents a patch operation in the Abies DOM.
+    /// </summary>
     public interface Patch { }
 
+    /// <summary>
+    /// Represents a patch operation to add a root element in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to add as the root.</param>
     public readonly struct AddRoot(Element element) : Patch
     {
         public readonly Element Element = element;
     }
 
+    /// <summary>
+    /// Represents a patch operation to replace a child element in the Abies DOM.
+    /// </summary>
+    /// <param name="oldElement">The old child element to replace.</param>
+    /// <param name="newElement">The new child element to replace the old one.</param>
     public readonly struct ReplaceChild(Element oldElement, Element newElement) : Patch
     {
         public readonly Element OldElement = oldElement;
         public readonly Element NewElement = newElement;
     }
 
+    /// <summary>
+    /// Represents a patch operation to add a child element in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element.</param>
+    /// <param name="child">The child element to add.</param>
     public readonly struct AddChild(Element parent, Element child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly Element Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to remove a child element in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element.</param>
+    /// <param name="child">The child element to remove.</param>
     public readonly struct RemoveChild(Element parent, Element child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly Element Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to update an attribute in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to update.</param>
+    /// <param name="attribute">The attribute to update.</param>
+    /// <param name="value">The new value for the attribute.</param>
     public readonly struct UpdateAttribute(Element element, Attribute attribute, string value) : Patch
     {
         public readonly Element Element = element;
@@ -124,30 +160,56 @@ namespace Abies.DOM
         public readonly string Value = value;
     }
 
+    /// <summary>
+    /// Represents a patch operation to add an attribute in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to add the attribute to.</param>
+    /// <param name="attribute">The attribute to add.</param>
     public readonly struct AddAttribute(Element element, Attribute attribute) : Patch
     {
         public readonly Element Element = element;
         public readonly Attribute Attribute = attribute;
     }
 
+    /// <summary>
+    /// Represents a patch operation to remove an attribute in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to remove the attribute from.</param>
+    /// <param name="attribute">The attribute to remove.</param>
     public readonly struct RemoveAttribute(Element element, Attribute attribute) : Patch
     {
         public readonly Element Element = element;
         public readonly Attribute Attribute = attribute;
     }
 
+    /// <summary>
+    /// Represents a patch operation to add an event handler in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to add the event handler to.</param>
+    /// <param name="handler">The event handler to add.</param>
     public readonly struct AddHandler(Element element, Handler handler) : Patch
     {
         public readonly Element Element = element;
         public readonly Handler Handler = handler;
     }
 
+    /// <summary>
+    /// Represents a patch operation to remove an event handler in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to remove the event handler from.</param>
+    /// <param name="handler">The event handler to remove.</param>
     public readonly struct RemoveHandler(Element element, Handler handler) : Patch
     {
         public readonly Element Element = element;
         public readonly Handler Handler = handler;
     }
 
+    /// <summary>
+    /// Represents a patch operation to update an event handler in the Abies DOM.
+    /// </summary>
+    /// <param name="element">The element to update.</param>
+    /// <param name="oldHandler">The old event handler to replace.</param>
+    /// <param name="newHandler">The new event handler to replace the old one.</param>
     public readonly struct UpdateHandler(Element element, Handler oldHandler, Handler newHandler) : Patch
     {
         public readonly Element Element = element;
@@ -155,6 +217,12 @@ namespace Abies.DOM
         public readonly Handler NewHandler = newHandler;
     }
 
+    /// <summary>
+    /// Represents a patch operation to update a text node in the Abies DOM.
+    /// </summary>
+    /// <param name="node">The text node to update.</param>
+    /// <param name="text">The current text content of the node.</param>
+    /// <param name="newId">The new ID to assign to the node.</param>
     public readonly struct UpdateText(Text node, string text, string newId) : Patch
     {
         public readonly Text Node = node;
@@ -162,36 +230,67 @@ namespace Abies.DOM
         public readonly string NewId = newId;
     }
 
+    /// <summary>
+    /// Represents a patch operation to add a text node in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element to add the text node to.</param>
+    /// <param name="child">The text node to add.</param>
     public readonly struct AddText(Element parent, Text child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly Text Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to remove a text node in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element to remove the text node from.</param>
+    /// <param name="child">The text node to remove.</param>
     public readonly struct RemoveText(Element parent, Text child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly Text Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to add raw HTML in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element to add the raw HTML to.</param>
+    /// <param name="child">The raw HTML to add.</param>
     public readonly struct AddRaw(Element parent, RawHtml child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly RawHtml Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to remove raw HTML in the Abies DOM.
+    /// </summary>
+    /// <param name="parent">The parent element to remove the raw HTML from.</param>
+    /// <param name="child">The raw HTML to remove.</param>
     public readonly struct RemoveRaw(Element parent, RawHtml child) : Patch
     {
         public readonly Element Parent = parent;
         public readonly RawHtml Child = child;
     }
 
+    /// <summary>
+    /// Represents a patch operation to replace raw HTML in the Abies DOM.
+    /// </summary>
+    /// <param name="oldNode">The old raw HTML node to replace.</param>
+    /// <param name="newNode">The new raw HTML node to replace the old one.</param>
     public readonly struct ReplaceRaw(RawHtml oldNode, RawHtml newNode) : Patch
     {
         public readonly RawHtml OldNode = oldNode;
         public readonly RawHtml NewNode = newNode;
     }
 
+    /// <summary>
+    /// Represents a patch operation to update raw HTML in the Abies DOM.
+    /// </summary>
+    /// <param name="node">The raw HTML node to update.</param>
+    /// <param name="html">The current HTML content of the node.</param>
+    /// <param name="newId">The new ID to assign to the node.</param>
     public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patch
     {
         public readonly RawHtml Node = node;
@@ -200,9 +299,16 @@ namespace Abies.DOM
     }
 
 
-
+    /// <summary>
+    /// Provides rendering utilities for the virtual DOM.
+    /// </summary>
     public static class Render
     {
+        /// <summary>
+        /// Renders a virtual DOM node to its HTML representation.
+        /// </summary>
+        /// <param name="node">The virtual DOM node to render.</param>
+        /// <returns>The HTML representation of the virtual DOM node.</returns>
         public static string Html(Node node)
         {
             var sb = new System.Text.StringBuilder();
@@ -259,7 +365,7 @@ namespace Abies.DOM
                 list.Clear();
                 return list;
             }
-            return new List<Patch>();
+            return [];
         }
 
         private static void ReturnPatchList(List<Patch> list)
@@ -275,7 +381,7 @@ namespace Abies.DOM
                 map.Clear();
                 return map;
             }
-            return new Dictionary<string, Attribute>();
+            return [];
         }
 
         private static void ReturnAttributeMap(Dictionary<string, Attribute> map)
@@ -287,6 +393,7 @@ namespace Abies.DOM
         /// <summary>
         /// Apply a patch to the real DOM by invoking JavaScript interop.
         /// </summary>
+        /// <param name="patch">The patch to apply.</param> 
         public static async Task Apply(Patch patch)
         {
             switch (patch)
@@ -321,11 +428,11 @@ namespace Abies.DOM
                 case AddHandler addHandler:
                     // First register the handler so events dispatched immediately after DOM update are handled
                     Abies.Runtime.RegisterHandler(addHandler.Handler);
-                    await Interop.AddAttribute(addHandler.Element.Id, ((Attribute)addHandler.Handler).Name, addHandler.Handler.Value);
+                    await Interop.AddAttribute(addHandler.Element.Id, addHandler.Handler.Name, addHandler.Handler.Value);
                     break;
                 case RemoveHandler removeHandler:
                     // First remove the DOM attribute to avoid dispatching with stale IDs, then unregister
-                    await Interop.RemoveAttribute(removeHandler.Element.Id, ((Attribute)removeHandler.Handler).Name);
+                    await Interop.RemoveAttribute(removeHandler.Element.Id, removeHandler.Handler.Name);
                     Abies.Runtime.UnregisterHandler(removeHandler.Handler);
                     break;
                 case UpdateHandler updateHandler:
@@ -333,7 +440,7 @@ namespace Abies.DOM
                     // 1) Register the new handler command id
                     Abies.Runtime.RegisterHandler(updateHandler.NewHandler);
                     // 2) Update the DOM attribute value to the new command id
-                    var attrNameToUpdate = ((Attribute)updateHandler.NewHandler).Name;
+                    var attrNameToUpdate = updateHandler.NewHandler.Name;
                     await Interop.UpdateAttribute(updateHandler.Element.Id, attrNameToUpdate, updateHandler.NewHandler.Value);
                     // 3) Unregister the old handler command id
                     Abies.Runtime.UnregisterHandler(updateHandler.OldHandler);
@@ -368,7 +475,9 @@ namespace Abies.DOM
                 default:
                     throw new InvalidOperationException("Unknown patch type");
             }
-        }        /// <summary>
+        }        
+        
+        /// <summary>
         /// Compute the list of patches that transform <paramref name="oldNode"/> into <paramref name="newNode"/>.
         /// </summary>
         /// <param name="oldNode">The previous virtual DOM node. Can be <c>null</c> when rendering for the first time.</param>
@@ -393,7 +502,9 @@ namespace Abies.DOM
             {
                 ReturnPatchList(patches);
             }
-        }        private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
+        }        
+        
+        private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
         {
             // Text nodes only need an update when the value changes
             if (oldNode is Text oldText && newNode is Text newText)
@@ -465,7 +576,9 @@ namespace Abies.DOM
                     patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
                 }
             }
-        }// Diff attribute collections using dictionaries for O(n) lookup
+        }
+        
+        // Diff attribute collections using dictionaries for O(n) lookup
         private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
         {
             var oldAttrs = oldElement.Attributes;
@@ -514,13 +627,13 @@ namespace Abies.DOM
 
                 foreach (var attr in oldAttrs)
                 {
-                    var attrName = attr is Handler h ? ((Attribute)h).Name : attr.Name;
+                    var attrName = attr is Handler h ? h.Name : attr.Name;
                     oldMap[attrName] = attr;
                 }
 
                 foreach (var newAttr in newAttrs)
                 {
-                    var newAttrName = newAttr is Handler nh ? ((Attribute)nh).Name : newAttr.Name;
+                    var newAttrName = newAttr is Handler nh ? nh.Name : newAttr.Name;
                     if (oldMap.TryGetValue(newAttrName, out var oldAttr))
                     {
                         oldMap.Remove(newAttrName);
