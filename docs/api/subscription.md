@@ -13,7 +13,7 @@ Every `Program` declares its subscriptions:
 ```csharp
 public static Subscription Subscriptions(Model model)
     => model.TimerActive
-        ? Every(TimeSpan.FromSeconds(1), _ => new TimerTick())
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new TimerTick())
         : SubscriptionModule.None;
 ```
 
@@ -45,59 +45,37 @@ Combines multiple subscriptions:
 ```csharp
 public static Subscription Subscriptions(Model model)
     => SubscriptionModule.Batch([
-        Every(TimeSpan.FromSeconds(1), _ => new Tick()),
-        OnResize((w, h) => new Resized(w, h)),
-        OnKeyDown(k => new KeyPressed(k))
+        SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()),
+        SubscriptionModule.OnResize(size => new Resized(size.Width, size.Height)),
+        SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
     ]);
 ```
 
 ## Timer Subscriptions
-
-```csharp
-using static Abies.Subscriptions.Timer;
-```
 
 ### Every
 
 Fires repeatedly at an interval:
 
 ```csharp
-Every(TimeSpan.FromSeconds(1), now => new SecondTick(now))
-Every(TimeSpan.FromMilliseconds(16), _ => new AnimationFrame())  // ~60fps
-Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
+SubscriptionModule.Every(TimeSpan.FromSeconds(1), now => new SecondTick(now))
+SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new AnimationFrame())  // ~60fps
+SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
 ```
 
 **Parameters:**
 
 - `interval` — Time between firings
-- `toMessage` — Function that creates a message (receives current `DateTime`)
-
-### After
-
-Fires once after a delay:
-
-```csharp
-After(TimeSpan.FromSeconds(5), () => new TimeoutReached())
-After(TimeSpan.FromMilliseconds(300), () => new DebounceComplete())
-```
-
-**Parameters:**
-
-- `delay` — Time to wait
-- `toMessage` — Function that creates the message
+- `toMessage` — Function that creates a message (receives current `DateTimeOffset`)
 
 ## Browser Event Subscriptions
-
-```csharp
-using static Abies.Subscriptions.Browser;
-```
 
 ### OnResize
 
 Fires when the window is resized:
 
 ```csharp
-OnResize((width, height) => new WindowResized(width, height))
+SubscriptionModule.OnResize(size => new WindowResized(size.Width, size.Height))
 ```
 
 ### OnVisibilityChange
@@ -105,44 +83,23 @@ OnResize((width, height) => new WindowResized(width, height))
 Fires when the tab visibility changes:
 
 ```csharp
-OnVisibilityChange(visible => new VisibilityChanged(visible))
-```
-
-### OnBeforeUnload
-
-Fires before the page unloads:
-
-```csharp
-OnBeforeUnload(() => new PageClosing())
-```
-
-### OnOnline / OnOffline
-
-Fires when network status changes:
-
-```csharp
-OnOnline(() => new BackOnline())
-OnOffline(() => new WentOffline())
+SubscriptionModule.OnVisibilityChange(evt => new VisibilityChanged(evt.State))
 ```
 
 ## Keyboard Subscriptions
-
-```csharp
-using static Abies.Subscriptions.Keyboard;
-```
 
 ### OnKeyDown
 
 Fires when any key is pressed:
 
 ```csharp
-OnKeyDown(key => new KeyPressed(key))
+SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
 ```
 
 **Filtering keys:**
 
 ```csharp
-OnKeyDown(key => key switch
+SubscriptionModule.OnKeyDown(data => data?.Key switch
 {
     "Escape" => new EscapePressed(),
     "Enter" => new EnterPressed(),
@@ -155,21 +112,17 @@ OnKeyDown(key => key switch
 Fires when a key is released:
 
 ```csharp
-OnKeyUp(key => new KeyReleased(key))
+SubscriptionModule.OnKeyUp(data => new KeyReleased(data?.Key ?? ""))
 ```
 
 ## Mouse Subscriptions
-
-```csharp
-using static Abies.Subscriptions.Mouse;
-```
 
 ### OnMouseMove
 
 Fires when the mouse moves:
 
 ```csharp
-OnMouseMove((x, y) => new MouseMoved(x, y))
+SubscriptionModule.OnMouseMove(data => new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0))
 ```
 
 ### OnMouseDown / OnMouseUp
@@ -177,8 +130,8 @@ OnMouseMove((x, y) => new MouseMoved(x, y))
 Fires on mouse button events:
 
 ```csharp
-OnMouseDown(button => new MousePressed(button))
-OnMouseUp(button => new MouseReleased(button))
+SubscriptionModule.OnMouseDown(data => new MousePressed(data?.Button ?? 0))
+SubscriptionModule.OnMouseUp(data => new MouseReleased(data?.Button ?? 0))
 ```
 
 ## Conditional Subscriptions
@@ -193,17 +146,17 @@ public static Subscription Subscriptions(Model model)
     // Timer only when game is playing
     if (model.GameState == GameState.Playing)
     {
-        subs.Add(Every(TimeSpan.FromMilliseconds(16), _ => new GameTick()));
+        subs.Add(SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new GameTick()));
     }
     
     // Keyboard only when input is focused
     if (model.InputFocused)
     {
-        subs.Add(OnKeyDown(k => new KeyInput(k)));
+        subs.Add(SubscriptionModule.OnKeyDown(data => new KeyInput(data?.Key ?? "")));
     }
     
     // Always track visibility for analytics
-    subs.Add(OnVisibilityChange(v => new TrackVisibility(v)));
+    subs.Add(SubscriptionModule.OnVisibilityChange(evt => new TrackVisibility(evt.State)));
     
     return subs.Count > 0 
         ? SubscriptionModule.Batch(subs) 
@@ -284,7 +237,7 @@ public static Subscription OnWebSocket(string url, Func<string, Message> toMessa
 ```csharp
 public static Subscription Subscriptions(Model model)
     => model.HasUnsavedChanges
-        ? Every(TimeSpan.FromSeconds(30), _ => new AutoSave())
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(30), _ => new AutoSave())
         : SubscriptionModule.None;
 ```
 
@@ -293,7 +246,7 @@ public static Subscription Subscriptions(Model model)
 ```csharp
 public static Subscription Subscriptions(Model model)
     => model.CurrentPage == Page.Dashboard
-        ? Every(TimeSpan.FromMinutes(1), _ => new RefreshDashboard())
+        ? SubscriptionModule.Every(TimeSpan.FromMinutes(1), _ => new RefreshDashboard())
         : SubscriptionModule.None;
 ```
 
@@ -301,7 +254,7 @@ public static Subscription Subscriptions(Model model)
 
 ```csharp
 public static Subscription Subscriptions(Model model)
-    => OnKeyDown(key => (key, model.CtrlPressed) switch
+    => SubscriptionModule.OnKeyDown(data => (data?.Key, model.CtrlPressed) switch
     {
         ("s", true) => new SaveShortcut(),
         ("z", true) => new UndoShortcut(),
@@ -315,9 +268,9 @@ public static Subscription Subscriptions(Model model)
 ```csharp
 public static Subscription Subscriptions(Model model)
     => SubscriptionModule.Batch([
-        OnMouseMove((_, _) => new UserActive()),
-        OnKeyDown(_ => new UserActive()),
-        Every(TimeSpan.FromMinutes(5), _ => new CheckInactivity())
+        SubscriptionModule.OnMouseMove(_ => new UserActive()),
+        SubscriptionModule.OnKeyDown(_ => new UserActive()),
+        SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new CheckInactivity())
     ]);
 ```
 
@@ -368,14 +321,16 @@ public void TimerTick_UpdatesElapsedTime()
 ```csharp
 // ✅ Good - declarative based on model
 public static Subscription Subscriptions(Model model)
-    => model.WantsTimer ? TimerSub() : None;
+    => model.WantsTimer 
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()) 
+        : SubscriptionModule.None;
 
 // ❌ Bad - imperative side effects
 public static Subscription Subscriptions(Model model)
 {
     if (model.WantsTimer)
         StartTimer();  // Side effect!
-    return None;
+    return SubscriptionModule.None;
 }
 ```
 
@@ -383,13 +338,13 @@ public static Subscription Subscriptions(Model model)
 
 ```csharp
 // Animation: 16ms (~60fps)
-Every(TimeSpan.FromMilliseconds(16), _ => new Frame())
+SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new Frame())
 
 // UI updates: 100-1000ms
-Every(TimeSpan.FromMilliseconds(500), _ => new UpdateClock())
+SubscriptionModule.Every(TimeSpan.FromMilliseconds(500), _ => new UpdateClock())
 
 // Data refresh: minutes
-Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
+SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
 ```
 
 ### 3. Implement Equality for Custom Subscriptions

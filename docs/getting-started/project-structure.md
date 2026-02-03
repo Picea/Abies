@@ -72,19 +72,15 @@ The HTML file loads the WebAssembly module:
     <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
-    <div id="app">Loading...</div>
-    
-    <script src="_framework/blazor.webassembly.js"></script>
-    <script src="abies.js"></script>
+    <script type="module" src="abies.js"></script>
 </body>
 </html>
 ```
 
 Key elements:
 
-- `#app` — The container where Abies renders your view
-- `blazor.webassembly.js` — .NET WebAssembly runtime loader
-- `abies.js` — Abies JavaScript interop layer
+- Empty `<body>` — Abies renders directly to `document.body`
+- `abies.js` — Abies JavaScript interop layer (loads the .NET WebAssembly runtime internally)
 
 ## Larger Project Structure
 

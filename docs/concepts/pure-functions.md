@@ -112,7 +112,7 @@ Assert.Equal(result1, result2);
 You can replay message sequences to recreate any state:
 
 ```csharp
-var initialModel = Program.Init();
+var initialModel = Program.Initialize(args);
 var messages = GetRecordedMessages(); // From logging
 
 var finalModel = messages.Aggregate(

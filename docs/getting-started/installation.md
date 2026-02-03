@@ -31,7 +31,7 @@ cd Abies
 dotnet run --project Abies.Counter
 ```
 
-This starts a minimal counter app at `http://localhost:5000`.
+This starts a minimal counter app at `http://localhost:5013`.
 
 ### Option 2: Start from a Template
 
@@ -81,10 +81,10 @@ You should see:
 
 ```
 info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5000
+      Now listening on: http://localhost:5013
 ```
 
-Open `http://localhost:5000` in your browser. You should see a counter with increment and decrement buttons.
+Open `http://localhost:5013` in your browser. You should see a counter with increment and decrement buttons.
 
 ## Project Structure
 
@@ -115,7 +115,7 @@ Ensure you have .NET 10 SDK installed. Check `global.json` in the repository roo
 
 ### Port already in use
 
-The samples default to port 5000. If it's in use, specify a different port:
+The samples default to port 5013. If it's in use, specify a different port:
 
 ```bash
 dotnet run --project Abies.Counter --urls http://localhost:5001

@@ -273,7 +273,7 @@ public record NoOp : Message;
 // Program.cs
 using Abies;
 
-Runtime.Run<CounterProgram>(browser);
+await Runtime.Run<CounterProgram, Arguments, Model>(new Arguments());
 ```
 
 ## See Also

@@ -386,4 +386,4 @@ Understanding the virtual DOM helps you:
 
 - [MVU Architecture](./mvu-architecture.md) — How View fits in MVU
 - [HTML API](../api/html-elements.md) — Building virtual DOM trees
-- [ADR-0004 Virtual DOM](../adr/0004-virtual-dom.md) — Design decisions
+- [ADR-003 Virtual DOM](../adr/ADR-003-virtual-dom.md) — Design decisions
