@@ -98,9 +98,18 @@ gh pr merge --squash
 
 ### Enable Copilot Reviews
 
-The repository already has `.github/workflows/copilot-review.yml` configured.
+Copilot code reviews are configured via **repository rulesets** (not a workflow file).
+
+**Setup**: Go to `Settings → Rules → Rulesets → New branch ruleset`
+
+1. Name: "Copilot Code Review"
+2. Target: Include default branch (`main`)
+3. Enable: "Automatically request Copilot code review"
+4. Optionally enable "Review new pushes"
+5. Click "Create"
 
 Copilot will automatically review every PR and provide:
+
 - 🔍 Code quality feedback
 - 🐛 Bug detection
 - 🔒 Security analysis
@@ -109,21 +118,17 @@ Copilot will automatically review every PR and provide:
 
 ### Using Copilot Reviews
 
-**Automatic** (default):
+**Automatic** (when configured via ruleset):
+
 - Copilot reviews run on every PR automatically
-- Comments appear on the PR within 2-5 minutes
+- Comments appear on the PR within 30 seconds to 2 minutes
 - Review and address feedback as needed
 
-**Manual** (optional):
-```bash
-# Request Copilot review via CLI
-gh pr review --copilot
-```
+**Manual**:
 
-**In GitHub UI**:
 1. Open your PR
-2. Go to **Files changed** tab
-3. Click **Review changes** → **Request Copilot review**
+2. In the right sidebar, click **Reviewers**
+3. Select **Copilot** from the list
 
 See [.github/COPILOT_REVIEW.md](.github/COPILOT_REVIEW.md) for details.
 
@@ -276,7 +281,7 @@ For complete details, see:
 - [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) - Detailed protection rules
 - [.github/SETUP_BRANCH_PROTECTION.md](.github/SETUP_BRANCH_PROTECTION.md) - Step-by-step setup
 - [.github/COPILOT_REVIEW.md](.github/COPILOT_REVIEW.md) - Copilot review guide
-- [docs/adr/ADR-018-trunk-based-development.md](docs/adr/ADR-018-trunk-based-development.md) - Architecture decision
+- [docs/adr/ADR-019-trunk-based-development.md](docs/adr/ADR-019-trunk-based-development.md) - Architecture decision
 
 ## 🆘 Troubleshooting
 
@@ -294,9 +299,10 @@ For complete details, see:
 - Then add them to branch protection
 
 **Copilot review not running**
-- Check if GitHub Copilot is enabled
-- Ensure workflow file exists
-- Check Actions tab for errors
+- Check if GitHub Copilot is enabled for your account/org
+- Verify ruleset is configured (Settings → Rules → Rulesets)
+- Ensure "Automatically request Copilot code review" is enabled
+- Check if PR is not in draft state (unless draft reviews enabled)
 
 ## ❓ Questions?
 

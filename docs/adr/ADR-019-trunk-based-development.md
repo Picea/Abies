@@ -1,4 +1,4 @@
-# ADR-018: Trunk-Based Development with Protected Main Branch
+# ADR-019: Trunk-Based Development with Protected Main Branch
 
 **Status:** Accepted  
 **Date:** 2026-02-05  

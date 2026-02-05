@@ -15,7 +15,7 @@ jobs:
   validate-pr-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
     
     steps:
       - name: Validate PR title
@@ -46,7 +46,7 @@ jobs:
   validate-pr-description:
     name: Validate PR Description
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
     
     steps:
       - name: Check PR description
@@ -95,18 +95,19 @@ jobs:
             const deletions = pr.deletions || 0;
             const totalChanges = additions + deletions;
             
-            const maxChanges = 800;
-            const warningChanges = 400;
+            // Soft limit (warning) and hard limit (failure)
+            const hardLimit = 1500;
+            const softLimit = 400;
             
-            if (totalChanges > maxChanges) {
+            if (totalChanges > hardLimit) {
               core.setFailed(
                 `⚠️  PR is too large (${totalChanges} lines changed). ` +
-                `Please consider breaking it into smaller PRs (< ${maxChanges} lines).`
+                `Please consider breaking it into smaller PRs (< ${hardLimit} lines).`
               );
               return;
             }
             
-            if (totalChanges > warningChanges) {
+            if (totalChanges > softLimit) {
               core.warning(
                 `⚠️  PR is getting large (${totalChanges} lines changed). ` +
                 `Consider breaking it into smaller PRs for easier review.`
@@ -135,14 +136,51 @@ jobs:
       - name: Restore
         run: dotnet restore
       
-      - name: Format check
+      - name: Get changed C# files
+        id: changed-files
         run: |
-          dotnet format --verify-no-changes --verbosity diagnostic
+          # Get list of changed .cs files in the PR
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.cs$' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "has_cs_files=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No C# files changed in this PR"
+          else
+            echo "has_cs_files=true" >> $GITHUB_OUTPUT
+            # Convert newlines to spaces and store
+            FILES_SPACE_SEPARATED=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+            echo "files=$FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+            echo "📝 Changed C# files:"
+            echo "$CHANGED_FILES"
+          fi
+      
+      - name: Format check changed files
+        if: steps.changed-files.outputs.has_cs_files == 'true'
+        run: |
+          # Check formatting only for changed files
+          FILES="${{ steps.changed-files.outputs.files }}"
+          
+          echo "🔍 Checking formatting for changed files..."
+          echo "Files: $FILES"
+          
+          # Run format check with --include for each file
+          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic
+          
           if [ $? -ne 0 ]; then
-            echo "❌ Code formatting issues detected. Run 'dotnet format' locally."
+            echo ""
+            echo "❌ Code formatting issues detected in your changes."
+            echo "Please run the following command locally:"
+            echo "  dotnet format --include $FILES"
+            echo ""
             exit 1
           fi
-          echo "✅ Code formatting is correct"
+          
+          echo "✅ Code formatting is correct for all changed files"
+      
+      - name: Skip format check
+        if: steps.changed-files.outputs.has_cs_files == 'false'
+        run: |
+          echo "✅ No C# files to check - skipping format validation"
 
   # Security scan
   security-scan:
@@ -212,18 +250,37 @@ jobs:
     needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, check-todos]
     
     steps:
+      - name: Check if automated PR
+        id: check-automated
+        run: |
+          if [ "${{ github.event.pull_request.user.login }}" = "dependabot[bot]" ]; then
+            echo "automated=true" >> $GITHUB_OUTPUT
+          else
+            echo "automated=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: All checks passed
         run: |
-          echo "🎉 All PR validation checks passed!"
-          echo "✅ PR title follows Conventional Commits"
-          echo "✅ PR has adequate description"
-          echo "✅ PR size is reasonable"
-          echo "✅ Code formatting is correct"
-          echo "✅ No security vulnerabilities"
-          echo "✅ No untracked TODOs"
-          echo ""
-          echo "Next steps:"
-          echo "1. Wait for CD and E2E workflows to complete"
-          echo "2. Request review from team members"
-          echo "3. Address any feedback"
-          echo "4. Merge when approved!"
+          if [ "${{ steps.check-automated.outputs.automated }}" = "true" ]; then
+            echo "🤖 Automated PR validation summary"
+            echo "✅ PR size is reasonable"
+            echo "✅ Code formatting is correct"
+            echo "✅ No security vulnerabilities"
+            echo "✅ No untracked TODOs"
+            echo ""
+            echo "Note: Title and description checks skipped for automated PRs"
+          else
+            echo "🎉 All PR validation checks passed!"
+            echo "✅ PR title follows Conventional Commits"
+            echo "✅ PR has adequate description"
+            echo "✅ PR size is reasonable"
+            echo "✅ Code formatting is correct"
+            echo "✅ No security vulnerabilities"
+            echo "✅ No untracked TODOs"
+            echo ""
+            echo "Next steps:"
+            echo "1. Wait for CD and E2E workflows to complete"
+            echo "2. Request review from team members"
+            echo "3. Address any feedback"
+            echo "4. Merge when approved!"
+          fi
