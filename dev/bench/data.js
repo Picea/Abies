@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770323233132,
+  "lastUpdate": 1770323234190,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -196,6 +196,74 @@ window.BENCHMARK_DATA = {
             "value": 673.4970641502968,
             "unit": "ns",
             "range": "± 0.6947657707367317"
+          }
+        ]
+      }
+    ],
+    "Virtual DOM Allocations": [
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca386a0c66bd5355ec420092b2ad2274de8be88b",
+          "message": "feat: Add memory allocation tracking to benchmark dashboard (#31)\n\nAdd a second benchmark chart set 'Virtual DOM Allocations' that tracks\nBytesAllocatedPerOperation from the MemoryDiagnoser.\n\nChanges:\n- Add scripts/extract-allocations.py to parse BenchmarkDotNet JSON\n- Add allocation comparison and storage workflow steps\n- Use customSmallerIsBetter tool for allocation metrics\n- Stricter thresholds for allocations (120% alert, 150% fail)",
+          "timestamp": "2026-02-05T21:24:12+01:00",
+          "tree_id": "ffb124c7ee4615e0830ef5e86b89775577ed9126",
+          "url": "https://github.com/Picea/Abies/commit/ca386a0c66bd5355ec420092b2ad2274de8be88b"
+        },
+        "date": 1770323233858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SmallDomDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19"
+          },
+          {
+            "name": "MediumDomDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "LargeDomDiff",
+            "value": 344,
+            "unit": "bytes",
+            "extra": "Gen0: 21"
+          },
+          {
+            "name": "AttributeOnlyDiff",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 22"
+          },
+          {
+            "name": "TextOnlyDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "NodeAdditionDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
+          },
+          {
+            "name": "NodeRemovalDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
           }
         ]
       }
