@@ -1,0 +1,105 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Abies/**'
+      - 'Abies.Benchmarks/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Abies/**'
+      - 'Abies.Benchmarks/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
+
+      - name: Build benchmarks
+        run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
+
+      - name: Run benchmarks
+        run: |
+          dotnet run --project Abies.Benchmarks -c Release --no-build -- \
+            --filter '*DomDiffingBenchmarks*' \
+            --exporters json \
+            --artifacts ./benchmark-results
+
+      # Check if gh-pages branch exists (for PR comparison)
+      - name: Check if gh-pages exists
+        id: gh-pages-check
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Compare benchmarks on PRs (only if gh-pages exists with baseline data)
+      - name: Compare benchmark results (PR)
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
+        with:
+          name: Virtual DOM Benchmarks
+          tool: 'benchmarkdotnet'
+          output-file-path: ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Compare against baseline but don't save or push
+          auto-push: false
+          save-data-file: false
+          # Alert thresholds
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          fail-threshold: '200%'
+          # Always show summary on PRs
+          summary-always: true
+          alert-comment-cc-users: '@MCGPPeters'
+
+      # Store benchmarks on main (creates gh-pages if needed)
+      - name: Store benchmark result (main)
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: Virtual DOM Benchmarks
+          tool: 'benchmarkdotnet'
+          output-file-path: ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Push results to gh-pages
+          auto-push: true
+          save-data-file: true
+          # Alert thresholds (for direct pushes to main)
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          fail-threshold: '200%'
+          alert-comment-cc-users: '@MCGPPeters'
+
+      # Upload artifacts for inspection (always)
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: ./benchmark-results/results/
+          retention-days: 30

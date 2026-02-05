@@ -6,6 +6,7 @@ A WebAssembly library for building MVU-style web applications with .NET.
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![CD](https://github.com/Picea/Abies/actions/workflows/cd.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/cd.yml)
 [![E2E Tests](https://github.com/Picea/Abies/actions/workflows/e2e.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/e2e.yml)
+[![Benchmarks](https://github.com/Picea/Abies/actions/workflows/benchmark.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/benchmark.yml)
 [![CodeQL](https://github.com/Picea/Abies/actions/workflows/codeql.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/codeql.yml)
 [![Security](https://img.shields.io/badge/security-SAST%20%2B%20SCA-green)](SECURITY.md)
 
@@ -125,6 +126,20 @@ See `docs/subscriptions-demo.md` for the demo walkthrough (including the mock We
 
 - .NET 10 SDK or later
 - A modern browser with WebAssembly support
+
+## Performance
+
+Abies includes comprehensive benchmarks for the Virtual DOM diffing algorithm. Performance is continuously monitored with automated quality gates.
+
+📊 **[View Benchmark Results](https://picea.github.io/Abies/dev/bench/)** — Interactive charts with historical trends
+
+| Scenario | Typical Performance |
+|----------|---------------------|
+| Small DOM diff (2-3 elements) | ~235 ns |
+| Medium DOM diff (15-20 elements) | ~310 ns |
+| Large DOM diff (150+ elements) | ~256 ns |
+
+See [docs/benchmarks.md](./docs/benchmarks.md) for details on running benchmarks locally.
 
 ## Building
 
