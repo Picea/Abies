@@ -73,4 +73,4 @@ If your PR fails the lint check:
 
 ## Documentation
 
-See [ADR 0005](../adr/0005-pr-lint-only-changed-files.md) for full architectural decision details.
+See [ADR 018](../adr/ADR-018-pr-lint-only-changed-files.md) for full architectural decision details.

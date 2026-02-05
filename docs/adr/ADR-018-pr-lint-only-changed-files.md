@@ -1,4 +1,4 @@
-# ADR 0005: PR Lint Check Only Changed Files
+# ADR 018: PR Lint Check Only Changed Files
 
 ## Status
 
