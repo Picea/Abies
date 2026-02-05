@@ -135,14 +135,51 @@ jobs:
       - name: Restore
         run: dotnet restore
       
-      - name: Format check
+      - name: Get changed C# files
+        id: changed-files
         run: |
-          dotnet format --verify-no-changes --verbosity diagnostic
+          # Get list of changed .cs files in the PR
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.cs$' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "has_cs_files=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No C# files changed in this PR"
+          else
+            echo "has_cs_files=true" >> $GITHUB_OUTPUT
+            # Convert newlines to spaces and store
+            FILES_SPACE_SEPARATED=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+            echo "files=$FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+            echo "📝 Changed C# files:"
+            echo "$CHANGED_FILES"
+          fi
+      
+      - name: Format check changed files
+        if: steps.changed-files.outputs.has_cs_files == 'true'
+        run: |
+          # Check formatting only for changed files
+          FILES="${{ steps.changed-files.outputs.files }}"
+          
+          echo "🔍 Checking formatting for changed files..."
+          echo "Files: $FILES"
+          
+          # Run format check with --include for each file
+          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic
+          
           if [ $? -ne 0 ]; then
-            echo "❌ Code formatting issues detected. Run 'dotnet format' locally."
+            echo ""
+            echo "❌ Code formatting issues detected in your changes."
+            echo "Please run the following command locally:"
+            echo "  dotnet format --include $FILES"
+            echo ""
             exit 1
           fi
-          echo "✅ Code formatting is correct"
+          
+          echo "✅ Code formatting is correct for all changed files"
+      
+      - name: Skip format check
+        if: steps.changed-files.outputs.has_cs_files == 'false'
+        run: |
+          echo "✅ No C# files to check - skipping format validation"
 
   # Security scan
   security-scan:
