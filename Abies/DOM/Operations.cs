@@ -19,9 +19,9 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Collections.Concurrent;
 using System.Linq;
 
 namespace Abies.DOM
@@ -32,7 +32,7 @@ namespace Abies.DOM
     /// <param name="Title">The title of the document.</param>
     /// <param name="Body">The body content of the document.</param>
     public record Document(string Title, Node Body);
-    
+
     /// <summary>
     /// Represents a node in the Abies DOM.
     /// </summary>
@@ -68,7 +68,7 @@ namespace Abies.DOM
     public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
     /// <summary>
-    /// Represents a command handler for an element in the Abies DOM. 
+    /// Represents a command handler for an element in the Abies DOM.
     /// </summary>
     /// <param name="Name">The name of the handler.</param>
     /// <param name="CommandId">The unique identifier for the command.</param>
@@ -347,7 +347,7 @@ namespace Abies.DOM
             }
         }
     }
-    
+
     /// <summary>
     /// Provides diffing and patching utilities for the virtual DOM.
     /// The implementation is inspired by Elm's VirtualDom diff algorithm
@@ -451,7 +451,7 @@ namespace Abies.DOM
         /// <summary>
         /// Apply a patch to the real DOM by invoking JavaScript interop.
         /// </summary>
-        /// <param name="patch">The patch to apply.</param> 
+        /// <param name="patch">The patch to apply.</param>
         public static async Task Apply(Patch patch)
         {
             switch (patch)
@@ -533,8 +533,8 @@ namespace Abies.DOM
                 default:
                     throw new InvalidOperationException("Unknown patch type");
             }
-        }        
-        
+        }
+
         /// <summary>
         /// Compute the list of patches that transform <paramref name="oldNode"/> into <paramref name="newNode"/>.
         /// </summary>
@@ -560,8 +560,8 @@ namespace Abies.DOM
             {
                 ReturnPatchList(patches);
             }
-        }        
-        
+        }
+
         private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
         {
             // Text nodes only need an update when the value changes
@@ -635,7 +635,7 @@ namespace Abies.DOM
                 }
             }
         }
-        
+
         // Diff attribute collections using dictionaries for O(n) lookup
         private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
         {
@@ -759,12 +759,12 @@ namespace Abies.DOM
             // Use ArrayPool to avoid allocations
             var oldKeysArray = ArrayPool<string>.Shared.Rent(oldLength);
             var newKeysArray = ArrayPool<string>.Shared.Rent(newLength);
-            
+
             try
             {
                 BuildKeySequenceInto(oldChildren, oldKeysArray);
                 BuildKeySequenceInto(newChildren, newKeysArray);
-                
+
                 var oldKeys = oldKeysArray.AsSpan(0, oldLength);
                 var newKeys = newKeysArray.AsSpan(0, newLength);
 
@@ -774,7 +774,7 @@ namespace Abies.DOM
                     // Build lookup maps for efficient matching - use pooled dictionaries
                     var oldKeyToIndex = RentKeyIndexMap();
                     var newKeyToIndex = RentKeyIndexMap();
-                    
+
                     try
                     {
                         oldKeyToIndex.EnsureCapacity(oldLength);
@@ -839,7 +839,7 @@ namespace Abies.DOM
                         var keysToRemove = RentIntList();
                         var keysToAdd = RentIntList();
                         var keysToDiff = RentIntPairList();
-                        
+
                         try
                         {
                             for (int i = 0; i < oldLength; i++)
@@ -968,7 +968,7 @@ namespace Abies.DOM
                 ArrayPool<string>.Shared.Return(newKeysArray);
             }
         }
-        
+
         /// <summary>
         /// Checks if all keys in oldKeys exist in newKeyToIndex (same set, possibly different order).
         /// </summary>
@@ -983,7 +983,7 @@ namespace Abies.DOM
             }
             return true;
         }
-        
+
         /// <summary>
         /// Builds key sequence into a pre-allocated array (avoiding allocation).
         /// </summary>
@@ -1010,7 +1010,7 @@ namespace Abies.DOM
             // The Id is always present, so we use it directly.
             // Only treat auto-generated IDs (from Praefixum) as non-keyed
             // by checking for data-key attribute as an explicit override.
-            
+
             // First, check for explicit data-key attribute (backward compatibility)
             foreach (var attr in element.Attributes)
             {
