@@ -63,10 +63,12 @@ jobs:
           fail-threshold: '200%'
           # Show a summary comment on PR
           summary-always: ${{ github.event_name == 'pull_request' }}
-          # Save benchmark data
+          # Save benchmark data only on main branch
           save-data-file: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          # Skip fetching gh-pages for PRs (branch may not exist yet)
+          skip-fetch-gh-pages: ${{ github.event_name == 'pull_request' }}
           # Alert when threshold exceeded
-          alert-comment-cc-users: '@${{ github.actor }}'
+          alert-comment-cc-users: '@MCGPPeters'
 
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
