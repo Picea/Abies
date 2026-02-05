@@ -4,6 +4,10 @@ A WebAssembly library for building MVU-style web applications with .NET.
 
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![CD](https://github.com/Picea/Abies/actions/workflows/cd.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/cd.yml)
+[![E2E Tests](https://github.com/Picea/Abies/actions/workflows/e2e.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/e2e.yml)
+[![CodeQL](https://github.com/Picea/Abies/actions/workflows/codeql.yml/badge.svg)](https://github.com/Picea/Abies/actions/workflows/codeql.yml)
+[![Security](https://img.shields.io/badge/security-SAST%20%2B%20SCA-green)](SECURITY.md)
 
 ## Overview
 

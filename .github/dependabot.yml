@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # Monitor NuGet dependencies
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Limit open PRs to avoid noise
+    open-pull-requests-limit: 5
+    # Group minor and patch updates
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Security updates always get their own PR
+    labels:
+      - "dependencies"
+      - "security"
+    # Auto-merge dev dependencies if tests pass
+    # (requires GitHub branch protection rules)
+    reviewers:
+      - "Picea"  # Replace with actual maintainer GitHub username
+    
+  # Monitor GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -11,6 +11,14 @@
       <!-- Example: Treat all warnings as errors -->
       <!-- <WarningsAsErrors>nullable, CS8509, CS8524, CS8846, CS8510 </WarningsAsErrors> -->
       
+      <!-- NuGet Security Audit Configuration -->
+      <!-- Enabled by default in .NET 9+, but explicitly configured for clarity -->
+      <NuGetAudit>true</NuGetAudit>
+      <NuGetAuditMode>all</NuGetAuditMode>
+      <NuGetAuditLevel>low</NuGetAuditLevel>
+      <!-- Treat high and critical vulnerabilities as warnings (can be changed to errors later) -->
+      <!-- <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors> -->
+      
     </PropertyGroup>
     <ItemGroup>
         <!-- Include the GlobalUsings.cs file in all projects -->
