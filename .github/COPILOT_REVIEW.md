@@ -331,7 +331,7 @@ effects to Commands.
 
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contribution guidelines
 - [.github/workflows/pr-validation.yml](../workflows/pr-validation.yml) - PR validation workflow
-- [ADR-018](../../docs/adr/ADR-018-trunk-based-development.md) - Trunk-based development
+- [ADR-019](../../docs/adr/ADR-019-trunk-based-development.md) - Trunk-based development
 
 ## Feedback
 

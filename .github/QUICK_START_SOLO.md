@@ -276,7 +276,7 @@ For complete details, see:
 - [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) - Detailed protection rules
 - [.github/SETUP_BRANCH_PROTECTION.md](.github/SETUP_BRANCH_PROTECTION.md) - Step-by-step setup
 - [.github/COPILOT_REVIEW.md](.github/COPILOT_REVIEW.md) - Copilot review guide
-- [docs/adr/ADR-018-trunk-based-development.md](docs/adr/ADR-018-trunk-based-development.md) - Architecture decision
+- [docs/adr/ADR-019-trunk-based-development.md](docs/adr/ADR-019-trunk-based-development.md) - Architecture decision
 
 ## 🆘 Troubleshooting
 
