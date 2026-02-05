@@ -1,0 +1,61 @@
+name: Copilot Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [ "main" ]
+
+# Ensure only one review runs per PR
+concurrency:
+  group: copilot-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  copilot-review:
+    name: Copilot Code Review
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run Copilot Code Review
+        uses: github/code-review-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Focus areas for review
+          review-focus: |
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Security vulnerabilities
+            - Performance concerns
+            - Test coverage
+            - Documentation completeness
+          # Specific guidelines for Abies project
+          guidelines: |
+            This is the Abies framework - a pure functional MVU architecture for Blazor WebAssembly.
+            
+            When reviewing, pay special attention to:
+            1. Pure functional programming - Update functions must be pure
+            2. Immutability - State should use immutable records
+            3. MVU pattern - Model-View-Update separation
+            4. Type safety - Leverage C# type system
+            5. Test coverage - All new code should have tests
+            6. Documentation - Public APIs need XML comments
+            7. Security - Check for XSS, injection vulnerabilities
+            8. Performance - Virtual DOM efficiency
+            
+            Framework-specific rules:
+            - Messages should inherit from base Message type
+            - Commands must be pure and composable
+            - No side effects in Update function
+            - Follow existing code style and conventions
+            - Ensure CHANGELOG.md is updated for user-facing changes

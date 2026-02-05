@@ -22,6 +22,10 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-012](./ADR-012-test-strategy.md) | Test Strategy | Accepted | Layered testing: unit, integration, E2E |
 | [ADR-013](./ADR-013-opentelemetry.md) | OpenTelemetry Instrumentation | Accepted | OTEL for observability |
 | [ADR-014](./ADR-014-compile-time-ids.md) | Compile-Time Unique ID Generation | Accepted | Source generator for stable element IDs |
+| [ADR-015](./ADR-015-tracing-verbosity.md) | Tracing Verbosity Levels | Accepted | Configurable OTEL verbosity |
+| [ADR-016](./ADR-016-keyed-dom-diffing.md) | Keyed DOM Diffing | Accepted | Key-based reconciliation for lists |
+| [ADR-017](./ADR-017-dotnet-new-templates.md) | .NET New Templates | Accepted | Project templates for quick start |
+| [ADR-018](./ADR-018-trunk-based-development.md) | Trunk-Based Development | Accepted | Protected main branch with PR workflow |
 
 ## How to Use ADRs
 

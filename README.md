@@ -171,6 +171,42 @@ Step-by-step guides to learn Abies:
 7. [Real World App](./docs/tutorials/07-real-world-app.md) — Complete example
 8. [Tracing](./docs/tutorials/08-tracing.md) — OpenTelemetry integration
 
+## Contributing
+
+We welcome contributions! Abies follows **trunk-based development** with protected main branch.
+
+### Quick Contribution Guide
+
+1. **Fork and clone** the repository
+2. **Create a feature branch** from `main`
+3. **Make your changes** with tests
+4. **Ensure all tests pass** locally
+5. **Submit a pull request** following our [PR template](.github/pull_request_template.md)
+
+For detailed guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Code of Conduct
+
+- Be respectful and constructive
+- Follow code style guidelines
+- Write tests for new features
+- Keep PRs small and focused
+- All changes require peer review
+
+### Branch Protection
+
+The `main` branch is protected and requires:
+- ✅ Pull request with 0+ approval (allows self-approval for solo dev)
+- ✅ GitHub Copilot automated code review (optional but recommended)
+- ✅ All CI checks passing (CD, E2E, CodeQL, PR validation)
+  - **Note**: E2E timeouts are warnings only (see [E2E Timeout Handling](.github/E2E_TIMEOUT_HANDLING.md))
+- ✅ Up-to-date branch
+- ✅ All conversations resolved
+
+See [Branch Protection Guide](.github/BRANCH_PROTECTION.md) for details.
+
+**For solo development**: You can approve your own PRs, but all automated checks must still pass. GitHub Copilot provides automated code review feedback. See [Copilot Review Guide](.github/COPILOT_REVIEW.md).
+
 ## The Name
 
 Abies is a Latin name meaning "fir tree".
