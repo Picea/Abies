@@ -41,10 +41,12 @@ Enable these checkboxes:
 - ⬜ **Require approval of the most recent reviewable push** (optional for solo dev)
 - ⬜ **Allow specified actors to bypass required pull requests** (leave UNCHECKED)
 
-##### ✅ Require status checks to pass before merging
+#### ✅ Require Status Checks
 
-- ✅ **Require status checks to pass before merging** (main checkbox)
-- ✅ **Require branches to be up to date before merging**
+⚠️ **Important**: Status checks only appear after they run at least once! See "Verification" section below for how to populate the checks list.
+
+- [x] **Require status checks to pass before merging** (main checkbox)
+- [x] **Require branches to be up to date before merging** (only available after adding at least one check)
 
 Then select these status checks (search for each):
 
