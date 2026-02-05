@@ -98,6 +98,8 @@ jobs:
           # Compare against baseline but don't save or push
           auto-push: false
           save-data-file: false
+          # Skip fetch since previous step already fetched gh-pages
+          skip-fetch-gh-pages: true
           # Alert thresholds for allocations (more strict - any increase is concerning)
           alert-threshold: '120%'
           comment-on-alert: true
