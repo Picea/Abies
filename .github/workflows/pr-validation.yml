@@ -86,34 +86,6 @@ jobs:
     if: github.event.pull_request.draft == false
     
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Check if docs/CI only PR
-        id: check-docs-only
-        run: |
-          # Get list of changed files
-          CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files[].path')
-          
-          # Check if all files are docs/CI files
-          DOCS_CI_ONLY=true
-          for file in $CHANGED_FILES; do
-            # Allow: .md files, .yml/.yaml in .github, adr/ docs
-            if [[ ! "$file" =~ \.(md|yml|yaml)$ ]] && [[ ! "$file" =~ ^\.github/ ]] && [[ ! "$file" =~ ^docs/ ]]; then
-              DOCS_CI_ONLY=false
-              break
-            fi
-          done
-          
-          echo "docs_ci_only=$DOCS_CI_ONLY" >> $GITHUB_OUTPUT
-          if [ "$DOCS_CI_ONLY" = "true" ]; then
-            echo "📝 PR contains only documentation/CI files"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
       - name: Check PR size
         uses: actions/github-script@v7
         with:
@@ -123,24 +95,19 @@ jobs:
             const deletions = pr.deletions || 0;
             const totalChanges = additions + deletions;
             
-            // Higher limit for docs/CI PRs
-            const isDocsCiOnly = '${{ steps.check-docs-only.outputs.docs_ci_only }}' === 'true';
-            const maxChanges = isDocsCiOnly ? 2000 : 800;
-            const warningChanges = isDocsCiOnly ? 1000 : 400;
+            // Soft limit (warning) and hard limit (failure)
+            const hardLimit = 1500;
+            const softLimit = 400;
             
-            if (isDocsCiOnly) {
-              core.info(`📝 Docs/CI PR - using relaxed limits (max: ${maxChanges})`);
-            }
-            
-            if (totalChanges > maxChanges) {
+            if (totalChanges > hardLimit) {
               core.setFailed(
                 `⚠️  PR is too large (${totalChanges} lines changed). ` +
-                `Please consider breaking it into smaller PRs (< ${maxChanges} lines).`
+                `Please consider breaking it into smaller PRs (< ${hardLimit} lines).`
               );
               return;
             }
             
-            if (totalChanges > warningChanges) {
+            if (totalChanges > softLimit) {
               core.warning(
                 `⚠️  PR is getting large (${totalChanges} lines changed). ` +
                 `Consider breaking it into smaller PRs for easier review.`
