@@ -15,7 +15,7 @@ jobs:
   validate-pr-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
     
     steps:
       - name: Validate PR title
@@ -46,7 +46,7 @@ jobs:
   validate-pr-description:
     name: Validate PR Description
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
     
     steps:
       - name: Check PR description
@@ -212,18 +212,37 @@ jobs:
     needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, check-todos]
     
     steps:
+      - name: Check if automated PR
+        id: check-automated
+        run: |
+          if [ "${{ github.event.pull_request.user.login }}" = "dependabot[bot]" ]; then
+            echo "automated=true" >> $GITHUB_OUTPUT
+          else
+            echo "automated=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: All checks passed
         run: |
-          echo "🎉 All PR validation checks passed!"
-          echo "✅ PR title follows Conventional Commits"
-          echo "✅ PR has adequate description"
-          echo "✅ PR size is reasonable"
-          echo "✅ Code formatting is correct"
-          echo "✅ No security vulnerabilities"
-          echo "✅ No untracked TODOs"
-          echo ""
-          echo "Next steps:"
-          echo "1. Wait for CD and E2E workflows to complete"
-          echo "2. Request review from team members"
-          echo "3. Address any feedback"
-          echo "4. Merge when approved!"
+          if [ "${{ steps.check-automated.outputs.automated }}" = "true" ]; then
+            echo "🤖 Automated PR validation summary"
+            echo "✅ PR size is reasonable"
+            echo "✅ Code formatting is correct"
+            echo "✅ No security vulnerabilities"
+            echo "✅ No untracked TODOs"
+            echo ""
+            echo "Note: Title and description checks skipped for automated PRs"
+          else
+            echo "🎉 All PR validation checks passed!"
+            echo "✅ PR title follows Conventional Commits"
+            echo "✅ PR has adequate description"
+            echo "✅ PR size is reasonable"
+            echo "✅ Code formatting is correct"
+            echo "✅ No security vulnerabilities"
+            echo "✅ No untracked TODOs"
+            echo ""
+            echo "Next steps:"
+            echo "1. Wait for CD and E2E workflows to complete"
+            echo "2. Request review from team members"
+            echo "3. Address any feedback"
+            echo "4. Merge when approved!"
+          fi

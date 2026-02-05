@@ -141,6 +141,8 @@ Use the provided template. Include:
 - **Testing** - What testing was performed
 - **Related Issues** - Link to any related issues
 
+**Note**: Automated PRs (like Dependabot dependency updates) are exempt from PR title and description validation checks, but still must pass all code quality, security, and test checks.
+
 ### PR Size
 - Keep PRs **small** (< 400 lines changed)
 - Break large features into multiple PRs
