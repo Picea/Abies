@@ -18,6 +18,7 @@
 // =============================================================================
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
@@ -357,6 +358,9 @@ namespace Abies.DOM
         // Object pools to reduce allocations
         private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
         private static readonly ConcurrentQueue<Dictionary<string, Attribute>> _attributeMapPool = new();
+        private static readonly ConcurrentQueue<Dictionary<string, int>> _keyIndexMapPool = new();
+        private static readonly ConcurrentQueue<List<int>> _intListPool = new();
+        private static readonly ConcurrentQueue<List<(int, int)>> _intPairListPool = new();
 
         private static List<Patch> RentPatchList()
         {
@@ -388,6 +392,60 @@ namespace Abies.DOM
         {
             if (map.Count < 100) // Prevent memory bloat
                 _attributeMapPool.Enqueue(map);
+        }
+
+        private static Dictionary<string, int> RentKeyIndexMap()
+        {
+            if (_keyIndexMapPool.TryDequeue(out var map))
+            {
+                map.Clear();
+                return map;
+            }
+            return [];
+        }
+
+        private static void ReturnKeyIndexMap(Dictionary<string, int> map)
+        {
+            if (map.Count < 200) // Prevent memory bloat
+            {
+                _keyIndexMapPool.Enqueue(map);
+            }
+        }
+
+        private static List<int> RentIntList()
+        {
+            if (_intListPool.TryDequeue(out var list))
+            {
+                list.Clear();
+                return list;
+            }
+            return [];
+        }
+
+        private static void ReturnIntList(List<int> list)
+        {
+            if (list.Count < 500) // Prevent memory bloat
+            {
+                _intListPool.Enqueue(list);
+            }
+        }
+
+        private static List<(int, int)> RentIntPairList()
+        {
+            if (_intPairListPool.TryDequeue(out var list))
+            {
+                list.Clear();
+                return list;
+            }
+            return [];
+        }
+
+        private static void ReturnIntPairList(List<(int, int)> list)
+        {
+            if (list.Count < 500) // Prevent memory bloat
+            {
+                _intPairListPool.Enqueue(list);
+            }
         }
 
         /// <summary>
@@ -689,135 +747,251 @@ namespace Abies.DOM
 
             // Early exit for identical child arrays
             if (ReferenceEquals(oldChildren, newChildren))
+            {
                 return;
+            }
 
             var oldLength = oldChildren.Length;
             var newLength = newChildren.Length;
 
             // ADR-016: Use ID-based keyed diffing for all elements.
             // Build maps of old and new children by their keys (element Id or data-key).
-            var oldKeys = BuildKeySequence(oldChildren);
-            var newKeys = BuildKeySequence(newChildren);
-
-            // Check if keys differ at all
-            if (!oldKeys.SequenceEqual(newKeys))
+            // Use ArrayPool to avoid allocations
+            var oldKeysArray = ArrayPool<string>.Shared.Rent(oldLength);
+            var newKeysArray = ArrayPool<string>.Shared.Rent(newLength);
+            
+            try
             {
-                // Build lookup maps for efficient matching
-                var oldKeyToIndex = new Dictionary<string, int>(oldLength);
-                for (int i = 0; i < oldLength; i++)
-                    oldKeyToIndex[oldKeys[i]] = i;
+                BuildKeySequenceInto(oldChildren, oldKeysArray);
+                BuildKeySequenceInto(newChildren, newKeysArray);
+                
+                var oldKeys = oldKeysArray.AsSpan(0, oldLength);
+                var newKeys = newKeysArray.AsSpan(0, newLength);
 
-                var newKeyToIndex = new Dictionary<string, int>(newLength);
-                for (int i = 0; i < newLength; i++)
-                    newKeyToIndex[newKeys[i]] = i;
-
-                // Check if this is a reorder (same keys, different order) or a membership change
-                var oldKeySet = new HashSet<string>(oldKeys);
-                var newKeySet = new HashSet<string>(newKeys);
-                var isReorder = oldKeySet.SetEquals(newKeySet) && oldLength == newLength;
-
-                if (isReorder)
+                // Check if keys differ at all
+                if (!oldKeys.SequenceEqual(newKeys))
                 {
-                    // Reorder detected: remove all old children and add all new children
-                    // to ensure correct DOM order
-                    for (int i = oldLength - 1; i >= 0; i--)
+                    // Build lookup maps for efficient matching - use pooled dictionaries
+                    var oldKeyToIndex = RentKeyIndexMap();
+                    var newKeyToIndex = RentKeyIndexMap();
+                    
+                    try
                     {
-                        if (oldChildren[i] is Element oldChild)
-                            patches.Add(new RemoveChild(oldParent, oldChild));
-                        else if (oldChildren[i] is RawHtml oldRaw)
-                            patches.Add(new RemoveRaw(oldParent, oldRaw));
-                        else if (oldChildren[i] is Text oldText)
-                            patches.Add(new RemoveText(oldParent, oldText));
-                    }
+                        oldKeyToIndex.EnsureCapacity(oldLength);
+                        for (int i = 0; i < oldLength; i++)
+                        {
+                            oldKeyToIndex[oldKeys[i]] = i;
+                        }
 
-                    for (int i = 0; i < newLength; i++)
+                        newKeyToIndex.EnsureCapacity(newLength);
+                        for (int i = 0; i < newLength; i++)
+                        {
+                            newKeyToIndex[newKeys[i]] = i;
+                        }
+
+                        // Check if this is a reorder (same keys, different order) or a membership change
+                        // Avoid allocating HashSets - use dictionaries we already have
+                        var isReorder = oldLength == newLength && AreKeysSameSet(oldKeys, newKeyToIndex);
+
+                        if (isReorder)
+                        {
+                            // Reorder detected: remove all old children and add all new children
+                            // to ensure correct DOM order
+                            for (int i = oldLength - 1; i >= 0; i--)
+                            {
+                                if (oldChildren[i] is Element oldChild)
+                                {
+                                    patches.Add(new RemoveChild(oldParent, oldChild));
+                                }
+                                else if (oldChildren[i] is RawHtml oldRaw)
+                                {
+                                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                                }
+                                else if (oldChildren[i] is Text oldText)
+                                {
+                                    patches.Add(new RemoveText(oldParent, oldText));
+                                }
+                            }
+
+                            for (int i = 0; i < newLength; i++)
+                            {
+                                if (newChildren[i] is Element newChild)
+                                {
+                                    patches.Add(new AddChild(newParent, newChild));
+                                }
+                                else if (newChildren[i] is RawHtml newRaw)
+                                {
+                                    patches.Add(new AddRaw(newParent, newRaw));
+                                }
+                                else if (newChildren[i] is Text newText)
+                                {
+                                    patches.Add(new AddText(newParent, newText));
+                                }
+                            }
+                            return;
+                        }
+
+                        // Membership change: some keys added, some removed
+                        // Find keys that exist in old but not in new (to remove)
+                        // Find keys that exist in new but not in old (to add)
+                        // Find keys that exist in both (to diff)
+                        // Use pooled lists
+                        var keysToRemove = RentIntList();
+                        var keysToAdd = RentIntList();
+                        var keysToDiff = RentIntPairList();
+                        
+                        try
+                        {
+                            for (int i = 0; i < oldLength; i++)
+                            {
+                                if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
+                                {
+                                    keysToDiff.Add((i, newIndex));
+                                }
+                                else
+                                {
+                                    keysToRemove.Add(i);
+                                }
+                            }
+
+                            for (int i = 0; i < newLength; i++)
+                            {
+                                if (!oldKeyToIndex.ContainsKey(newKeys[i]))
+                                {
+                                    keysToAdd.Add(i);
+                                }
+                            }
+
+                            // Remove old children that don't exist in new (iterate backwards to maintain order)
+                            for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                            {
+                                var idx = keysToRemove[i];
+                                if (oldChildren[idx] is Element oldChild)
+                                {
+                                    patches.Add(new RemoveChild(oldParent, oldChild));
+                                }
+                                else if (oldChildren[idx] is RawHtml oldRaw)
+                                {
+                                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                                }
+                                else if (oldChildren[idx] is Text oldText)
+                                {
+                                    patches.Add(new RemoveText(oldParent, oldText));
+                                }
+                            }
+
+                            // Diff children that exist in both trees
+                            foreach (var (oldIndex, newIndex) in keysToDiff)
+                            {
+                                DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
+                            }
+
+                            // Add new children that don't exist in old
+                            foreach (var idx in keysToAdd)
+                            {
+                                if (newChildren[idx] is Element newChild)
+                                {
+                                    patches.Add(new AddChild(newParent, newChild));
+                                }
+                                else if (newChildren[idx] is RawHtml newRaw)
+                                {
+                                    patches.Add(new AddRaw(newParent, newRaw));
+                                }
+                                else if (newChildren[idx] is Text newText)
+                                {
+                                    patches.Add(new AddText(newParent, newText));
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            ReturnIntList(keysToRemove);
+                            ReturnIntList(keysToAdd);
+                            ReturnIntPairList(keysToDiff);
+                        }
+                        return;
+                    }
+                    finally
                     {
-                        if (newChildren[i] is Element newChild)
-                            patches.Add(new AddChild(newParent, newChild));
-                        else if (newChildren[i] is RawHtml newRaw)
-                            patches.Add(new AddRaw(newParent, newRaw));
-                        else if (newChildren[i] is Text newText)
-                            patches.Add(new AddText(newParent, newText));
+                        ReturnKeyIndexMap(oldKeyToIndex);
+                        ReturnKeyIndexMap(newKeyToIndex);
                     }
-                    return;
                 }
 
-                // Membership change: some keys added, some removed
-                // Find keys that exist in old but not in new (to remove)
-                // Find keys that exist in new but not in old (to add)
-                // Find keys that exist in both (to diff)
-                var keysToRemove = new List<int>();
-                var keysToAdd = new List<int>();
-                var keysToDiff = new List<(int oldIndex, int newIndex)>();
-
-                for (int i = 0; i < oldLength; i++)
+                // Keys are identical: diff in place
+                var shared = Math.Min(oldLength, newLength);
+                for (int i = 0; i < shared; i++)
                 {
-                    if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
-                        keysToDiff.Add((i, newIndex));
-                    else
-                        keysToRemove.Add(i);
+                    DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
                 }
 
-                for (int i = 0; i < newLength; i++)
+                // Remove extra old children (iterate backwards to maintain DOM order)
+                for (int i = oldLength - 1; i >= shared; i--)
                 {
-                    if (!oldKeyToIndex.ContainsKey(newKeys[i]))
-                        keysToAdd.Add(i);
-                }
-
-                // Remove old children that don't exist in new (iterate backwards to maintain order)
-                for (int i = keysToRemove.Count - 1; i >= 0; i--)
-                {
-                    var idx = keysToRemove[i];
-                    if (oldChildren[idx] is Element oldChild)
+                    if (oldChildren[i] is Element oldChild)
+                    {
                         patches.Add(new RemoveChild(oldParent, oldChild));
-                    else if (oldChildren[idx] is RawHtml oldRaw)
+                    }
+                    else if (oldChildren[i] is RawHtml oldRaw)
+                    {
                         patches.Add(new RemoveRaw(oldParent, oldRaw));
-                    else if (oldChildren[idx] is Text oldText)
+                    }
+                    else if (oldChildren[i] is Text oldText)
+                    {
                         patches.Add(new RemoveText(oldParent, oldText));
+                    }
                 }
 
-                // Diff children that exist in both trees
-                foreach (var (oldIndex, newIndex) in keysToDiff)
-                    DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
-
-                // Add new children that don't exist in old
-                foreach (var idx in keysToAdd)
+                // Add additional new children
+                for (int i = shared; i < newLength; i++)
                 {
-                    if (newChildren[idx] is Element newChild)
+                    if (newChildren[i] is Element newChild)
+                    {
                         patches.Add(new AddChild(newParent, newChild));
-                    else if (newChildren[idx] is RawHtml newRaw)
+                    }
+                    else if (newChildren[i] is RawHtml newRaw)
+                    {
                         patches.Add(new AddRaw(newParent, newRaw));
-                    else if (newChildren[idx] is Text newText)
+                    }
+                    else if (newChildren[i] is Text newText)
+                    {
                         patches.Add(new AddText(newParent, newText));
+                    }
                 }
-                return;
             }
-
-            // Keys are identical: diff in place
-            var shared = Math.Min(oldLength, newLength);
-            for (int i = 0; i < shared; i++)
-                DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
-
-            // Remove extra old children (iterate backwards to maintain DOM order)
-            for (int i = oldLength - 1; i >= shared; i--)
+            finally
             {
-                if (oldChildren[i] is Element oldChild)
-                    patches.Add(new RemoveChild(oldParent, oldChild));
-                else if (oldChildren[i] is RawHtml oldRaw)
-                    patches.Add(new RemoveRaw(oldParent, oldRaw));
-                else if (oldChildren[i] is Text oldText)
-                    patches.Add(new RemoveText(oldParent, oldText));
+                // Clear the arrays before returning to pool (avoid memory leaks of string references)
+                Array.Clear(oldKeysArray, 0, oldLength);
+                Array.Clear(newKeysArray, 0, newLength);
+                ArrayPool<string>.Shared.Return(oldKeysArray);
+                ArrayPool<string>.Shared.Return(newKeysArray);
             }
-
-            // Add additional new children
-            for (int i = shared; i < newLength; i++)
+        }
+        
+        /// <summary>
+        /// Checks if all keys in oldKeys exist in newKeyToIndex (same set, possibly different order).
+        /// </summary>
+        private static bool AreKeysSameSet(ReadOnlySpan<string> oldKeys, Dictionary<string, int> newKeyToIndex)
+        {
+            foreach (var key in oldKeys)
             {
-                if (newChildren[i] is Element newChild)
-                    patches.Add(new AddChild(newParent, newChild));
-                else if (newChildren[i] is RawHtml newRaw)
-                    patches.Add(new AddRaw(newParent, newRaw));
-                else if (newChildren[i] is Text newText)
-                    patches.Add(new AddText(newParent, newText));
+                if (!newKeyToIndex.ContainsKey(key))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        /// <summary>
+        /// Builds key sequence into a pre-allocated array (avoiding allocation).
+        /// </summary>
+        private static void BuildKeySequenceInto(Node[] children, string[] keys)
+        {
+            for (int i = 0; i < children.Length; i++)
+            {
+                keys[i] = GetKey(children[i]) ?? $"__index:{i}";
             }
         }
 
@@ -847,16 +1021,6 @@ namespace Abies.DOM
             // Use element Id as the key
             // Element IDs are always unique, making them ideal for keyed diffing
             return element.Id;
-        }
-
-        private static string[] BuildKeySequence(Node[] children)
-        {
-            var keys = new string[children.Length];
-            for (int i = 0; i < children.Length; i++)
-            {
-                keys[i] = GetKey(children[i]) ?? $"__index:{i}";
-            }
-            return keys;
         }
     }
 }
