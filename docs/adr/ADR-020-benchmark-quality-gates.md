@@ -108,5 +108,5 @@ Benchmarks run on:
 
 - [BenchmarkDotNet Documentation](https://benchmarkdotnet.org/)
 - [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark)
-- [GitHub Issue #16](https://github.com/mauricef/Abies/issues/16)
+- [GitHub Issue #16](https://github.com/Picea/Abies/issues/16)
 - [ADR-016: Keyed DOM Diffing](ADR-016-keyed-dom-diffing.md)
