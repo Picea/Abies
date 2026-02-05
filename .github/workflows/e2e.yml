@@ -36,10 +36,21 @@ jobs:
         run: dotnet build --no-restore -c Debug
 
       - name: Run E2E tests (sequential)
+        id: e2e-tests
+        continue-on-error: true
         run: |
           dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
             --no-build -c Debug -v minimal -m:1 \
-            -l "trx;LogFileName=conduit-e2e.trx"
+            -l "trx;LogFileName=conduit-e2e.trx" \
+            -l "console;verbosity=normal" \
+            -- RunConfiguration.TestSessionTimeout=3600000
+      
+      - name: Analyze test results
+        if: always()
+        id: analyze-results
+        run: |
+          python3 scripts/analyze_e2e_results.py \
+            Abies.Conduit.E2E/TestResults/conduit-e2e.trx
 
       - name: Upload test results
         if: always()

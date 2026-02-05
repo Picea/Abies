@@ -1,0 +1,16 @@
+# CODEOWNERS
+# This file defines individuals or teams responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code that they own.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owner - responsible for everything unless a later match takes precedence
+# Currently solo maintainer; will add team designations as project grows
+* @mcgppeters
+
+# When adding team members, you can specify different owners for different areas:
+# /docs/ @mcgppeters @Picea/docs-team
+# /Abies/ @mcgppeters @Picea/core-team
+# /.github/workflows/ @mcgppeters @Picea/devops
+

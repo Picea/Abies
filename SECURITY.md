@@ -13,7 +13,7 @@ We actively support the latest major version of Abies. Security updates are prov
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please report security vulnerabilities by emailing: [Add security email here]
+Instead, please report security vulnerabilities by emailing: me@mauricepeters.dev
 
 You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
 
@@ -66,7 +66,7 @@ When using Abies in your projects:
 1. **Keep Abies Updated**: Always use the latest stable version
 2. **Review Dependencies**: Check the dependencies Abies brings into your project
 3. **Enable NuGet Audit**: Ensure `NuGetAudit` is enabled in your projects (enabled by default in .NET 9+)
-4. **Follow CSP Guidelines**: Configure appropriate Content Security Policy headers for your Blazor WASM apps
+4. **Follow CSP Guidelines**: Configure appropriate Content Security Policy headers for your apps
 5. **Validate User Input**: Even in client-side applications, validate and sanitize all user input
 
 ## Known Limitations

@@ -24,7 +24,7 @@ updates:
     # Auto-merge dev dependencies if tests pass
     # (requires GitHub branch protection rules)
     reviewers:
-      - "Picea"  # Replace with actual maintainer GitHub username
+      - "Maurice CGP Peters" 
     
   # Monitor GitHub Actions
   - package-ecosystem: "github-actions"
