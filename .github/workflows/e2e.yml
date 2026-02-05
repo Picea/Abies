@@ -25,15 +25,17 @@ jobs:
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
 
-      # Installs Playwright browsers and required OS deps on Ubuntu
-      - name: Setup Playwright
-        run: npx playwright install --with-deps
-
       - name: Restore
         run: dotnet restore
 
       - name: Build
         run: dotnet build --no-restore -c Debug
+
+      # Install Playwright browsers for .NET (must run AFTER build)
+      # See: https://playwright.dev/dotnet/docs/ci-intro
+      - name: Install Playwright browsers
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
+        working-directory: Abies.Conduit.E2E
 
       - name: Run E2E tests (sequential)
         id: e2e-tests
@@ -54,7 +56,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-test-results
           path: |

@@ -13,53 +13,35 @@ GitHub Copilot can provide automated code reviews on pull requests, offering:
 - 📚 **Documentation checks** - Missing or unclear docs
 - ✅ **Test coverage** - Gaps in testing
 
-## Two Ways to Use Copilot Reviews
+## How Copilot Reviews Work
 
-### Option 1: Automated Workflow (Recommended for Solo Dev)
+### Automatic Reviews via Repository Rulesets
 
-The repository includes a GitHub Actions workflow that automatically runs Copilot reviews on every PR.
+GitHub Copilot code reviews are configured through **repository rulesets**, not GitHub Actions workflows. This is the official GitHub approach as of 2025.
 
-**File**: `.github/workflows/copilot-review.yml`
+**Configuration location**: `Settings → Rules → Rulesets → Branch ruleset for main`
 
-**Triggers**:
-- When a PR is opened
-- When new commits are pushed
-- When a PR is marked ready for review
+**What's enabled**:
+- ✅ Automatically request Copilot code review
+- ✅ Review new pushes (re-reviews when you push changes)
+- ⬜ Review draft pull requests (optional)
 
-**What it does**:
-- Reviews all changed files
-- Posts comments on specific lines
-- Provides overall feedback
-- Suggests improvements
-
-**Configuration**:
-
-The workflow is pre-configured with Abies-specific guidelines:
-- Pure functional programming checks
-- MVU pattern verification
-- Immutability enforcement
-- Type safety validation
-- Test coverage requirements
-
-### Option 2: Manual Copilot Review
+### Requesting a Manual Review
 
 You can also request Copilot reviews manually:
 
 #### Using GitHub UI
 
 1. Open a pull request
-2. Go to the **Files changed** tab
-3. Click the **Review changes** dropdown
-4. Select **Request Copilot review**
+2. In the right sidebar, find **Reviewers**
+3. Click and select **Copilot** from the list
+4. Wait 30 seconds to 2 minutes for feedback
 
 #### Using GitHub CLI
 
 ```bash
-# Request Copilot review on current PR
-gh pr review --copilot
-
-# Request review with specific focus
-gh pr review --copilot --focus "security,performance"
+# Using the MCP GitHub tools or gh CLI
+gh pr view --comments  # View Copilot review comments
 ```
 
 ## For Solo Development
@@ -170,24 +152,23 @@ For solo development:
 
 ## Custom Review Guidelines
 
-The Copilot review workflow includes Abies-specific guidelines:
+Copilot code review can be customized via `.github/copilot-instructions.md`:
 
-```yaml
-guidelines: |
-  This is the Abies framework - a pure functional MVU architecture.
-  
-  Focus areas:
-  1. Pure functional programming - Update functions must be pure
-  2. Immutability - State should use immutable records
-  3. MVU pattern - Model-View-Update separation
-  4. Type safety - Leverage C# type system
-  5. Test coverage - All new code should have tests
-  6. Documentation - Public APIs need XML comments
-  7. Security - Check for XSS, injection vulnerabilities
-  8. Performance - Virtual DOM efficiency
+```markdown
+# Abies Framework Review Guidelines
+
+When performing a code review, focus on:
+1. Pure functional programming - Update functions must be pure
+2. Immutability - State should use immutable records
+3. MVU pattern - Model-View-Update separation
+4. Type safety - Leverage C# type system
+5. Test coverage - All new code should have tests
+6. Documentation - Public APIs need XML comments
+7. Security - Check for XSS, injection vulnerabilities
+8. Performance - Virtual DOM efficiency
 ```
 
-You can customize these in `.github/workflows/copilot-review.yml`.
+See [Adding repository custom instructions](https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot) for more details.
 
 ## Interpreting Copilot Feedback
 
@@ -236,19 +217,27 @@ GitHub Copilot code review is included with:
 
 If you want to disable automated Copilot reviews:
 
-```bash
-# Disable the workflow
-git rm .github/workflows/copilot-review.yml
-git commit -m "chore: disable automated Copilot reviews"
+1. Go to `Settings → Rules → Rulesets`
+2. Edit the branch ruleset for `main`
+3. Uncheck "Automatically request Copilot code review"
+4. Click "Save changes"
+
+Alternatively, you can keep automatic reviews but disable re-reviews on new pushes.
+
+## Customizing Copilot Reviews
+
+You can customize Copilot code review behavior by adding a `.github/copilot-instructions.md` file:
+
+```markdown
+When performing a code review, focus on:
+- Pure functional programming patterns
+- Immutability of data structures
+- MVU (Model-View-Update) pattern adherence
+- Type safety and null handling
+- Security vulnerabilities (XSS, injection)
 ```
 
-Or keep the file but disable it:
-
-```yaml
-# Add to .github/workflows/copilot-review.yml
-on:
-  workflow_dispatch:  # Only manual trigger
-```
+See [GitHub docs on custom instructions](https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot) for more details.
 
 ## Troubleshooting
 
@@ -331,7 +320,7 @@ effects to Commands.
 
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contribution guidelines
 - [.github/workflows/pr-validation.yml](../workflows/pr-validation.yml) - PR validation workflow
-- [ADR-018](../../docs/adr/ADR-018-trunk-based-development.md) - Trunk-based development
+- [ADR-019](../../docs/adr/ADR-019-trunk-based-development.md) - Trunk-based development
 
 ## Feedback
 

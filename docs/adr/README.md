@@ -25,7 +25,8 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-015](./ADR-015-tracing-verbosity.md) | Tracing Verbosity Levels | Accepted | Configurable OTEL verbosity |
 | [ADR-016](./ADR-016-keyed-dom-diffing.md) | Keyed DOM Diffing | Accepted | Key-based reconciliation for lists |
 | [ADR-017](./ADR-017-dotnet-new-templates.md) | .NET New Templates | Accepted | Project templates for quick start |
-| [ADR-018](./ADR-018-trunk-based-development.md) | Trunk-Based Development | Accepted | Protected main branch with PR workflow |
+| [ADR-018](./ADR-018-pr-lint-only-changed-files.md) | PR Lint Check Only Changed Files | Accepted | Lint only PR-changed files, not entire solution |
+| [ADR-019](./ADR-019-trunk-based-development.md) | Trunk-Based Development | Accepted | Protected main branch with PR workflow |
 
 ## How to Use ADRs
 
