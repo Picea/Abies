@@ -26,8 +26,6 @@ Click **Add rule** for branch `main`
 #### Required
 - ✅ **Require a pull request before merging**
   - Set required approvals to: **0**
-- ✅ **Require status checks to pass before merging**
-  - ✅ **Require branches to be up to date before merging**
 - ✅ **Require conversation resolution before merging**
 - ✅ **Require linear history**
 - ✅ **Do not allow bypassing the above settings**
@@ -35,8 +33,17 @@ Click **Add rule** for branch `main`
 - ⬜ **Do not allow force pushes** (keep unchecked)
 - ⬜ **Do not allow deletions** (keep unchecked)
 
-#### Required Status Checks
-After your first PR runs, add these checks:
+#### Required Status Checks (Configure After First PR)
+
+⚠️ **Important**: You must create and run a test PR first before configuring status checks!
+
+**Why?** GitHub only shows status checks in the list after they've run at least once.
+
+**After your first PR runs**, come back here and configure:
+
+1. ✅ **Require status checks to pass before merging**
+2. ✅ **Require branches to be up to date before merging**
+3. Then add these checks:
 - `build` (from CD workflow)
 - `e2e` (from E2E workflow)
 - `Analyze C# Code` (from CodeQL)
@@ -56,7 +63,9 @@ Go to: `Settings → General → Pull Requests`
 - ⬜ **Allow merge commits** (uncheck)
 - ✅ **Automatically delete head branches**
 
-### 4. Test It
+### 4. Create Test PR (Important!)
+
+Before adding status checks, create a test PR to populate the checks list:
 
 ```bash
 # Create test branch
@@ -68,7 +77,19 @@ git push origin test/branch-protection
 gh pr create --title "feat: Test branch protection" \
   --body "Testing the new branch protection setup"
 
-# Wait for checks to pass, then approve and merge
+# Wait for all workflows to complete
+# Don't merge yet - we need the checks to run first!
+```
+
+### 5. Add Status Checks (After Test PR Runs)
+
+Now go back to: `Settings → Branches → Edit rule for main`
+
+The status checks should now appear in the searchable list. Add them as described in step 2 above.
+
+Then merge your test PR:
+
+```bash
 gh pr review --approve
 gh pr merge --squash
 ```
