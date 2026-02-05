@@ -88,6 +88,8 @@ jobs:
           # Push results to gh-pages
           auto-push: true
           save-data-file: true
+          # Skip fetch on first run (creates branch if it doesn't exist)
+          skip-fetch-gh-pages: ${{ !steps.gh-pages-check.outputs.exists }}
           # Alert thresholds (for direct pushes to main)
           alert-threshold: '150%'
           comment-on-alert: true
