@@ -45,31 +45,24 @@ jobs:
             --exporters json \
             --artifacts ./benchmark-results
 
+      # Store and compare benchmarks (only on main, creates gh-pages if needed)
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: Virtual DOM Benchmarks
           tool: 'benchmarkdotnet'
           output-file-path: ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json
-          # Push results to gh-pages branch on main branch pushes
-          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          auto-push: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Show alert in CI when performance degrades
           alert-threshold: '150%'
-          # Comment on PR with benchmark results
           comment-on-alert: true
-          # Fail the workflow if performance degrades by more than 200%
-          fail-on-alert: ${{ github.event_name == 'pull_request' }}
+          fail-on-alert: true
           fail-threshold: '200%'
-          # Show a summary comment on PR
-          summary-always: ${{ github.event_name == 'pull_request' }}
-          # Save benchmark data only on main branch
-          save-data-file: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          # Skip fetching gh-pages for PRs (branch may not exist yet)
-          skip-fetch-gh-pages: ${{ github.event_name == 'pull_request' }}
-          # Alert when threshold exceeded
+          save-data-file: true
           alert-comment-cc-users: '@MCGPPeters'
 
+      # Upload artifacts for inspection (always, for both PRs and main)
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -77,46 +70,3 @@ jobs:
           name: benchmark-results
           path: ./benchmark-results/results/
           retention-days: 30
-
-  # Separate job for publishing to gh-pages to avoid permission issues
-  publish-results:
-    name: Publish Results
-    needs: benchmark
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout gh-pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-        continue-on-error: true
-
-      - name: Initialize gh-pages if needed
-        run: |
-          if [ ! -d "gh-pages" ]; then
-            mkdir gh-pages
-            cd gh-pages
-            git init
-            git checkout -b gh-pages
-          fi
-
-      - name: Download benchmark artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results
-          path: ./benchmark-artifacts
-
-      - name: Copy benchmark data
-        run: |
-          mkdir -p gh-pages/dev/bench
-          cp -r ./benchmark-artifacts/* gh-pages/dev/bench/ || true
-
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./gh-pages
-          publish_branch: gh-pages
-          keep_files: true
