@@ -37,6 +37,21 @@ jobs:
       run: echo "::set-output name=VERSION::$(nbgv get-version -v AssemblyInformationalVersion)"
     - name: Restore dependencies
       run: dotnet restore
+    
+    - name: Check for vulnerable packages (SCA)
+      run: |
+        echo "🔍 Scanning for vulnerable packages..."
+        dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+        if grep -qi "critical\|high" vulnerability-report.txt; then
+          echo "⚠️  WARNING: Critical or High severity vulnerabilities detected!"
+          echo "Please review the vulnerability report above and update dependencies."
+          # For now, we warn but don't fail the build
+          # Change to 'exit 1' to make this a hard failure
+        else
+          echo "✅ No critical or high severity vulnerabilities found"
+        fi
+      continue-on-error: true
+    
     - name: Build
       run: dotnet build --no-restore
     - name: Test
