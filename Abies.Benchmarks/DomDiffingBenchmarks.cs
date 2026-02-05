@@ -1,8 +1,7 @@
-using BenchmarkDotNet.Attributes;
 using Abies.DOM;
-using Abies.Html;
-using static Abies.Html.Elements;
+using BenchmarkDotNet.Attributes;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 
 namespace Abies.Benchmarks;
 
@@ -26,27 +25,27 @@ public class DomDiffingBenchmarks
     // Small DOM scenarios
     private Node _smallOld = null!;
     private Node _smallNew = null!;
-    
+
     // Medium DOM scenarios (10-20 nodes)
     private Node _mediumOld = null!;
     private Node _mediumNew = null!;
-    
+
     // Large DOM scenarios (100+ nodes)
     private Node _largeOld = null!;
     private Node _largeNew = null!;
-    
+
     // Attribute-only change scenario
     private Node _attrOld = null!;
     private Node _attrNew = null!;
-    
+
     // Text-only change scenario
     private Node _textOld = null!;
     private Node _textNew = null!;
-    
+
     // Node addition scenario
     private Node _addOld = null!;
     private Node _addNew = null!;
-    
+
     // Node removal scenario
     private Node _removeOld = null!;
     private Node _removeNew = null!;
@@ -154,7 +153,7 @@ public class DomDiffingBenchmarks
         // Create a large DOM tree with 100+ elements (simulating a data table)
         var oldRows = new Node[50];
         var newRows = new Node[50];
-        
+
         for (int i = 0; i < 50; i++)
         {
             oldRows[i] = tr([id($"row-{i}")],
@@ -163,7 +162,7 @@ public class DomDiffingBenchmarks
                 td([], [text($"Cell {i}-2")]),
                 td([], [text($"Cell {i}-3")])
             ]);
-            
+
             // Every 5th row has changes
             if (i % 5 == 0)
             {
@@ -184,7 +183,7 @@ public class DomDiffingBenchmarks
                 ]);
             }
         }
-        
+
         _largeOld = table([id("data-table")],
         [
             thead([],
@@ -198,7 +197,7 @@ public class DomDiffingBenchmarks
             ]),
             tbody([], oldRows)
         ]);
-        
+
         _largeNew = table([id("data-table"), class_("updated")],
         [
             thead([],
