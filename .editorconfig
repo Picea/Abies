@@ -182,11 +182,17 @@ dotnet_remove_unnecessary_suppression_exclusions = none
 # =============================================================================
 # Naming Conventions
 # =============================================================================
+# Following pure functional programming style (csharp.instructions.md):
+# - NO "I" prefix for interfaces (interfaces are capabilities, not OO contracts)
+# - NO "Async" suffix for async methods (redundant with Task<T> return type)
 
 # Naming rules
-dotnet_naming_rule.interface_should_be_begins_with_i.severity = warning
-dotnet_naming_rule.interface_should_be_begins_with_i.symbols = interface
-dotnet_naming_rule.interface_should_be_begins_with_i.style = begins_with_i
+# BREAKING CHANGE: Removed "I" prefix requirement for interfaces
+# Rationale: Pure functional programming uses interfaces as capabilities,
+# not as OO contracts. The "I" prefix is an OO convention we're moving away from.
+dotnet_naming_rule.interface_should_be_pascal_case.severity = warning
+dotnet_naming_rule.interface_should_be_pascal_case.symbols = interface
+dotnet_naming_rule.interface_should_be_pascal_case.style = pascal_case
 
 dotnet_naming_rule.types_should_be_pascal_case.severity = warning
 dotnet_naming_rule.types_should_be_pascal_case.symbols = types
@@ -231,15 +237,70 @@ dotnet_naming_style.pascal_case.required_suffix =
 dotnet_naming_style.pascal_case.word_separator = 
 dotnet_naming_style.pascal_case.capitalization = pascal_case
 
-dotnet_naming_style.begins_with_i.required_prefix = I
-dotnet_naming_style.begins_with_i.required_suffix = 
-dotnet_naming_style.begins_with_i.word_separator = 
-dotnet_naming_style.begins_with_i.capitalization = pascal_case
-
 dotnet_naming_style.begins_with_underscore.required_prefix = _
 dotnet_naming_style.begins_with_underscore.required_suffix = 
 dotnet_naming_style.begins_with_underscore.word_separator = 
 dotnet_naming_style.begins_with_underscore.capitalization = camel_case
+
+# =============================================================================
+# C# Latest Features & Code Quality (csharp.instructions.md)
+# =============================================================================
+# Enforce latest C# features and best practices
+
+# Nullable reference types (critical for null safety)
+dotnet_diagnostic.CS8600.severity = warning  # Converting null literal or possible null value to non-nullable type
+dotnet_diagnostic.CS8601.severity = warning  # Possible null reference assignment
+dotnet_diagnostic.CS8602.severity = warning  # Dereference of a possibly null reference
+dotnet_diagnostic.CS8603.severity = warning  # Possible null reference return
+dotnet_diagnostic.CS8604.severity = warning  # Possible null reference argument
+
+# Prefer "is null" over "== null" (csharp.instructions.md requirement)
+dotnet_diagnostic.IDE0041.severity = warning
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+
+# Use nameof instead of string literals (csharp.instructions.md requirement)
+dotnet_diagnostic.IDE0280.severity = warning
+
+# Latest C# simplifications
+dotnet_diagnostic.IDE0001.severity = warning  # Simplify name
+dotnet_diagnostic.IDE0002.severity = warning  # Simplify member access
+dotnet_diagnostic.IDE0004.severity = warning  # Remove unnecessary cast
+dotnet_diagnostic.IDE0005.severity = warning  # Remove unnecessary using directive
+
+# Prefer UTF-8 string literals (latest C# feature)
+csharp_style_prefer_utf8_string_literals = true:suggestion
+
+# =============================================================================
+# DDD/Functional Programming Support (ddd.instructions.md)
+# =============================================================================
+# Support pure functional programming patterns and immutability
+
+# Primary constructors (reduces boilerplate in records/classes)
+csharp_style_prefer_primary_constructors = true:suggestion
+
+# Readonly enforcement (immutability)
+dotnet_diagnostic.IDE0044.severity = warning  # Add readonly modifier
+csharp_style_prefer_readonly_struct = true:warning
+csharp_style_prefer_readonly_struct_member = true:warning
+
+# Static anonymous functions (avoid accidental closure over mutable state)
+csharp_style_prefer_static_anonymous_function = true:warning
+
+# Init-only setters (immutable object initialization)
+dotnet_diagnostic.IDE0090.severity = suggestion  # Use 'new(...)' for init-only properties
+
+# Method group conversion (simpler functional composition)
+csharp_style_prefer_method_group_conversion = true:suggestion
+
+# =============================================================================
+# Code Quality & Documentation
+# =============================================================================
+
+# Prefer documentation comments for public APIs
+dotnet_diagnostic.CS1591.severity = none  # Missing XML comment (opt-in per project)
+
+# Remove unused parameters
+dotnet_diagnostic.IDE0060.severity = none  # Informational only - context matters
 
 # =============================================================================
 # XML Files
