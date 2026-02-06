@@ -22,7 +22,7 @@
     </PropertyGroup>
     <ItemGroup>
         <!-- Include the GlobalUsings.cs file in all projects -->
-        <Compile Include="$(SolutionDir)Global\Usings.cs" />
-        <Compile Include="$(SolutionDir)Global\Suppressions.cs" />
+        <Compile Include="$(MSBuildThisFileDirectory)Global\Usings.cs" />
+        <Compile Include="$(MSBuildThisFileDirectory)Global\Suppressions.cs" />
     </ItemGroup>
   </Project>
