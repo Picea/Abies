@@ -841,20 +841,26 @@ function addEventListeners(root) {
  * container element to ensure browser parsing succeeds. Browsers strip
  * table-related elements (tr, td, etc.) when placed inside invalid containers.
  * @param {string} html - The HTML string to parse.
- * @returns {Element} The first element child from the parsed HTML.
+ * @returns {Element|null} The first element child from the parsed HTML, or null if none.
  */
 function parseHtmlFragment(html) {
     const trimmedHtml = html.trimStart();
     let tempContainer;
-    if (trimmedHtml.startsWith('<tr')) {
+
+    // Extract the first tag name to avoid prefix-matching issues
+    // (e.g., <thead> matching <th>, <track> matching <tr>)
+    const tagMatch = /^<\s*([a-zA-Z0-9]+)/.exec(trimmedHtml);
+    const tagName = tagMatch ? tagMatch[1].toLowerCase() : null;
+
+    if (tagName === 'tr') {
         tempContainer = document.createElement('tbody');
-    } else if (trimmedHtml.startsWith('<td') || trimmedHtml.startsWith('<th')) {
+    } else if (tagName === 'td' || tagName === 'th') {
         tempContainer = document.createElement('tr');
-    } else if (trimmedHtml.startsWith('<thead') || trimmedHtml.startsWith('<tbody') || trimmedHtml.startsWith('<tfoot') || trimmedHtml.startsWith('<colgroup') || trimmedHtml.startsWith('<caption')) {
+    } else if (tagName === 'thead' || tagName === 'tbody' || tagName === 'tfoot' || tagName === 'colgroup' || tagName === 'caption') {
         tempContainer = document.createElement('table');
-    } else if (trimmedHtml.startsWith('<col')) {
+    } else if (tagName === 'col') {
         tempContainer = document.createElement('colgroup');
-    } else if (trimmedHtml.startsWith('<option') || trimmedHtml.startsWith('<optgroup')) {
+    } else if (tagName === 'option' || tagName === 'optgroup') {
         tempContainer = document.createElement('select');
     } else {
         tempContainer = document.createElement('div');
