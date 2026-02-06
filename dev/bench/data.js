@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770362314075,
+  "lastUpdate": 1770371180721,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -396,6 +396,182 @@ window.BENCHMARK_DATA = {
             "value": 424,
             "unit": "bytes",
             "extra": "Gen0: 26"
+          }
+        ]
+      }
+    ],
+    "Rendering Engine Throughput": [
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7bd08a22e214bbbffba2f824c2dd1b04e1415ea4",
+          "message": "perf: Toub-inspired performance optimizations for DOM rendering (#34)\n\n* chore: trigger CI rerun\n\n* perf: Toub-inspired performance optimizations\n\nThree key optimizations inspired by Stephen Toub's .NET performance articles:\n\n1. Atomic counter for CommandIds (Events.cs)\n   - Replaced Guid.NewGuid().ToString() with atomic long counter\n   - Uses string.Create with stackalloc for zero-allocation ID generation\n   - Result: 10.9x faster handler creation (209ns → 19ns)\n   - Result: 21% less memory per handler (224B → 176B)\n\n2. SearchValues<char> fast-path for HTML encoding (Operations.cs)\n   - Uses SIMD-accelerated character search to skip HtmlEncode\n   - Most attribute values (class names, IDs) don't need encoding\n   - Result: 8% faster large page rendering\n\n3. FrozenDictionary cache for event attribute names (Operations.cs)\n   - Caches 'data-event-{name}' strings for 100+ known DOM events\n   - O(1) lookup eliminates string interpolation per handler\n   - Result: Additional 32% memory reduction per handler\n\nCombined results for event-heavy rendering:\n- 18% faster throughput\n- 34% less memory allocation\n\nBenchmark suite added:\n- RenderingBenchmarks.cs: 9 HTML rendering scenarios\n- EventHandlerBenchmarks.cs: 8 handler creation scenarios\n- CI quality gates: throughput (105%/110%), allocations (110%/120%)\n\n* fix: Address Copilot review feedback\n\n- Add missing scripts/merge-benchmark-results.py (was untracked)\n- Reduce stackalloc buffer from 32 to 24 chars (sufficient for max long)\n- Add overflow documentation comment explaining 292 million years to overflow\n- Update EventHandlerBenchmarks docs to reflect optimized implementation\n- Update RenderingBenchmarks docs to reflect SearchValues/counter optimizations\n\n* docs: Add memory instructions for PR template reminder\n\n* style: Add PR guidelines and fix formatting issues",
+          "timestamp": "2026-02-06T10:36:53+01:00",
+          "tree_id": "8565b6d5667d57fd15827ebda517d6ecd155ce55",
+          "url": "https://github.com/Picea/Abies/commit/7bd08a22e214bbbffba2f824c2dd1b04e1415ea4"
+        },
+        "date": 1770371180205,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 555.7281339009603,
+            "unit": "ns",
+            "range": "± 1.9497550504789953"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 670.8262973785401,
+            "unit": "ns",
+            "range": "± 1.7592375689478408"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 597.9089409964425,
+            "unit": "ns",
+            "range": "± 1.4740506616804985"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 622.5981272969927,
+            "unit": "ns",
+            "range": "± 1.7708175213981892"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 694.6467865535191,
+            "unit": "ns",
+            "range": "± 0.8154460716081774"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 716.290855884552,
+            "unit": "ns",
+            "range": "± 1.7604849291788016"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 671.4078981399537,
+            "unit": "ns",
+            "range": "± 4.022456513733462"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 224.64049735864003,
+            "unit": "ns",
+            "range": "± 2.5559205820011104"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 819.5202875137329,
+            "unit": "ns",
+            "range": "± 3.358725072563177"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 402.3255453450339,
+            "unit": "ns",
+            "range": "± 2.1193160573673584"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 716.2043219975063,
+            "unit": "ns",
+            "range": "± 4.31917860297944"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5456.150481160482,
+            "unit": "ns",
+            "range": "± 91.30801250335917"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 39837.81648908342,
+            "unit": "ns",
+            "range": "± 267.4293304480751"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 655.533565725599,
+            "unit": "ns",
+            "range": "± 2.524106998529153"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5023.290708688589,
+            "unit": "ns",
+            "range": "± 25.699557833313026"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2648.9821621821475,
+            "unit": "ns",
+            "range": "± 20.150211680087345"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 44.023834311962126,
+            "unit": "ns",
+            "range": "± 0.2544390758648351"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 52.74222540855408,
+            "unit": "ns",
+            "range": "± 0.22953492892673852"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 515.3010895068829,
+            "unit": "ns",
+            "range": "± 1.6702619803903755"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2507.768822303185,
+            "unit": "ns",
+            "range": "± 21.41229077728757"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4237.10751953125,
+            "unit": "ns",
+            "range": "± 34.45758758952155"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 100.46615355014801,
+            "unit": "ns",
+            "range": "± 1.6354668932731107"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 262.3463038444519,
+            "unit": "ns",
+            "range": "± 3.946396193311334"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 688.9725264231364,
+            "unit": "ns",
+            "range": "± 7.541682895800619"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7192.500771658762,
+            "unit": "ns",
+            "range": "± 73.32073629283512"
           }
         ]
       }
