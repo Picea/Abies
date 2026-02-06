@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770323234190,
+  "lastUpdate": 1770362312341,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -196,6 +196,72 @@ window.BENCHMARK_DATA = {
             "value": 673.4970641502968,
             "unit": "ns",
             "range": "± 0.6947657707367317"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e3841179ba068b4110a0f1de4b971135de1318d",
+          "message": "perf: Toub-inspired optimizations for DOM operations (#33)\n\nApply techniques from Stephen Toub's .NET performance articles:\n\n1. Index String Cache (256 entries) - eliminates string interpolation for non-keyed child indices\n2. StringBuilder Pooling - reduces GC pressure during Apply operations  \n3. Append Chain Optimization - removes intermediate string allocations in RenderNode\n4. Refactored DiffChildrenCore - uses ReadOnlySpan<string> for key comparisons",
+          "timestamp": "2026-02-06T08:15:24+01:00",
+          "tree_id": "47f51052c8de39f05977793abf1c18d0c1c55a0f",
+          "url": "https://github.com/Picea/Abies/commit/1e3841179ba068b4110a0f1de4b971135de1318d"
+        },
+        "date": 1770362311369,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.SmallDomDiff",
+            "value": 549.3092784200396,
+            "unit": "ns",
+            "range": "± 2.5965684691926736"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.MediumDomDiff",
+            "value": 667.4456221262614,
+            "unit": "ns",
+            "range": "± 2.4899871614242652"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.LargeDomDiff",
+            "value": 574.8718249638875,
+            "unit": "ns",
+            "range": "± 3.330990220660288"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.AttributeOnlyDiff",
+            "value": 611.5299082535964,
+            "unit": "ns",
+            "range": "± 2.3981030807681205"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.TextOnlyDiff",
+            "value": 650.0044751485188,
+            "unit": "ns",
+            "range": "± 1.886963184505986"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.NodeAdditionDiff",
+            "value": 689.1478022795457,
+            "unit": "ns",
+            "range": "± 2.4698165682266353"
+          },
+          {
+            "name": "Abies.Benchmarks.DomDiffingBenchmarks.NodeRemovalDiff",
+            "value": 665.7882746378581,
+            "unit": "ns",
+            "range": "± 1.4550259067139961"
           }
         ]
       }
