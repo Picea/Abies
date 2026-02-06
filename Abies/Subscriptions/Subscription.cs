@@ -307,7 +307,7 @@ public static class SubscriptionModule
             throw new ArgumentNullException(nameof(toMessage));
         }
 
-        var payload = System.Text.Json.JsonSerializer.Serialize(options);
+        var payload = System.Text.Json.JsonSerializer.Serialize(options, AbiesJsonContext.Default.WebSocketOptions);
         return CreateBrowserSubscription(
             key,
             "websocket",

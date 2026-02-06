@@ -442,20 +442,22 @@ public static partial class Runtime
     [JSExport]
     public static void DispatchData(string messageId, string? json)
     {
-    if (_dataHandlers.TryGetValue(messageId, out var entry))
+        if (_dataHandlers.TryGetValue(messageId, out var entry))
         {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            object? data = json is null
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType, AbiesJsonContext.Default);
             var message = entry.handler(data);
             Dispatch(message);
             return;
         }
 
-    if (_handlers.TryGetValue(messageId, out var message2))
+        if (_handlers.TryGetValue(messageId, out var message2))
         {
             Dispatch(message2);
             return;
         }
-    // Ignore missing handlers gracefully
+        // Ignore missing handlers gracefully
     }
 
     [JSExport]
@@ -466,7 +468,9 @@ public static partial class Runtime
     {
         if (_subscriptionHandlers.TryGetValue(key, out var entry))
         {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            object? data = json is null
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType, AbiesJsonContext.Default);
             var message = entry.handler(data);
             Dispatch(message);
             return;

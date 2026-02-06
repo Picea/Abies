@@ -150,8 +150,6 @@ public class StartupPerformanceTests : PlaywrightFixture
         var elapsedMs = stopwatch.ElapsedMilliseconds;
 
         Console.WriteLine($"[StartupPerformance] Time to First Paint: {elapsedMs}ms");
-
-        // First paint should be fast - within 5 seconds even for WASM
         Assert.True(elapsedMs < 10000,
             $"Time to First Paint was {elapsedMs}ms, exceeding the 10s threshold. " +
             "This may indicate the WASM bundle is too large or initialization is too slow.");

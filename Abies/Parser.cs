@@ -322,19 +322,18 @@ public static class ParserExtensions
     /// <typeparam name="T">The type of the first parser's result.</typeparam>
     /// <typeparam name="U">The type of the second parser's result.</typeparam>
     /// <typeparam name="V">The type of the projected result.</typeparam>
-    private readonly struct SelectManyParser<T, U, V> : Parser<V>
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// <summary>
+    /// Represents a parser that combines two parsers and projects their results into a new value.
+    /// </summary>
+    /// <typeparam name="T">The type of the first parser's result.</typeparam>
+    /// <typeparam name="U">The type of the second parser's result.</typeparam>
+    /// <typeparam name="V">The type of the projected result.</typeparam>
+    private readonly struct SelectManyParser<T, U, V>(Parser<T> parser, Func<T, Parser<U>> binder, Func<T, U, V> projector) : Parser<V>
     {
-        private readonly Parser<T> _parser;
-        private readonly Func<T, Parser<U>> _binder;
-        private readonly Func<T, U, V> _projector;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public SelectManyParser(Parser<T> parser, Func<T, Parser<U>> binder, Func<T, U, V> projector)
-        {
-            _parser = parser;
-            _binder = binder;
-            _projector = projector;
-        }
+        private readonly Parser<T> _parser = parser;
+        private readonly Func<T, Parser<U>> _binder = binder;
+        private readonly Func<T, U, V> _projector = projector;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ParseResult<V> Parse(ReadOnlySpan<char> input)
@@ -364,7 +363,7 @@ public static class ParserExtensions
             if (!input.IsEmpty)
             {
                 char firstChar = input[0];
-                ReadOnlySpan<char> remaining = input.Slice(1);
+                ReadOnlySpan<char> remaining = input[1..];
                 return ParseResult<char>.Successful(firstChar, remaining);
             }
             else

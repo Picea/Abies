@@ -240,10 +240,19 @@ public class PlaywrightFixture : IAsyncLifetime
         // Wait for the registration form to be ready
         await Expect(Page.GetByPlaceholder("Username")).ToBeVisibleAsync(new() { Timeout = 10000 });
         
+        // Fill form fields
         await Page.GetByPlaceholder("Username").FillAsync(username);
         await Page.GetByPlaceholder("Email").FillAsync(email);
         await Page.GetByPlaceholder("Password").FillAsync(password);
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign up" }).ClickAsync();
+
+        // Wait for form validation to update after input events
+        await Page.WaitForTimeoutAsync(200);
+
+        // Wait for button to be enabled (form validation complete)
+        var signUpButton = Page.GetByRole(AriaRole.Button, new() { Name = "Sign up" });
+        await Expect(signUpButton).ToBeEnabledAsync(new() { Timeout = 5000 });
+        
+        await signUpButton.ClickAsync();
 
         // Wait for navigation to home page
         await Page.WaitForURLAsync("**/", new() { Timeout = 30000 });
