@@ -18,11 +18,6 @@
 // - ADR-006: Command Pattern for Side Effects (docs/adr/ADR-006-command-pattern.md)
 // =============================================================================
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Abies.Html;
 
 namespace Abies;
@@ -30,7 +25,7 @@ namespace Abies;
 /// <summary>
 /// Dispatches a message into the MVU loop.
 /// </summary>
-public delegate ValueTuple Dispatch(Message message);
+public delegate Unit Dispatch(Message message);
 
 /// <summary>
 /// Starts a subscription effect and returns a task that completes when the subscription ends.
@@ -307,7 +302,7 @@ public static class SubscriptionModule
             throw new ArgumentNullException(nameof(toMessage));
         }
 
-        var payload = System.Text.Json.JsonSerializer.Serialize(options);
+        var payload = System.Text.Json.JsonSerializer.Serialize(options, AbiesJsonContext.Default.WebSocketOptions);
         return CreateBrowserSubscription(
             key,
             "websocket",
@@ -336,7 +331,8 @@ public static class SubscriptionModule
         {
             Runtime.RegisterSubscriptionHandler(
                 key,
-                data => {
+                data =>
+                {
                     return data is T typed
                         ? toMessage(typed)
                         : throw new InvalidOperationException($"Subscription data mismatch for key '{key}'.");

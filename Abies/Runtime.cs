@@ -14,7 +14,6 @@
 // - ADR-013: OpenTelemetry Instrumentation (docs/adr/ADR-013-opentelemetry.md)
 // =============================================================================
 
-using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
@@ -41,12 +40,12 @@ public static partial class Runtime
 {
     // Message queue for ordered processing (see ADR-001: unidirectional data flow)
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
-    
+
     // Handler registries for event dispatch (see ADR-011: JavaScript interop)
     private static readonly ConcurrentDictionary<string, Message> _handlers = new();
     private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
     private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
-    
+
     /// <summary>
     /// Starts the MVU runtime loop for the specified program.
     /// </summary>
@@ -77,11 +76,11 @@ public static partial class Runtime
         // Generate the virtual DOM (ADR-003: View is pure function)
         var document = TProgram.View(initialModel);
 
-    var html = Render.Html(document.Body);
+        var html = Render.Html(document.Body);
 
-    // Apply the initial DOM and register handlers for the first render
-    await Interop.SetAppContent(html);
-    RegisterHandlers(document.Body);
+        // Apply the initial DOM and register handlers for the first render
+        await Interop.SetAppContent(html);
+        RegisterHandlers(document.Body);
 
         var model = initialModel;
         var dom = document.Body;
@@ -95,15 +94,15 @@ public static partial class Runtime
         {
             await TProgram.HandleCommand(initialCommand, Dispatch);
         }
-        
-        await foreach(var message in _messageChannel.Reader.ReadAllAsync())
+
+        await foreach (var message in _messageChannel.Reader.ReadAllAsync())
         {
             using var messageActivity = Instrumentation.ActivitySource.StartActivity("Message");
             messageActivity?.SetTag("message.type", message.GetType().FullName);
 
             // Update the model based on the message
             var (newModel, command) = TProgram.Update(message, model);
-            
+
             model = newModel;
 
             // Generate the new virtual DOM
@@ -177,90 +176,90 @@ public static partial class Runtime
             }
         }
     }
-    
+
     private static Node PreserveIds(Node? oldNode, Node newNode)
+    {
+        // Only preserve IDs when elements have the same tag AND the same element ID.
+        // This is critical for keyed diffing (ADR-016): elements with different IDs
+        // should NOT have their IDs swapped, as that would break key-based matching.
+        if (oldNode is Element oldElement && newNode is Element newElement
+            && oldElement.Tag == newElement.Tag
+            && oldElement.Id == newElement.Id)  // Key match required!
         {
-            // Only preserve IDs when elements have the same tag AND the same element ID.
-            // This is critical for keyed diffing (ADR-016): elements with different IDs
-            // should NOT have their IDs swapped, as that would break key-based matching.
-            if (oldNode is Element oldElement && newNode is Element newElement 
-                && oldElement.Tag == newElement.Tag 
-                && oldElement.Id == newElement.Id)  // Key match required!
+            // Preserve attribute IDs so DiffAttributes can emit UpdateAttribute
+            // instead of a remove/add pair. This avoids wiping attributes when
+            // remove is processed after add.
+            var attrs = new DOM.Attribute[newElement.Attributes.Length];
+            for (int i = 0; i < newElement.Attributes.Length; i++)
             {
-                // Preserve attribute IDs so DiffAttributes can emit UpdateAttribute
-                // instead of a remove/add pair. This avoids wiping attributes when
-                // remove is processed after add.
-                var attrs = new DOM.Attribute[newElement.Attributes.Length];
-                for (int i = 0; i < newElement.Attributes.Length; i++)
-                {
-                    var attr = newElement.Attributes[i];
-                    var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == attr.Name);
-                    var attrId = oldAttr?.Id ?? attr.Id;
+                var attr = newElement.Attributes[i];
+                var oldAttr = Array.Find(oldElement.Attributes, a => a.Name == attr.Name);
+                var attrId = oldAttr?.Id ?? attr.Id;
 
-                    if (attr.Name == "id")
-                    {
-                        attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
-                    }
-                    else
-                    {
-                        attrs[i] = attr with { Id = attrId };
-                    }
-                }
-
-                // For children, use key-based matching instead of positional matching.
-                // Build a dictionary of old children by their element ID for O(1) lookup.
-                var oldChildrenById = new System.Collections.Generic.Dictionary<string, Node>();
-                foreach (var child in oldElement.Children)
+                if (attr.Name == "id")
                 {
-                    if (child is Element childElem)
-                    {
-                        oldChildrenById[childElem.Id] = child;
-                    }
-                    else if (child is Text textNode)
-                    {
-                        oldChildrenById[textNode.Id] = child;
-                    }
+                    attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
                 }
-
-                var children = new Node[newElement.Children.Length];
-                for (int i = 0; i < newElement.Children.Length; i++)
+                else
                 {
-                    var newChild = newElement.Children[i];
-                    Node? matchingOldChild = null;
-                    
-                    // Find matching old child by key (element ID)
-                    if (newChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
-                    {
-                        matchingOldChild = oldMatch;
-                    }
-                    else if (newChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
-                    {
-                        matchingOldChild = oldTextMatch;
-                    }
-                    
-                    children[i] = PreserveIds(matchingOldChild, newChild);
+                    attrs[i] = attr with { Id = attrId };
                 }
-
-                return new Element(oldElement.Id, newElement.Tag, attrs, children);
-            }
-            else if (oldNode is Text oldText && newNode is Text newText && oldText.Id == newText.Id)
-            {
-                // Preserve text node IDs only when they match
-                return new Text(oldText.Id, newText.Value);
-            }
-            else if (newNode is Element newElem)
-            {
-                // No matching old element, recursively process children without preserving IDs
-                var children = new Node[newElem.Children.Length];
-                for (int i = 0; i < newElem.Children.Length; i++)
-                {
-                    children[i] = PreserveIds(null, newElem.Children[i]);
-                }
-                return new Element(newElem.Id, newElem.Tag, newElem.Attributes, children);
             }
 
-            return newNode;
+            // For children, use key-based matching instead of positional matching.
+            // Build a dictionary of old children by their element ID for O(1) lookup.
+            var oldChildrenById = new Dictionary<string, Node>();
+            foreach (var child in oldElement.Children)
+            {
+                if (child is Element childElem)
+                {
+                    oldChildrenById[childElem.Id] = child;
+                }
+                else if (child is Text textNode)
+                {
+                    oldChildrenById[textNode.Id] = child;
+                }
+            }
+
+            var children = new Node[newElement.Children.Length];
+            for (int i = 0; i < newElement.Children.Length; i++)
+            {
+                var newChild = newElement.Children[i];
+                Node? matchingOldChild = null;
+
+                // Find matching old child by key (element ID)
+                if (newChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
+                {
+                    matchingOldChild = oldMatch;
+                }
+                else if (newChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
+                {
+                    matchingOldChild = oldTextMatch;
+                }
+
+                children[i] = PreserveIds(matchingOldChild, newChild);
+            }
+
+            return new Element(oldElement.Id, newElement.Tag, attrs, children);
         }
+        else if (oldNode is Text oldText && newNode is Text newText && oldText.Id == newText.Id)
+        {
+            // Preserve text node IDs only when they match
+            return new Text(oldText.Id, newText.Value);
+        }
+        else if (newNode is Element newElem)
+        {
+            // No matching old element, recursively process children without preserving IDs
+            var children = new Node[newElem.Children.Length];
+            for (int i = 0; i < newElem.Children.Length; i++)
+            {
+                children[i] = PreserveIds(null, newElem.Children[i]);
+            }
+            return new Element(newElem.Id, newElem.Tag, newElem.Attributes, children);
+        }
+
+        return newNode;
+    }
 
     private static void SetupInteropHandlers<TProgram, TArguments, TModel>()
         where TProgram : Program<TModel, TArguments>
@@ -285,7 +284,7 @@ public static partial class Runtime
         return;
 
         // Handler for link clicks and form submissions
-        void linkClickedHandler(string newUrlString)
+        static void linkClickedHandler(string newUrlString)
         {
             var currentUrl = Url.Create(Interop.GetCurrentUrl());
             var newUrl = Url.Create(newUrlString);
@@ -323,7 +322,7 @@ public static partial class Runtime
     /// <exception cref="InvalidOperationException"></exception>
     internal static void RegisterHandlers(Node node)
     {
-        
+
         if (node is Element element)
         {
             // Register handlers in the current element
@@ -349,7 +348,7 @@ public static partial class Runtime
         }
     }
 
-    internal static void RegisterHandler(DOM.Handler handler)
+    internal static void RegisterHandler(Handler handler)
     {
         if (handler.Command is not null)
         {
@@ -361,7 +360,7 @@ public static partial class Runtime
         }
     }
 
-    internal static void UnregisterHandler(DOM.Handler handler)
+    internal static void UnregisterHandler(Handler handler)
     {
         if (handler.Command is not null)
         {
@@ -420,13 +419,13 @@ public static partial class Runtime
 
         _subscriptionHandlers.TryRemove(key, out _);
     }
-    
-    private static System.ValueTuple Dispatch(Message message)
+
+    private static Unit Dispatch(Message message)
     {
         _messageChannel.Writer.TryWrite(message);
         return new();
     }
-    
+
     [JSExport]
     public static void Dispatch(string messageId)
     {
@@ -436,42 +435,7 @@ public static partial class Runtime
             return;
         }
         // Missing handler can occur during DOM replacement; ignore gracefully
-        System.Diagnostics.Debug.WriteLine($"[Abies] Missing handler for messageId={messageId}");
+        Debug.WriteLine($"[Abies] Missing handler for messageId={messageId}");
     }
 
-    [JSExport]
-    public static void DispatchData(string messageId, string? json)
-    {
-    if (_dataHandlers.TryGetValue(messageId, out var entry))
-        {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
-            var message = entry.handler(data);
-            Dispatch(message);
-            return;
-        }
-
-    if (_handlers.TryGetValue(messageId, out var message2))
-        {
-            Dispatch(message2);
-            return;
-        }
-    // Ignore missing handlers gracefully
-    }
-
-    [JSExport]
-    /// <summary>
-    /// Dispatches subscription data from JavaScript into the MVU loop.
-    /// </summary>
-    public static void DispatchSubscriptionData(string key, string? json)
-    {
-        if (_subscriptionHandlers.TryGetValue(key, out var entry))
-        {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
-            var message = entry.handler(data);
-            Dispatch(message);
-            return;
-        }
-
-        // Ignore missing handlers gracefully
-    }
 }
