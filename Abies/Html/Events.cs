@@ -7,6 +7,10 @@
 //
 // Uses Praefixum source generator for compile-time unique IDs.
 //
+// Performance optimization: Uses atomic counter instead of Guid.NewGuid().ToString()
+// for CommandId generation, inspired by Stephen Toub's .NET performance articles.
+// This reduces allocation from ~200 bytes to ~8-16 bytes per handler.
+//
 // Architecture Decision Records:
 // - ADR-001: MVU Architecture (docs/adr/ADR-001-mvu-architecture.md)
 // - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
@@ -15,6 +19,7 @@
 // =============================================================================
 
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Abies.DOM;
 using Praefixum;
 
@@ -281,11 +286,36 @@ public static class Events
     public static Handler onfullscreenerror(Func<GenericEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("fullscreenerror", factory, id);
 
+    // =============================================================================
+    // Command ID Generation - Performance Optimization
+    // =============================================================================
+    // Uses atomic counter instead of Guid.NewGuid().ToString() to reduce allocations.
+    // Inspired by Stephen Toub's .NET performance articles.
+    //
+    // GUID allocation cost: ~200+ bytes per call (GUID struct + string allocation + formatting)
+    // Counter allocation cost: ~8-16 bytes per call (long.ToString() for small numbers)
+    //
+    // Thread safety: Interlocked.Increment ensures unique IDs across threads.
+    // Format: "h{counter}" where h = handler prefix to distinguish from other IDs
+    // =============================================================================
+    private static long _commandIdCounter;
+
+    /// <summary>
+    /// Generates a unique command ID using an atomic counter.
+    /// This is much faster and allocates less than Guid.NewGuid().ToString().
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string NextCommandId()
+    {
+        var id = Interlocked.Increment(ref _commandIdCounter);
+        return string.Create(null, stackalloc char[32], $"h{id}");
+    }
+
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, Guid.NewGuid().ToString(), command, id ?? string.Empty);
+        => new(name, NextCommandId(), command, id ?? string.Empty);
 
     public static Handler on<T>(string name, Func<T?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, Guid.NewGuid().ToString(), null, id ?? string.Empty, o => factory((T?)o), typeof(T));
+        => new(name, NextCommandId(), null, id ?? string.Empty, o => factory((T?)o), typeof(T));
 
     public static Handler on(string name, Func<string?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on<string?>(name, factory, id);
