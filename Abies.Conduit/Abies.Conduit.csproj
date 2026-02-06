@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <PublishTrimmed>false</PublishTrimmed>
   <TargetFramework>net10.0</TargetFramework>
     <!-- Disable auto-generated assembly attributes to avoid duplicates -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -13,6 +12,12 @@
     <MonoRuntimeDebuggerEnabled>true</MonoRuntimeDebuggerEnabled>
     <EnablePreviewFeatures>true</EnablePreviewFeatures>
     <NoWarn>CA2252</NoWarn>
+  </PropertyGroup>
+  <!-- Release-only trimming for smaller bundles -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />
