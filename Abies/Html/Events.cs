@@ -19,7 +19,6 @@
 // =============================================================================
 
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Abies.DOM;
 using Praefixum;
 

@@ -101,12 +101,12 @@ internal static class EventAttributeNames
         ["mousemove"] = "data-event-mousemove",
         ["contextmenu"] = "data-event-contextmenu",
         ["wheel"] = "data-event-wheel",
-        
+
         // Keyboard events
         ["keydown"] = "data-event-keydown",
         ["keyup"] = "data-event-keyup",
         ["keypress"] = "data-event-keypress",
-        
+
         // Form events
         ["input"] = "data-event-input",
         ["change"] = "data-event-change",
@@ -116,13 +116,13 @@ internal static class EventAttributeNames
         ["blur"] = "data-event-blur",
         ["invalid"] = "data-event-invalid",
         ["search"] = "data-event-search",
-        
+
         // Touch events
         ["touchstart"] = "data-event-touchstart",
         ["touchend"] = "data-event-touchend",
         ["touchmove"] = "data-event-touchmove",
         ["touchcancel"] = "data-event-touchcancel",
-        
+
         // Pointer events
         ["pointerdown"] = "data-event-pointerdown",
         ["pointerup"] = "data-event-pointerup",
@@ -134,7 +134,7 @@ internal static class EventAttributeNames
         ["pointerleave"] = "data-event-pointerleave",
         ["gotpointercapture"] = "data-event-gotpointercapture",
         ["lostpointercapture"] = "data-event-lostpointercapture",
-        
+
         // Drag events
         ["drag"] = "data-event-drag",
         ["dragstart"] = "data-event-dragstart",
@@ -143,12 +143,12 @@ internal static class EventAttributeNames
         ["dragleave"] = "data-event-dragleave",
         ["dragover"] = "data-event-dragover",
         ["drop"] = "data-event-drop",
-        
+
         // Clipboard events
         ["copy"] = "data-event-copy",
         ["cut"] = "data-event-cut",
         ["paste"] = "data-event-paste",
-        
+
         // Media events
         ["play"] = "data-event-play",
         ["pause"] = "data-event-pause",
@@ -170,7 +170,7 @@ internal static class EventAttributeNames
         ["loadstart"] = "data-event-loadstart",
         ["progress"] = "data-event-progress",
         ["encrypted"] = "data-event-encrypted",
-        
+
         // Window/Document events
         ["load"] = "data-event-load",
         ["unload"] = "data-event-unload",
@@ -182,35 +182,35 @@ internal static class EventAttributeNames
         ["offline"] = "data-event-offline",
         ["storage"] = "data-event-storage",
         ["visibilitychange"] = "data-event-visibilitychange",
-        
+
         // Animation/Transition events
         ["animationstart"] = "data-event-animationstart",
         ["animationend"] = "data-event-animationend",
         ["animationiteration"] = "data-event-animationiteration",
         ["transitionstart"] = "data-event-transitionstart",
         ["transitionend"] = "data-event-transitionend",
-        
+
         // Fullscreen events
         ["fullscreenchange"] = "data-event-fullscreenchange",
         ["fullscreenerror"] = "data-event-fullscreenerror",
-        
+
         // Dialog/Popover events
         ["close"] = "data-event-close",
         ["cancel"] = "data-event-cancel",
         ["toggle"] = "data-event-toggle",
         ["beforetoggle"] = "data-event-beforetoggle",
         ["show"] = "data-event-show",
-        
+
         // Selection events
         ["selectionchange"] = "data-event-selectionchange",
-        
+
         // Web Component events
         ["slotchange"] = "data-event-slotchange",
-        
+
         // Print events
         ["afterprint"] = "data-event-afterprint",
         ["beforeprint"] = "data-event-beforeprint",
-        
+
         // Misc events
         ["message"] = "data-event-message",
         ["messageerror"] = "data-event-messageerror",
@@ -222,17 +222,17 @@ internal static class EventAttributeNames
         ["finish"] = "data-event-finish",
         ["intersect"] = "data-event-intersect",
         ["audioprocess"] = "data-event-audioprocess",
-        
+
         // Device events
         ["devicemotion"] = "data-event-devicemotion",
         ["deviceorientation"] = "data-event-deviceorientation",
         ["deviceorientationabsolute"] = "data-event-deviceorientationabsolute",
-        
+
         // Gesture events (Safari)
         ["gesturestart"] = "data-event-gesturestart",
         ["gesturechange"] = "data-event-gesturechange",
         ["gestureend"] = "data-event-gestureend",
-        
+
         // XR events
         ["beforexrselect"] = "data-event-beforexrselect",
     }.ToFrozenDictionary();

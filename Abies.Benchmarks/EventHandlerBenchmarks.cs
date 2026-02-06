@@ -37,12 +37,12 @@ public class EventHandlerBenchmarks
     private record TestKey(string Key) : Message;
 
     private static readonly Message _clickMessage = new TestClick();
-    
+
     // Factory functions for data-carrying handlers
-    private static readonly Func<InputEventData?, Message> _inputFactory = 
+    private static readonly Func<InputEventData?, Message> _inputFactory =
         data => new TestInput(data?.Value ?? "");
-    
-    private static readonly Func<KeyEventData?, Message> _keyFactory = 
+
+    private static readonly Func<KeyEventData?, Message> _keyFactory =
         data => new TestKey(data?.Key ?? "");
 
     // =============================================================================
