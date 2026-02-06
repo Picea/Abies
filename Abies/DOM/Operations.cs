@@ -11,710 +11,920 @@
 // - Diff: Computes patches needed to transform old tree to new tree
 // - Apply: Applies patches to real DOM via JavaScript interop
 //
+// Performance optimizations inspired by Stephen Toub's .NET performance articles:
+// - Pre-allocated index string cache to avoid string interpolation
+// - stackalloc for small arrays to avoid ArrayPool overhead
+// - StringBuilder pooling for HTML rendering
+// - Append chains instead of string interpolation
+//
 // Architecture Decision Records:
 // - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
 // - ADR-008: Immutable State Management (docs/adr/ADR-008-immutable-state.md)
 // - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
 // =============================================================================
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using System.Buffers;
 using System.Collections.Concurrent;
-using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 
-namespace Abies.DOM
+namespace Abies.DOM;
+
+/// <summary>
+/// Represents a document in the Abies DOM.
+/// </summary>
+/// <param name="Title">The title of the document.</param>
+/// <param name="Body">The body content of the document.</param>
+public record Document(string Title, Node Body);
+
+/// <summary>
+/// Represents a node in the Abies DOM.
+/// </summary>
+/// <param name="Id">The unique identifier for the node.</param>
+/// <remarks>
+/// Nodes are immutable records used to build the virtual DOM tree.
+/// See ADR-003: Virtual DOM and ADR-008: Immutable State Management.
+/// </remarks>
+public record Node(string Id);
+
+/// <summary>
+/// Represents a raw (unprocessed) HTML node in the Abies DOM.
+/// </summary>
+/// <param name="Id">The unique identifier for the node.</param>
+/// <param name="Html">The raw HTML content.</param>
+public record RawHtml(string Id, string Html) : Node(Id);
+
+/// <summary>
+/// Represents an attribute of an element in the Abies DOM.
+/// </summary>
+/// <param name="Id">The unique identifier for the attribute.</param>
+/// <param name="Name">The name of the attribute.</param>
+/// <param name="Value">The value of the attribute.</param>
+public record Attribute(string Id, string Name, string Value);
+
+/// <summary>
+/// Represents an element in the Abies DOM.
+/// </summary>
+/// <param name="Id">The unique identifier for the element.</param>
+/// <param name="Tag">The tag name of the element.</param>
+/// <param name="Attributes">The attributes of the element.</param>
+/// <param name="Children">The child nodes of the element.</param>
+public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
+
+/// <summary>
+/// Represents a command handler for an element in the Abies DOM.
+/// </summary>
+/// <param name="Name">The name of the handler.</param>
+/// <param name="CommandId">The unique identifier for the command.</param>
+/// <param name="Command">The command associated with the handler.</param>
+/// <param name="Id">The unique identifier for the handler.</param>
+/// <param name="WithData">A function to provide additional data for the command.</param>
+/// <param name="DataType">The type of the data provided by the WithData function.</param>
+public record Handler(
+    string Name,
+    string CommandId,
+    Message? Command,
+    string Id,
+    Func<object?, Message>? WithData = null,
+    Type? DataType = null)
+    : Attribute(Id, $"data-event-{Name}", CommandId);
+
+/// <summary>
+/// Represents a text node in the Abies DOM.
+/// </summary>
+/// <param name="Id">The unique identifier for the text node.</param>
+/// <param name="Value">The text content of the node.</param>
+public record Text(string Id, string Value) : Node(Id)
 {
-    /// <summary>
-    /// Represents a document in the Abies DOM.
-    /// </summary>
-    /// <param name="Title">The title of the document.</param>
-    /// <param name="Body">The body content of the document.</param>
-    public record Document(string Title, Node Body);
-    
-    /// <summary>
-    /// Represents a node in the Abies DOM.
-    /// </summary>
-    /// <param name="Id">The unique identifier for the node.</param>
-    /// <remarks>
-    /// Nodes are immutable records used to build the virtual DOM tree.
-    /// See ADR-003: Virtual DOM and ADR-008: Immutable State Management.
-    /// </remarks>
-    public record Node(string Id);
+    public static implicit operator string(Text text) => text.Value;
+    public static implicit operator Text(string text) => new(text, text);
+};
 
-    /// <summary>
-    /// Represents a raw (unprocessed) HTML node in the Abies DOM.
-    /// </summary>
-    /// <param name="Id">The unique identifier for the node.</param>
-    /// <param name="Html">The raw HTML content.</param>
-    public record RawHtml(string Id, string Html) : Node(Id);
+/// <summary>
+/// Represents an empty node in the Abies DOM.
+/// </summary>
+public record Empty() : Node("");
 
-    /// <summary>
-    /// Represents an attribute of an element in the Abies DOM.
-    /// </summary>
-    /// <param name="Id">The unique identifier for the attribute.</param>
-    /// <param name="Name">The name of the attribute.</param>
-    /// <param name="Value">The value of the attribute.</param>
-    public record Attribute(string Id, string Name, string Value);
+/// <summary>
+/// Represents a patch operation in the Abies DOM.
+/// </summary>
+public interface Patch { }
 
-    /// <summary>
-    /// Represents an element in the Abies DOM.
-    /// </summary>
-    /// <param name="Id">The unique identifier for the element.</param>
-    /// <param name="Tag">The tag name of the element.</param>
-    /// <param name="Attributes">The attributes of the element.</param>
-    /// <param name="Children">The child nodes of the element.</param>
-    public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
+/// <summary>
+/// Represents a patch operation to add a root element in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to add as the root.</param>
+public readonly struct AddRoot(Element element) : Patch
+{
+    public readonly Element Element = element;
+}
 
-    /// <summary>
-    /// Represents a command handler for an element in the Abies DOM. 
-    /// </summary>
-    /// <param name="Name">The name of the handler.</param>
-    /// <param name="CommandId">The unique identifier for the command.</param>
-    /// <param name="Command">The command associated with the handler.</param>
-    /// <param name="Id">The unique identifier for the handler.</param>
-    /// <param name="WithData">A function to provide additional data for the command.</param>
-    /// <param name="DataType">The type of the data provided by the WithData function.</param>
-    public record Handler(
-        string Name,
-        string CommandId,
-        Message? Command,
-        string Id,
-        Func<object?, Message>? WithData = null,
-        Type? DataType = null)
-        : Attribute(Id, $"data-event-{Name}", CommandId);
+/// <summary>
+/// Represents a patch operation to replace a child element in the Abies DOM.
+/// </summary>
+/// <param name="oldElement">The old child element to replace.</param>
+/// <param name="newElement">The new child element to replace the old one.</param>
+public readonly struct ReplaceChild(Element oldElement, Element newElement) : Patch
+{
+    public readonly Element OldElement = oldElement;
+    public readonly Element NewElement = newElement;
+}
 
-    /// <summary>
-    /// Represents a text node in the Abies DOM.
-    /// </summary>
-    /// <param name="Id">The unique identifier for the text node.</param>
-    /// <param name="Value">The text content of the node.</param>
-    public record Text(string Id, string Value) : Node(Id)
+/// <summary>
+/// Represents a patch operation to add a child element in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="child">The child element to add.</param>
+public readonly struct AddChild(Element parent, Element child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Element Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to remove a child element in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="child">The child element to remove.</param>
+public readonly struct RemoveChild(Element parent, Element child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Element Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to update an attribute in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to update.</param>
+/// <param name="attribute">The attribute to update.</param>
+/// <param name="value">The new value for the attribute.</param>
+public readonly struct UpdateAttribute(Element element, Attribute attribute, string value) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Attribute Attribute = attribute;
+    public readonly string Value = value;
+}
+
+/// <summary>
+/// Represents a patch operation to add an attribute in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to add the attribute to.</param>
+/// <param name="attribute">The attribute to add.</param>
+public readonly struct AddAttribute(Element element, Attribute attribute) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Attribute Attribute = attribute;
+}
+
+/// <summary>
+/// Represents a patch operation to remove an attribute in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to remove the attribute from.</param>
+/// <param name="attribute">The attribute to remove.</param>
+public readonly struct RemoveAttribute(Element element, Attribute attribute) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Attribute Attribute = attribute;
+}
+
+/// <summary>
+/// Represents a patch operation to add an event handler in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to add the event handler to.</param>
+/// <param name="handler">The event handler to add.</param>
+public readonly struct AddHandler(Element element, Handler handler) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Handler Handler = handler;
+}
+
+/// <summary>
+/// Represents a patch operation to remove an event handler in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to remove the event handler from.</param>
+/// <param name="handler">The event handler to remove.</param>
+public readonly struct RemoveHandler(Element element, Handler handler) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Handler Handler = handler;
+}
+
+/// <summary>
+/// Represents a patch operation to update an event handler in the Abies DOM.
+/// </summary>
+/// <param name="element">The element to update.</param>
+/// <param name="oldHandler">The old event handler to replace.</param>
+/// <param name="newHandler">The new event handler to replace the old one.</param>
+public readonly struct UpdateHandler(Element element, Handler oldHandler, Handler newHandler) : Patch
+{
+    public readonly Element Element = element;
+    public readonly Handler OldHandler = oldHandler;
+    public readonly Handler NewHandler = newHandler;
+}
+
+/// <summary>
+/// Represents a patch operation to update a text node in the Abies DOM.
+/// </summary>
+/// <param name="node">The text node to update.</param>
+/// <param name="text">The current text content of the node.</param>
+/// <param name="newId">The new ID to assign to the node.</param>
+public readonly struct UpdateText(Text node, string text, string newId) : Patch
+{
+    public readonly Text Node = node;
+    public readonly string Text = text;
+    public readonly string NewId = newId;
+}
+
+/// <summary>
+/// Represents a patch operation to add a text node in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element to add the text node to.</param>
+/// <param name="child">The text node to add.</param>
+public readonly struct AddText(Element parent, Text child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Text Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to remove a text node in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element to remove the text node from.</param>
+/// <param name="child">The text node to remove.</param>
+public readonly struct RemoveText(Element parent, Text child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Text Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to add raw HTML in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element to add the raw HTML to.</param>
+/// <param name="child">The raw HTML to add.</param>
+public readonly struct AddRaw(Element parent, RawHtml child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly RawHtml Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to remove raw HTML in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element to remove the raw HTML from.</param>
+/// <param name="child">The raw HTML to remove.</param>
+public readonly struct RemoveRaw(Element parent, RawHtml child) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly RawHtml Child = child;
+}
+
+/// <summary>
+/// Represents a patch operation to replace raw HTML in the Abies DOM.
+/// </summary>
+/// <param name="oldNode">The old raw HTML node to replace.</param>
+/// <param name="newNode">The new raw HTML node to replace the old one.</param>
+public readonly struct ReplaceRaw(RawHtml oldNode, RawHtml newNode) : Patch
+{
+    public readonly RawHtml OldNode = oldNode;
+    public readonly RawHtml NewNode = newNode;
+}
+
+/// <summary>
+/// Represents a patch operation to update raw HTML in the Abies DOM.
+/// </summary>
+/// <param name="node">The raw HTML node to update.</param>
+/// <param name="html">The current HTML content of the node.</param>
+/// <param name="newId">The new ID to assign to the node.</param>
+public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patch
+{
+    public readonly RawHtml Node = node;
+    public readonly string Html = html;
+    public readonly string NewId = newId;
+}
+
+
+/// <summary>
+/// Provides rendering utilities for the virtual DOM.
+/// </summary>
+public static class Render
+{
+    // StringBuilder pool to avoid allocations during rendering
+    private static readonly ConcurrentQueue<StringBuilder> _stringBuilderPool = new();
+    private const int _maxPooledStringBuilderCapacity = 8192;
+
+    private static StringBuilder RentStringBuilder()
     {
-        public static implicit operator string(Text text) => text.Value;
-        public static implicit operator Text(string text) => new(text, text);
-    };
-
-    /// <summary>
-    /// Represents an empty node in the Abies DOM.
-    /// </summary>
-    public record Empty() : Node("");
-
-    /// <summary>
-    /// Represents a patch operation in the Abies DOM.
-    /// </summary>
-    public interface Patch { }
-
-    /// <summary>
-    /// Represents a patch operation to add a root element in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to add as the root.</param>
-    public readonly struct AddRoot(Element element) : Patch
-    {
-        public readonly Element Element = element;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to replace a child element in the Abies DOM.
-    /// </summary>
-    /// <param name="oldElement">The old child element to replace.</param>
-    /// <param name="newElement">The new child element to replace the old one.</param>
-    public readonly struct ReplaceChild(Element oldElement, Element newElement) : Patch
-    {
-        public readonly Element OldElement = oldElement;
-        public readonly Element NewElement = newElement;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to add a child element in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element.</param>
-    /// <param name="child">The child element to add.</param>
-    public readonly struct AddChild(Element parent, Element child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly Element Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to remove a child element in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element.</param>
-    /// <param name="child">The child element to remove.</param>
-    public readonly struct RemoveChild(Element parent, Element child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly Element Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to update an attribute in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to update.</param>
-    /// <param name="attribute">The attribute to update.</param>
-    /// <param name="value">The new value for the attribute.</param>
-    public readonly struct UpdateAttribute(Element element, Attribute attribute, string value) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Attribute Attribute = attribute;
-        public readonly string Value = value;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to add an attribute in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to add the attribute to.</param>
-    /// <param name="attribute">The attribute to add.</param>
-    public readonly struct AddAttribute(Element element, Attribute attribute) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Attribute Attribute = attribute;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to remove an attribute in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to remove the attribute from.</param>
-    /// <param name="attribute">The attribute to remove.</param>
-    public readonly struct RemoveAttribute(Element element, Attribute attribute) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Attribute Attribute = attribute;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to add an event handler in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to add the event handler to.</param>
-    /// <param name="handler">The event handler to add.</param>
-    public readonly struct AddHandler(Element element, Handler handler) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Handler Handler = handler;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to remove an event handler in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to remove the event handler from.</param>
-    /// <param name="handler">The event handler to remove.</param>
-    public readonly struct RemoveHandler(Element element, Handler handler) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Handler Handler = handler;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to update an event handler in the Abies DOM.
-    /// </summary>
-    /// <param name="element">The element to update.</param>
-    /// <param name="oldHandler">The old event handler to replace.</param>
-    /// <param name="newHandler">The new event handler to replace the old one.</param>
-    public readonly struct UpdateHandler(Element element, Handler oldHandler, Handler newHandler) : Patch
-    {
-        public readonly Element Element = element;
-        public readonly Handler OldHandler = oldHandler;
-        public readonly Handler NewHandler = newHandler;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to update a text node in the Abies DOM.
-    /// </summary>
-    /// <param name="node">The text node to update.</param>
-    /// <param name="text">The current text content of the node.</param>
-    /// <param name="newId">The new ID to assign to the node.</param>
-    public readonly struct UpdateText(Text node, string text, string newId) : Patch
-    {
-        public readonly Text Node = node;
-        public readonly string Text = text;
-        public readonly string NewId = newId;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to add a text node in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element to add the text node to.</param>
-    /// <param name="child">The text node to add.</param>
-    public readonly struct AddText(Element parent, Text child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly Text Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to remove a text node in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element to remove the text node from.</param>
-    /// <param name="child">The text node to remove.</param>
-    public readonly struct RemoveText(Element parent, Text child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly Text Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to add raw HTML in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element to add the raw HTML to.</param>
-    /// <param name="child">The raw HTML to add.</param>
-    public readonly struct AddRaw(Element parent, RawHtml child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly RawHtml Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to remove raw HTML in the Abies DOM.
-    /// </summary>
-    /// <param name="parent">The parent element to remove the raw HTML from.</param>
-    /// <param name="child">The raw HTML to remove.</param>
-    public readonly struct RemoveRaw(Element parent, RawHtml child) : Patch
-    {
-        public readonly Element Parent = parent;
-        public readonly RawHtml Child = child;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to replace raw HTML in the Abies DOM.
-    /// </summary>
-    /// <param name="oldNode">The old raw HTML node to replace.</param>
-    /// <param name="newNode">The new raw HTML node to replace the old one.</param>
-    public readonly struct ReplaceRaw(RawHtml oldNode, RawHtml newNode) : Patch
-    {
-        public readonly RawHtml OldNode = oldNode;
-        public readonly RawHtml NewNode = newNode;
-    }
-
-    /// <summary>
-    /// Represents a patch operation to update raw HTML in the Abies DOM.
-    /// </summary>
-    /// <param name="node">The raw HTML node to update.</param>
-    /// <param name="html">The current HTML content of the node.</param>
-    /// <param name="newId">The new ID to assign to the node.</param>
-    public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patch
-    {
-        public readonly RawHtml Node = node;
-        public readonly string Html = html;
-        public readonly string NewId = newId;
-    }
-
-
-    /// <summary>
-    /// Provides rendering utilities for the virtual DOM.
-    /// </summary>
-    public static class Render
-    {
-        /// <summary>
-        /// Renders a virtual DOM node to its HTML representation.
-        /// </summary>
-        /// <param name="node">The virtual DOM node to render.</param>
-        /// <returns>The HTML representation of the virtual DOM node.</returns>
-        public static string Html(Node node)
+        if (_stringBuilderPool.TryDequeue(out var sb))
         {
-            var sb = new System.Text.StringBuilder();
+            sb.Clear();
+            return sb;
+        }
+        return new StringBuilder(256);
+    }
+
+    private static void ReturnStringBuilder(StringBuilder sb)
+    {
+        if (sb.Capacity <= _maxPooledStringBuilderCapacity)
+        {
+            _stringBuilderPool.Enqueue(sb);
+        }
+    }
+
+    /// <summary>
+    /// Renders a virtual DOM node to its HTML representation.
+    /// </summary>
+    /// <param name="node">The virtual DOM node to render.</param>
+    /// <returns>The HTML representation of the virtual DOM node.</returns>
+    public static string Html(Node node)
+    {
+        var sb = RentStringBuilder();
+        try
+        {
             RenderNode(node, sb);
             return sb.ToString();
         }
-
-        private static void RenderNode(Node node, System.Text.StringBuilder sb)
+        finally
         {
-            switch (node)
+            ReturnStringBuilder(sb);
+        }
+    }
+
+    private static void RenderNode(Node node, StringBuilder sb)
+    {
+        switch (node)
+        {
+            case Element element:
+                sb.Append('<').Append(element.Tag).Append(" id=\"").Append(element.Id).Append('"');
+                foreach (var attr in element.Attributes)
+                {
+                    // For handlers, only render the data-event-* attribute; do not render a raw event name attribute
+                    sb.Append(' ').Append(attr.Name).Append("=\"")
+                      .Append(System.Web.HttpUtility.HtmlEncode(attr.Value)).Append('"');
+                }
+                sb.Append('>');
+                foreach (var child in element.Children)
+                {
+                    RenderNode(child, sb);
+                }
+                sb.Append("</").Append(element.Tag).Append('>');
+                break;
+            case Text text:
+                sb.Append("<span id=\"").Append(text.Id).Append("\">")
+                  .Append(System.Web.HttpUtility.HtmlEncode(text.Value)).Append("</span>");
+                break;
+            case RawHtml raw:
+                sb.Append("<span id=\"").Append(raw.Id).Append("\">")
+                  .Append(raw.Html).Append("</span>");
+                break;
+            // Handle other node types if necessary
+            default:
+                break;
+        }
+    }
+}
+
+/// <summary>
+/// Provides diffing and patching utilities for the virtual DOM.
+/// The implementation is inspired by Elm's VirtualDom diff algorithm
+/// and is written with performance in mind.
+/// </summary>
+public static class Operations
+{
+    // Pre-allocated index strings to avoid string interpolation allocation.
+    // Inspired by Stephen Toub's .NET performance articles on avoiding allocations.
+    // Cache covers 99% of real-world use cases (elements with >256 children are rare).
+    private const int _indexStringCacheSize = 256;
+    private static readonly string[] _indexStringCache = InitializeIndexStringCache();
+
+    private static string[] InitializeIndexStringCache()
+    {
+        var cache = new string[_indexStringCacheSize];
+        for (int i = 0; i < _indexStringCacheSize; i++)
+        {
+            cache[i] = $"__index:{i}";
+        }
+        return cache;
+    }
+
+    /// <summary>
+    /// Gets a cached index string for the given index to avoid allocation.
+    /// For indices >= 256, falls back to string interpolation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetIndexString(int index) =>
+        (uint)index < _indexStringCacheSize ? _indexStringCache[index] : $"__index:{index}";
+
+    // Object pools to reduce allocations
+    private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
+    private static readonly ConcurrentQueue<Dictionary<string, Attribute>> _attributeMapPool = new();
+    private static readonly ConcurrentQueue<Dictionary<string, int>> _keyIndexMapPool = new();
+    private static readonly ConcurrentQueue<List<int>> _intListPool = new();
+    private static readonly ConcurrentQueue<List<(int, int)>> _intPairListPool = new();
+
+    private static List<Patch> RentPatchList()
+    {
+        if (_patchListPool.TryDequeue(out var list))
+        {
+            list.Clear();
+            return list;
+        }
+        return [];
+    }
+
+    private static void ReturnPatchList(List<Patch> list)
+    {
+        if (list.Count < 1000) // Prevent memory bloat
+        {
+            _patchListPool.Enqueue(list);
+        }
+    }
+
+    private static Dictionary<string, Attribute> RentAttributeMap()
+    {
+        if (_attributeMapPool.TryDequeue(out var map))
+        {
+            map.Clear();
+            return map;
+        }
+        return [];
+    }
+
+    private static void ReturnAttributeMap(Dictionary<string, Attribute> map)
+    {
+        if (map.Count < 100) // Prevent memory bloat
+        {
+            _attributeMapPool.Enqueue(map);
+        }
+    }
+
+    private static Dictionary<string, int> RentKeyIndexMap()
+    {
+        if (_keyIndexMapPool.TryDequeue(out var map))
+        {
+            map.Clear();
+            return map;
+        }
+        return [];
+    }
+
+    private static void ReturnKeyIndexMap(Dictionary<string, int> map)
+    {
+        if (map.Count < 200) // Prevent memory bloat
+        {
+            _keyIndexMapPool.Enqueue(map);
+        }
+    }
+
+    private static List<int> RentIntList()
+    {
+        if (_intListPool.TryDequeue(out var list))
+        {
+            list.Clear();
+            return list;
+        }
+        return [];
+    }
+
+    private static void ReturnIntList(List<int> list)
+    {
+        if (list.Count < 500) // Prevent memory bloat
+        {
+            _intListPool.Enqueue(list);
+        }
+    }
+
+    private static List<(int, int)> RentIntPairList()
+    {
+        if (_intPairListPool.TryDequeue(out var list))
+        {
+            list.Clear();
+            return list;
+        }
+        return [];
+    }
+
+    private static void ReturnIntPairList(List<(int, int)> list)
+    {
+        if (list.Count < 500) // Prevent memory bloat
+        {
+            _intPairListPool.Enqueue(list);
+        }
+    }
+
+    /// <summary>
+    /// Apply a patch to the real DOM by invoking JavaScript interop.
+    /// </summary>
+    /// <param name="patch">The patch to apply.</param>
+    public static async Task Apply(Patch patch)
+    {
+        switch (patch)
+        {
+            case AddRoot addRoot:
+                await Interop.SetAppContent(Render.Html(addRoot.Element));
+                Runtime.RegisterHandlers(addRoot.Element);
+                break;
+            case ReplaceChild replaceChild:
+                // Unregister old handlers before replacing DOM
+                Runtime.UnregisterHandlers(replaceChild.OldElement);
+                await Interop.ReplaceChildHtml(replaceChild.OldElement.Id, Render.Html(replaceChild.NewElement));
+                Runtime.RegisterHandlers(replaceChild.NewElement);
+                break;
+            case AddChild addChild:
+                await Interop.AddChildHtml(addChild.Parent.Id, Render.Html(addChild.Child));
+                Runtime.RegisterHandlers(addChild.Child);
+                break;
+            case RemoveChild removeChild:
+                Runtime.UnregisterHandlers(removeChild.Child);
+                await Interop.RemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
+                break;
+            case UpdateAttribute updateAttribute:
+                await Interop.UpdateAttribute(updateAttribute.Element.Id, updateAttribute.Attribute.Name, updateAttribute.Value);
+                break;
+            case AddAttribute addAttribute:
+                await Interop.AddAttribute(addAttribute.Element.Id, addAttribute.Attribute.Name, addAttribute.Attribute.Value);
+                break;
+            case RemoveAttribute removeAttribute:
+                await Interop.RemoveAttribute(removeAttribute.Element.Id, removeAttribute.Attribute.Name);
+                break;
+            case AddHandler addHandler:
+                // First register the handler so events dispatched immediately after DOM update are handled
+                Runtime.RegisterHandler(addHandler.Handler);
+                await Interop.AddAttribute(addHandler.Element.Id, addHandler.Handler.Name, addHandler.Handler.Value);
+                break;
+            case RemoveHandler removeHandler:
+                // First remove the DOM attribute to avoid dispatching with stale IDs, then unregister
+                await Interop.RemoveAttribute(removeHandler.Element.Id, removeHandler.Handler.Name);
+                Runtime.UnregisterHandler(removeHandler.Handler);
+                break;
+            case UpdateHandler updateHandler:
+                // Atomically update handler mapping and DOM attribute value to avoid gaps
+                // 1) Register the new handler command id
+                Runtime.RegisterHandler(updateHandler.NewHandler);
+                // 2) Update the DOM attribute value to the new command id
+                var attrNameToUpdate = updateHandler.NewHandler.Name;
+                await Interop.UpdateAttribute(updateHandler.Element.Id, attrNameToUpdate, updateHandler.NewHandler.Value);
+                // 3) Unregister the old handler command id
+                Runtime.UnregisterHandler(updateHandler.OldHandler);
+                break;
+            case UpdateText updateText:
+                // Update the text content first using the old ID
+                await Interop.UpdateTextContent(updateText.Node.Id, updateText.Text);
+                // If the text node's ID changed, update the DOM element's id attribute
+                if (!string.Equals(updateText.Node.Id, updateText.NewId, StringComparison.Ordinal))
+                {
+                    await Interop.UpdateAttribute(updateText.Node.Id, "id", updateText.NewId);
+                }
+                break;
+            case AddText addText:
+                await Interop.AddChildHtml(addText.Parent.Id, Render.Html(addText.Child));
+                break;
+            case RemoveText removeText:
+                await Interop.RemoveChild(removeText.Parent.Id, removeText.Child.Id);
+                break;
+            case AddRaw addRaw:
+                await Interop.AddChildHtml(addRaw.Parent.Id, Render.Html(addRaw.Child));
+                break;
+            case RemoveRaw removeRaw:
+                await Interop.RemoveChild(removeRaw.Parent.Id, removeRaw.Child.Id);
+                break;
+            case ReplaceRaw replaceRaw:
+                await Interop.ReplaceChildHtml(replaceRaw.OldNode.Id, Render.Html(replaceRaw.NewNode));
+                break;
+            case UpdateRaw updateRaw:
+                await Interop.ReplaceChildHtml(updateRaw.Node.Id, Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html)));
+                break;
+            default:
+                throw new InvalidOperationException("Unknown patch type");
+        }
+    }
+
+    /// <summary>
+    /// Compute the list of patches that transform <paramref name="oldNode"/> into <paramref name="newNode"/>.
+    /// </summary>
+    /// <param name="oldNode">The previous virtual DOM node. Can be <c>null</c> when rendering for the first time.</param>
+    /// <param name="newNode">The new virtual DOM node.</param>
+    public static List<Patch> Diff(Node? oldNode, Node newNode)
+    {
+        var patches = RentPatchList();
+        try
+        {
+            if (oldNode is null)
             {
-                case Element element:
-                    sb.Append($"<{element.Tag} id=\"{element.Id}\"");
-                    foreach (var attr in element.Attributes)
-                    {
-                        // For handlers, only render the data-event-* attribute; do not render a raw event name attribute
-                        sb.Append($" {attr.Name}=\"{System.Web.HttpUtility.HtmlEncode(attr.Value)}\"");
-                    }
-                    sb.Append('>');
-                    foreach (var child in element.Children)
-                    {
-                        RenderNode(child, sb);
-                    }
-                    sb.Append($"</{element.Tag}>");
-                    break;
-                case Text text:
-                    sb.Append($"<span id=\"{text.Id}\">{System.Web.HttpUtility.HtmlEncode(text.Value)}</span>");
-                    break;
-                case RawHtml raw:
-                    sb.Append($"<span id=\"{raw.Id}\">{raw.Html}</span>");
-                    break;
-                // Handle other node types if necessary
-                default:
-                    break;
+                patches.Add(new AddRoot((Element)newNode));
+                var result = new List<Patch>(patches);
+                return result;
+            }
+
+            DiffInternal(oldNode, newNode, null, patches);
+            var finalResult = new List<Patch>(patches);
+            return finalResult;
+        }
+        finally
+        {
+            ReturnPatchList(patches);
+        }
+    }
+
+    private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
+    {
+        // Text nodes only need an update when the value changes
+        if (oldNode is Text oldText && newNode is Text newText)
+        {
+            if (!string.Equals(oldText.Value, newText.Value, StringComparison.Ordinal) || !string.Equals(oldText.Id, newText.Id, StringComparison.Ordinal))
+            {
+                patches.Add(new UpdateText(oldText, newText.Value, newText.Id));
+            }
+
+            return;
+        }
+
+        if (oldNode is RawHtml oldRaw && newNode is RawHtml newRaw)
+        {
+            if (!string.Equals(oldRaw.Html, newRaw.Html, StringComparison.Ordinal) || !string.Equals(oldRaw.Id, newRaw.Id, StringComparison.Ordinal))
+            {
+                patches.Add(new UpdateRaw(oldRaw, newRaw.Html, newRaw.Id));
+            }
+
+            return;
+        }
+
+        // Elements may need to be replaced when the tag differs or the node type changed
+        if (oldNode is Element oldElement && newNode is Element newElement)
+        {
+            // Early exit for reference equality only for elements with same tag
+            if (ReferenceEquals(oldElement, newElement))
+            {
+                return;
+            }
+
+            if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
+            {
+                if (parent is null)
+                {
+                    patches.Add(new AddRoot(newElement));
+                }
+                else
+                {
+                    patches.Add(new ReplaceChild(oldElement, newElement));
+                }
+
+                return;
+            }
+
+            DiffAttributes(oldElement, newElement, patches);
+            DiffChildren(oldElement, newElement, patches);
+            return;
+        }
+
+        // Fallback for node type mismatch
+        if (parent is not null)
+        {
+            if (oldNode is Element oe && newNode is Element ne)
+            {
+                patches.Add(new ReplaceChild(oe, ne));
+            }
+            else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
+            {
+                patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
+            }
+            else if (oldNode is RawHtml r && newNode is Element ne2)
+            {
+                patches.Add(new ReplaceRaw(r, new RawHtml(ne2.Id, Render.Html(ne2))));
+            }
+            else if (oldNode is Element oe2 && newNode is RawHtml r2)
+            {
+                patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
+            }
+            else if (oldNode is Text ot && newNode is Text nt)
+            {
+                patches.Add(new UpdateText(ot, nt.Value, nt.Id));
+            }
+            else if (oldNode is Text ot2 && newNode is Element ne3)
+            {
+                // Replace text with element via raw representation
+                patches.Add(new ReplaceRaw(new RawHtml(ot2.Id, Render.Html(ot2)), new RawHtml(ne3.Id, Render.Html(ne3))));
+            }
+            else if (oldNode is Element oe3 && newNode is Text nt2)
+            {
+                // Replace element with text via raw representation
+                patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
             }
         }
     }
-    
-    /// <summary>
-    /// Provides diffing and patching utilities for the virtual DOM.
-    /// The implementation is inspired by Elm's VirtualDom diff algorithm
-    /// and is written with performance in mind.
-    /// </summary>
-    public static class Operations
+
+    // Diff attribute collections using dictionaries for O(n) lookup
+    private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
     {
-        // Object pools to reduce allocations
-        private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
-        private static readonly ConcurrentQueue<Dictionary<string, Attribute>> _attributeMapPool = new();
+        var oldAttrs = oldElement.Attributes;
+        var newAttrs = newElement.Attributes;
 
-        private static List<Patch> RentPatchList()
+        // Early exit for identical attribute arrays
+        if (ReferenceEquals(oldAttrs, newAttrs))
         {
-            if (_patchListPool.TryDequeue(out var list))
+            return;
+        }
+
+        // Early exit for both empty
+        if (oldAttrs.Length == 0 && newAttrs.Length == 0)
+        {
+            return;
+        }
+
+        // If old is empty, just add all new attributes
+        if (oldAttrs.Length == 0)
+        {
+            foreach (var newAttr in newAttrs)
             {
-                list.Clear();
-                return list;
+                if (newAttr is Handler handler)
+                {
+                    patches.Add(new AddHandler(newElement, handler));
+                }
+                else
+                {
+                    patches.Add(new AddAttribute(newElement, newAttr));
+                }
             }
-            return [];
+            return;
         }
 
-        private static void ReturnPatchList(List<Patch> list)
+        // If new is empty, remove all old attributes
+        if (newAttrs.Length == 0)
         {
-            if (list.Count < 1000) // Prevent memory bloat
-                _patchListPool.Enqueue(list);
-        }
-
-        private static Dictionary<string, Attribute> RentAttributeMap()
-        {
-            if (_attributeMapPool.TryDequeue(out var map))
+            foreach (var oldAttr in oldAttrs)
             {
-                map.Clear();
-                return map;
+                if (oldAttr is Handler handler)
+                {
+                    patches.Add(new RemoveHandler(oldElement, handler));
+                }
+                else
+                {
+                    patches.Add(new RemoveAttribute(oldElement, oldAttr));
+                }
             }
-            return [];
+            return;
         }
 
-        private static void ReturnAttributeMap(Dictionary<string, Attribute> map)
+        var oldMap = RentAttributeMap();
+        try
         {
-            if (map.Count < 100) // Prevent memory bloat
-                _attributeMapPool.Enqueue(map);
-        }
-
-        /// <summary>
-        /// Apply a patch to the real DOM by invoking JavaScript interop.
-        /// </summary>
-        /// <param name="patch">The patch to apply.</param> 
-        public static async Task Apply(Patch patch)
-        {
-            switch (patch)
+            // Use initial capacity hint
+            if (oldMap.Count == 0 && oldAttrs.Length > 0)
             {
-                case AddRoot addRoot:
-                    await Interop.SetAppContent(Render.Html(addRoot.Element));
-                    Abies.Runtime.RegisterHandlers(addRoot.Element);
-                    break;
-                case ReplaceChild replaceChild:
-                    // Unregister old handlers before replacing DOM
-                    Abies.Runtime.UnregisterHandlers(replaceChild.OldElement);
-                    await Interop.ReplaceChildHtml(replaceChild.OldElement.Id, Render.Html(replaceChild.NewElement));
-                    Abies.Runtime.RegisterHandlers(replaceChild.NewElement);
-                    break;
-                case AddChild addChild:
-                    await Interop.AddChildHtml(addChild.Parent.Id, Render.Html(addChild.Child));
-                    Abies.Runtime.RegisterHandlers(addChild.Child);
-                    break;
-                case RemoveChild removeChild:
-                    Abies.Runtime.UnregisterHandlers(removeChild.Child);
-                    await Interop.RemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
-                    break;
-                case UpdateAttribute updateAttribute:
-                    await Interop.UpdateAttribute(updateAttribute.Element.Id, updateAttribute.Attribute.Name, updateAttribute.Value);
-                    break;
-                case AddAttribute addAttribute:
-                    await Interop.AddAttribute(addAttribute.Element.Id, addAttribute.Attribute.Name, addAttribute.Attribute.Value);
-                    break;
-                case RemoveAttribute removeAttribute:
-                    await Interop.RemoveAttribute(removeAttribute.Element.Id, removeAttribute.Attribute.Name);
-                    break;
-                case AddHandler addHandler:
-                    // First register the handler so events dispatched immediately after DOM update are handled
-                    Abies.Runtime.RegisterHandler(addHandler.Handler);
-                    await Interop.AddAttribute(addHandler.Element.Id, addHandler.Handler.Name, addHandler.Handler.Value);
-                    break;
-                case RemoveHandler removeHandler:
-                    // First remove the DOM attribute to avoid dispatching with stale IDs, then unregister
-                    await Interop.RemoveAttribute(removeHandler.Element.Id, removeHandler.Handler.Name);
-                    Abies.Runtime.UnregisterHandler(removeHandler.Handler);
-                    break;
-                case UpdateHandler updateHandler:
-                    // Atomically update handler mapping and DOM attribute value to avoid gaps
-                    // 1) Register the new handler command id
-                    Abies.Runtime.RegisterHandler(updateHandler.NewHandler);
-                    // 2) Update the DOM attribute value to the new command id
-                    var attrNameToUpdate = updateHandler.NewHandler.Name;
-                    await Interop.UpdateAttribute(updateHandler.Element.Id, attrNameToUpdate, updateHandler.NewHandler.Value);
-                    // 3) Unregister the old handler command id
-                    Abies.Runtime.UnregisterHandler(updateHandler.OldHandler);
-                    break;
-                case UpdateText updateText:
-                    // Update the text content first using the old ID
-                    await Interop.UpdateTextContent(updateText.Node.Id, updateText.Text);
-                    // If the text node's ID changed, update the DOM element's id attribute
-                    if (!string.Equals(updateText.Node.Id, updateText.NewId, StringComparison.Ordinal))
+                oldMap.EnsureCapacity(oldAttrs.Length);
+            }
+
+            foreach (var attr in oldAttrs)
+            {
+                var attrName = attr is Handler h ? h.Name : attr.Name;
+                oldMap[attrName] = attr;
+            }
+
+            foreach (var newAttr in newAttrs)
+            {
+                var newAttrName = newAttr is Handler nh ? nh.Name : newAttr.Name;
+                if (oldMap.TryGetValue(newAttrName, out var oldAttr))
+                {
+                    oldMap.Remove(newAttrName);
+                    if (!newAttr.Equals(oldAttr))
                     {
-                        await Interop.UpdateAttribute(updateText.Node.Id, "id", updateText.NewId);
-                    }
-                    break;
-                case AddText addText:
-                    await Interop.AddChildHtml(addText.Parent.Id, Render.Html(addText.Child));
-                    break;
-                case RemoveText removeText:
-                    await Interop.RemoveChild(removeText.Parent.Id, removeText.Child.Id);
-                    break;
-                case AddRaw addRaw:
-                    await Interop.AddChildHtml(addRaw.Parent.Id, Render.Html(addRaw.Child));
-                    break;
-                case RemoveRaw removeRaw:
-                    await Interop.RemoveChild(removeRaw.Parent.Id, removeRaw.Child.Id);
-                    break;
-                case ReplaceRaw replaceRaw:
-                    await Interop.ReplaceChildHtml(replaceRaw.OldNode.Id, Render.Html(replaceRaw.NewNode));
-                    break;
-                case UpdateRaw updateRaw:
-                    await Interop.ReplaceChildHtml(updateRaw.Node.Id, Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html)));
-                    break;
-                default:
-                    throw new InvalidOperationException("Unknown patch type");
-            }
-        }        
-        
-        /// <summary>
-        /// Compute the list of patches that transform <paramref name="oldNode"/> into <paramref name="newNode"/>.
-        /// </summary>
-        /// <param name="oldNode">The previous virtual DOM node. Can be <c>null</c> when rendering for the first time.</param>
-        /// <param name="newNode">The new virtual DOM node.</param>
-        public static List<Patch> Diff(Node? oldNode, Node newNode)
-        {
-            var patches = RentPatchList();
-            try
-            {
-                if (oldNode is null)
-                {
-                    patches.Add(new AddRoot((Element)newNode));
-                    var result = new List<Patch>(patches);
-                    return result;
-                }
-
-                DiffInternal(oldNode, newNode, null, patches);
-                var finalResult = new List<Patch>(patches);
-                return finalResult;
-            }
-            finally
-            {
-                ReturnPatchList(patches);
-            }
-        }        
-        
-        private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
-        {
-            // Text nodes only need an update when the value changes
-            if (oldNode is Text oldText && newNode is Text newText)
-            {
-                if (!string.Equals(oldText.Value, newText.Value, StringComparison.Ordinal) || !string.Equals(oldText.Id, newText.Id, StringComparison.Ordinal))
-                    patches.Add(new UpdateText(oldText, newText.Value, newText.Id));
-                return;
-            }
-
-            if (oldNode is RawHtml oldRaw && newNode is RawHtml newRaw)
-            {
-                if (!string.Equals(oldRaw.Html, newRaw.Html, StringComparison.Ordinal) || !string.Equals(oldRaw.Id, newRaw.Id, StringComparison.Ordinal))
-                    patches.Add(new UpdateRaw(oldRaw, newRaw.Html, newRaw.Id));
-                return;
-            }
-
-            // Elements may need to be replaced when the tag differs or the node type changed
-            if (oldNode is Element oldElement && newNode is Element newElement)
-            {
-                // Early exit for reference equality only for elements with same tag
-                if (ReferenceEquals(oldElement, newElement))
-                    return;
-
-                if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
-                {
-                    if (parent is null)
-                        patches.Add(new AddRoot(newElement));
-                    else
-                        patches.Add(new ReplaceChild(oldElement, newElement));
-                    return;
-                }
-
-                DiffAttributes(oldElement, newElement, patches);
-                DiffChildren(oldElement, newElement, patches);
-                return;
-            }
-
-            // Fallback for node type mismatch
-            if (parent is not null)
-            {
-                if (oldNode is Element oe && newNode is Element ne)
-                {
-                    patches.Add(new ReplaceChild(oe, ne));
-                }
-                else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
-                {
-                    patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
-                }
-                else if (oldNode is RawHtml r && newNode is Element ne2)
-                {
-                    patches.Add(new ReplaceRaw(r, new RawHtml(ne2.Id, Render.Html(ne2))));
-                }
-                else if (oldNode is Element oe2 && newNode is RawHtml r2)
-                {
-                    patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
-                }
-                else if (oldNode is Text ot && newNode is Text nt)
-                {
-                    patches.Add(new UpdateText(ot, nt.Value, nt.Id));
-                }
-                else if (oldNode is Text ot2 && newNode is Element ne3)
-                {
-                    // Replace text with element via raw representation
-                    patches.Add(new ReplaceRaw(new RawHtml(ot2.Id, Render.Html(ot2)), new RawHtml(ne3.Id, Render.Html(ne3))));
-                }
-                else if (oldNode is Element oe3 && newNode is Text nt2)
-                {
-                    // Replace element with text via raw representation
-                    patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
-                }
-            }
-        }
-        
-        // Diff attribute collections using dictionaries for O(n) lookup
-        private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
-        {
-            var oldAttrs = oldElement.Attributes;
-            var newAttrs = newElement.Attributes;
-
-            // Early exit for identical attribute arrays
-            if (ReferenceEquals(oldAttrs, newAttrs))
-                return;
-
-            // Early exit for both empty
-            if (oldAttrs.Length == 0 && newAttrs.Length == 0)
-                return;
-
-            // If old is empty, just add all new attributes
-            if (oldAttrs.Length == 0)
-            {
-                foreach (var newAttr in newAttrs)
-                {
-                    if (newAttr is Handler handler)
-                        patches.Add(new AddHandler(newElement, handler));
-                    else
-                        patches.Add(new AddAttribute(newElement, newAttr));
-                }
-                return;
-            }
-
-            // If new is empty, remove all old attributes
-            if (newAttrs.Length == 0)
-            {
-                foreach (var oldAttr in oldAttrs)
-                {
-                    if (oldAttr is Handler handler)
-                        patches.Add(new RemoveHandler(oldElement, handler));
-                    else
-                        patches.Add(new RemoveAttribute(oldElement, oldAttr));
-                }
-                return;
-            }
-
-            var oldMap = RentAttributeMap();
-            try
-            {
-                // Use initial capacity hint
-                if (oldMap.Count == 0 && oldAttrs.Length > 0)
-                    oldMap.EnsureCapacity(oldAttrs.Length);
-
-                foreach (var attr in oldAttrs)
-                {
-                    var attrName = attr is Handler h ? h.Name : attr.Name;
-                    oldMap[attrName] = attr;
-                }
-
-                foreach (var newAttr in newAttrs)
-                {
-                    var newAttrName = newAttr is Handler nh ? nh.Name : newAttr.Name;
-                    if (oldMap.TryGetValue(newAttrName, out var oldAttr))
-                    {
-                        oldMap.Remove(newAttrName);
-                        if (!newAttr.Equals(oldAttr))
+                        if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
                         {
-                            if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
+                            // Same attribute id and name, but handler value changed: update atomically
+                            patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                        }
+                        else
+                        {
+                            if (oldAttr is Handler oldHandler2)
                             {
-                                // Same attribute id and name, but handler value changed: update atomically
-                                patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                                patches.Add(new RemoveHandler(oldElement, oldHandler2));
+                            }
+                            else if (newAttr is Handler)
+                            {
+                                patches.Add(new RemoveAttribute(oldElement, oldAttr));
+                            }
+
+                            if (newAttr is Handler newHandler2)
+                            {
+                                patches.Add(new AddHandler(newElement, newHandler2));
                             }
                             else
                             {
-                                if (oldAttr is Handler oldHandler2)
-                                    patches.Add(new RemoveHandler(oldElement, oldHandler2));
-                                else if (newAttr is Handler)
-                                    patches.Add(new RemoveAttribute(oldElement, oldAttr));
-
-                                if (newAttr is Handler newHandler2)
-                                    patches.Add(new AddHandler(newElement, newHandler2));
-                                else
-                                    patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                                patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
                             }
                         }
                     }
+                }
+                else
+                {
+                    if (newAttr is Handler handler)
+                    {
+                        patches.Add(new AddHandler(newElement, handler));
+                    }
                     else
                     {
-                        if (newAttr is Handler handler)
-                            patches.Add(new AddHandler(newElement, handler));
-                        else
-                            patches.Add(new AddAttribute(newElement, newAttr));
+                        patches.Add(new AddAttribute(newElement, newAttr));
                     }
                 }
+            }
 
-                // Any remaining old attributes must be removed
-                foreach (var remaining in oldMap.Values)
+            // Any remaining old attributes must be removed
+            foreach (var remaining in oldMap.Values)
+            {
+                if (remaining is Handler handler)
                 {
-                    if (remaining is Handler handler)
-                        patches.Add(new RemoveHandler(oldElement, handler));
-                    else
-                        patches.Add(new RemoveAttribute(oldElement, remaining));
+                    patches.Add(new RemoveHandler(oldElement, handler));
+                }
+                else
+                {
+                    patches.Add(new RemoveAttribute(oldElement, remaining));
                 }
             }
-            finally
-            {
-                ReturnAttributeMap(oldMap);
-            }
+        }
+        finally
+        {
+            ReturnAttributeMap(oldMap);
+        }
+    }
+
+    private static void DiffChildren(Element oldParent, Element newParent, List<Patch> patches)
+    {
+        var oldChildren = oldParent.Children;
+        var newChildren = newParent.Children;
+
+        // Early exit for identical child arrays
+        if (ReferenceEquals(oldChildren, newChildren))
+        {
+            return;
         }
 
-        private static void DiffChildren(Element oldParent, Element newParent, List<Patch> patches)
+        var oldLength = oldChildren.Length;
+        var newLength = newChildren.Length;
+
+        // ADR-016: Use ID-based keyed diffing for all elements.
+        // Build maps of old and new children by their keys (element Id or data-key).
+        // Use ArrayPool to avoid allocations
+        var oldKeysArray = ArrayPool<string>.Shared.Rent(oldLength);
+        var newKeysArray = ArrayPool<string>.Shared.Rent(newLength);
+
+        try
         {
-            var oldChildren = oldParent.Children;
-            var newChildren = newParent.Children;
+            BuildKeySequenceInto(oldChildren, oldKeysArray);
+            BuildKeySequenceInto(newChildren, newKeysArray);
 
-            // Early exit for identical child arrays
-            if (ReferenceEquals(oldChildren, newChildren))
-                return;
+            var oldKeys = oldKeysArray.AsSpan(0, oldLength);
+            var newKeys = newKeysArray.AsSpan(0, newLength);
+            DiffChildrenCore(oldParent, newParent, oldChildren, newChildren, oldKeys, newKeys, patches);
+        }
+        finally
+        {
+            // Clear the arrays before returning to pool (avoid memory leaks of string references)
+            Array.Clear(oldKeysArray, 0, oldLength);
+            Array.Clear(newKeysArray, 0, newLength);
+            ArrayPool<string>.Shared.Return(oldKeysArray);
+            ArrayPool<string>.Shared.Return(newKeysArray);
+        }
+    }
 
-            var oldLength = oldChildren.Length;
-            var newLength = newChildren.Length;
+    /// <summary>
+    /// Core diffing logic for child elements.
+    /// </summary>
+    private static void DiffChildrenCore(
+        Element oldParent,
+        Element newParent,
+        Node[] oldChildren,
+        Node[] newChildren,
+        ReadOnlySpan<string> oldKeys,
+        ReadOnlySpan<string> newKeys,
+        List<Patch> patches)
+    {
+        var oldLength = oldChildren.Length;
+        var newLength = newChildren.Length;
 
-            // ADR-016: Use ID-based keyed diffing for all elements.
-            // Build maps of old and new children by their keys (element Id or data-key).
-            var oldKeys = BuildKeySequence(oldChildren);
-            var newKeys = BuildKeySequence(newChildren);
+        // Check if keys differ at all
+        if (!oldKeys.SequenceEqual(newKeys))
+        {
+            // Build lookup maps for efficient matching - use pooled dictionaries
+            var oldKeyToIndex = RentKeyIndexMap();
+            var newKeyToIndex = RentKeyIndexMap();
 
-            // Check if keys differ at all
-            if (!oldKeys.SequenceEqual(newKeys))
+            try
             {
-                // Build lookup maps for efficient matching
-                var oldKeyToIndex = new Dictionary<string, int>(oldLength);
+                oldKeyToIndex.EnsureCapacity(oldLength);
                 for (int i = 0; i < oldLength; i++)
+                {
                     oldKeyToIndex[oldKeys[i]] = i;
+                }
 
-                var newKeyToIndex = new Dictionary<string, int>(newLength);
+                newKeyToIndex.EnsureCapacity(newLength);
                 for (int i = 0; i < newLength; i++)
+                {
                     newKeyToIndex[newKeys[i]] = i;
+                }
 
                 // Check if this is a reorder (same keys, different order) or a membership change
-                var oldKeySet = new HashSet<string>(oldKeys);
-                var newKeySet = new HashSet<string>(newKeys);
-                var isReorder = oldKeySet.SetEquals(newKeySet) && oldLength == newLength;
+                // Avoid allocating HashSets - use dictionaries we already have
+                var isReorder = oldLength == newLength && AreKeysSameSet(oldKeys, newKeyToIndex);
 
                 if (isReorder)
                 {
@@ -723,21 +933,33 @@ namespace Abies.DOM
                     for (int i = oldLength - 1; i >= 0; i--)
                     {
                         if (oldChildren[i] is Element oldChild)
+                        {
                             patches.Add(new RemoveChild(oldParent, oldChild));
+                        }
                         else if (oldChildren[i] is RawHtml oldRaw)
+                        {
                             patches.Add(new RemoveRaw(oldParent, oldRaw));
+                        }
                         else if (oldChildren[i] is Text oldText)
+                        {
                             patches.Add(new RemoveText(oldParent, oldText));
+                        }
                     }
 
                     for (int i = 0; i < newLength; i++)
                     {
                         if (newChildren[i] is Element newChild)
+                        {
                             patches.Add(new AddChild(newParent, newChild));
+                        }
                         else if (newChildren[i] is RawHtml newRaw)
+                        {
                             patches.Add(new AddRaw(newParent, newRaw));
+                        }
                         else if (newChildren[i] is Text newText)
+                        {
                             patches.Add(new AddText(newParent, newText));
+                        }
                     }
                     return;
                 }
@@ -746,117 +968,187 @@ namespace Abies.DOM
                 // Find keys that exist in old but not in new (to remove)
                 // Find keys that exist in new but not in old (to add)
                 // Find keys that exist in both (to diff)
-                var keysToRemove = new List<int>();
-                var keysToAdd = new List<int>();
-                var keysToDiff = new List<(int oldIndex, int newIndex)>();
+                // Use pooled lists
+                var keysToRemove = RentIntList();
+                var keysToAdd = RentIntList();
+                var keysToDiff = RentIntPairList();
 
-                for (int i = 0; i < oldLength; i++)
+                try
                 {
-                    if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
-                        keysToDiff.Add((i, newIndex));
-                    else
-                        keysToRemove.Add(i);
+                    for (int i = 0; i < oldLength; i++)
+                    {
+                        if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
+                        {
+                            keysToDiff.Add((i, newIndex));
+                        }
+                        else
+                        {
+                            keysToRemove.Add(i);
+                        }
+                    }
+
+                    for (int i = 0; i < newLength; i++)
+                    {
+                        if (!oldKeyToIndex.ContainsKey(newKeys[i]))
+                        {
+                            keysToAdd.Add(i);
+                        }
+                    }
+
+                    // Remove old children that don't exist in new (iterate backwards to maintain order)
+                    for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                    {
+                        var idx = keysToRemove[i];
+                        if (oldChildren[idx] is Element oldChild)
+                        {
+                            patches.Add(new RemoveChild(oldParent, oldChild));
+                        }
+                        else if (oldChildren[idx] is RawHtml oldRaw)
+                        {
+                            patches.Add(new RemoveRaw(oldParent, oldRaw));
+                        }
+                        else if (oldChildren[idx] is Text oldText)
+                        {
+                            patches.Add(new RemoveText(oldParent, oldText));
+                        }
+                    }
+
+                    // Diff children that exist in both trees
+                    foreach (var (oldIndex, newIndex) in keysToDiff)
+                    {
+                        DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
+                    }
+
+                    // Add new children that don't exist in old
+                    foreach (var idx in keysToAdd)
+                    {
+                        if (newChildren[idx] is Element newChild)
+                        {
+                            patches.Add(new AddChild(newParent, newChild));
+                        }
+                        else if (newChildren[idx] is RawHtml newRaw)
+                        {
+                            patches.Add(new AddRaw(newParent, newRaw));
+                        }
+                        else if (newChildren[idx] is Text newText)
+                        {
+                            patches.Add(new AddText(newParent, newText));
+                        }
+                    }
                 }
-
-                for (int i = 0; i < newLength; i++)
+                finally
                 {
-                    if (!oldKeyToIndex.ContainsKey(newKeys[i]))
-                        keysToAdd.Add(i);
-                }
-
-                // Remove old children that don't exist in new (iterate backwards to maintain order)
-                for (int i = keysToRemove.Count - 1; i >= 0; i--)
-                {
-                    var idx = keysToRemove[i];
-                    if (oldChildren[idx] is Element oldChild)
-                        patches.Add(new RemoveChild(oldParent, oldChild));
-                    else if (oldChildren[idx] is RawHtml oldRaw)
-                        patches.Add(new RemoveRaw(oldParent, oldRaw));
-                    else if (oldChildren[idx] is Text oldText)
-                        patches.Add(new RemoveText(oldParent, oldText));
-                }
-
-                // Diff children that exist in both trees
-                foreach (var (oldIndex, newIndex) in keysToDiff)
-                    DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
-
-                // Add new children that don't exist in old
-                foreach (var idx in keysToAdd)
-                {
-                    if (newChildren[idx] is Element newChild)
-                        patches.Add(new AddChild(newParent, newChild));
-                    else if (newChildren[idx] is RawHtml newRaw)
-                        patches.Add(new AddRaw(newParent, newRaw));
-                    else if (newChildren[idx] is Text newText)
-                        patches.Add(new AddText(newParent, newText));
+                    ReturnIntList(keysToRemove);
+                    ReturnIntList(keysToAdd);
+                    ReturnIntPairList(keysToDiff);
                 }
                 return;
             }
-
-            // Keys are identical: diff in place
-            var shared = Math.Min(oldLength, newLength);
-            for (int i = 0; i < shared; i++)
-                DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
-
-            // Remove extra old children (iterate backwards to maintain DOM order)
-            for (int i = oldLength - 1; i >= shared; i--)
+            finally
             {
-                if (oldChildren[i] is Element oldChild)
-                    patches.Add(new RemoveChild(oldParent, oldChild));
-                else if (oldChildren[i] is RawHtml oldRaw)
-                    patches.Add(new RemoveRaw(oldParent, oldRaw));
-                else if (oldChildren[i] is Text oldText)
-                    patches.Add(new RemoveText(oldParent, oldText));
-            }
-
-            // Add additional new children
-            for (int i = shared; i < newLength; i++)
-            {
-                if (newChildren[i] is Element newChild)
-                    patches.Add(new AddChild(newParent, newChild));
-                else if (newChildren[i] is RawHtml newRaw)
-                    patches.Add(new AddRaw(newParent, newRaw));
-                else if (newChildren[i] is Text newText)
-                    patches.Add(new AddText(newParent, newText));
+                ReturnKeyIndexMap(oldKeyToIndex);
+                ReturnKeyIndexMap(newKeyToIndex);
             }
         }
 
-        /// <summary>
-        /// Gets the key for a node used in keyed diffing.
-        /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
-        /// </summary>
-        private static string? GetKey(Node node)
+        // Keys are identical: diff in place
+        var shared = Math.Min(oldLength, newLength);
+        for (int i = 0; i < shared; i++)
         {
-            if (node is not Element element)
-                return null;
-
-            // ADR-016: Use element Id as the primary key for diffing.
-            // This allows developers to set stable IDs on elements,
-            // and the diff algorithm will correctly match elements by ID.
-            // The Id is always present, so we use it directly.
-            // Only treat auto-generated IDs (from Praefixum) as non-keyed
-            // by checking for data-key attribute as an explicit override.
-            
-            // First, check for explicit data-key attribute (backward compatibility)
-            foreach (var attr in element.Attributes)
-            {
-                if (attr.Name == "data-key" || attr.Name == "key")
-                    return attr.Value;
-            }
-
-            // Use element Id as the key
-            // Element IDs are always unique, making them ideal for keyed diffing
-            return element.Id;
+            DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
         }
 
-        private static string[] BuildKeySequence(Node[] children)
+        // Remove extra old children (iterate backwards to maintain DOM order)
+        for (int i = oldLength - 1; i >= shared; i--)
         {
-            var keys = new string[children.Length];
-            for (int i = 0; i < children.Length; i++)
+            if (oldChildren[i] is Element oldChild)
             {
-                keys[i] = GetKey(children[i]) ?? $"__index:{i}";
+                patches.Add(new RemoveChild(oldParent, oldChild));
             }
-            return keys;
+            else if (oldChildren[i] is RawHtml oldRaw)
+            {
+                patches.Add(new RemoveRaw(oldParent, oldRaw));
+            }
+            else if (oldChildren[i] is Text oldText)
+            {
+                patches.Add(new RemoveText(oldParent, oldText));
+            }
         }
+
+        // Add additional new children
+        for (int i = shared; i < newLength; i++)
+        {
+            if (newChildren[i] is Element newChild)
+            {
+                patches.Add(new AddChild(newParent, newChild));
+            }
+            else if (newChildren[i] is RawHtml newRaw)
+            {
+                patches.Add(new AddRaw(newParent, newRaw));
+            }
+            else if (newChildren[i] is Text newText)
+            {
+                patches.Add(new AddText(newParent, newText));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if all keys in oldKeys exist in newKeyToIndex (same set, possibly different order).
+    /// </summary>
+    private static bool AreKeysSameSet(ReadOnlySpan<string> oldKeys, Dictionary<string, int> newKeyToIndex)
+    {
+        foreach (var key in oldKeys)
+        {
+            if (!newKeyToIndex.ContainsKey(key))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Builds key sequence into a pre-allocated array (avoiding allocation).
+    /// Uses cached index strings for non-keyed children to eliminate string interpolation.
+    /// </summary>
+    private static void BuildKeySequenceInto(Node[] children, string[] keys)
+    {
+        for (int i = 0; i < children.Length; i++)
+        {
+            keys[i] = GetKey(children[i]) ?? GetIndexString(i);
+        }
+    }
+
+    /// <summary>
+    /// Gets the key for a node used in keyed diffing.
+    /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+    /// </summary>
+    private static string? GetKey(Node node)
+    {
+        if (node is not Element element)
+        {
+            return null;
+        }
+
+        // ADR-016: Use element Id as the primary key for diffing.
+        // This allows developers to set stable IDs on elements,
+        // and the diff algorithm will correctly match elements by ID.
+        // The Id is always present, so we use it directly.
+        // Only treat auto-generated IDs (from Praefixum) as non-keyed
+        // by checking for data-key attribute as an explicit override.
+
+        // First, check for explicit data-key attribute (backward compatibility)
+        foreach (var attr in element.Attributes)
+        {
+            if (attr.Name == "data-key" || attr.Name == "key")
+            {
+                return attr.Value;
+            }
+        }
+
+        // Use element Id as the key
+        // Element IDs are always unique, making them ideal for keyed diffing
+        return element.Id;
     }
 }
