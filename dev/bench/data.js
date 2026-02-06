@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770371181893,
+  "lastUpdate": 1770394865263,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -572,6 +572,180 @@ window.BENCHMARK_DATA = {
             "value": 7192.500771658762,
             "unit": "ns",
             "range": "± 73.32073629283512"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3abb4a14a3d47f328427b1d8c9992b372a1fc551",
+          "message": "refactor: Replace reflection-based JSON with source-generated serialization (#38)\n\n* refactor: replace reflection-based JSON with source-generated serialization\n\n.NET 10 WASM disables reflection-based JSON serialization by default\n(JsonSerializerIsReflectionDisabled). This commit adds source-generated\nJsonSerializerContext implementations for trim-safe serialization.\n\nFramework changes (Abies):\n- Add AbiesJsonContext for event/subscription data types\n- Update Runtime.DispatchData/DispatchSubscriptionData to use AbiesJsonContext\n- Update WebSocket subscription serialization to use AbiesJsonContext\n\nConduit app changes:\n- Add ConduitJsonContext with CamelCase naming for API types\n- Add explicit RequestDtos (LoginRequest, RegisterRequest, etc.) replacing\n  anonymous types that cannot be registered with source generators\n- Update ApiClient to use ConduitJsonContext and proper IDisposable disposal\n- Replace PublishTrimmed=false with Release-only trim settings\n\nTemplate changes:\n- Update both template .csproj files with Release-only trim settings\n\n* fix: Resolve CI failures for source-gen JSON PR\n\n- Fix Directory.Build.props: use $(MSBuildThisFileDirectory) instead of\n  $(SolutionDir) so Global/Usings.cs resolves in project-level builds\n  (fixes Benchmark and E2E CI failures)\n- Extract DispatchData/DispatchSubscriptionData into Runtime.Dispatch.cs\n  partial class to isolate source-gen JSON changes\n- Auto-format Runtime.cs to pass dotnet format lint check (fixes\n  pre-existing whitespace, unused usings, name simplifications)",
+          "timestamp": "2026-02-06T17:11:12+01:00",
+          "tree_id": "b5fd82a4b474f667d4afcd06a73b59f749724637",
+          "url": "https://github.com/Picea/Abies/commit/3abb4a14a3d47f328427b1d8c9992b372a1fc551"
+        },
+        "date": 1770394864344,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 548.6162942886352,
+            "unit": "ns",
+            "range": "± 1.4458559735847722"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 668.9515376772199,
+            "unit": "ns",
+            "range": "± 2.136853869023948"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 591.8638168062482,
+            "unit": "ns",
+            "range": "± 1.6761242646769188"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 606.2203289667765,
+            "unit": "ns",
+            "range": "± 2.244381368555199"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 665.5970143590655,
+            "unit": "ns",
+            "range": "± 1.5931813214340595"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 684.2934725625174,
+            "unit": "ns",
+            "range": "± 2.913239318628167"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 667.1232634271894,
+            "unit": "ns",
+            "range": "± 2.843157142829055"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 217.09107943943567,
+            "unit": "ns",
+            "range": "± 0.8836970968781308"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 759.7578601837158,
+            "unit": "ns",
+            "range": "± 5.744130005443161"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 398.1805159886678,
+            "unit": "ns",
+            "range": "± 3.6730990151196323"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 718.7859888076782,
+            "unit": "ns",
+            "range": "± 3.1389304132930986"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5305.8632736206055,
+            "unit": "ns",
+            "range": "± 63.505227727324176"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 39290.707548014325,
+            "unit": "ns",
+            "range": "± 589.5096523223422"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 646.8601661046346,
+            "unit": "ns",
+            "range": "± 6.80517164333841"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4894.488583700998,
+            "unit": "ns",
+            "range": "± 35.73112573289629"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2482.9190015157064,
+            "unit": "ns",
+            "range": "± 31.41665796241797"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 39.32897735937782,
+            "unit": "ns",
+            "range": "± 1.0615102080983563"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 51.839095095793404,
+            "unit": "ns",
+            "range": "± 0.5560498708567455"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 502.82245787867794,
+            "unit": "ns",
+            "range": "± 13.945267347132093"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2568.5375073750815,
+            "unit": "ns",
+            "range": "± 42.20675892717792"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4091.1201805114747,
+            "unit": "ns",
+            "range": "± 90.61010161211068"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 95.49634311749385,
+            "unit": "ns",
+            "range": "± 2.688923508057292"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 248.03795177595956,
+            "unit": "ns",
+            "range": "± 3.1561806092355984"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 637.7872231801351,
+            "unit": "ns",
+            "range": "± 11.807842070170969"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7098.128535930927,
+            "unit": "ns",
+            "range": "± 107.42483623612995"
           }
         ]
       }
