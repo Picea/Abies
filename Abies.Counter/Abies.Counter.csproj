@@ -22,9 +22,9 @@
   <!-- Remove the Abies project's copy from publish to avoid NETSDK1152 duplicate -->
   <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
-      <!-- Remove any abies.js that comes from the Abies project reference -->
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.OriginalItemSpec)').Contains('\Abies\wwwroot\'))" />
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.OriginalItemSpec)').Contains('/Abies/wwwroot/'))" />
+      <!-- Remove any abies.js from the Abies project directory (not the Counter copy) -->
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('\Abies\wwwroot\abies.js'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('/Abies/wwwroot/abies.js'))" />
     </ItemGroup>
   </Target>
 </Project>
