@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770371180721,
+  "lastUpdate": 1770371181893,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -572,6 +572,182 @@ window.BENCHMARK_DATA = {
             "value": 7192.500771658762,
             "unit": "ns",
             "range": "± 73.32073629283512"
+          }
+        ]
+      }
+    ],
+    "Rendering Engine Allocations": [
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7bd08a22e214bbbffba2f824c2dd1b04e1415ea4",
+          "message": "perf: Toub-inspired performance optimizations for DOM rendering (#34)\n\n* chore: trigger CI rerun\n\n* perf: Toub-inspired performance optimizations\n\nThree key optimizations inspired by Stephen Toub's .NET performance articles:\n\n1. Atomic counter for CommandIds (Events.cs)\n   - Replaced Guid.NewGuid().ToString() with atomic long counter\n   - Uses string.Create with stackalloc for zero-allocation ID generation\n   - Result: 10.9x faster handler creation (209ns → 19ns)\n   - Result: 21% less memory per handler (224B → 176B)\n\n2. SearchValues<char> fast-path for HTML encoding (Operations.cs)\n   - Uses SIMD-accelerated character search to skip HtmlEncode\n   - Most attribute values (class names, IDs) don't need encoding\n   - Result: 8% faster large page rendering\n\n3. FrozenDictionary cache for event attribute names (Operations.cs)\n   - Caches 'data-event-{name}' strings for 100+ known DOM events\n   - O(1) lookup eliminates string interpolation per handler\n   - Result: Additional 32% memory reduction per handler\n\nCombined results for event-heavy rendering:\n- 18% faster throughput\n- 34% less memory allocation\n\nBenchmark suite added:\n- RenderingBenchmarks.cs: 9 HTML rendering scenarios\n- EventHandlerBenchmarks.cs: 8 handler creation scenarios\n- CI quality gates: throughput (105%/110%), allocations (110%/120%)\n\n* fix: Address Copilot review feedback\n\n- Add missing scripts/merge-benchmark-results.py (was untracked)\n- Reduce stackalloc buffer from 32 to 24 chars (sufficient for max long)\n- Add overflow documentation comment explaining 292 million years to overflow\n- Update EventHandlerBenchmarks docs to reflect optimized implementation\n- Update RenderingBenchmarks docs to reflect SearchValues/counter optimizations\n\n* docs: Add memory instructions for PR template reminder\n\n* style: Add PR guidelines and fix formatting issues",
+          "timestamp": "2026-02-06T10:36:53+01:00",
+          "tree_id": "8565b6d5667d57fd15827ebda517d6ecd155ce55",
+          "url": "https://github.com/Picea/Abies/commit/7bd08a22e214bbbffba2f824c2dd1b04e1415ea4"
+        },
+        "date": 1770371181465,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 344,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 22.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 352,
+            "unit": "bytes",
+            "extra": "Gen0: 88.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1416,
+            "unit": "bytes",
+            "extra": "Gen0: 88.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 800,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1248,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9968,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9400,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 5000,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 188.0000, Gen1: 14.0000"
           }
         ]
       }
