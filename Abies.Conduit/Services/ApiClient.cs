@@ -1,23 +1,12 @@
-using Abies.Conduit.Main;
-using Abies.Conduit.Page.Home;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Abies.Conduit.Services;
 
 public static class ApiClient
 {
     private static HttpClient Client = new();
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
-    };
-    
     private static string BaseUrl = "http://localhost:5179/api";
 
     /// <summary>
@@ -35,7 +24,11 @@ public static class ApiClient
     /// </summary>
     public static void ConfigureBaseUrl(string baseUrl)
     {
-        if (string.IsNullOrWhiteSpace(baseUrl)) throw new ArgumentException("Base URL cannot be empty", nameof(baseUrl));
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new ArgumentException("Base URL cannot be empty", nameof(baseUrl));
+        }
+
         BaseUrl = baseUrl.TrimEnd('/');
     }
 
@@ -55,30 +48,13 @@ public static class ApiClient
 
     public static async Task<UserResponse> LoginAsync(string email, string password)
     {
-        var loginRequest = new
-        {
-            user = new
-            {
-                email,
-                password
-            }
-        };
-
+        var loginRequest = new LoginRequest(new LoginRequest.LoginUser(email, password));
         return await PostAsync<UserResponse>("/users/login", loginRequest);
     }
 
     public static async Task<UserResponse> RegisterAsync(string username, string email, string password)
     {
-        var registerRequest = new
-        {
-            user = new
-            {
-                username,
-                email,
-                password
-            }
-        };
-
+        var registerRequest = new RegisterRequest(new RegisterRequest.RegisterUser(username, email, password));
         return await PostAsync<UserResponse>("/users", registerRequest);
     }
 
@@ -89,29 +65,30 @@ public static class ApiClient
 
     public static async Task<UserResponse> UpdateUserAsync(string email, string username, string bio, string image, string? password = null)
     {
-        var updateRequest = new
-        {
-            user = new
-            {
-                email,
-                username,
-                bio,
-                image,
-                password
-            }
-        };
-
+        var updateRequest = new UpdateUserRequest(new UpdateUserRequest.UpdateUser(email, username, bio, image, password));
         return await PutAsync<UserResponse>("/user", updateRequest);
     }
 
     // Articles
 
-public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
+    public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
     {
         List<string> queryParams = [];
-        if (!string.IsNullOrEmpty(tag)) queryParams.Add($"tag={tag}");
-        if (!string.IsNullOrEmpty(author)) queryParams.Add($"author={author}");
-        if (!string.IsNullOrEmpty(favoritedBy)) queryParams.Add($"favorited={favoritedBy}");
+        if (!string.IsNullOrEmpty(tag))
+        {
+            queryParams.Add($"tag={tag}");
+        }
+
+        if (!string.IsNullOrEmpty(author))
+        {
+            queryParams.Add($"author={author}");
+        }
+
+        if (!string.IsNullOrEmpty(favoritedBy))
+        {
+            queryParams.Add($"favorited={favoritedBy}");
+        }
+
         queryParams.Add($"limit={limit}");
         queryParams.Add($"offset={offset}");
 
@@ -132,32 +109,13 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     public static async Task<ArticleResponse> CreateArticleAsync(string title, string description, string body, List<string> tagList)
     {
-        var createRequest = new
-        {
-            article = new
-            {
-                title,
-                description,
-                body,
-                tagList
-            }
-        };
-
+        var createRequest = new CreateArticleRequest(new CreateArticleRequest.CreateArticle(title, description, body, tagList));
         return await PostAsync<ArticleResponse>("/articles", createRequest);
     }
 
     public static async Task<ArticleResponse> UpdateArticleAsync(string slug, string title, string description, string body)
     {
-        var updateRequest = new
-        {
-            article = new
-            {
-                title,
-                description,
-                body
-            }
-        };
-
+        var updateRequest = new UpdateArticleRequest(new UpdateArticleRequest.UpdateArticle(title, description, body));
         return await PutAsync<ArticleResponse>($"/articles/{slug}", updateRequest);
     }
 
@@ -185,14 +143,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     public static async Task<CommentResponse> AddCommentAsync(string slug, string body)
     {
-        var createRequest = new
-        {
-            comment = new
-            {
-                body
-            }
-        };
-
+        var createRequest = new CreateCommentRequest(new CreateCommentRequest.CreateComment(body));
         return await PostAsync<CommentResponse>($"/articles/{slug}/comments", createRequest);
     }
 
@@ -235,8 +186,8 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> PostAsync<T>(string endpoint, object? data)
     {
-        var content = data is not null
-            ? new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json")
+        using var content = data is not null
+            ? new StringContent(JsonSerializer.Serialize(data, data.GetType(), ConduitJsonContext.Default), Encoding.UTF8, "application/json")
             : new StringContent("{}", Encoding.UTF8, "application/json");
         var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
         return await ProcessResponseAsync<T>(response);
@@ -244,7 +195,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> PutAsync<T>(string endpoint, object data)
     {
-        var content = new StringContent(JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8, "application/json");
+        using var content = new StringContent(JsonSerializer.Serialize(data, data.GetType(), ConduitJsonContext.Default), Encoding.UTF8, "application/json");
         var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
         return await ProcessResponseAsync<T>(response);
     }
@@ -278,7 +229,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
             // Try to parse error response
             try
             {
-                var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(content, JsonOptions);
+                var errorResponse = JsonSerializer.Deserialize(content, ConduitJsonContext.Default.ErrorResponse);
                 if (errorResponse is null || errorResponse.Errors.Count == 0)
                 {
                     throw new HttpRequestException($"API error: {response.StatusCode}, {content}");
@@ -291,7 +242,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
             }
         }
 
-        var result = JsonSerializer.Deserialize<T>(content, JsonOptions) 
+        var result = (T?)JsonSerializer.Deserialize(content, typeof(T), ConduitJsonContext.Default)
             ?? throw new JsonException($"Failed to deserialize response: {content}");
         return result;
     }

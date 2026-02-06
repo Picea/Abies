@@ -444,7 +444,7 @@ public static partial class Runtime
     {
     if (_dataHandlers.TryGetValue(messageId, out var entry))
         {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType, AbiesJsonContext.Default);
             var message = entry.handler(data);
             Dispatch(message);
             return;
@@ -466,7 +466,7 @@ public static partial class Runtime
     {
         if (_subscriptionHandlers.TryGetValue(key, out var entry))
         {
-            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType);
+            object? data = json is null ? null : System.Text.Json.JsonSerializer.Deserialize(json, entry.dataType, AbiesJsonContext.Default);
             var message = entry.handler(data);
             Dispatch(message);
             return;
