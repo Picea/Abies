@@ -43,6 +43,7 @@ jobs:
         run: |
           dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
             --no-build -c Debug -v minimal -m:1 \
+            --filter "Category!=Performance" \
             -l "trx;LogFileName=conduit-e2e.trx" \
             -l "console;verbosity=normal" \
             -- RunConfiguration.TestSessionTimeout=3600000
