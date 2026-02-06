@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -9,7 +7,7 @@ namespace Abies.Conduit.Services;
 public static class ApiClient
 {
     private static HttpClient Client = new();
-    
+
     private static string BaseUrl = "http://localhost:5179/api";
 
     /// <summary>
@@ -27,7 +25,11 @@ public static class ApiClient
     /// </summary>
     public static void ConfigureBaseUrl(string baseUrl)
     {
-        if (string.IsNullOrWhiteSpace(baseUrl)) throw new ArgumentException("Base URL cannot be empty", nameof(baseUrl));
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new ArgumentException("Base URL cannot be empty", nameof(baseUrl));
+        }
+
         BaseUrl = baseUrl.TrimEnd('/');
     }
 
@@ -73,12 +75,24 @@ public static class ApiClient
 
     // Articles
 
-public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
+    public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
     {
         List<string> queryParams = [];
-        if (!string.IsNullOrEmpty(tag)) queryParams.Add($"tag={tag}");
-        if (!string.IsNullOrEmpty(author)) queryParams.Add($"author={author}");
-        if (!string.IsNullOrEmpty(favoritedBy)) queryParams.Add($"favorited={favoritedBy}");
+        if (!string.IsNullOrEmpty(tag))
+        {
+            queryParams.Add($"tag={tag}");
+        }
+
+        if (!string.IsNullOrEmpty(author))
+        {
+            queryParams.Add($"author={author}");
+        }
+
+        if (!string.IsNullOrEmpty(favoritedBy))
+        {
+            queryParams.Add($"favorited={favoritedBy}");
+        }
+
         queryParams.Add($"limit={limit}");
         queryParams.Add($"offset={offset}");
 
@@ -179,7 +193,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> PostAsync<T>(string endpoint, object? data)
     {
-        var content = data is not null
+        using var content = data is not null
             ? new StringContent(JsonSerializer.Serialize(data, data.GetType(), ConduitJsonContext.Default), Encoding.UTF8, "application/json")
             : new StringContent("{}", Encoding.UTF8, "application/json");
         var response = await Client.PostAsync($"{BaseUrl}{endpoint}", content);
@@ -188,7 +202,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
 
     private static async Task<T> PutAsync<T>(string endpoint, object data)
     {
-        var content = new StringContent(JsonSerializer.Serialize(data, data.GetType(), ConduitJsonContext.Default), Encoding.UTF8, "application/json");
+        using var content = new StringContent(JsonSerializer.Serialize(data, data.GetType(), ConduitJsonContext.Default), Encoding.UTF8, "application/json");
         var response = await Client.PutAsync($"{BaseUrl}{endpoint}", content);
         return await ProcessResponseAsync<T>(response);
     }
@@ -235,7 +249,7 @@ public static async Task<ArticlesResponse> GetArticlesAsync(string? tag = null, 
             }
         }
 
-        var result = (T?)JsonSerializer.Deserialize(content, typeof(T), ConduitJsonContext.Default) 
+        var result = (T?)JsonSerializer.Deserialize(content, typeof(T), ConduitJsonContext.Default)
             ?? throw new JsonException($"Failed to deserialize response: {content}");
         return result;
     }
