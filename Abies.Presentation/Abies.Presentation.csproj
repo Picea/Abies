@@ -14,7 +14,18 @@
     <UpToDateCheckInput Include="..\Abies\wwwroot\abies.js" />
     <Watch Include="..\Abies\wwwroot\abies.js" />
   </ItemGroup>
-  <Target Name="SyncAbiesJs" BeforeTargets="Build;Publish" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
+  
+  <!-- Copy the canonical abies.js before build/publish -->
+  <Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
     <Copy SourceFiles="..\Abies\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
+  </Target>
+  
+  <!-- Remove the Abies project's copy from publish to avoid NETSDK1152 duplicate -->
+  <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <!-- Remove any abies.js that comes from the Abies project reference -->
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.OriginalItemSpec)').Contains('\Abies\wwwroot\'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.OriginalItemSpec)').Contains('/Abies/wwwroot/'))" />
+    </ItemGroup>
   </Target>
 </Project>
