@@ -7,6 +7,7 @@ on:
       - 'Abies/**'
       - 'Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
+      - 'scripts/merge-benchmark-results.py'
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - 'Abies/**'
       - 'Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
+      - 'scripts/merge-benchmark-results.py'
       - '.github/workflows/benchmark.yml'
   workflow_dispatch:
 
@@ -42,20 +44,30 @@ jobs:
       - name: Build benchmarks
         run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
 
-      - name: Run benchmarks
-        run: |
-          dotnet run --project Abies.Benchmarks -c Release --no-build -- \
-            --filter '*DomDiffingBenchmarks*' \
-            --exporters json \
-            --artifacts ./benchmark-results
+      - name: Run DOM Diffing benchmarks
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*DomDiffingBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-results/diffing
 
-      - name: Extract allocation metrics
-        run: |
-          python3 scripts/extract-allocations.py \
-            ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json \
-            ./benchmark-results/results/allocations.json
+      - name: Run Rendering benchmarks
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*RenderingBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-results/rendering
 
-      # Check if gh-pages branch exists (for PR comparison)
+      - name: Run Event Handler benchmarks
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*EventHandlerBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-results/handlers
+
+      - name: Extract and merge benchmark results
+        run: python3 scripts/merge-benchmark-results.py ./benchmark-results
+
       - name: Check if gh-pages exists
         id: gh-pages-check
         run: |
@@ -65,95 +77,79 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      # Compare benchmarks on PRs (only if gh-pages exists with baseline data)
-      - name: Compare benchmark results (PR)
+      - name: Compare throughput benchmarks (PR)
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
         with:
-          name: Virtual DOM Benchmarks
-          tool: 'benchmarkdotnet'
-          output-file-path: ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json
+          name: Rendering Engine Throughput
+          tool: benchmarkdotnet
+          output-file-path: ./benchmark-results/merged/throughput.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Compare against baseline but don't save or push
           auto-push: false
           save-data-file: false
-          # Alert thresholds
-          alert-threshold: '150%'
+          alert-threshold: '105%'
           comment-on-alert: true
           fail-on-alert: true
-          fail-threshold: '200%'
-          # Always show summary on PRs
+          fail-threshold: '110%'
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
-      # Compare allocation metrics on PRs
-      - name: Compare allocation results (PR)
+      - name: Compare allocation metrics (PR)
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
         with:
-          name: Virtual DOM Allocations
-          tool: 'customSmallerIsBetter'
-          output-file-path: ./benchmark-results/results/allocations.json
+          name: Rendering Engine Allocations
+          tool: customSmallerIsBetter
+          output-file-path: ./benchmark-results/merged/allocations.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Compare against baseline but don't save or push
           auto-push: false
           save-data-file: false
-          # Skip fetch since previous step already fetched gh-pages
           skip-fetch-gh-pages: true
-          # Alert thresholds for allocations (more strict - any increase is concerning)
-          alert-threshold: '120%'
+          alert-threshold: '110%'
           comment-on-alert: true
           fail-on-alert: true
-          fail-threshold: '150%'
+          fail-threshold: '120%'
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
-      # Store benchmarks on main (creates gh-pages if needed)
-      - name: Store benchmark result (main)
+      - name: Store throughput baseline (main)
         uses: benchmark-action/github-action-benchmark@v1
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         with:
-          name: Virtual DOM Benchmarks
-          tool: 'benchmarkdotnet'
-          output-file-path: ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json
+          name: Rendering Engine Throughput
+          tool: benchmarkdotnet
+          output-file-path: ./benchmark-results/merged/throughput.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Push results to gh-pages
           auto-push: true
           save-data-file: true
-          # Skip fetch on first run (creates branch if it doesn't exist)
           skip-fetch-gh-pages: ${{ steps.gh-pages-check.outputs.exists != 'true' }}
-          # Alert thresholds (for direct pushes to main)
-          alert-threshold: '150%'
+          alert-threshold: '105%'
           comment-on-alert: true
           fail-on-alert: true
-          fail-threshold: '200%'
+          fail-threshold: '110%'
           alert-comment-cc-users: '@MCGPPeters'
 
-      # Store allocation metrics on main
-      - name: Store allocation result (main)
+      - name: Store allocation baseline (main)
         uses: benchmark-action/github-action-benchmark@v1
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         with:
-          name: Virtual DOM Allocations
-          tool: 'customSmallerIsBetter'
-          output-file-path: ./benchmark-results/results/allocations.json
+          name: Rendering Engine Allocations
+          tool: customSmallerIsBetter
+          output-file-path: ./benchmark-results/merged/allocations.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Push results to gh-pages
           auto-push: true
           save-data-file: true
           skip-fetch-gh-pages: false
-          # Alert thresholds for allocations
-          alert-threshold: '120%'
+          alert-threshold: '110%'
           comment-on-alert: true
           fail-on-alert: true
-          fail-threshold: '150%'
+          fail-threshold: '120%'
           alert-comment-cc-users: '@MCGPPeters'
 
-      # Upload artifacts for inspection (always)
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: benchmark-results
-          path: ./benchmark-results/results/
+          path: ./benchmark-results/
           retention-days: 30
