@@ -297,6 +297,9 @@ public static class Events
     //
     // Thread safety: Interlocked.Increment ensures unique IDs across threads.
     // Format: "h{counter}" where h = handler prefix to distinguish from other IDs
+    //
+    // Overflow consideration: At 1 million handlers/second, overflow would take ~292 million
+    // years. For a WebAssembly UI framework, this is effectively infinite - no handling needed.
     // =============================================================================
     private static long _commandIdCounter;
 
@@ -308,7 +311,8 @@ public static class Events
     private static string NextCommandId()
     {
         var id = Interlocked.Increment(ref _commandIdCounter);
-        return string.Create(null, stackalloc char[32], $"h{id}");
+        // Buffer size 24: max long is 19 digits + 'h' prefix = 20 chars, with margin
+        return string.Create(null, stackalloc char[24], $"h{id}");
     }
 
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)

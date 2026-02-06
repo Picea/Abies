@@ -9,16 +9,17 @@ namespace Abies.Benchmarks;
 
 /// <summary>
 /// Benchmarks for event handler creation and registration.
-/// Focuses on the Guid.NewGuid().ToString() allocation overhead.
+/// Measures the optimized atomic counter CommandId generation.
 /// </summary>
 /// <remarks>
-/// These benchmarks establish baselines for:
+/// These benchmarks measure the OPTIMIZED handler creation performance using:
+/// - Atomic counter for CommandId (instead of Guid.NewGuid().ToString())
+/// - FrozenDictionary cache for event attribute names
+/// 
+/// Scenarios covered:
 /// - Handler creation with Message (simple case)
 /// - Handler creation with factory function (complex case)
 /// - Bulk handler creation (simulating page load)
-/// 
-/// The identified optimization is to replace Guid.NewGuid().ToString()
-/// with a counter-based approach or pre-allocated string cache.
 /// 
 /// Quality gates should alert when:
 /// - Memory allocations increase by >10%
@@ -50,7 +51,7 @@ public class EventHandlerBenchmarks
 
     /// <summary>
     /// Single handler with static message (most common case).
-    /// Each call allocates a GUID and converts to string.
+    /// Uses optimized atomic counter for CommandId generation.
     /// </summary>
     [Benchmark(Baseline = true)]
     public Handler CreateSingleHandler_Message()
@@ -60,7 +61,7 @@ public class EventHandlerBenchmarks
 
     /// <summary>
     /// Single handler with factory function.
-    /// Allocates GUID, string, and closure.
+    /// Measures overhead of closure capture with optimized CommandId.
     /// </summary>
     [Benchmark]
     public Handler CreateSingleHandler_Factory()

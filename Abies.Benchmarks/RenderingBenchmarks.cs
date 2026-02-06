@@ -12,11 +12,16 @@ namespace Abies.Benchmarks;
 /// Measures memory allocations and throughput of the Render.Html method.
 /// </summary>
 /// <remarks>
-/// These benchmarks establish baselines for:
-/// - StringBuilder pooling effectiveness
-/// - HTML encoding performance (HtmlEncode fast-path potential)
-/// - Event handler serialization overhead
+/// These benchmarks measure the OPTIMIZED rendering performance including:
+/// - StringBuilder pooling for reduced allocations
+/// - SearchValues&lt;char&gt; fast-path for HTML encoding (skips encode when no special chars)
+/// - Atomic counter for CommandId (instead of GUID)
+/// - FrozenDictionary cache for event attribute names
+/// 
+/// Scenarios covered:
 /// - Small, medium, and large DOM tree rendering
+/// - HTML encoding (fast-path vs slow-path)
+/// - Event handler attribute rendering
 /// 
 /// Quality gates should alert when:
 /// - Memory allocations increase by >10%
@@ -388,7 +393,7 @@ public class RenderingBenchmarks
 
     /// <summary>
     /// Element with content requiring HTML encoding.
-    /// Measures HtmlEncode overhead - target for SearchValues optimization.
+    /// Uses SearchValues fast-path - skips HtmlEncode when no special chars present.
     /// </summary>
     [Benchmark]
     public string RenderWithHtmlEncoding()
@@ -398,7 +403,7 @@ public class RenderingBenchmarks
 
     /// <summary>
     /// Element with multiple event handlers.
-    /// Measures GUID.NewGuid().ToString() allocation overhead.
+    /// Uses optimized atomic counter for CommandId and FrozenDictionary for event names.
     /// </summary>
     [Benchmark]
     public string RenderWithEventHandlers()
