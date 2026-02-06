@@ -20,7 +20,11 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Abies\Abies.csproj" />
+    <ProjectReference Include="..\Abies\Abies.csproj">
+      <!-- Exclude Content files from Abies project during publish to avoid NETSDK1152 conflict with local copy -->
+      <ExcludeAssets>ContentFiles</ExcludeAssets>
+      <PrivateAssets>ContentFiles</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.44.0" />
@@ -31,8 +35,6 @@
     <UpToDateCheckInput Include="..\Abies\wwwroot\abies.js" />
     <!-- Dotnet watch: restart when the canonical file changes -->
     <Watch Include="..\Abies\wwwroot\abies.js" />
-    <!-- Exclude the copied abies.js from publish to avoid NETSDK1152 conflict with Abies project -->
-    <Content Remove="wwwroot\abies.js" />
   </ItemGroup>
   <Target Name="SyncAbiesJs" BeforeTargets="Build" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
     <Copy SourceFiles="..\Abies\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
