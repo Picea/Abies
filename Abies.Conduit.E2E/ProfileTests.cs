@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -23,7 +21,7 @@ public class ProfileTests : PlaywrightFixture
         await Page.WaitForTimeoutAsync(500);
 
         // Navigate to profile
-        await Page.GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
+        await Page.Locator("nav").GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
         await Page.WaitForURLAsync($"**/profile/{username}", new() { Timeout = 10000 });
 
         // Username and bio should be visible
@@ -41,7 +39,7 @@ public class ProfileTests : PlaywrightFixture
         await CreateTestArticleAsync(title, "Description", "Body", "profile-article");
 
         // Navigate to profile
-        await Page.GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
+        await Page.Locator("nav").GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
         await Page.WaitForURLAsync($"**/profile/{username}", new() { Timeout = 10000 });
 
         // "My Articles" tab should be active
@@ -67,13 +65,13 @@ public class ProfileTests : PlaywrightFixture
 
         // Login as second user who will favorite the article
         var (favUsername, _, _) = await RegisterTestUserAsync();
-        
+
         // Wait for auth state to propagate after registration
         await WaitForAuthenticatedStateAsync();
-        
+
         // After registration we're on home page - wait for articles to load
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         // Find and click the article
         var articleLink = Page.Locator(".preview-link").Filter(new() { HasText = title });
         await articleLink.ClickAsync();
@@ -86,7 +84,7 @@ public class ProfileTests : PlaywrightFixture
         await Page.WaitForTimeoutAsync(1000);
 
         // Navigate to profile - auth should still be valid since we used in-app navigation
-        await Page.GetByRole(AriaRole.Link, new() { Name = favUsername }).ClickAsync();
+        await Page.Locator("nav").GetByRole(AriaRole.Link, new() { Name = favUsername }).ClickAsync();
         await Page.WaitForURLAsync($"**/profile/{favUsername}", new() { Timeout = 10000 });
         await Expect(Page.Locator(".profile-page")).ToBeVisibleAsync(new() { Timeout = 10000 });
 
@@ -94,7 +92,7 @@ public class ProfileTests : PlaywrightFixture
         var favoritedTab = Page.GetByRole(AriaRole.Link, new() { Name = "Favorited Articles" });
         await Expect(favoritedTab).ToBeVisibleAsync(new() { Timeout = 5000 });
         await favoritedTab.ClickAsync();
-        
+
         // Wait for URL to change
         await Page.WaitForTimeoutAsync(1000);
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($".*/profile/{favUsername}/favorites"), new() { Timeout = 10000 });
@@ -134,7 +132,7 @@ public class ProfileTests : PlaywrightFixture
         var (username, _, _) = await RegisterTestUserAsync();
 
         // Navigate to own profile
-        await Page.GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
+        await Page.Locator("nav").GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
         await Page.WaitForURLAsync($"**/profile/{username}", new() { Timeout = 10000 });
 
         // Should see Edit Profile Settings link (not Follow button)
@@ -150,7 +148,7 @@ public class ProfileTests : PlaywrightFixture
         await CreateTestArticleAsync(title, "Description", "Body", "click-profile");
 
         // Navigate to profile
-        await Page.GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
+        await Page.Locator("nav").GetByRole(AriaRole.Link, new() { Name = username }).ClickAsync();
         await Page.WaitForURLAsync($"**/profile/{username}", new() { Timeout = 10000 });
 
         // Click on the article
