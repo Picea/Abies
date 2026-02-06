@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -73,7 +71,7 @@ public class CommentTests : PlaywrightFixture
         // Add a comment
         var commentText = "This is a test comment";
         await Page.GetByPlaceholder("Write a comment...").FillAsync(commentText);
-        
+
         // Wait for form validation - button should be enabled once text is entered
         var publishButton = Page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" });
         await Expect(publishButton).ToBeEnabledAsync(new() { Timeout = 5000 });
@@ -120,14 +118,14 @@ public class CommentTests : PlaywrightFixture
         // Find the second comment card
         var secondCommentCard = Page.Locator("[id^='comment-']").Filter(new() { HasText = secondComment });
         await Expect(secondCommentCard).ToBeVisibleAsync();
-        
+
         // Find the trash icon within the mod-options span
         var trashIcon = secondCommentCard.Locator(".mod-options i.ion-trash-a");
         await Expect(trashIcon).ToBeVisibleAsync(new() { Timeout = 5000 });
-        
+
         // Get the data-event-click attribute to understand the element
         var dataEventClick = await trashIcon.GetAttributeAsync("data-event-click");
-        
+
         // If data-event-click is present, use Playwright click - otherwise use JS
         if (!string.IsNullOrEmpty(dataEventClick))
         {
@@ -138,7 +136,7 @@ public class CommentTests : PlaywrightFixture
             // Fallback: dispatch a click event via JavaScript on the element
             await trashIcon.EvaluateAsync("el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))");
         }
-        
+
         // Wait for the delete to complete
         await Page.WaitForTimeoutAsync(2000);
 
@@ -147,7 +145,7 @@ public class CommentTests : PlaywrightFixture
 
         // First comment should still be visible
         await Expect(Page.GetByText(firstComment)).ToBeVisibleAsync();
-        
+
         // Should only have 1 comment card remaining
         var cardsAfter = await Page.Locator("[id^='comment-']").CountAsync();
         Assert.Equal(1, cardsAfter);
@@ -168,9 +166,10 @@ public class CommentTests : PlaywrightFixture
             await Page.WaitForURLAsync("**/article/**");
 
             // Should show login prompt instead of comment form
-            await Expect(Page.GetByText("Sign in")).ToBeVisibleAsync();
-            await Expect(Page.GetByText("sign up")).ToBeVisibleAsync();
-            
+            var articlePage = Page.GetByTestId("article-page");
+            await Expect(articlePage.GetByText("Sign in")).ToBeVisibleAsync();
+            await Expect(articlePage.GetByText("sign up")).ToBeVisibleAsync();
+
             // Comment textarea should not be visible
             await Expect(Page.GetByPlaceholder("Write a comment...")).Not.ToBeVisibleAsync();
         }
