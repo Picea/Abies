@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770395983771,
+  "lastUpdate": 1770395984698,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -1119,6 +1119,180 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Picea/Abies/commit/3abb4a14a3d47f328427b1d8c9992b372a1fc551"
         },
         "date": 1770394866206,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 344,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 22.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 352,
+            "unit": "bytes",
+            "extra": "Gen0: 88.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1416,
+            "unit": "bytes",
+            "extra": "Gen0: 88.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 800,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1248,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9968,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9400,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 5000,
+            "unit": "bytes",
+            "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "62c8dd894f28980360dae04ff68f54eb14b08199",
+          "message": "perf: add startup performance benchmarks and E2E quality gates (#40)",
+          "timestamp": "2026-02-06T17:30:09+01:00",
+          "tree_id": "72d4ba0bf8d8ec8d16568309be1748fda28f3c67",
+          "url": "https://github.com/Picea/Abies/commit/62c8dd894f28980360dae04ff68f54eb14b08199"
+        },
+        "date": 1770395984473,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
