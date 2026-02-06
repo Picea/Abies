@@ -213,6 +213,91 @@ jobs:
             echo "✅ No critical or high severity vulnerabilities found"
           fi
 
+  # Bundle size quality gate
+  bundle-size-check:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build and Publish Release (Trimmed)
+        run: |
+          dotnet publish Abies.Conduit/Abies.Conduit.csproj -c Release -o ./publish-trimmed
+      
+      - name: Measure Bundle Size
+        id: bundle-size
+        run: |
+          # Measure the _framework directory size (WASM bundle)
+          FRAMEWORK_DIR="./publish-trimmed/wwwroot/_framework"
+          
+          if [ -d "$FRAMEWORK_DIR" ]; then
+            # Get total size in bytes
+            TOTAL_BYTES=$(du -sb "$FRAMEWORK_DIR" | cut -f1)
+            TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
+            FILE_COUNT=$(find "$FRAMEWORK_DIR" -type f | wc -l)
+            
+            echo "bundle_size_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
+            echo "bundle_size_bytes=$TOTAL_BYTES" >> $GITHUB_OUTPUT
+            echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+            
+            echo "📦 WASM Bundle Size Report"
+            echo "=========================="
+            echo "Total Size: ${TOTAL_MB}MB ($TOTAL_BYTES bytes)"
+            echo "File Count: $FILE_COUNT"
+            echo ""
+            echo "Largest files:"
+            find "$FRAMEWORK_DIR" -type f -exec du -h {} + | sort -rh | head -10
+          else
+            echo "❌ Framework directory not found at $FRAMEWORK_DIR"
+            exit 1
+          fi
+      
+      - name: Check Bundle Size Limits
+        run: |
+          BUNDLE_SIZE=${{ steps.bundle-size.outputs.bundle_size_mb }}
+          
+          # Hard limit: 15MB for trimmed Release build
+          HARD_LIMIT=15
+          # Soft limit (warning): 10MB
+          SOFT_LIMIT=10
+          
+          echo "📊 Bundle Size: ${BUNDLE_SIZE}MB"
+          echo "🔴 Hard Limit: ${HARD_LIMIT}MB"
+          echo "🟡 Soft Limit: ${SOFT_LIMIT}MB"
+          
+          if [ "$BUNDLE_SIZE" -gt "$HARD_LIMIT" ]; then
+            echo ""
+            echo "❌ FAILED: Bundle size (${BUNDLE_SIZE}MB) exceeds hard limit (${HARD_LIMIT}MB)"
+            echo ""
+            echo "The WASM bundle is too large. Please:"
+            echo "1. Ensure PublishTrimmed=true is set for Release configuration"
+            echo "2. Review and remove unnecessary dependencies"
+            echo "3. Enable InvariantGlobalization if not already done"
+            echo "4. Consider code splitting if applicable"
+            exit 1
+          elif [ "$BUNDLE_SIZE" -gt "$SOFT_LIMIT" ]; then
+            echo ""
+            echo "⚠️  WARNING: Bundle size (${BUNDLE_SIZE}MB) exceeds soft limit (${SOFT_LIMIT}MB)"
+            echo "Consider optimizing bundle size for faster startup times."
+          else
+            echo ""
+            echo "✅ Bundle size is within acceptable limits"
+          fi
+
   # Check for TODO/FIXME without issues
   check-todos:
     name: Check TODOs
@@ -247,7 +332,7 @@ jobs:
     name: PR Validation Summary
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, check-todos]
+    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, bundle-size-check, check-todos]
     
     steps:
       - name: Check if automated PR
@@ -266,6 +351,7 @@ jobs:
             echo "✅ PR size is reasonable"
             echo "✅ Code formatting is correct"
             echo "✅ No security vulnerabilities"
+            echo "✅ Bundle size within limits"
             echo "✅ No untracked TODOs"
             echo ""
             echo "Note: Title and description checks skipped for automated PRs"
@@ -276,6 +362,7 @@ jobs:
             echo "✅ PR size is reasonable"
             echo "✅ Code formatting is correct"
             echo "✅ No security vulnerabilities"
+            echo "✅ Bundle size within limits"
             echo "✅ No untracked TODOs"
             echo ""
             echo "Next steps:"
