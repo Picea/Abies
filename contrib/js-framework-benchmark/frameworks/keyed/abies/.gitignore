@@ -1,0 +1,4 @@
+dotnet/
+src/bin/
+src/obj/
+bundeled-dist/
