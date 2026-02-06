@@ -270,6 +270,12 @@ jobs:
         run: |
           BUNDLE_SIZE=${{ steps.bundle-size.outputs.bundle_size_mb }}
           
+          # Validate BUNDLE_SIZE is a valid integer
+          if ! echo "$BUNDLE_SIZE" | grep -qE '^[0-9]+$'; then
+            echo "❌ FAILED: Could not determine bundle size (got '$BUNDLE_SIZE')"
+            exit 1
+          fi
+          
           # Hard limit: 15MB for trimmed Release build
           HARD_LIMIT=15
           # Soft limit (warning): 10MB

@@ -213,8 +213,8 @@ public class StartupPerformanceTests : PlaywrightFixture
         long totalBytes = 0;
         var downloads = new List<(string url, long bytes)>();
 
-        // Capture all WASM-related network requests
-        Page.Request += (_, request) =>
+        // Store handlers so we can unregister them after measurement
+        void OnRequest(object? _, Microsoft.Playwright.IRequest request)
         {
             if (request.Url.Contains("_framework") ||
                 request.Url.EndsWith(".wasm") ||
@@ -223,16 +223,17 @@ public class StartupPerformanceTests : PlaywrightFixture
             {
                 // We'll measure response size
             }
-        };
+        }
 
-        Page.Response += (_, response) =>
+        void OnResponse(object? _, Microsoft.Playwright.IResponse response)
         {
             if (response.Url.Contains("_framework") ||
                 response.Url.EndsWith(".wasm") ||
                 response.Url.Contains("dotnet."))
             {
                 var size = response.Headers.TryGetValue("content-length", out var len)
-                    ? long.Parse(len)
+                    && long.TryParse(len, out var parsed)
+                    ? parsed
                     : 0;
 
                 if (size > 0)
@@ -241,8 +242,13 @@ public class StartupPerformanceTests : PlaywrightFixture
                     downloads.Add((response.Url, size));
                 }
             }
-        };
+        }
 
+        Page.Request += OnRequest;
+        Page.Response += OnResponse;
+
+        try
+        {
         // Navigate to trigger downloads
         await Page.GotoAsync("/");
         await WaitForAppReadyAsync();
@@ -274,5 +280,11 @@ public class StartupPerformanceTests : PlaywrightFixture
         Assert.True(bundleSizeMb < maxBundleSizeMb,
             $"Framework bundle size ({bundleSizeMb:F2}MB) exceeds {maxBundleSizeMb}MB limit. " +
             "This indicates the build is not properly trimmed or contains unnecessary dependencies.");
+        }
+        finally
+        {
+            Page.Request -= OnRequest;
+            Page.Response -= OnResponse;
+        }
     }
 }
