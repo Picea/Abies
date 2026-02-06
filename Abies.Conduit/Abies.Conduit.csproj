@@ -31,8 +31,10 @@
     <UpToDateCheckInput Include="..\Abies\wwwroot\abies.js" />
     <!-- Dotnet watch: restart when the canonical file changes -->
     <Watch Include="..\Abies\wwwroot\abies.js" />
+    <!-- Exclude the copied abies.js from publish to avoid NETSDK1152 conflict with Abies project -->
+    <Content Remove="wwwroot\abies.js" />
   </ItemGroup>
-  <Target Name="SyncAbiesJs" BeforeTargets="Build;Publish" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
+  <Target Name="SyncAbiesJs" BeforeTargets="Build" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
     <Copy SourceFiles="..\Abies\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
   </Target>
 </Project>
