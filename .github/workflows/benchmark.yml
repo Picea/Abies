@@ -6,11 +6,15 @@ on:
     paths:
       - 'Abies/**'
       - 'Abies.Benchmarks/**'
+      - 'scripts/extract-allocations.py'
+      - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
     paths:
       - 'Abies/**'
       - 'Abies.Benchmarks/**'
+      - 'scripts/extract-allocations.py'
+      - '.github/workflows/benchmark.yml'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +49,12 @@ jobs:
             --exporters json \
             --artifacts ./benchmark-results
 
+      - name: Extract allocation metrics
+        run: |
+          python3 scripts/extract-allocations.py \
+            ./benchmark-results/results/Abies.Benchmarks.DomDiffingBenchmarks-report-full-compressed.json \
+            ./benchmark-results/results/allocations.json
+
       # Check if gh-pages branch exists (for PR comparison)
       - name: Check if gh-pages exists
         id: gh-pages-check
@@ -76,10 +86,32 @@ jobs:
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
+      # Compare allocation metrics on PRs
+      - name: Compare allocation results (PR)
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
+        with:
+          name: Virtual DOM Allocations
+          tool: 'customSmallerIsBetter'
+          output-file-path: ./benchmark-results/results/allocations.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Compare against baseline but don't save or push
+          auto-push: false
+          save-data-file: false
+          # Skip fetch since previous step already fetched gh-pages
+          skip-fetch-gh-pages: true
+          # Alert thresholds for allocations (more strict - any increase is concerning)
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: true
+          fail-threshold: '150%'
+          summary-always: true
+          alert-comment-cc-users: '@MCGPPeters'
+
       # Store benchmarks on main (creates gh-pages if needed)
       - name: Store benchmark result (main)
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         with:
           name: Virtual DOM Benchmarks
           tool: 'benchmarkdotnet'
@@ -89,12 +121,32 @@ jobs:
           auto-push: true
           save-data-file: true
           # Skip fetch on first run (creates branch if it doesn't exist)
-          skip-fetch-gh-pages: ${{ !steps.gh-pages-check.outputs.exists }}
+          skip-fetch-gh-pages: ${{ steps.gh-pages-check.outputs.exists != 'true' }}
           # Alert thresholds (for direct pushes to main)
           alert-threshold: '150%'
           comment-on-alert: true
           fail-on-alert: true
           fail-threshold: '200%'
+          alert-comment-cc-users: '@MCGPPeters'
+
+      # Store allocation metrics on main
+      - name: Store allocation result (main)
+        uses: benchmark-action/github-action-benchmark@v1
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        with:
+          name: Virtual DOM Allocations
+          tool: 'customSmallerIsBetter'
+          output-file-path: ./benchmark-results/results/allocations.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Push results to gh-pages
+          auto-push: true
+          save-data-file: true
+          skip-fetch-gh-pages: false
+          # Alert thresholds for allocations
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: true
+          fail-threshold: '150%'
           alert-comment-cc-users: '@MCGPPeters'
 
       # Upload artifacts for inspection (always)

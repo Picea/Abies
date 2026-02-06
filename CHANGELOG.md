@@ -51,6 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Performance Optimizations** (Inspired by Stephen Toub's .NET Performance Articles)
+  - Pre-allocated index string cache (256 entries) eliminates string interpolation for non-keyed children
+  - StringBuilder pooling for HTML rendering reduces GC pressure
+  - Replaced string interpolation with `Append()` chains in render methods
+  - Refactored DiffChildren to use `ReadOnlySpan<string>` for key comparisons
+
 ### Planned
 
 - Benchmark quality gates for virtual DOM performance
