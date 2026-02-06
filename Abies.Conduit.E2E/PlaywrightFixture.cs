@@ -269,10 +269,23 @@ public class PlaywrightFixture : IAsyncLifetime
         // Wait for the editor form to be ready
         await Expect(Page.GetByPlaceholder("Article Title")).ToBeVisibleAsync(new() { Timeout = 30000 });
 
-        // Fill form fields - use type to ensure input events fire properly
-        await Page.GetByPlaceholder("Article Title").FillAsync(title);
-        await Page.GetByPlaceholder("What's this article about?").FillAsync(description);
-        await Page.GetByPlaceholder("Write your article (in markdown)").FillAsync(body);
+        // Fill form fields using FillAsync and dispatch input events manually
+        // FillAsync sets the value but may not trigger oninput reliably in headless mode
+        var titleInput = Page.GetByPlaceholder("Article Title");
+        var descInput = Page.GetByPlaceholder("What's this article about?");
+        var bodyInput = Page.GetByPlaceholder("Write your article (in markdown)");
+
+        await titleInput.FillAsync(title);
+        await titleInput.DispatchEventAsync("input");
+        await Page.WaitForTimeoutAsync(100);
+
+        await descInput.FillAsync(description);
+        await descInput.DispatchEventAsync("input");
+        await Page.WaitForTimeoutAsync(100);
+
+        await bodyInput.FillAsync(body);
+        await bodyInput.DispatchEventAsync("input");
+        await Page.WaitForTimeoutAsync(100);
 
         foreach (var tag in tags)
         {
@@ -280,8 +293,8 @@ public class PlaywrightFixture : IAsyncLifetime
             await Page.GetByPlaceholder("Enter tags").PressAsync("Enter");
         }
 
-        // Wait a moment for form validation to update after input events
-        await Page.WaitForTimeoutAsync(200);
+        // Wait for form validation to update after input events
+        await Page.WaitForTimeoutAsync(500);
 
         // Wait for button to be enabled (form validation complete)
         var publishButton = Page.GetByRole(AriaRole.Button, new() { Name = "Publish Article" });
