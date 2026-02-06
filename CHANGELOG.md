@@ -5,6 +5,33 @@ All notable changes to Abies will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Benchmark Suite**
+  - RenderingBenchmarks.cs with 9 comprehensive HTML rendering benchmarks
+  - EventHandlerBenchmarks.cs with 8 event handler creation benchmarks
+  - CI/CD quality gates for throughput (105%/110%) and allocations (110%/120%)
+  - Automated baseline tracking via GitHub Actions
+
+### Changed
+
+- **Performance Optimizations (Toub-inspired)**
+  - Replaced `Guid.NewGuid().ToString()` with atomic counter for event handler CommandIds
+    - Event handler creation is now **10.9x faster** (209.2 ns → 19.18 ns)
+    - Memory allocation reduced by **21%** per handler (224 B → 176 B)
+  - Added `SearchValues<char>` fast-path for HTML encoding in DOM rendering
+    - Skips expensive `HtmlEncode` when strings have no special characters
+    - Large page rendering is now **8% faster** (16.7 µs → 15.4 µs)
+    - Complex form rendering is now **6% faster** with **13% less memory**
+  - Added `FrozenDictionary` cache for event attribute names (`data-event-{name}`)
+    - Eliminates string interpolation allocation for 100+ known event types
+    - Event handler memory reduced by additional **32%** (176 B → 120 B per handler)
+    - Falls back gracefully for custom event names
+  - Combined optimizations for event-heavy rendering:
+    - `RenderWithEventHandlers` is now **18% faster** with **34% less memory**
+
 ## [1.0.0-rc.1] - 2026-02-03
 
 ### Added
