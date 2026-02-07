@@ -121,6 +121,48 @@ public class DomBehaviorTests
     }
 
     [Fact]
+    public void DiffWithBatching_ShouldGroupAddChildPatches()
+    {
+        var oldDom = new Element("root", "ul", [],
+            new Element("item-1", "li", [], new Text("t1", "1")),
+            new Element("item-2", "li", [], new Text("t2", "2")));
+
+        var newDom = new Element("root", "ul", [],
+            new Element("item-1", "li", [], new Text("t1", "1")),
+            new Element("item-2", "li", [], new Text("t2", "2")),
+            new Element("item-3", "li", [], new Text("t3", "3")),
+            new Element("item-4", "li", [], new Text("t4", "4")));
+
+        var patches = Operations.Diff(oldDom, newDom, batchPatches: true);
+
+        var addBatch = Assert.Single(patches.OfType<AddChildrenBatch>());
+        Assert.Equal(2, addBatch.Children.Length);
+        Assert.Contains(addBatch.Children, c => c.Id == "item-3");
+        Assert.Contains(addBatch.Children, c => c.Id == "item-4");
+    }
+
+    [Fact]
+    public void DiffWithBatching_ShouldGroupRemoveChildPatches()
+    {
+        var oldDom = new Element("root", "ul", [],
+            new Element("item-1", "li", [], new Text("t1", "1")),
+            new Element("item-2", "li", [], new Text("t2", "2")),
+            new Element("item-3", "li", [], new Text("t3", "3")),
+            new Element("item-4", "li", [], new Text("t4", "4")));
+
+        var newDom = new Element("root", "ul", [],
+            new Element("item-1", "li", [], new Text("t1", "1")),
+            new Element("item-2", "li", [], new Text("t2", "2")));
+
+        var patches = Operations.Diff(oldDom, newDom, batchPatches: true);
+
+        var removeBatch = Assert.Single(patches.OfType<RemoveChildrenBatch>());
+        Assert.Equal(2, removeBatch.Children.Length);
+        Assert.Contains(removeBatch.Children, c => c.Id == "item-3");
+        Assert.Contains(removeBatch.Children, c => c.Id == "item-4");
+    }
+
+    [Fact]
     public void Render_ShouldIncludeElementIds()
     {
         var dom = new Element("el1", "div", [],
@@ -375,7 +417,13 @@ public class DomBehaviorTests
             AddRoot ar => ar.Element,
             ReplaceChild rc => ReplaceNode(root!, rc.OldElement, rc.NewElement),
             AddChild ac => UpdateElement(root!, ac.Parent.Id, e => e with { Children = e.Children.Append(ac.Child).ToArray() }),
+            AddChildrenBatch acb => UpdateElement(root!, acb.Parent.Id, e => e with { Children = e.Children.Concat(acb.Children).ToArray() }),
             RemoveChild rc => UpdateElement(root!, rc.Parent.Id, e => e with { Children = e.Children.Where(c => c.Id != rc.Child.Id).ToArray() }),
+            RemoveChildrenBatch rcb => UpdateElement(root!, rcb.Parent.Id, e =>
+            {
+                var removeIds = rcb.Children.Select(c => c.Id).ToHashSet();
+                return e with { Children = e.Children.Where(c => !removeIds.Contains(c.Id)).ToArray() };
+            }),
             UpdateAttribute ua => UpdateElement(root!, ua.Element.Id, e =>
             {
                 var updated = false;
@@ -401,6 +449,18 @@ public class DomBehaviorTests
             AddHandler ah => UpdateElement(root!, ah.Element.Id, e => e with { Attributes = e.Attributes.Append(ah.Handler).ToArray() }),
             RemoveHandler rh => UpdateElement(root!, rh.Element.Id, e => e with { Attributes = e.Attributes.Where(a => a.Id != rh.Handler.Id).ToArray() }),
             UpdateText ut => ReplaceNode(root!, ut.Node, new Text(ut.NewId, ut.Text)),
+            AddTextsBatch atb => UpdateElement(root!, atb.Parent.Id, e => e with { Children = e.Children.Concat(atb.Children).ToArray() }),
+            RemoveTextsBatch rtb => UpdateElement(root!, rtb.Parent.Id, e =>
+            {
+                var removeIds = rtb.Children.Select(c => c.Id).ToHashSet();
+                return e with { Children = e.Children.Where(c => !removeIds.Contains(c.Id)).ToArray() };
+            }),
+            AddRawBatch arb => UpdateElement(root!, arb.Parent.Id, e => e with { Children = e.Children.Concat(arb.Children).ToArray() }),
+            RemoveRawBatch rrb => UpdateElement(root!, rrb.Parent.Id, e =>
+            {
+                var removeIds = rrb.Children.Select(c => c.Id).ToHashSet();
+                return e with { Children = e.Children.Where(c => !removeIds.Contains(c.Id)).ToArray() };
+            }),
             _ => root
         };
     }

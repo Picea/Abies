@@ -478,6 +478,72 @@ public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patc
     public readonly string NewId = newId;
 }
 
+/// <summary>
+/// Represents a batch add operation for element children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The child elements to add.</param>
+public readonly struct AddChildrenBatch(Element parent, Element[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Element[] Children = children;
+}
+
+/// <summary>
+/// Represents a batch remove operation for element children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The child elements to remove.</param>
+public readonly struct RemoveChildrenBatch(Element parent, Element[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Element[] Children = children;
+}
+
+/// <summary>
+/// Represents a batch add operation for text children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The text nodes to add.</param>
+public readonly struct AddTextsBatch(Element parent, Text[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Text[] Children = children;
+}
+
+/// <summary>
+/// Represents a batch remove operation for text children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The text nodes to remove.</param>
+public readonly struct RemoveTextsBatch(Element parent, Text[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Text[] Children = children;
+}
+
+/// <summary>
+/// Represents a batch add operation for raw HTML children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The raw HTML nodes to add.</param>
+public readonly struct AddRawBatch(Element parent, RawHtml[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly RawHtml[] Children = children;
+}
+
+/// <summary>
+/// Represents a batch remove operation for raw HTML children in the Abies DOM.
+/// </summary>
+/// <param name="parent">The parent element.</param>
+/// <param name="children">The raw HTML nodes to remove.</param>
+public readonly struct RemoveRawBatch(Element parent, RawHtml[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly RawHtml[] Children = children;
+}
+
 
 /// <summary>
 /// Provides rendering utilities for the virtual DOM.
@@ -736,6 +802,20 @@ public static class Operations
                 await Interop.ReplaceChildHtml(replaceChild.OldElement.Id, Render.Html(replaceChild.NewElement));
                 Runtime.RegisterHandlers(replaceChild.NewElement);
                 break;
+            case AddChildrenBatch addChildrenBatch:
+                foreach (var child in addChildrenBatch.Children)
+                {
+                    await Interop.AddChildHtml(addChildrenBatch.Parent.Id, Render.Html(child));
+                    Runtime.RegisterHandlers(child);
+                }
+                break;
+            case RemoveChildrenBatch removeChildrenBatch:
+                foreach (var child in removeChildrenBatch.Children)
+                {
+                    Runtime.UnregisterHandlers(child);
+                    await Interop.RemoveChild(removeChildrenBatch.Parent.Id, child.Id);
+                }
+                break;
             case AddChild addChild:
                 await Interop.AddChildHtml(addChild.Parent.Id, Render.Html(addChild.Child));
                 Runtime.RegisterHandlers(addChild.Child);
@@ -782,11 +862,35 @@ public static class Operations
                     await Interop.UpdateAttribute(updateText.Node.Id, "id", updateText.NewId);
                 }
                 break;
+            case AddTextsBatch addTextsBatch:
+                foreach (var child in addTextsBatch.Children)
+                {
+                    await Interop.AddChildHtml(addTextsBatch.Parent.Id, Render.Html(child));
+                }
+                break;
+            case RemoveTextsBatch removeTextsBatch:
+                foreach (var child in removeTextsBatch.Children)
+                {
+                    await Interop.RemoveChild(removeTextsBatch.Parent.Id, child.Id);
+                }
+                break;
             case AddText addText:
                 await Interop.AddChildHtml(addText.Parent.Id, Render.Html(addText.Child));
                 break;
             case RemoveText removeText:
                 await Interop.RemoveChild(removeText.Parent.Id, removeText.Child.Id);
+                break;
+            case AddRawBatch addRawBatch:
+                foreach (var child in addRawBatch.Children)
+                {
+                    await Interop.AddChildHtml(addRawBatch.Parent.Id, Render.Html(child));
+                }
+                break;
+            case RemoveRawBatch removeRawBatch:
+                foreach (var child in removeRawBatch.Children)
+                {
+                    await Interop.RemoveChild(removeRawBatch.Parent.Id, child.Id);
+                }
                 break;
             case AddRaw addRaw:
                 await Interop.AddChildHtml(addRaw.Parent.Id, Render.Html(addRaw.Child));
@@ -810,7 +914,16 @@ public static class Operations
     /// </summary>
     /// <param name="oldNode">The previous virtual DOM node. Can be <c>null</c> when rendering for the first time.</param>
     /// <param name="newNode">The new virtual DOM node.</param>
-    public static List<Patch> Diff(Node? oldNode, Node newNode)
+    public static List<Patch> Diff(Node? oldNode, Node newNode) => Diff(oldNode, newNode, batchPatches: false);
+
+    /// <summary>
+    /// Compute the list of patches that transform <paramref name="oldNode"/> into <paramref name="newNode"/>.
+    /// Optionally batch compatible patch operations to reduce patch count.
+    /// </summary>
+    /// <param name="oldNode">The previous virtual DOM node. Can be <c>null</c> when rendering for the first time.</param>
+    /// <param name="newNode">The new virtual DOM node.</param>
+    /// <param name="batchPatches">Whether to batch compatible patch operations.</param>
+    public static List<Patch> Diff(Node? oldNode, Node newNode, bool batchPatches)
     {
         var patches = RentPatchList();
         try
@@ -818,18 +931,183 @@ public static class Operations
             if (oldNode is null)
             {
                 patches.Add(new AddRoot((Element)newNode));
-                var result = new List<Patch>(patches);
-                return result;
+                return FinalizePatches(patches, batchPatches);
             }
 
             DiffInternal(oldNode, newNode, null, patches);
-            var finalResult = new List<Patch>(patches);
-            return finalResult;
+            return FinalizePatches(patches, batchPatches);
         }
         finally
         {
             ReturnPatchList(patches);
         }
+    }
+
+    private static List<Patch> FinalizePatches(List<Patch> patches, bool batchPatches) =>
+        batchPatches ? BatchPatches(patches) : new List<Patch>(patches);
+
+    /// <summary>
+    /// Groups consecutive patch operations that target the same parent into batch patches to reduce patch count.
+    /// </summary>
+    private static List<Patch> BatchPatches(IReadOnlyList<Patch> patches)
+    {
+        if (patches.Count == 0)
+        {
+            return [];
+        }
+
+        var batched = new List<Patch>(patches.Count);
+        var index = 0;
+        while (index < patches.Count)
+        {
+            switch (patches[index])
+            {
+                case AddChild addChild:
+                    index = BatchAddChildren(patches, index, batched, addChild.Parent);
+                    continue;
+                case RemoveChild removeChild:
+                    index = BatchRemoveChildren(patches, index, batched, removeChild.Parent);
+                    continue;
+                case AddText addText:
+                    index = BatchAddTexts(patches, index, batched, addText.Parent);
+                    continue;
+                case RemoveText removeText:
+                    index = BatchRemoveTexts(patches, index, batched, removeText.Parent);
+                    continue;
+                case AddRaw addRaw:
+                    index = BatchAddRaw(patches, index, batched, addRaw.Parent);
+                    continue;
+                case RemoveRaw removeRaw:
+                    index = BatchRemoveRaw(patches, index, batched, removeRaw.Parent);
+                    continue;
+                default:
+                    batched.Add(patches[index]);
+                    index++;
+                    continue;
+            }
+        }
+
+        return batched;
+    }
+
+    private static int BatchAddChildren(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<Element> { ((AddChild)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is AddChild next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new AddChildrenBatch(parent, children.ToArray()));
+        return cursor;
+    }
+
+    private static int BatchRemoveChildren(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<Element> { ((RemoveChild)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is RemoveChild next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new RemoveChildrenBatch(parent, children.ToArray()));
+        return cursor;
+    }
+
+    private static int BatchAddTexts(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<Text> { ((AddText)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is AddText next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new AddTextsBatch(parent, children.ToArray()));
+        return cursor;
+    }
+
+    private static int BatchRemoveTexts(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<Text> { ((RemoveText)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is RemoveText next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new RemoveTextsBatch(parent, children.ToArray()));
+        return cursor;
+    }
+
+    private static int BatchAddRaw(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<RawHtml> { ((AddRaw)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is AddRaw next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new AddRawBatch(parent, children.ToArray()));
+        return cursor;
+    }
+
+    private static int BatchRemoveRaw(IReadOnlyList<Patch> source, int startIndex, List<Patch> target, Element parent)
+    {
+        var children = new List<RawHtml> { ((RemoveRaw)source[startIndex]).Child };
+        var cursor = startIndex + 1;
+        while (cursor < source.Count && source[cursor] is RemoveRaw next && ReferenceEquals(next.Parent, parent))
+        {
+            children.Add(next.Child);
+            cursor++;
+        }
+
+        if (children.Count == 1)
+        {
+            target.Add(source[startIndex]);
+            return cursor;
+        }
+
+        target.Add(new RemoveRawBatch(parent, children.ToArray()));
+        return cursor;
     }
 
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
