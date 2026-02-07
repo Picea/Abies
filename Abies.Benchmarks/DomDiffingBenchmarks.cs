@@ -50,9 +50,6 @@ public class DomDiffingBenchmarks
     private Node _removeOld = null!;
     private Node _removeNew = null!;
 
-    [Params(false, true)]
-    public bool BatchPatches { get; set; }
-
     [GlobalSetup]
     public void Setup()
     {
@@ -301,7 +298,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void SmallDomDiff()
     {
-        Operations.Diff(_smallOld, _smallNew, BatchPatches);
+        Operations.Diff(_smallOld, _smallNew);
     }
 
     /// <summary>
@@ -311,7 +308,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void MediumDomDiff()
     {
-        Operations.Diff(_mediumOld, _mediumNew, BatchPatches);
+        Operations.Diff(_mediumOld, _mediumNew);
     }
 
     /// <summary>
@@ -321,7 +318,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void LargeDomDiff()
     {
-        Operations.Diff(_largeOld, _largeNew, BatchPatches);
+        Operations.Diff(_largeOld, _largeNew);
     }
 
     /// <summary>
@@ -331,7 +328,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void AttributeOnlyDiff()
     {
-        Operations.Diff(_attrOld, _attrNew, BatchPatches);
+        Operations.Diff(_attrOld, _attrNew);
     }
 
     /// <summary>
@@ -341,7 +338,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void TextOnlyDiff()
     {
-        Operations.Diff(_textOld, _textNew, BatchPatches);
+        Operations.Diff(_textOld, _textNew);
     }
 
     /// <summary>
@@ -351,7 +348,7 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void NodeAdditionDiff()
     {
-        Operations.Diff(_addOld, _addNew, BatchPatches);
+        Operations.Diff(_addOld, _addNew);
     }
 
     /// <summary>
@@ -361,6 +358,6 @@ public class DomDiffingBenchmarks
     [Benchmark]
     public void NodeRemovalDiff()
     {
-        Operations.Diff(_removeOld, _removeNew, BatchPatches);
+        Operations.Diff(_removeOld, _removeNew);
     }
 }
