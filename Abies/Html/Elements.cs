@@ -13,7 +13,6 @@
 // - ADR-002: Pure Functional Programming (docs/adr/ADR-002-pure-functional-programming.md)
 // =============================================================================
 
-using System.Runtime.CompilerServices;
 using Abies.DOM;
 using Praefixum;
 
@@ -121,7 +120,16 @@ public static class Elements
         => element("pattern", attributes, children, id);
 
     public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(id!, tag, [Attributes.id(id!), .. attributes], children);
+    {
+        // Check if user provided an explicit id attribute - if so, use that value
+        var explicitId = Array.Find(attributes, a => a.Name == "id");
+        var elementId = explicitId?.Value ?? id!;
+        // Filter out any user-provided id attributes to avoid duplicates
+        var filteredAttributes = explicitId != null
+            ? Array.FindAll(attributes, a => a.Name != "id")
+            : attributes;
+        return new(elementId, tag, [Attributes.id(elementId), .. filteredAttributes], children);
+    }
 
     public static Node output(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     => element("output", attributes, children, id);
@@ -507,6 +515,6 @@ public static class Elements
         => element("rect", attributes, [], id);
 
     public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new DOM.RawHtml(id!, html);
+        => new RawHtml(id!, html);
 
 }
