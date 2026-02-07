@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770395984698,
+  "lastUpdate": 1770454556600,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -920,6 +920,180 @@ window.BENCHMARK_DATA = {
             "value": 7053.016693115234,
             "unit": "ns",
             "range": "± 73.37976953579846"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82795013cf2457c431923e806bf00d242685a9b8",
+          "message": "fix: Use appropriate container for parsing table-related HTML elements (#43)\n\n* docs: Document NETSDK1152 fix and performance trade-offs\n\nAdded comprehensive documentation for:\n- PR #38 source-gen JSON performance trade-off (10-20% handler creation regression)\n- NETSDK1152 duplicate abies.js fix with MSBuild target solution\n- Key insights about using Identity metadata vs OriginalItemSpec\n- Cross-platform path separator handling (Windows \\ vs Unix /)\n\n* fix: use appropriate container for parsing table-related HTML elements\n\nBrowsers strip table-related elements (tr, td, th, etc.) when placed inside\ninvalid container elements like <div>. This caused DOM patching operations\nto silently fail for table rows and cells.\n\nAdded parseHtmlFragment() helper that selects the correct container:\n- <tbody> for <tr> elements\n- <tr> for <td>/<th> elements\n- <table> for <thead>/<tbody>/<tfoot>/<colgroup>/<caption>\n- <colgroup> for <col> elements\n- <select> for <option>/<optgroup> elements\n- <div> for everything else (default)\n\nThis fixes issues with dynamic table content like js-framework-benchmark's\n'Create 1000 rows' operation where only <span> child content was rendered\nbut parent <tr>/<td>/<a> elements were stripped.\n\nFixes #32\n\n* chore: Trigger CI workflow\n\n* fix: Respect explicit id attributes in HTML element helpers\n\n- Modified element() function to check for user-provided id attributes\n- When an explicit id attribute is passed via Attributes.id(), use that value\n- Falls back to auto-generated ID when no explicit id is provided\n- Filters duplicate id attributes to avoid rendering id twice\n\nThis fix is required for js-framework-benchmark where buttons need\nspecific IDs like id=\"run\", id=\"add\", etc.\n\nAlso updated AbiesBenchmark.csproj:\n- Target .NET 10.0\n- Use local Abies project reference instead of NuGet package\n- Enable trimming with partial TrimMode",
+          "timestamp": "2026-02-07T09:46:30+01:00",
+          "tree_id": "24d7996e85bf43a8b5c50f3d3fd9a95ceb011e71",
+          "url": "https://github.com/Picea/Abies/commit/82795013cf2457c431923e806bf00d242685a9b8"
+        },
+        "date": 1770454555796,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 504.8173532485962,
+            "unit": "ns",
+            "range": "± 1.3480709905633061"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 3027.710081100464,
+            "unit": "ns",
+            "range": "± 4.462109444817293"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 527.987700843811,
+            "unit": "ns",
+            "range": "± 5.038111396037027"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 597.7805709203084,
+            "unit": "ns",
+            "range": "± 2.5200979839532547"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 618.8328320821126,
+            "unit": "ns",
+            "range": "± 2.3212671953783164"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 606.0251963479178,
+            "unit": "ns",
+            "range": "± 2.448338888428998"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 617.081737450191,
+            "unit": "ns",
+            "range": "± 2.392739019649222"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 193.3844588484083,
+            "unit": "ns",
+            "range": "± 1.7828252269009548"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 717.0477017084758,
+            "unit": "ns",
+            "range": "± 12.893252448163167"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 371.266581092562,
+            "unit": "ns",
+            "range": "± 3.8944017030622944"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 649.2982226053874,
+            "unit": "ns",
+            "range": "± 10.269585927506812"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5216.178850809733,
+            "unit": "ns",
+            "range": "± 60.698231060322115"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 36542.78922119141,
+            "unit": "ns",
+            "range": "± 143.62830259307142"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 619.1489818436759,
+            "unit": "ns",
+            "range": "± 2.3648209666613913"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4707.396107600285,
+            "unit": "ns",
+            "range": "± 13.47600664265144"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2330.674347468785,
+            "unit": "ns",
+            "range": "± 10.020826675282462"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 38.32052082094279,
+            "unit": "ns",
+            "range": "± 1.0085198519282477"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 48.67131296487955,
+            "unit": "ns",
+            "range": "± 0.16178149737063466"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 482.9869876274696,
+            "unit": "ns",
+            "range": "± 1.1634430441955368"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2242.226709638323,
+            "unit": "ns",
+            "range": "± 10.198526849327546"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 3936.5696291242325,
+            "unit": "ns",
+            "range": "± 26.341189927251833"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 99.24011612252185,
+            "unit": "ns",
+            "range": "± 2.280110855661222"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 274.677575969696,
+            "unit": "ns",
+            "range": "± 6.2315288276563825"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 640.6240836552212,
+            "unit": "ns",
+            "range": "± 20.08535026129269"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7223.051341247558,
+            "unit": "ns",
+            "range": "± 81.0292333291752"
           }
         ]
       }
