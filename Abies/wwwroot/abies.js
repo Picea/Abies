@@ -836,6 +836,38 @@ function addEventListeners(root) {
  * @param {Event} event - The DOM event.
  */
 
+/**
+ * Parses an HTML string fragment into a DOM element, using the appropriate
+ * container element to ensure browser parsing succeeds. Browsers strip
+ * table-related elements (tr, td, etc.) when placed inside invalid containers.
+ * @param {string} html - The HTML string to parse.
+ * @returns {Element|null} The first element child from the parsed HTML, or null if none.
+ */
+function parseHtmlFragment(html) {
+    const trimmedHtml = html.trimStart();
+    let tempContainer;
+
+    // Extract the first tag name to avoid prefix-matching issues
+    // (e.g., <thead> matching <th>, <track> matching <tr>)
+    const tagMatch = /^<\s*([a-zA-Z0-9]+)/.exec(trimmedHtml);
+    const tagName = tagMatch ? tagMatch[1].toLowerCase() : null;
+
+    if (tagName === 'tr') {
+        tempContainer = document.createElement('tbody');
+    } else if (tagName === 'td' || tagName === 'th') {
+        tempContainer = document.createElement('tr');
+    } else if (tagName === 'thead' || tagName === 'tbody' || tagName === 'tfoot' || tagName === 'colgroup' || tagName === 'caption') {
+        tempContainer = document.createElement('table');
+    } else if (tagName === 'col') {
+        tempContainer = document.createElement('colgroup');
+    } else if (tagName === 'option' || tagName === 'optgroup') {
+        tempContainer = document.createElement('select');
+    } else {
+        tempContainer = document.createElement('div');
+    }
+    tempContainer.innerHTML = html;
+    return tempContainer.firstElementChild;
+}
 
 setModuleImports('abies.js', {
 
@@ -847,9 +879,7 @@ setModuleImports('abies.js', {
     addChildHtml: withSpan('addChildHtml', async (parentId, childHtml) => {
         const parent = document.getElementById(parentId);
         if (parent) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = childHtml;
-            const childElement = tempDiv.firstElementChild;
+            const childElement = parseHtmlFragment(childHtml);
             parent.appendChild(childElement);
             // Reattach event listeners to new elements within this subtree
             addEventListeners(childElement);
@@ -890,9 +920,7 @@ setModuleImports('abies.js', {
     replaceChildHtml: withSpan('replaceChildHtml', async (oldNodeId, newHtml) => {
         const oldNode = document.getElementById(oldNodeId);
         if (oldNode && oldNode.parentNode) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = newHtml;
-            const newElement = tempDiv.firstElementChild;
+            const newElement = parseHtmlFragment(newHtml);
             try {
                 oldNode.parentNode.replaceChild(newElement, oldNode);
                 // Reattach event listeners to new elements within this subtree
