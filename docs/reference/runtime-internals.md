@@ -114,10 +114,14 @@ await foreach (var message in _messageChannel.Reader.ReadAllAsync())
         Dispatch
     );
     
-    // 6. Execute command
-    await ExecuteCommand(command);
+// 6. Execute command
+await ExecuteCommand(command);
 }
 ```
+
+### Render Batching
+
+Abies applies patches one-by-one rather than packaging them into a Blazor-style `RenderBatch`. Each patch translates to a focused interop call such as `updateAttribute`, `replaceChildHtml`, or `addChildHtml`. This keeps handler registration aligned with the exact DOM mutation and avoids the serialization overhead of batching. The trade-off is more individual interop calls, but each carries only a tiny payload (an attribute value or a small HTML fragment), which has been sufficient for the current performance targets.
 
 ### ID Preservation
 
