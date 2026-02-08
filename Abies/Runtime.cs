@@ -112,11 +112,8 @@ public static partial class Runtime
             // Compute the patches
             var patches = Operations.Diff(dom, alignedBody);
 
-            // Apply patches (handler registration is coordinated inside Operations.Apply)
-            foreach (var patch in patches)
-            {
-                await Operations.Apply(patch);
-            }
+            // Apply patches in batch (reduces JS interop overhead)
+            await Operations.ApplyBatch(patches);
 
             dom = alignedBody;
             await Interop.SetTitle(newDom.Title);

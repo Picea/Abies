@@ -11,100 +11,102 @@
 
 using System.Runtime.InteropServices.JavaScript;
 
-namespace Abies
+namespace Abies;
+
+/// <summary>
+/// JavaScript interop declarations for browser APIs.
+/// </summary>
+/// <remarks>
+/// All browser interactions go through this class via JSImport.
+/// The corresponding JavaScript implementation is in abies.js.
+/// 
+/// See ADR-011: JavaScript Interop Strategy
+/// </remarks>
+public static partial class Interop
 {
-    /// <summary>
-    /// JavaScript interop declarations for browser APIs.
-    /// </summary>
-    /// <remarks>
-    /// All browser interactions go through this class via JSImport.
-    /// The corresponding JavaScript implementation is in abies.js.
-    /// 
-    /// See ADR-011: JavaScript Interop Strategy
-    /// </remarks>
-    public static partial class Interop
-    {
-        // Navigation APIs
-        [JSImport("forward", "abies.js")]
-        public static partial Task Forward(int steps);
+    // Navigation APIs
+    [JSImport("forward", "abies.js")]
+    public static partial Task Forward(int steps);
 
-        [JSImport("back", "abies.js")]
-        public static partial Task Back(int steps);
+    [JSImport("back", "abies.js")]
+    public static partial Task Back(int steps);
 
-        [JSImport("go", "abies.js")]
-        public static partial Task Go(int steps);
+    [JSImport("go", "abies.js")]
+    public static partial Task Go(int steps);
 
-        [JSImport("reload", "abies.js")]
-        public static partial Task Reload();
+    [JSImport("reload", "abies.js")]
+    public static partial Task Reload();
 
-        [JSImport("load", "abies.js")]
-        public static partial Task Load(string url);
+    [JSImport("load", "abies.js")]
+    public static partial Task Load(string url);
 
-        [JSImport("pushState", "abies.js")]
-        public static partial Task PushState(string url);
+    [JSImport("pushState", "abies.js")]
+    public static partial Task PushState(string url);
 
-        [JSImport("replaceState", "abies.js")]
-        public static partial Task ReplaceState(string url);
+    [JSImport("replaceState", "abies.js")]
+    public static partial Task ReplaceState(string url);
 
-        // DOM manipulation APIs (see ADR-003: Virtual DOM)
-        [JSImport("setAppContent", "abies.js")]
-        public static partial Task SetAppContent(string html);
+    // DOM manipulation APIs (see ADR-003: Virtual DOM)
+    [JSImport("setAppContent", "abies.js")]
+    public static partial Task SetAppContent(string html);
 
-        [JSImport("addChildHtml", "abies.js")]
-        public static partial Task AddChildHtml(string parentId, string childHtml);
+    [JSImport("addChildHtml", "abies.js")]
+    public static partial Task AddChildHtml(string parentId, string childHtml);
 
-        [JSImport("removeChild", "abies.js")]
-        public static partial Task RemoveChild(string parentId, string childId);
+    [JSImport("removeChild", "abies.js")]
+    public static partial Task RemoveChild(string parentId, string childId);
 
-        [JSImport("replaceChildHtml", "abies.js")]
-        public static partial Task ReplaceChildHtml(string oldNodeId, string newHtml);
+    [JSImport("replaceChildHtml", "abies.js")]
+    public static partial Task ReplaceChildHtml(string oldNodeId, string newHtml);
 
-        [JSImport("updateTextContent", "abies.js")]
-        public static partial Task UpdateTextContent(string nodeId, string newText);
+    [JSImport("updateTextContent", "abies.js")]
+    public static partial Task UpdateTextContent(string nodeId, string newText);
 
-        [JSImport("updateAttribute", "abies.js")]
-        public static partial Task UpdateAttribute(string id, string name, string value);
+    [JSImport("updateAttribute", "abies.js")]
+    public static partial Task UpdateAttribute(string id, string name, string value);
 
-        [JSImport("addAttribute", "abies.js")]
-        public static partial Task AddAttribute(string id, string name, string value);
+    [JSImport("addAttribute", "abies.js")]
+    public static partial Task AddAttribute(string id, string name, string value);
 
-        [JSImport("removeAttribute", "abies.js")]
-        public static partial Task RemoveAttribute(string id, string name);
+    [JSImport("removeAttribute", "abies.js")]
+    public static partial Task RemoveAttribute(string id, string name);
 
-        [JSImport("getValue", "abies.js")]
-        public static partial string? GetValue(string id);
+    [JSImport("applyPatches", "abies.js")]
+    public static partial Task ApplyPatches(string patchesJson);
 
-        // Storage APIs
-        [JSImport("setLocalStorage", "abies.js")]
-        public static partial Task SetLocalStorage(string key, string value);
+    [JSImport("getValue", "abies.js")]
+    public static partial string? GetValue(string id);
 
-        [JSImport("getLocalStorage", "abies.js")]
-        public static partial string? GetLocalStorage(string key);
+    // Storage APIs
+    [JSImport("setLocalStorage", "abies.js")]
+    public static partial Task SetLocalStorage(string key, string value);
 
-        [JSImport("removeLocalStorage", "abies.js")]
-        public static partial Task RemoveLocalStorage(string key);
+    [JSImport("getLocalStorage", "abies.js")]
+    public static partial string? GetLocalStorage(string key);
 
-        [JSImport("setTitle", "abies.js")]
-        public static partial Task SetTitle(string title);
+    [JSImport("removeLocalStorage", "abies.js")]
+    public static partial Task RemoveLocalStorage(string key);
 
-        // Event handlers (callbacks from JS to C#)
-        [JSImport("onUrlChange", "abies.js")]
-        public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
+    [JSImport("setTitle", "abies.js")]
+    public static partial Task SetTitle(string title);
 
-        [JSImport("getCurrentUrl", "abies.js")]
-        public static partial string GetCurrentUrl();
+    // Event handlers (callbacks from JS to C#)
+    [JSImport("onUrlChange", "abies.js")]
+    public static partial void OnUrlChange([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler);
 
-        [JSImport("onLinkClick", "abies.js")]
-        internal static partial void OnLinkClick([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
+    [JSImport("getCurrentUrl", "abies.js")]
+    public static partial string GetCurrentUrl();
 
-        [JSImport("onFormSubmit", "abies.js")]
-        internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
+    [JSImport("onLinkClick", "abies.js")]
+    internal static partial void OnLinkClick([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
 
-        // Subscription APIs (see ADR-007: Subscriptions)
-        [JSImport("subscribe", "abies.js")]
-        internal static partial void Subscribe(string key, string kind, string? data);
+    [JSImport("onFormSubmit", "abies.js")]
+    internal static partial void OnFormSubmit([JSMarshalAs<JSType.Function<JSType.String>>] Action<string> value);
 
-        [JSImport("unsubscribe", "abies.js")]
-        internal static partial void Unsubscribe(string key);
-    }
+    // Subscription APIs (see ADR-007: Subscriptions)
+    [JSImport("subscribe", "abies.js")]
+    internal static partial void Subscribe(string key, string kind, string? data);
+
+    [JSImport("unsubscribe", "abies.js")]
+    internal static partial void Unsubscribe(string key);
 }
