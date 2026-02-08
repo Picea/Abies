@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770562615453,
+  "lastUpdate": 1770562616932,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -1738,6 +1738,180 @@ window.BENCHMARK_DATA = {
             "value": 5000,
             "unit": "bytes",
             "extra": "Gen0: 78.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "86f123a11af62392ed0db6c94a79d9fff9e026e1",
+          "message": "perf: Batch DOM operations into single JS interop call (#48)\n\n* perf: batch DOM operations into single JS interop call\n\nReplaces individual JS interop calls per DOM operation with a single\nbatched call that applies all pending operations at once. This reduces\nthe overhead of crossing the WASM/JS boundary, especially for views\nwith many elements.\n\nChanges:\n- Add Operations.cs with JSON-serializable DOM operation types\n- Add applyPatch function in abies.js for batch processing\n- Update Interop.cs to use batched patching\n- Add PatchOperationArray to AbiesJsonContext for source generation\n- Update Runtime.cs to use new batched diffing\n\nThis optimization is particularly impactful for large lists and\ncomplex views where many DOM operations occur during a single update.\n\n* fix: address Copilot review feedback\n\n- Use parseHtmlFragment for AddChild instead of insertAdjacentHTML\n- Use addEventListeners(element) to register event handlers on inserted nodes\n- Add parentNode guard in RemoveChild before calling remove()\n- Sync textarea.value in UpdateText/UpdateTextWithId like updateTextContent\n- Remove unused variable assignment in RemoveHandler case (Operations.cs)\n\n* fix: align batched attribute handling with non-batched behavior\n\nBoolean attributes in UpdateAttribute/AddAttribute now use empty string\nvalues like the non-batched updateAttribute/addAttribute functions do.\nAlso reorder conditionals to check value first, then boolean attrs.\n\n* ci: Implement same-job benchmark comparison for accurate PR validation\n\n- Add scripts/compare-benchmarks.py for same-job comparison (no runner variance)\n- Update benchmark workflow to run both main and PR benchmarks in same job\n- Same-job comparison is the pass/fail gate (thresholds: 110% throughput, 120% allocs)\n- benchmark-action still runs but with fail-on-alert=false (for gh-pages trends only)\n- Add benchmark-results/ and benchmark-baseline/ to gitignore\n\nThis eliminates false positives caused by CI runner variance between separate jobs.\n\n* chore: sync abies.js copies and cleanup whitespace",
+          "timestamp": "2026-02-08T15:47:48+01:00",
+          "tree_id": "f12974c3f5e30ef8d7974caf7045727908e6000a",
+          "url": "https://github.com/Picea/Abies/commit/86f123a11af62392ed0db6c94a79d9fff9e026e1"
+        },
+        "date": 1770562616698,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 14.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 16.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 18.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
           },
           {
             "name": "Handlers/CreateSingleHandler_Message",
