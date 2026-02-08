@@ -1038,6 +1038,167 @@ setModuleImports('abies.js', {
         }
     }),
 
+    /**
+     * Apply a batch of patches to the DOM in a single operation.
+     * This reduces JS interop overhead by processing multiple patches at once.
+     * @param {string} patchesJson - JSON array of patch operations.
+     */
+    applyPatches: withSpan('applyPatches', async (patchesJson) => {
+        const patches = JSON.parse(patchesJson);
+        for (const patch of patches) {
+            switch (patch.Type) {
+                case 'SetAppContent':
+                    document.body.innerHTML = patch.Html;
+                    addEventListeners();
+                    window.abiesReady = true;
+                    break;
+                case 'AddChild': {
+                    const parent = document.getElementById(patch.ParentId);
+                    if (parent) {
+                        // Use parseHtmlFragment for proper table/select handling
+                        const childElement = parseHtmlFragment(patch.Html);
+                        if (childElement) {
+                            parent.appendChild(childElement);
+                            // Use addEventListeners to discover all event handlers
+                            addEventListeners(childElement);
+                        }
+                    } else {
+                        console.error(`Parent node with ID ${patch.ParentId} not found.`);
+                    }
+                    break;
+                }
+                case 'RemoveChild': {
+                    const child = document.getElementById(patch.ChildId);
+                    // Guard against child already removed or reparented
+                    if (child && child.parentNode) {
+                        child.remove();
+                    }
+                    break;
+                }
+                case 'ReplaceChild': {
+                    const oldNode = document.getElementById(patch.TargetId);
+                    if (oldNode && oldNode.parentNode) {
+                        // Use parseHtmlFragment for proper table/select handling
+                        const newNode = parseHtmlFragment(patch.Html);
+                        if (newNode) {
+                            oldNode.parentNode.replaceChild(newNode, oldNode);
+                            // Use addEventListeners which includes the root element
+                            addEventListeners(newNode);
+                        }
+                    } else {
+                        console.error(`ReplaceChild failed: target=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        if (lower === 'value' && 'value' in node) {
+                            // Keep the live value in sync for inputs/textareas
+                            node.value = patch.AttrValue;
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        } else if (isBooleanAttr) {
+                            // Boolean attributes: presence => true (use empty string like non-batched path)
+                            node.setAttribute(patch.AttrName, '');
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        } else {
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        }
+                        if (patch.AttrName.startsWith('data-event-')) {
+                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
+                        }
+                    } else {
+                        console.error(`UpdateAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'AddAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        if (lower === 'value' && 'value' in node) {
+                            // Keep the live value in sync for inputs/textareas
+                            node.value = patch.AttrValue;
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        } else if (isBooleanAttr) {
+                            // Boolean attributes: presence => true (use empty string like non-batched path)
+                            node.setAttribute(patch.AttrName, '');
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        } else {
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        }
+                        if (patch.AttrName.startsWith('data-event-')) {
+                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
+                        }
+                    } else {
+                        console.error(`AddAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'RemoveAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        node.removeAttribute(patch.AttrName);
+                        if (isBooleanAttr) {
+                            try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
+                        }
+                    } else {
+                        console.error(`RemoveAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateText': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        node.textContent = patch.Text;
+                        // Sync textarea.value like updateTextContent does
+                        const tag = (node.tagName || '').toUpperCase();
+                        if (tag === 'TEXTAREA') {
+                            try { node.value = patch.Text; } catch { /* ignore */ }
+                        }
+                    } else {
+                        console.error(`UpdateText failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateTextWithId': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        node.textContent = patch.Text;
+                        node.setAttribute('id', patch.NewId);
+                        // Sync textarea.value like updateTextContent does
+                        const tag = (node.tagName || '').toUpperCase();
+                        if (tag === 'TEXTAREA') {
+                            try { node.value = patch.Text; } catch { /* ignore */ }
+                        }
+                    } else {
+                        console.error(`UpdateTextWithId failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                default:
+                    console.error(`Unknown patch type: ${patch.Type}`);
+            }
+        }
+    }),
+
     setLocalStorage: withSpan('setLocalStorage', async (key, value) => {
         localStorage.setItem(key, value);
     }),

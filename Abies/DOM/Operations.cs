@@ -478,6 +478,35 @@ public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patc
     public readonly string NewId = newId;
 }
 
+// =============================================================================
+// Batch Patching - Performance Optimization
+// =============================================================================
+// Converts patches to a JSON-serializable format for batch application.
+// This allows sending multiple patches to JavaScript in a single interop call,
+// dramatically reducing the overhead of N patches × N JS interop calls.
+//
+// Architecture Decision Records:
+// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
+// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
+// =============================================================================
+
+/// <summary>
+/// JSON-serializable patch data for batch patching.
+/// All fields are nullable since different patch types use different fields.
+/// </summary>
+public record PatchData
+{
+    public string Type { get; init; } = "";
+    public string? ParentId { get; init; }
+    public string? TargetId { get; init; }
+    public string? ChildId { get; init; }
+    public string? Html { get; init; }
+    public string? AttrName { get; init; }
+    public string? AttrValue { get; init; }
+    public string? NewId { get; init; }
+    public string? Text { get; init; }
+}
+
 
 /// <summary>
 /// Provides rendering utilities for the virtual DOM.
@@ -803,6 +832,200 @@ public static class Operations
             default:
                 throw new InvalidOperationException("Unknown patch type");
         }
+    }
+
+    /// <summary>
+    /// Apply a batch of patches to the real DOM in a single JavaScript interop call.
+    /// This is more efficient than calling Apply() for each patch individually
+    /// because it reduces the number of JS interop boundary crossings.
+    /// </summary>
+    /// <param name="patches">The list of patches to apply.</param>
+    public static async Task ApplyBatch(List<Patch> patches)
+    {
+        if (patches.Count == 0)
+        {
+            return;
+        }
+
+        // Step 1: Pre-register all new handlers BEFORE making any DOM changes
+        // This ensures events dispatched immediately after DOM updates are handled correctly
+        foreach (var patch in patches)
+        {
+            switch (patch)
+            {
+                case AddRoot addRoot:
+                    Runtime.RegisterHandlers(addRoot.Element);
+                    break;
+                case ReplaceChild replaceChild:
+                    Runtime.UnregisterHandlers(replaceChild.OldElement);
+                    Runtime.RegisterHandlers(replaceChild.NewElement);
+                    break;
+                case AddChild addChild:
+                    Runtime.RegisterHandlers(addChild.Child);
+                    break;
+                case RemoveChild removeChild:
+                    Runtime.UnregisterHandlers(removeChild.Child);
+                    break;
+                case AddHandler addHandler:
+                    Runtime.RegisterHandler(addHandler.Handler);
+                    break;
+                case RemoveHandler:
+                    // Don't unregister yet - wait until after DOM update
+                    break;
+                case UpdateHandler updateHandler:
+                    Runtime.RegisterHandler(updateHandler.NewHandler);
+                    break;
+            }
+        }
+
+        // Step 2: Convert all patches to JSON-serializable format
+        var patchDataList = new List<PatchData>(patches.Count);
+        foreach (var patch in patches)
+        {
+            patchDataList.Add(ConvertToPatchData(patch));
+        }
+
+        // Step 3: Apply all patches in a single JS interop call
+        var json = System.Text.Json.JsonSerializer.Serialize(patchDataList, AbiesJsonContext.Default.ListPatchData);
+        await Interop.ApplyPatches(json);
+
+        // Step 4: Post-process - unregister old handlers AFTER DOM changes
+        foreach (var patch in patches)
+        {
+            switch (patch)
+            {
+                case RemoveHandler removeHandler:
+                    Runtime.UnregisterHandler(removeHandler.Handler);
+                    break;
+                case UpdateHandler updateHandler:
+                    Runtime.UnregisterHandler(updateHandler.OldHandler);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Convert a Patch to a JSON-serializable PatchData record.
+    /// </summary>
+    private static PatchData ConvertToPatchData(Patch patch)
+    {
+        return patch switch
+        {
+            AddRoot addRoot => new PatchData
+            {
+                Type = "SetAppContent",
+                Html = Render.Html(addRoot.Element)
+            },
+            ReplaceChild replaceChild => new PatchData
+            {
+                Type = "ReplaceChild",
+                TargetId = replaceChild.OldElement.Id,
+                Html = Render.Html(replaceChild.NewElement)
+            },
+            AddChild addChild => new PatchData
+            {
+                Type = "AddChild",
+                ParentId = addChild.Parent.Id,
+                Html = Render.Html(addChild.Child)
+            },
+            RemoveChild removeChild => new PatchData
+            {
+                Type = "RemoveChild",
+                ParentId = removeChild.Parent.Id,
+                ChildId = removeChild.Child.Id
+            },
+            UpdateAttribute updateAttribute => new PatchData
+            {
+                Type = "UpdateAttribute",
+                TargetId = updateAttribute.Element.Id,
+                AttrName = updateAttribute.Attribute.Name,
+                AttrValue = updateAttribute.Value
+            },
+            AddAttribute addAttribute => new PatchData
+            {
+                Type = "AddAttribute",
+                TargetId = addAttribute.Element.Id,
+                AttrName = addAttribute.Attribute.Name,
+                AttrValue = addAttribute.Attribute.Value
+            },
+            RemoveAttribute removeAttribute => new PatchData
+            {
+                Type = "RemoveAttribute",
+                TargetId = removeAttribute.Element.Id,
+                AttrName = removeAttribute.Attribute.Name
+            },
+            AddHandler addHandler => new PatchData
+            {
+                Type = "AddAttribute",
+                TargetId = addHandler.Element.Id,
+                AttrName = addHandler.Handler.Name,
+                AttrValue = addHandler.Handler.Value
+            },
+            RemoveHandler removeHandler => new PatchData
+            {
+                Type = "RemoveAttribute",
+                TargetId = removeHandler.Element.Id,
+                AttrName = removeHandler.Handler.Name
+            },
+            UpdateHandler updateHandler => new PatchData
+            {
+                Type = "UpdateAttribute",
+                TargetId = updateHandler.Element.Id,
+                AttrName = updateHandler.NewHandler.Name,
+                AttrValue = updateHandler.NewHandler.Value
+            },
+            UpdateText updateText => updateText.Node.Id == updateText.NewId
+                ? new PatchData
+                {
+                    Type = "UpdateText",
+                    TargetId = updateText.Node.Id,
+                    Text = updateText.Text
+                }
+                : new PatchData
+                {
+                    Type = "UpdateTextWithId",
+                    TargetId = updateText.Node.Id,
+                    Text = updateText.Text,
+                    NewId = updateText.NewId
+                },
+            AddText addText => new PatchData
+            {
+                Type = "AddChild",
+                ParentId = addText.Parent.Id,
+                Html = Render.Html(addText.Child)
+            },
+            RemoveText removeText => new PatchData
+            {
+                Type = "RemoveChild",
+                ParentId = removeText.Parent.Id,
+                ChildId = removeText.Child.Id
+            },
+            AddRaw addRaw => new PatchData
+            {
+                Type = "AddChild",
+                ParentId = addRaw.Parent.Id,
+                Html = Render.Html(addRaw.Child)
+            },
+            RemoveRaw removeRaw => new PatchData
+            {
+                Type = "RemoveChild",
+                ParentId = removeRaw.Parent.Id,
+                ChildId = removeRaw.Child.Id
+            },
+            ReplaceRaw replaceRaw => new PatchData
+            {
+                Type = "ReplaceChild",
+                TargetId = replaceRaw.OldNode.Id,
+                Html = Render.Html(replaceRaw.NewNode)
+            },
+            UpdateRaw updateRaw => new PatchData
+            {
+                Type = "ReplaceChild",
+                TargetId = updateRaw.Node.Id,
+                Html = Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html))
+            },
+            _ => throw new InvalidOperationException($"Unknown patch type: {patch.GetType().Name}")
+        };
     }
 
     /// <summary>
