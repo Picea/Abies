@@ -8,6 +8,7 @@ on:
       - 'Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
+      - 'scripts/compare-benchmarks.py'
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
+      - 'scripts/compare-benchmarks.py'
       - '.github/workflows/benchmark.yml'
   workflow_dispatch:
 
@@ -30,44 +32,115 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for branch comparison
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
+      # ============================================
+      # BASELINE BENCHMARKS (main branch)
+      # ============================================
+      - name: Checkout main branch for baseline
+        if: github.event_name == 'pull_request'
+        run: |
+          git checkout origin/main
+          echo "Running baseline benchmarks on main branch..."
+
+      - name: Restore dependencies (baseline)
+        if: github.event_name == 'pull_request'
         run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
 
-      - name: Build benchmarks
+      - name: Build benchmarks (baseline)
+        if: github.event_name == 'pull_request'
         run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
 
-      - name: Run DOM Diffing benchmarks
+      - name: Run DOM Diffing benchmarks (baseline)
+        if: github.event_name == 'pull_request'
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*DomDiffingBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-baseline/diffing
+
+      - name: Run Rendering benchmarks (baseline)
+        if: github.event_name == 'pull_request'
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*RenderingBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-baseline/rendering
+
+      - name: Run Event Handler benchmarks (baseline)
+        if: github.event_name == 'pull_request'
+        run: >
+          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          --filter '*EventHandlerBenchmarks*'
+          --exporters json
+          --artifacts ./benchmark-baseline/handlers
+
+      - name: Merge baseline benchmark results
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/merge-benchmark-results.py ./benchmark-baseline
+
+      # ============================================
+      # PR BENCHMARKS (current PR branch)
+      # ============================================
+      - name: Checkout PR branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git checkout ${{ github.head_ref }}
+          echo "Running PR benchmarks on ${{ github.head_ref }} branch..."
+
+      - name: Restore dependencies (PR)
+        run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
+
+      - name: Build benchmarks (PR)
+        run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
+
+      - name: Run DOM Diffing benchmarks (PR)
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*DomDiffingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/diffing
 
-      - name: Run Rendering benchmarks
+      - name: Run Rendering benchmarks (PR)
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*RenderingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/rendering
 
-      - name: Run Event Handler benchmarks
+      - name: Run Event Handler benchmarks (PR)
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*EventHandlerBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/handlers
 
-      - name: Extract and merge benchmark results
+      - name: Merge PR benchmark results
         run: python3 scripts/merge-benchmark-results.py ./benchmark-results
 
+      # ============================================
+      # SAME-JOB COMPARISON (accurate, no runner variance)
+      # ============================================
+      - name: Compare benchmarks (same-job comparison)
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 scripts/compare-benchmarks.py \
+            ./benchmark-baseline/merged \
+            ./benchmark-results/merged \
+            --throughput-threshold 110 \
+            --allocation-threshold 120
+
+      # ============================================
+      # HISTORICAL TRACKING (gh-pages, for trends only)
+      # ============================================
       - name: Check if gh-pages exists
         id: gh-pages-check
         run: |
@@ -77,7 +150,7 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Compare throughput benchmarks (PR)
+      - name: Store throughput to gh-pages (PR - no fail)
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
         with:
@@ -89,12 +162,11 @@ jobs:
           save-data-file: false
           alert-threshold: '105%'
           comment-on-alert: true
-          fail-on-alert: true
-          fail-threshold: '110%'
+          fail-on-alert: false  # Don't fail here - same-job comparison handles pass/fail
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
-      - name: Compare allocation metrics (PR)
+      - name: Store allocations to gh-pages (PR - no fail)
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
         with:
@@ -107,8 +179,7 @@ jobs:
           skip-fetch-gh-pages: true
           alert-threshold: '110%'
           comment-on-alert: true
-          fail-on-alert: true
-          fail-threshold: '120%'
+          fail-on-alert: false  # Don't fail here - same-job comparison handles pass/fail
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
@@ -151,5 +222,7 @@ jobs:
         if: always()
         with:
           name: benchmark-results
-          path: ./benchmark-results/
+          path: |
+            ./benchmark-results/
+            ./benchmark-baseline/
           retention-days: 30
