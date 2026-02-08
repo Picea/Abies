@@ -1038,6 +1038,164 @@ setModuleImports('abies.js', {
         }
     }),
 
+    /**
+     * Apply a batch of patches to the DOM in a single operation.
+     * This reduces JS interop overhead by processing multiple patches at once.
+     * @param {string} patchesJson - JSON array of patch operations.
+     */
+    applyPatches: withSpan('applyPatches', async (patchesJson) => {
+        const patches = JSON.parse(patchesJson);
+        for (const patch of patches) {
+            switch (patch.Type) {
+                case 'SetAppContent':
+                    document.body.innerHTML = patch.Html;
+                    addEventListeners();
+                    window.abiesReady = true;
+                    break;
+                case 'AddChild': {
+                    const parent = document.getElementById(patch.ParentId);
+                    if (parent) {
+                        parent.insertAdjacentHTML('beforeend', patch.Html);
+                        // Check for new event handlers in the added content
+                        const addedElements = parent.querySelectorAll('[data-event-click], [data-event-input], [data-event-change], [data-event-submit], [data-event-keydown], [data-event-keyup], [data-event-keypress], [data-event-focus], [data-event-blur], [data-event-mouseenter], [data-event-mouseleave], [data-event-mouseover], [data-event-mouseout], [data-event-mousedown], [data-event-mouseup], [data-event-dblclick], [data-event-contextmenu]');
+                        for (const el of addedElements) {
+                            for (const attr of el.attributes) {
+                                if (attr.name.startsWith('data-event-')) {
+                                    ensureEventListener(attr.name.substring('data-event-'.length));
+                                }
+                            }
+                        }
+                    } else {
+                        console.error(`Parent node with ID ${patch.ParentId} not found.`);
+                    }
+                    break;
+                }
+                case 'RemoveChild': {
+                    const parent = document.getElementById(patch.ParentId);
+                    const child = document.getElementById(patch.ChildId);
+                    if (parent && child) {
+                        parent.removeChild(child);
+                    } else {
+                        console.error(`RemoveChild failed: parent=${patch.ParentId}, child=${patch.ChildId}`);
+                    }
+                    break;
+                }
+                case 'ReplaceChild': {
+                    const oldNode = document.getElementById(patch.TargetId);
+                    if (oldNode && oldNode.parentNode) {
+                        const template = document.createElement('template');
+                        template.innerHTML = patch.Html;
+                        const newNode = template.content.firstChild;
+                        if (newNode) {
+                            oldNode.parentNode.replaceChild(newNode, oldNode);
+                            // Check for new event handlers
+                            if (newNode.querySelectorAll) {
+                                const elements = newNode.querySelectorAll('[data-event-click], [data-event-input], [data-event-change], [data-event-submit], [data-event-keydown], [data-event-keyup], [data-event-keypress], [data-event-focus], [data-event-blur], [data-event-mouseenter], [data-event-mouseleave], [data-event-mouseover], [data-event-mouseout], [data-event-mousedown], [data-event-mouseup], [data-event-dblclick], [data-event-contextmenu]');
+                                for (const el of elements) {
+                                    for (const attr of el.attributes) {
+                                        if (attr.name.startsWith('data-event-')) {
+                                            ensureEventListener(attr.name.substring('data-event-'.length));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        console.error(`ReplaceChild failed: target=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        if (isBooleanAttr) {
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        }
+                        if (lower === 'value' && 'value' in node) {
+                            node.value = patch.AttrValue;
+                        }
+                        node.setAttribute(patch.AttrName, patch.AttrValue);
+                        if (patch.AttrName.startsWith('data-event-')) {
+                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
+                        }
+                    } else {
+                        console.error(`UpdateAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'AddAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        if (isBooleanAttr) {
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        }
+                        if (lower === 'value' && 'value' in node) {
+                            node.value = patch.AttrValue;
+                        }
+                        node.setAttribute(patch.AttrName, patch.AttrValue);
+                        if (patch.AttrName.startsWith('data-event-')) {
+                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
+                        }
+                    } else {
+                        console.error(`AddAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'RemoveAttribute': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        const lower = patch.AttrName.toLowerCase();
+                        const isBooleanAttr = (
+                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                        );
+                        node.removeAttribute(patch.AttrName);
+                        if (isBooleanAttr) {
+                            try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
+                        }
+                    } else {
+                        console.error(`RemoveAttribute failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateText': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        node.textContent = patch.Text;
+                    } else {
+                        console.error(`UpdateText failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                case 'UpdateTextWithId': {
+                    const node = document.getElementById(patch.TargetId);
+                    if (node) {
+                        node.textContent = patch.Text;
+                        node.setAttribute('id', patch.NewId);
+                    } else {
+                        console.error(`UpdateTextWithId failed: node=${patch.TargetId} not found.`);
+                    }
+                    break;
+                }
+                default:
+                    console.error(`Unknown patch type: ${patch.Type}`);
+            }
+        }
+    }),
+
     setLocalStorage: withSpan('setLocalStorage', async (key, value) => {
         localStorage.setItem(key, value);
     }),
