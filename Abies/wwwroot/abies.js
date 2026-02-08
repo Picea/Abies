@@ -1055,15 +1055,12 @@ setModuleImports('abies.js', {
                 case 'AddChild': {
                     const parent = document.getElementById(patch.ParentId);
                     if (parent) {
-                        parent.insertAdjacentHTML('beforeend', patch.Html);
-                        // Check for new event handlers in the added content
-                        const addedElements = parent.querySelectorAll('[data-event-click], [data-event-input], [data-event-change], [data-event-submit], [data-event-keydown], [data-event-keyup], [data-event-keypress], [data-event-focus], [data-event-blur], [data-event-mouseenter], [data-event-mouseleave], [data-event-mouseover], [data-event-mouseout], [data-event-mousedown], [data-event-mouseup], [data-event-dblclick], [data-event-contextmenu]');
-                        for (const el of addedElements) {
-                            for (const attr of el.attributes) {
-                                if (attr.name.startsWith('data-event-')) {
-                                    ensureEventListener(attr.name.substring('data-event-'.length));
-                                }
-                            }
+                        // Use parseHtmlFragment for proper table/select handling
+                        const childElement = parseHtmlFragment(patch.Html);
+                        if (childElement) {
+                            parent.appendChild(childElement);
+                            // Use addEventListeners to discover all event handlers
+                            addEventListeners(childElement);
                         }
                     } else {
                         console.error(`Parent node with ID ${patch.ParentId} not found.`);
@@ -1071,34 +1068,22 @@ setModuleImports('abies.js', {
                     break;
                 }
                 case 'RemoveChild': {
-                    const parent = document.getElementById(patch.ParentId);
                     const child = document.getElementById(patch.ChildId);
-                    if (parent && child) {
-                        parent.removeChild(child);
-                    } else {
-                        console.error(`RemoveChild failed: parent=${patch.ParentId}, child=${patch.ChildId}`);
+                    // Guard against child already removed or reparented
+                    if (child && child.parentNode) {
+                        child.remove();
                     }
                     break;
                 }
                 case 'ReplaceChild': {
                     const oldNode = document.getElementById(patch.TargetId);
                     if (oldNode && oldNode.parentNode) {
-                        const template = document.createElement('template');
-                        template.innerHTML = patch.Html;
-                        const newNode = template.content.firstChild;
+                        // Use parseHtmlFragment for proper table/select handling
+                        const newNode = parseHtmlFragment(patch.Html);
                         if (newNode) {
                             oldNode.parentNode.replaceChild(newNode, oldNode);
-                            // Check for new event handlers
-                            if (newNode.querySelectorAll) {
-                                const elements = newNode.querySelectorAll('[data-event-click], [data-event-input], [data-event-change], [data-event-submit], [data-event-keydown], [data-event-keyup], [data-event-keypress], [data-event-focus], [data-event-blur], [data-event-mouseenter], [data-event-mouseleave], [data-event-mouseover], [data-event-mouseout], [data-event-mousedown], [data-event-mouseup], [data-event-dblclick], [data-event-contextmenu]');
-                                for (const el of elements) {
-                                    for (const attr of el.attributes) {
-                                        if (attr.name.startsWith('data-event-')) {
-                                            ensureEventListener(attr.name.substring('data-event-'.length));
-                                        }
-                                    }
-                                }
-                            }
+                            // Use addEventListeners which includes the root element
+                            addEventListeners(newNode);
                         }
                     } else {
                         console.error(`ReplaceChild failed: target=${patch.TargetId} not found.`);
@@ -1175,6 +1160,11 @@ setModuleImports('abies.js', {
                     const node = document.getElementById(patch.TargetId);
                     if (node) {
                         node.textContent = patch.Text;
+                        // Sync textarea.value like updateTextContent does
+                        const tag = (node.tagName || '').toUpperCase();
+                        if (tag === 'TEXTAREA') {
+                            try { node.value = patch.Text; } catch { /* ignore */ }
+                        }
                     } else {
                         console.error(`UpdateText failed: node=${patch.TargetId} not found.`);
                     }
@@ -1185,6 +1175,11 @@ setModuleImports('abies.js', {
                     if (node) {
                         node.textContent = patch.Text;
                         node.setAttribute('id', patch.NewId);
+                        // Sync textarea.value like updateTextContent does
+                        const tag = (node.tagName || '').toUpperCase();
+                        if (tag === 'TEXTAREA') {
+                            try { node.value = patch.Text; } catch { /* ignore */ }
+                        }
                     } else {
                         console.error(`UpdateTextWithId failed: node=${patch.TargetId} not found.`);
                     }

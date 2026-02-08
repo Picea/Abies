@@ -869,7 +869,7 @@ public static class Operations
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
                     break;
-                case RemoveHandler removeHandler:
+                case RemoveHandler:
                     // Don't unregister yet - wait until after DOM update
                     break;
                 case UpdateHandler updateHandler:
