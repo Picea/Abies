@@ -277,15 +277,12 @@ public class PlaywrightFixture : IAsyncLifetime
 
         await titleInput.FillAsync(title);
         await titleInput.DispatchEventAsync("input");
-        await Page.WaitForTimeoutAsync(100);
 
         await descInput.FillAsync(description);
         await descInput.DispatchEventAsync("input");
-        await Page.WaitForTimeoutAsync(100);
 
         await bodyInput.FillAsync(body);
         await bodyInput.DispatchEventAsync("input");
-        await Page.WaitForTimeoutAsync(100);
 
         foreach (var tag in tags)
         {
@@ -293,10 +290,7 @@ public class PlaywrightFixture : IAsyncLifetime
             await Page.GetByPlaceholder("Enter tags").PressAsync("Enter");
         }
 
-        // Wait for form validation to update after input events
-        await Page.WaitForTimeoutAsync(500);
-
-        // Wait for button to be enabled (form validation complete)
+        // Wait for button to be enabled (form validation complete) - Playwright auto-retries
         var publishButton = Page.GetByRole(AriaRole.Button, new() { Name = "Publish Article" });
         await Expect(publishButton).ToBeEnabledAsync(new() { Timeout = 5000 });
 

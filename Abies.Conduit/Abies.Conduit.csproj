@@ -20,11 +20,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Abies\Abies.csproj">
-      <!-- Exclude Content files from Abies project during publish to avoid NETSDK1152 conflict with local copy -->
-      <ExcludeAssets>ContentFiles</ExcludeAssets>
-      <PrivateAssets>ContentFiles</PrivateAssets>
-    </ProjectReference>
+    <ProjectReference Include="..\Abies\Abies.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.44.0" />
