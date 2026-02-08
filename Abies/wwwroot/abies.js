@@ -1099,13 +1099,17 @@ setModuleImports('abies.js', {
                             lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
                             lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
                         );
-                        if (isBooleanAttr) {
-                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
-                        }
                         if (lower === 'value' && 'value' in node) {
+                            // Keep the live value in sync for inputs/textareas
                             node.value = patch.AttrValue;
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        } else if (isBooleanAttr) {
+                            // Boolean attributes: presence => true (use empty string like non-batched path)
+                            node.setAttribute(patch.AttrName, '');
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        } else {
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
                         }
-                        node.setAttribute(patch.AttrName, patch.AttrValue);
                         if (patch.AttrName.startsWith('data-event-')) {
                             ensureEventListener(patch.AttrName.substring('data-event-'.length));
                         }
@@ -1123,13 +1127,17 @@ setModuleImports('abies.js', {
                             lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
                             lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
                         );
-                        if (isBooleanAttr) {
-                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
-                        }
                         if (lower === 'value' && 'value' in node) {
+                            // Keep the live value in sync for inputs/textareas
                             node.value = patch.AttrValue;
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
+                        } else if (isBooleanAttr) {
+                            // Boolean attributes: presence => true (use empty string like non-batched path)
+                            node.setAttribute(patch.AttrName, '');
+                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                        } else {
+                            node.setAttribute(patch.AttrName, patch.AttrValue);
                         }
-                        node.setAttribute(patch.AttrName, patch.AttrValue);
                         if (patch.AttrName.startsWith('data-event-')) {
                             ensureEventListener(patch.AttrName.substring('data-event-'.length));
                         }
