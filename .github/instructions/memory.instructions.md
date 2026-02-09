@@ -80,3 +80,101 @@ The following Toub-inspired optimizations have been applied:
 
 **Applied to**: Abies.Conduit, Abies.Counter, Abies.Presentation, Abies.SubscriptionsDemo
 
+## js-framework-benchmark (Official Performance Testing)
+
+### Setup
+
+The [js-framework-benchmark](https://github.com/nicknash/js-framework-benchmark) is the standard benchmark for comparing frontend framework performance.
+
+**Clone the fork alongside Abies** (same parent directory):
+```bash
+# From Abies parent directory
+cd ..
+git clone https://github.com/nicknash/js-framework-benchmark.git js-framework-benchmark-fork
+```
+
+Expected structure:
+```
+parent-directory/
+├── Abies/                          # This repository
+└── js-framework-benchmark-fork/    # Benchmark fork
+    └── frameworks/keyed/abies/     # Abies framework entry
+        ├── src/                    # Source (references Abies project)
+        └── bundled-dist/           # Published WASM output
+```
+
+### Building Abies for Benchmark
+
+**IMPORTANT**: Always do a clean rebuild when testing code changes!
+
+```bash
+cd ../js-framework-benchmark-fork/frameworks/keyed/abies/src
+
+# Clean rebuild
+rm -rf bin obj
+dotnet publish -c Release
+
+# Copy to bundled-dist
+rm -rf ../bundled-dist/*
+cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+```
+
+### Running the Benchmark
+
+1. **Install dependencies** (first time only):
+```bash
+cd ../js-framework-benchmark-fork
+npm ci
+cd webdriver-ts
+npm ci
+```
+
+2. **Start the benchmark server**:
+```bash
+cd ../js-framework-benchmark-fork
+npm run start
+# Server runs on http://localhost:8080
+```
+
+3. **Run specific benchmarks** (in a new terminal):
+```bash
+cd ../js-framework-benchmark-fork/webdriver-ts
+
+# Run swap rows benchmark (05_swap1k)
+npm run selenium -- --headless --framework abies-v1.0.151-keyed --benchmark 05_swap1k
+
+# Run all benchmarks for Abies
+npm run selenium -- --headless --framework abies-v1.0.151-keyed
+
+# Common benchmarks:
+# - 01_run1k: Create 1000 rows
+# - 02_replace1k: Replace all 1000 rows
+# - 03_update10th1k: Update every 10th row
+# - 04_select1k: Select a row
+# - 05_swap1k: Swap two rows (LIS optimization target)
+# - 06_remove1k: Remove a row
+# - 07_create10k: Create 10,000 rows
+```
+
+4. **View results**:
+```bash
+# Results saved to:
+ls webdriver-ts/results/abies-v1.0.151-keyed_*.json
+
+# View specific result:
+cat webdriver-ts/results/abies-v1.0.151-keyed_05_swap1k.json | jq .
+```
+
+### Comparison Frameworks
+For reference, compare against:
+- `vanillajs-keyed` - Baseline (raw DOM manipulation)
+- `blazor-wasm-keyed` - .NET Blazor WASM (similar tech stack)
+
+### Benchmark Results (Feb 2025)
+
+| Benchmark | Abies | Blazor | VanillaJS |
+|-----------|-------|--------|-----------|
+| 05_swap1k | 406.7ms | 94.4ms | 32.2ms |
+
+**Note**: Abies is ~4.3x slower than Blazor on swap due to O(n) diffing overhead, but the LIS algorithm is optimal (2 DOM ops vs 2000 with naive approach).
+
