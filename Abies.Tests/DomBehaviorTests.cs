@@ -822,4 +822,104 @@ public class DomBehaviorTests
     }
 
     #endregion
+
+    #region LIS Algorithm Tests (Swap Benchmark Scenario)
+
+    [Fact]
+    public void KeyedChildren_SwapTwoElements_ShouldOnlyMoveTwoElements()
+    {
+        // This test validates the LIS algorithm fix for the js-framework-benchmark swap scenario.
+        // When swapping 2 elements in a 1000-element list, only 2 MoveChild patches should be generated.
+        // Before the fix, the buggy LIS algorithm produced 999 MoveChild patches!
+
+        const int listSize = 1000;
+
+        // Create a list of 1000 elements with unique IDs
+        var oldChildren = new Node[listSize];
+        for (int i = 0; i < listSize; i++)
+        {
+            oldChildren[i] = new Element($"row-{i}", "tr", [], new Text($"text-{i}", $"Row {i}"));
+        }
+        var oldDom = new Element("tbody", "tbody", [], oldChildren);
+
+        // Swap positions 1 and 998 (same as js-framework-benchmark)
+        var newChildren = new Node[listSize];
+        Array.Copy(oldChildren, newChildren, listSize);
+        (newChildren[1], newChildren[998]) = (newChildren[998], newChildren[1]);
+        var newDom = new Element("tbody", "tbody", [], newChildren);
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Count MoveChild patches
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // With correct LIS algorithm: only 2 elements need to move
+        // LIS should be [0, 2, 3, 4, ..., 997, 999] (length 998)
+        // Non-LIS elements: positions 1 and 998
+        Assert.Equal(2, moveCount);
+
+        // Should NOT have any Remove/Add patches for a pure reorder
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_SwapAdjacentElements_ShouldOnlyMoveOneElement()
+    {
+        // Swapping adjacent elements should only require 1 move
+        // Original: A, B, C, D
+        // After swap B,C: A, C, B, D
+        // LIS: [A, C, D] (length 3) or [A, B, D]
+        // Either B or C needs to move, but not both
+
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // Should be exactly 1 move (either B moves after C, or C moves before B)
+        Assert.Equal(1, moveCount);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_ReverseOrder_ShouldMinimizeMoves()
+    {
+        // Reversing a list: A, B, C, D -> D, C, B, A
+        // LIS of [3, 2, 1, 0] is just [3] or any single element (length 1)
+        // So 3 moves are needed (all except one element)
+
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("d", "div", [], new Text("td", "D")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("a", "div", [], new Text("ta", "A")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // Reversing 4 elements: LIS length is 1, so 3 moves needed
+        Assert.Equal(3, moveCount);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    #endregion
 }
