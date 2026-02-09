@@ -183,25 +183,25 @@ public static partial class Runtime
             if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKey.Equals(newLazyMemo.MemoKey))
             {
                 // Keys match - return the new lazy with old's cached content preserved
-                return oldLazyMemo.CachedNode != null 
+                return oldLazyMemo.CachedNode != null
                     ? newLazyMemo.WithCachedNode(oldLazyMemo.CachedNode)
                     : newNode;
             }
             // For lazy memos, we defer evaluation - just return as-is
             return newNode;
         }
-        
+
         // Handle Memo nodes by recursing into their cached content
         if (newNode is IMemoNode newMemo)
         {
             // Find the matching old memo or old content
             var oldCached = oldNode is IMemoNode oldMemo ? oldMemo.CachedNode : oldNode;
             var preservedCached = PreserveIds(oldCached, newMemo.CachedNode);
-            
+
             // Return a new memo with the preserved cached content
             return newMemo.WithCachedNode(preservedCached);
         }
-        
+
         // Only preserve IDs when elements have the same tag AND the same element ID.
         // This is critical for keyed diffing (ADR-016): elements with different IDs
         // should NOT have their IDs swapped, as that would break key-based matching.
@@ -248,7 +248,7 @@ public static partial class Runtime
                 {
                     effectiveChild = child;
                 }
-                
+
                 if (effectiveChild is Element childElem)
                 {
                     oldChildrenById[childElem.Id] = child; // Store the original (possibly memo) node

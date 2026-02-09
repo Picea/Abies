@@ -106,7 +106,7 @@ public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemo
 {
     /// <summary>Gets the memo key as object for interface implementation.</summary>
     object IMemoNode.MemoKey => Key;
-    
+
     /// <summary>Creates a new memo with the same key but different cached content.</summary>
     public Node WithCachedNode(Node newCachedNode) => this with { CachedNode = newCachedNode };
 }
@@ -141,13 +141,13 @@ public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? Cach
 {
     /// <summary>Gets the memo key as object for interface implementation.</summary>
     object ILazyMemoNode.MemoKey => Key;
-    
+
     /// <summary>Gets the cached node content.</summary>
     Node? ILazyMemoNode.CachedNode => CachedNode;
-    
+
     /// <summary>Evaluates the lazy function to produce the node content.</summary>
     public Node Evaluate() => Factory();
-    
+
     /// <summary>Creates a new lazy memo with the cached content populated.</summary>
     public Node WithCachedNode(Node cachedNode) => this with { CachedNode = cachedNode };
 }
@@ -1172,7 +1172,7 @@ public static class Operations
     // Debug counters for memo performance analysis
     internal static int MemoHits = 0;
     internal static int MemoMisses = 0;
-    
+
     internal static void ResetMemoCounters()
     {
         MemoHits = 0;
@@ -1183,7 +1183,7 @@ public static class Operations
     /// Unwraps a memo node (lazy or regular) to get its actual content.
     /// For lazy memos, this evaluates the factory function.
     /// </summary>
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Node UnwrapMemoNode(Node node)
     {
         return node switch
@@ -1644,7 +1644,7 @@ public static class Operations
                         var idx = keysToRemove[i];
                         // Unwrap memo nodes to get the actual content for patch creation
                         var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
-                        
+
                         if (effectiveOld is Element oldChild)
                         {
                             patches.Add(new RemoveChild(oldParent, oldChild));
@@ -1670,7 +1670,7 @@ public static class Operations
                     {
                         // Unwrap memo nodes to get the actual content for patch creation
                         var effectiveNode = UnwrapMemoNode(newChildren[idx]);
-                        
+
                         if (effectiveNode is Element newChild)
                         {
                             patches.Add(new AddChild(newParent, newChild));
@@ -1712,7 +1712,7 @@ public static class Operations
         {
             // Unwrap memo nodes to get the actual content for patch creation
             var effectiveOld = UnwrapMemoNode(oldChildren[i]);
-            
+
             if (effectiveOld is Element oldChild)
             {
                 patches.Add(new RemoveChild(oldParent, oldChild));
@@ -1732,7 +1732,7 @@ public static class Operations
         {
             // Unwrap memo nodes to get the actual content for patch creation
             var effectiveNode = UnwrapMemoNode(newChildren[i]);
-            
+
             if (effectiveNode is Element newChild)
             {
                 patches.Add(new AddChild(newParent, newChild));
@@ -1875,7 +1875,7 @@ public static class Operations
         {
             effective = node;
         }
-        
+
         if (effective is not Element element)
         {
             return null;
