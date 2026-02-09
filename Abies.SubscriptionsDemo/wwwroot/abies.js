@@ -970,6 +970,21 @@ setModuleImports('abies.js', {
     }),
 
     /**
+     * Clears all children from a parent element.
+     * This is more efficient than multiple removeChild calls when clearing all children.
+     * @param {string} parentId - The ID of the parent element to clear.
+     */
+    clearChildren: withSpan('clearChildren', async (parentId) => {
+        const parent = document.getElementById(parentId);
+        if (parent) {
+            // replaceChildren() with no args removes all children efficiently
+            parent.replaceChildren();
+        } else {
+            console.error(`Cannot clear children: parent with ID ${parentId} not found.`);
+        }
+    }),
+
+    /**
      * Replaces an existing node with new HTML content.
      * @param {number} oldNodeId - The ID of the node to replace.
      * @param {string} newHtml - The HTML string to replace with.
@@ -1157,6 +1172,14 @@ setModuleImports('abies.js', {
                     // Guard against child already removed or reparented
                     if (child && child.parentNode) {
                         child.remove();
+                    }
+                    break;
+                }
+                case 'ClearChildren': {
+                    const parent = document.getElementById(patch.ParentId);
+                    if (parent) {
+                        // replaceChildren() with no args efficiently removes all children
+                        parent.replaceChildren();
                     }
                     break;
                 }

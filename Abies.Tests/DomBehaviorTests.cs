@@ -380,6 +380,7 @@ public class DomBehaviorTests
             ReplaceChild rc => ReplaceNode(root!, rc.OldElement, rc.NewElement),
             AddChild ac => UpdateElement(root!, ac.Parent.Id, e => e with { Children = e.Children.Append(ac.Child).ToArray() }),
             RemoveChild rc => UpdateElement(root!, rc.Parent.Id, e => e with { Children = e.Children.Where(c => c.Id != rc.Child.Id).ToArray() }),
+            ClearChildren cc => UpdateElement(root!, cc.Parent.Id, e => e with { Children = [] }),
             MoveChild mc => UpdateElement(root!, mc.Parent.Id, e =>
             {
                 // Remove child from current position
@@ -919,6 +920,98 @@ public class DomBehaviorTests
         Assert.Equal(3, moveCount);
         Assert.DoesNotContain(patches, p => p is RemoveChild);
         Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    #endregion
+
+    #region ClearChildren Optimization Tests
+
+    [Fact]
+    public void ClearAllChildren_ShouldUseSingleClearChildrenPatch()
+    {
+        // When removing ALL children, the diff should generate a single ClearChildren patch
+        // instead of N individual RemoveChild patches
+
+        var oldDom = new Element("tbody", "tbody", [],
+            new Element("row-0", "tr", [], new Text("t0", "Row 0")),
+            new Element("row-1", "tr", [], new Text("t1", "Row 1")),
+            new Element("row-2", "tr", [], new Text("t2", "Row 2")),
+            new Element("row-3", "tr", [], new Text("t3", "Row 3")),
+            new Element("row-4", "tr", [], new Text("t4", "Row 4")));
+
+        var newDom = new Element("tbody", "tbody", []); // Empty children
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should have exactly 1 ClearChildren patch, no RemoveChild patches
+        Assert.Single(patches);
+        Assert.IsType<ClearChildren>(patches.First());
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+
+        // Verify the patch contains the old children for handler cleanup
+        var clearPatch = (ClearChildren)patches.First();
+        Assert.Equal(5, clearPatch.OldChildren.Length);
+    }
+
+    [Fact]
+    public void ClearManyChildren_ShouldUseSingleClearChildrenPatch()
+    {
+        // Test with larger list to verify performance benefit
+        const int listSize = 100;
+
+        var oldChildren = new Node[listSize];
+        for (int i = 0; i < listSize; i++)
+        {
+            oldChildren[i] = new Element($"row-{i}", "tr", [], new Text($"text-{i}", $"Row {i}"));
+        }
+        var oldDom = new Element("tbody", "tbody", [], oldChildren);
+        var newDom = new Element("tbody", "tbody", []); // Empty
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should be 1 ClearChildren instead of 100 RemoveChild patches
+        Assert.Single(patches);
+        Assert.IsType<ClearChildren>(patches.First());
+    }
+
+    [Fact]
+    public void RemoveSomeChildren_ShouldNotUseClearChildren()
+    {
+        // When removing SOME children but not all, should use individual RemoveChild patches
+
+        var oldDom = new Element("div", "div", [],
+            new Element("a", "span", []),
+            new Element("b", "span", []),
+            new Element("c", "span", []));
+
+        var newDom = new Element("div", "div", [],
+            new Element("a", "span", [])); // Keep first, remove b and c
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should have 2 RemoveChild patches, not ClearChildren
+        Assert.DoesNotContain(patches, p => p is ClearChildren);
+        Assert.Equal(2, patches.Count(p => p is RemoveChild));
+    }
+
+    [Fact]
+    public void ClearChildren_ShouldApplyCorrectly()
+    {
+        // Verify that ClearChildren patch applies correctly
+        var oldDom = new Element("div", "div", [],
+            new Element("a", "span", []),
+            new Element("b", "span", []),
+            new Element("c", "span", []));
+
+        var newDom = new Element("div", "div", []);
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.IsType<Element>(result);
+        var resultElement = (Element)result;
+        Assert.Empty(resultElement.Children);
     }
 
     #endregion

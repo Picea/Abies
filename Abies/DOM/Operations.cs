@@ -406,6 +406,18 @@ public readonly struct RemoveChild(Element parent, Element child) : Patch
 }
 
 /// <summary>
+/// Represents a patch operation to clear all children from an element in the Abies DOM.
+/// This is more efficient than multiple RemoveChild operations when removing all children.
+/// </summary>
+/// <param name="parent">The parent element to clear.</param>
+/// <param name="oldChildren">The children being removed (needed for handler unregistration).</param>
+public readonly struct ClearChildren(Element parent, Node[] oldChildren) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Node[] OldChildren = oldChildren;
+}
+
+/// <summary>
 /// Represents a patch operation to update an attribute in the Abies DOM.
 /// </summary>
 /// <param name="element">The element to update.</param>
@@ -890,6 +902,10 @@ public static class Operations
                 Runtime.UnregisterHandlers(removeChild.Child);
                 await Interop.RemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
                 break;
+            case ClearChildren clearChildren:
+                // Single DOM operation to clear all children - much faster than N RemoveChild operations
+                await Interop.ClearChildren(clearChildren.Parent.Id);
+                break;
             case UpdateAttribute updateAttribute:
                 await Interop.UpdateAttribute(updateAttribute.Element.Id, updateAttribute.Attribute.Name, updateAttribute.Value);
                 break;
@@ -986,6 +1002,16 @@ public static class Operations
                 case RemoveChild removeChild:
                     Runtime.UnregisterHandlers(removeChild.Child);
                     break;
+                case ClearChildren clearChildren:
+                    // Unregister handlers for all children being cleared
+                    foreach (var child in clearChildren.OldChildren)
+                    {
+                        if (child is Element element)
+                        {
+                            Runtime.UnregisterHandlers(element);
+                        }
+                    }
+                    break;
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
                     break;
@@ -1061,6 +1087,11 @@ public static class Operations
                 Type = "RemoveChild",
                 ParentId = removeChild.Parent.Id,
                 ChildId = removeChild.Child.Id
+            },
+            ClearChildren clearChildren => new PatchData
+            {
+                Type = "ClearChildren",
+                ParentId = clearChildren.Parent.Id
             },
             UpdateAttribute updateAttribute => new PatchData
             {
@@ -1672,24 +1703,32 @@ public static class Operations
                         }
                     }
 
-                    // Remove old children that don't exist in new (iterate backwards to maintain order)
-                    for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                    // Optimization: if removing ALL children and adding none, use ClearChildren
+                    if (keysToRemove.Count == oldLength && keysToAdd.Count == 0 && keysToDiff.Count == 0)
                     {
-                        var idx = keysToRemove[i];
-                        // Unwrap memo nodes to get the actual content for patch creation
-                        var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
+                        patches.Add(new ClearChildren(oldParent, oldChildren));
+                    }
+                    else
+                    {
+                        // Remove old children that don't exist in new (iterate backwards to maintain order)
+                        for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                        {
+                            var idx = keysToRemove[i];
+                            // Unwrap memo nodes to get the actual content for patch creation
+                            var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
 
-                        if (effectiveOld is Element oldChild)
-                        {
-                            patches.Add(new RemoveChild(oldParent, oldChild));
-                        }
-                        else if (effectiveOld is RawHtml oldRaw)
-                        {
-                            patches.Add(new RemoveRaw(oldParent, oldRaw));
-                        }
-                        else if (effectiveOld is Text oldText)
-                        {
-                            patches.Add(new RemoveText(oldParent, oldText));
+                            if (effectiveOld is Element oldChild)
+                            {
+                                patches.Add(new RemoveChild(oldParent, oldChild));
+                            }
+                            else if (effectiveOld is RawHtml oldRaw)
+                            {
+                                patches.Add(new RemoveRaw(oldParent, oldRaw));
+                            }
+                            else if (effectiveOld is Text oldText)
+                            {
+                                patches.Add(new RemoveText(oldParent, oldText));
+                            }
                         }
                     }
 
