@@ -451,6 +451,36 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
 
 const registeredEvents = new Set();
 
+// Pre-register all common event types at startup to avoid O(n) DOM scanning
+// on every incremental update. These match the event types defined in Operations.cs.
+const COMMON_EVENT_TYPES = [
+    // Mouse events
+    'click', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout',
+    'mouseenter', 'mouseleave', 'mousemove', 'contextmenu', 'wheel',
+    // Keyboard events
+    'keydown', 'keyup', 'keypress',
+    // Form events
+    'input', 'change', 'submit', 'reset', 'focus', 'blur', 'invalid', 'search',
+    // Touch events
+    'touchstart', 'touchend', 'touchmove', 'touchcancel',
+    // Pointer events
+    'pointerdown', 'pointerup', 'pointermove', 'pointercancel',
+    'pointerover', 'pointerout', 'pointerenter', 'pointerleave',
+    'gotpointercapture', 'lostpointercapture',
+    // Drag events
+    'drag', 'dragstart', 'dragend', 'dragenter', 'dragleave', 'dragover', 'drop',
+    // Clipboard events
+    'copy', 'cut', 'paste',
+    // Media events
+    'play', 'pause', 'ended', 'volumechange', 'timeupdate', 'seeking', 'seeked',
+    'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'playing',
+    'waiting', 'stalled', 'suspend', 'emptied', 'ratechange', 'durationchange',
+    // Other events
+    'scroll', 'resize', 'load', 'error', 'abort', 'select', 'toggle',
+    'animationstart', 'animationend', 'animationiteration', 'animationcancel',
+    'transitionstart', 'transitionend', 'transitionrun', 'transitioncancel'
+];
+
 function ensureEventListener(eventName) {
     if (registeredEvents.has(eventName)) return;
     // Attach to document to survive body innerHTML changes and use capture for early handling
@@ -458,6 +488,10 @@ function ensureEventListener(eventName) {
     document.addEventListener(eventName, genericEventHandler, opts);
     registeredEvents.add(eventName);
 }
+
+// Pre-register all common event types once at module load
+// This eliminates the need for O(n) DOM scanning on every update
+COMMON_EVENT_TYPES.forEach(ensureEventListener);
 
 // Helper to find an element with a specific attribute, traversing through shadow DOM boundaries
 function findEventTarget(event, attributeName) {
@@ -811,24 +845,53 @@ function unsubscribe(key) {
 }
 
 /**
- * Adds event listeners to the document body for interactive elements.
+ * Discovers and registers event listeners for any custom (non-common) event types
+ * in the given DOM subtree. Since common event types are pre-registered at startup,
+ * this function only needs to scan for rare/custom event handlers.
+ * 
+ * For performance, this is now a no-op for most apps since all standard DOM events
+ * are pre-registered. Custom event names will still be discovered via attribute
+ * updates (UpdateAttribute/AddAttribute patches call ensureEventListener directly).
  */
 function addEventListeners(root) {
+    // All common event types are pre-registered at startup.
+    // This function now only handles edge cases where:
+    // 1. Initial page load contains custom (non-standard) event types
+    // 2. HTML injection bypasses attribute patching
+    // 
+    // For the vast majority of cases, this is a no-op since:
+    // - Common events are pre-registered
+    // - Attribute patches call ensureEventListener directly
+    //
+    // We keep the function signature for backward compatibility but make it
+    // much more efficient by only scanning when necessary.
+    
+    // Skip scanning entirely during incremental updates since:
+    // 1. Common events are already registered
+    // 2. Attribute patches handle event listener registration
+    if (root && root !== document) {
+        // For incremental updates (AddChild, ReplaceChild), skip expensive DOM scanning
+        // The pre-registered common events cover 99%+ of use cases
+        return;
+    }
+    
+    // Full page render (setAppContent) - scan once for any custom event types
+    // This only happens on initial load or full page navigation
     const scope = root || document;
-    // Build a list including the scope element (if Element) plus all descendants
-    const nodes = [];
-    if (scope && scope.nodeType === 1 /* ELEMENT_NODE */) nodes.push(scope);
-    scope.querySelectorAll('*').forEach(el => {
-        nodes.push(el);
-    });
-    nodes.forEach(el => {
-        for (const attr of el.attributes) {
-            if (attr.name.startsWith('data-event-')) {
-                const name = attr.name.substring('data-event-'.length);
-                ensureEventListener(name);
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
+    let el = walker.currentNode;
+    while (el) {
+        if (el.attributes) {
+            for (const attr of el.attributes) {
+                if (attr.name.startsWith('data-event-')) {
+                    const name = attr.name.substring('data-event-'.length);
+                    // Only registers if not already in registeredEvents (common events are already there)
+                    ensureEventListener(name);
+                }
             }
         }
-    });
+        el = walker.nextNode();
+    }
 }
 
 /**
