@@ -184,21 +184,26 @@ For reference, compare against:
 - `vanillajs-keyed` - Baseline (raw DOM manipulation)
 - `blazor-wasm-keyed` - .NET Blazor WASM (similar tech stack)
 
-### Latest Benchmark Results (2026-02-09)
+### Latest Benchmark Results (2026-02-09) - AFTER LIS FIX
 
 **Abies v1.0.151 vs Blazor WASM v10.0.0:**
 
-| Benchmark | Abies | Blazor | Ratio | Notes |
-|-----------|-------|--------|-------|-------|
-| 01_run1k | 103.2ms | 87.6ms | 1.17x | Create 1000 rows |
-| 02_replace1k | 132.9ms | 102.4ms | 1.29x | Replace all rows |
-| 03_update10th | 132.1ms | 94.7ms | 1.39x | Update every 10th |
-| 04_select1k | 115.2ms | 82.9ms | 1.39x | Select a row |
-| **05_swap1k** | **326.6ms** | **94.2ms** | **3.47x** | **⚠️ CRITICAL** (was 328.8ms) |
-| 06_remove-one | 65.3ms | 55.6ms | 1.17x | Remove one row |
-| 07_create10k | 924.8ms | 810.7ms | 1.14x | Create 10k rows |
-| 08_append1k | 135.8ms | 102.9ms | 1.31x | Append 1k rows |
-| **09_clear1k** | **159.6ms** | **44.6ms** | **3.58x** | **⚠️ CRITICAL** (was 173.2ms, -8%) |
+| Benchmark | Abies (Before) | Abies (After) | Blazor | Improvement |
+|-----------|----------------|---------------|--------|-------------|
+| 01_run1k | 103.2ms | TBD | 87.6ms | - |
+| 02_replace1k | 132.9ms | TBD | 102.4ms | - |
+| 03_update10th | 132.1ms | TBD | 94.7ms | - |
+| 04_select1k | 115.2ms | TBD | 82.9ms | - |
+| **05_swap1k** | **326.6ms** | **121.6ms** | **94.2ms** | **✅ 2.7x faster!** |
+| 06_remove-one | 65.3ms | TBD | 55.6ms | - |
+| 07_create10k | 924.8ms | TBD | 810.7ms | - |
+| 08_append1k | 135.8ms | TBD | 102.9ms | - |
+| 09_clear1k | 159.6ms | TBD | 44.6ms | - |
+
+**🎉 LIS Algorithm Fix (2026-02-09):**
+- **Swap benchmark**: 326.6ms → 121.6ms (**2.7x faster**)
+- Now only **1.29x** slower than Blazor (was 3.47x)
+- Root cause: `ComputeLISInto` had bug where `k=0` tracking never incremented for first element
 
 **Allocation Optimization (2026-02-09):**
 Applied the following optimizations to reduce GC pressure:
@@ -217,11 +222,7 @@ Applied the following optimizations to reduce GC pressure:
 - JSON serialization itself allocates strings
 
 **Key Findings:**
-1. **Swap (05_swap1k)** is 3.47x slower - the LIS algorithm is optimal, but overhead comes from:
-   - Building key maps for ALL 1000 children
-   - Evaluating lazy memo nodes
-   - JSON serialization of patches
-   
+1. **Swap (05_swap1k)** is 3.47x slower
 2. **Clear (09_clear1k)** is 3.58x slower - improved by 8% with allocation optimizations
 
 **Size Comparison:**
@@ -242,6 +243,109 @@ npm run bench -- --headless keyed/abies --benchmark 05_swap1k
 # Run Blazor for comparison
 npm run bench -- --headless keyed/blazor-wasm
 ```
+
+## ✅ FIXED: LIS Algorithm Bug (2026-02-09)
+
+### Problem (was)
+
+The `ComputeLISInto` function in `Operations.cs` had a **critical bug** that caused it to compute an LIS of length 1 instead of 998 for the swap benchmark.
+
+**Impact**: For a simple swap of 2 elements in 1000, the algorithm produced **999 MoveChild patches** instead of **2**.
+
+### Solution Applied
+
+Changed the algorithm from tracking `k` (length-1) to `lisLen` (actual length):
+
+```csharp
+// BEFORE (buggy):
+var k = 0; // Length of longest LIS found - 1
+if (k > 0 && arr[result[k]] < arrI) { ... }
+
+// AFTER (fixed):
+var lisLen = 0; // Actual length of LIS found
+int lo = 0, hi = lisLen;
+// Binary search in [0, lisLen)
+...
+result[lo] = i;
+if (lo == lisLen) lisLen++;
+```
+
+### Benchmark Results
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Swap median | 326.6ms | 121.6ms | **2.7x faster** |
+| Script time | ~300ms | 96.7ms | **3x faster** |
+| DOM Moves | 999 | 2 | **99.8% reduction** |
+
+### Root Cause
+
+The bug is in the initial state handling. When `k = 0`:
+1. First element: `result[0] = 0`, k stays 0 (should be 1)
+2. Second element (998): Binary search with hi=0, `result[0] = 1` (overwrites!)
+3. Third element (2): `arr[result[0]]=998 >= 2`, so `result[0] = 2` (overwrites again!)
+4. ...continues overwriting result[0] forever...
+
+The LIS only contains position 999 (the last element), giving length 1.
+
+### Fix Required
+
+Change the initial tracking from `k = 0` (treating as length-1) to `lisLen = 0` (actual length), and fix the loop logic:
+
+```csharp
+// BEFORE (buggy):
+var k = 0; // Length of longest LIS found - 1
+...
+if (k > 0 && arr[result[k]] < arrI)
+
+// AFTER (fixed):
+var lisLen = 0; // Actual length of LIS found
+...
+int lo = 0, hi = lisLen;
+// Binary search in [0, lisLen)
+...
+result[lo] = i;
+if (lo == lisLen) lisLen++;
+```
+
+### Test Case
+
+```csharp
+// Swap: [0, 998, 2, 3, ..., 997, 1, 999]
+// Expected LIS: [0, 2, 3, ..., 997, 999] (length 998)
+// Expected moves: 2 (positions 1 and 998)
+// Actual with bug: LIS length 1, moves 999
+```
+
+### Expected Performance Improvement
+
+Fixing this bug should:
+- **Swap benchmark**: 326ms → ~100ms (3x faster, matching Blazor)
+- **Clear benchmark**: No change (doesn't use LIS)
+
+## Profile Analysis (2026-02-09)
+
+### Abies vs Blazor Comparison
+
+| Metric | Abies Swap | Blazor Swap | Difference |
+|--------|------------|-------------|------------|
+| Total | 607ms | 294ms | 2.1x slower |
+| GC | 9.4% | 11% | Similar |
+| wasm-function | 86.5ms (14.2%) | 29.3ms (10%) | 3x slower |
+| insertBefore | 18.9ms (3.1%) | 0.8ms (0.3%) | **24x slower** |
+| parseHtmlFragment | 4.8% | NOT present | Abies-only |
+
+### Key Architectural Differences
+
+1. **Blazor uses direct DOM commands** - no innerHTML parsing
+2. **Abies uses HTML string rendering** - generates HTML, then parses it
+3. **insertBefore 24x slower** - due to 999 MoveChild patches (bug!)
+
+### Optimization Priority
+
+1. **Fix LIS bug** (HIGH) - 3x swap improvement expected
+2. **Direct DOM commands** (MEDIUM) - eliminate parseHtmlFragment (4.8%)
+3. **JSON serialization** (LOW) - after other fixes
 
 ````
 

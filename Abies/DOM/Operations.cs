@@ -1818,61 +1818,62 @@ public static class Operations
         }
 
         // Rent pooled arrays to avoid allocations
+        // result[j] = index in arr of smallest ending value for LIS of length j+1
+        // p[i] = predecessor index for position i in the LIS chain
         var result = ArrayPool<int>.Shared.Rent(len);
         var p = ArrayPool<int>.Shared.Rent(len);
 
         try
         {
-            var k = 0; // Length of longest LIS found - 1
+            var lisLen = 0; // Actual length of longest LIS found
 
             for (int i = 0; i < len; i++)
             {
-                var arrI = arr[i];
+                var val = arr[i];
 
-                // Binary search for position to insert arrI
-                if (k > 0 && arr[result[k]] < arrI)
+                // Binary search to find position where val fits in result[0..lisLen)
+                // We want the leftmost position where arr[result[pos]] >= val
+                int lo = 0, hi = lisLen;
+                while (lo < hi)
                 {
-                    // arrI extends the longest LIS
-                    p[i] = result[k];
-                    result[++k] = i;
+                    var mid = (lo + hi) >> 1;
+                    if (arr[result[mid]] < val)
+                    {
+                        lo = mid + 1;
+                    }
+                    else
+                    {
+                        hi = mid;
+                    }
                 }
-                else
-                {
-                    // Binary search to find the smallest LIS ending value >= arrI
-                    int lo = 0, hi = k;
-                    while (lo < hi)
-                    {
-                        var mid = (lo + hi) >> 1;
-                        if (arr[result[mid]] < arrI)
-                        {
-                            lo = mid + 1;
-                        }
-                        else
-                        {
-                            hi = mid;
-                        }
-                    }
 
-                    // Update result and predecessor
-                    if (lo > 0)
-                    {
-                        p[i] = result[lo - 1];
-                    }
-                    result[lo] = i;
-                    if (lo > k)
-                    {
-                        k = lo;
-                    }
+                // lo is the position where val fits
+                // Set predecessor (element before this in the LIS chain)
+                if (lo > 0)
+                {
+                    p[i] = result[lo - 1];
+                }
+
+                // Update result - this position i has the smallest ending value for LIS of length lo+1
+                result[lo] = i;
+
+                // If we extended the LIS, increment length
+                if (lo == lisLen)
+                {
+                    lisLen++;
                 }
             }
 
-            // Mark LIS positions by following predecessor chain
-            // Instead of building an array, we directly mark the bool span
-            var idx = result[k];
-            for (int i = k; i >= 0; i--)
+            // Mark LIS positions by following predecessor chain backwards
+            // Start from the last element of the LIS (result[lisLen-1])
+            if (lisLen > 0)
             {
-                inLIS[idx] = true;
-                idx = p[idx];
+                var idx = result[lisLen - 1];
+                for (int i = lisLen - 1; i >= 0; i--)
+                {
+                    inLIS[idx] = true;
+                    idx = p[idx];
+                }
             }
         }
         finally
