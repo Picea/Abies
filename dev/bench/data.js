@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770645632741,
+  "lastUpdate": 1770653761439,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -1790,6 +1790,180 @@ window.BENCHMARK_DATA = {
             "value": 7264.1616543361115,
             "unit": "ns",
             "range": "± 65.7174154827236"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "671652a954493dcdaba4de53a2acf14f3116581c",
+          "message": "perf: Defer OTel CDN loading to after first paint (#57)\n\n* perf: Defer OTel CDN loading to after first paint\n\nThis optimization improves First Paint performance by:\n\n1. Installing the lightweight OTel shim synchronously (no network dependency)\n2. Deferring CDN-based OTel SDK loading to requestIdleCallback/setTimeout\n3. Never blocking the critical path (dotnet.create() -> runMain())\n\nThe shim provides full tracing functionality during startup, and the\nCDN upgrade happens transparently in the background after first paint.\n\nKey changes:\n- Extract initLocalOtelShim() as a named synchronous function\n- Extract upgradeToFullOtel() as the async CDN loading function\n- Add scheduleDeferredOtelUpgrade() to run after app initialization\n- Remove the blocking async IIFE that ran at module load\n\nPerformance impact:\n- Before: ~4800ms First Paint (OTel CDN loading blocked startup)\n- After: ~100ms First Paint (OTel loads in background)\n\nFixes #3 in Performance Optimization Plan\n\n* fix: Unwrap memo nodes in MoveChild patch generation\n\nWhen generating MoveChild patches for keyed diffing, the code was comparing\nnode types without first unwrapping memo nodes. This caused incorrect type\ncomparisons when memoized elements were involved in reordering operations.\n\nAdded UnwrapMemoNode() calls before type checking to ensure we compare the\nactual underlying Element types, not the memo wrapper types.\n\n* ci: Increase benchmark threshold to 15% for CI variance\n\nCI runner benchmarks show up to 20% variance in confidence intervals due to:\n- GC timing differences between runs\n- Shared infrastructure resource contention\n- Complex benchmarks (larger allocations) showing more variance than simple ones\n\nIncreased threshold from 110% to 115% to reduce false positives while still\ncatching genuine regressions. Local benchmarks confirmed variance patterns:\n- CreateButtonWithHandler: ±20.30% CI\n- CreateInputWithMultipleHandlers: ±19.42% CI\n\n* perf: Defer OTel CDN loading to after first paint\n\nMoved OpenTelemetry SDK loading from blocking script execution to\nrequestIdleCallback (with setTimeout fallback). This ensures:\n- First paint is not blocked by CDN latency\n- OTel loads during browser idle time after initial render\n- Graceful degradation if CDN is slow or unavailable\n\nThe shim ensures all tracing calls work immediately, with real\nimplementation hydrated asynchronously after first paint.\n\n* fix: Address OTel review comments for PR #57\n\nReview fixes from copilot-pull-request-reviewer:\n\n1. Early return if isOtelDisabled in initLocalOtelShim() to respect\n   global disable switches and avoid unnecessary shim overhead\n\n2. Expanded fetch ignore condition to cover:\n   - OTLP proxy endpoint (/otlp/v1/traces)\n   - Common collector endpoints (/v1/traces)\n   - Custom configured exporter URL\n   - Blazor framework downloads (/_framework/)\n\n3. Restore original fetch before registering full OTel instrumentations\n   to prevent double-patching and context propagation issues\n\n4. Fix setVerbosity cache invalidation - both shim and full OTel now\n   call resetVerbosityCache() so runtime verbosity changes take effect\n\n5. Fix header guard that always evaluated to true (i && i.headers)\n\n* Cache Playwright browsers in CI workflow\n\nAdd caching for Playwright browsers to improve CI performance.",
+          "timestamp": "2026-02-09T17:06:22+01:00",
+          "tree_id": "e29d6aaddfb9ec0e0ab3aef0977276e7636af2c4",
+          "url": "https://github.com/Picea/Abies/commit/671652a954493dcdaba4de53a2acf14f3116581c"
+        },
+        "date": 1770653761138,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 517.7548134326935,
+            "unit": "ns",
+            "range": "± 1.5718059486091773"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 3203.582458768572,
+            "unit": "ns",
+            "range": "± 7.270625678329906"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 550.9802251543317,
+            "unit": "ns",
+            "range": "± 1.2264500855159615"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 623.2529140313467,
+            "unit": "ns",
+            "range": "± 1.9961717181832341"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 627.4318762461345,
+            "unit": "ns",
+            "range": "± 1.8352140054827384"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 636.7496279080709,
+            "unit": "ns",
+            "range": "± 1.3448546333376792"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 631.4656303405761,
+            "unit": "ns",
+            "range": "± 3.9814705692287933"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 200.70811823209127,
+            "unit": "ns",
+            "range": "± 1.258957849512462"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 756.3007809321085,
+            "unit": "ns",
+            "range": "± 6.855808907669435"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 392.2105573972066,
+            "unit": "ns",
+            "range": "± 3.3901908579747655"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 669.6461236817496,
+            "unit": "ns",
+            "range": "± 3.2848661768287486"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5432.115082804362,
+            "unit": "ns",
+            "range": "± 39.33374775573103"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 38317.424369303386,
+            "unit": "ns",
+            "range": "± 500.5810438786456"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 652.403936958313,
+            "unit": "ns",
+            "range": "± 3.8596800731053102"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4873.327176230295,
+            "unit": "ns",
+            "range": "± 27.560146768588858"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2386.4108883993968,
+            "unit": "ns",
+            "range": "± 10.168686344817765"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 39.141318376859026,
+            "unit": "ns",
+            "range": "± 0.4376467513460427"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 52.958803967634836,
+            "unit": "ns",
+            "range": "± 0.41125511918564084"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 511.2983523686727,
+            "unit": "ns",
+            "range": "± 4.846464088534575"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2405.8304146357946,
+            "unit": "ns",
+            "range": "± 14.428105398957886"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4092.3990320478165,
+            "unit": "ns",
+            "range": "± 16.76154170065562"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 100.94458099511954,
+            "unit": "ns",
+            "range": "± 0.6497496555023143"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 273.31986104525055,
+            "unit": "ns",
+            "range": "± 2.8378080440561644"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 636.4436078824496,
+            "unit": "ns",
+            "range": "± 13.892268621793345"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7389.587288920085,
+            "unit": "ns",
+            "range": "± 130.81876714438678"
           }
         ]
       }
