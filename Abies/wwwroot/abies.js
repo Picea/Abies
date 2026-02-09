@@ -213,9 +213,9 @@ void (async () => {
       try { tracer = trace.getTracer('Abies.JS'); } catch {}
       // Expose OTel handle for forceFlush on page unload
       try {
-        window.__otel = { 
-          provider, 
-          exporter, 
+        window.__otel = {
+          provider,
+          exporter,
           endpoint: guessOtlp(),
           // Expose verbosity controls
           getVerbosity,
@@ -255,7 +255,7 @@ void (async () => {
         // currentSpan: the span that is currently active (for creating children)
         // activeTraceContext: persists trace context even after span ends (for fetch calls)
         const state = { currentSpan: null, activeTraceContext: null, pendingSpans: [] };
-        
+
         function makeSpan(name, kind = 1, explicitParent = undefined) {
           // Use explicit parent if provided, otherwise use current span, otherwise use active trace context
           const parent = explicitParent !== undefined ? explicitParent : (state.currentSpan || state.activeTraceContext);
@@ -263,13 +263,13 @@ void (async () => {
           const spanId = hex(8);
           return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: {} };
         }
-        
+
         // Batch and export spans in OTLP JSON format
         let exportTimer = null;
         async function flushSpans() {
           if (state.pendingSpans.length === 0) return;
           const spans = state.pendingSpans.splice(0, state.pendingSpans.length);
-          
+
           // Build OTLP JSON payload
           const payload = {
             resourceSpans: [{
@@ -297,7 +297,7 @@ void (async () => {
               }]
             }]
           };
-          
+
           try {
             await fetch(endpoint, {
               method: 'POST',
@@ -308,7 +308,7 @@ void (async () => {
             // Silently ignore export errors
           }
         }
-        
+
         function scheduleFlush() {
           if (exportTimer) return;
           exportTimer = setTimeout(() => {
@@ -316,12 +316,12 @@ void (async () => {
             flushSpans();
           }, 500);
         }
-        
+
         async function exportSpan(span) {
           state.pendingSpans.push(span);
           scheduleFlush();
         }
-        
+
         // Minimal shim tracer used by existing code paths
         trace = {
           getTracer: () => ({
@@ -340,8 +340,8 @@ void (async () => {
                 setAttribute: (key, value) => { s.attributes[key] = value; },
                 setStatus: () => {},
                 recordException: () => {},
-                end: async () => { 
-                  s.end = nowNs(); 
+                end: async () => {
+                  s.end = nowNs();
                   state.currentSpan = prev;
                   // Keep activeTraceContext alive briefly for async operations (fetch)
                   // Clear it after a short delay to allow pending fetches to inherit context
@@ -350,7 +350,7 @@ void (async () => {
                       state.activeTraceContext = prev;
                     }
                   }, 100);
-                  await exportSpan(s); 
+                  await exportSpan(s);
                 }
               };
             }
@@ -367,23 +367,23 @@ void (async () => {
             const url = (typeof input === 'string') ? input : input.url;
             // Don't instrument OTLP export calls (would cause infinite loop)
             if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
-            
+
             const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
-            
+
             // Create HTTP span as child of current span OR active trace context
             // This ensures fetch calls made after span.end() still link to the trace
             const parent = state.currentSpan || state.activeTraceContext;
             const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */, parent);
             sp.attributes['http.method'] = method;
             sp.attributes['http.url'] = url;
-            
+
             // Build W3C traceparent header to propagate to backend
             const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
             const i = init ? { ...init } : {};
             const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
             h.set('traceparent', traceparent);
             i.headers = h;
-            
+
             try {
               const res = await origFetch(input, i);
               sp.attributes['http.status_code'] = res.status;
@@ -400,9 +400,9 @@ void (async () => {
         } catch {}
 
         // Expose OTel handle for forceFlush on page unload
-        window.__otel = { 
-          provider: { forceFlush: async () => { await flushSpans(); } }, 
-          exporter: { url: endpoint }, 
+        window.__otel = {
+          provider: { forceFlush: async () => { await flushSpans(); } },
+          exporter: { url: endpoint },
           endpoint,
           // Expose verbosity controls
           getVerbosity,
@@ -489,10 +489,6 @@ function ensureEventListener(eventName) {
     registeredEvents.add(eventName);
 }
 
-// Pre-register all common event types once at module load
-// This eliminates the need for O(n) DOM scanning on every update
-COMMON_EVENT_TYPES.forEach(ensureEventListener);
-
 // Helper to find an element with a specific attribute, traversing through shadow DOM boundaries
 function findEventTarget(event, attributeName) {
     // First try the composed path to handle shadow DOM (for Web Components like fluent-button)
@@ -534,14 +530,14 @@ function genericEventHandler(event) {
     if (name === 'keydown' && event && event.key === 'Enter') {
         try { event.preventDefault(); } catch { /* ignore */ }
     }
-    
+
     // Build rich UI context for tracing
     const tag = (target.tagName || '').toLowerCase();
     const text = (target.textContent || '').trim().substring(0, 50); // Truncate long text
     const classes = target.className || '';
     const ariaLabel = target.getAttribute('aria-label') || '';
     const elId = target.id || '';
-    
+
     // Build human-readable action description
     let action = '';
     if (name === 'click') {
@@ -562,7 +558,7 @@ function genericEventHandler(event) {
     } else {
         action = `${name}: ${tag}${elId ? '#' + elId : ''}`;
     }
-    
+
     const spanOptions = {
         attributes: {
             'ui.event.type': name,
@@ -575,7 +571,7 @@ function genericEventHandler(event) {
             'abies.message_id': message
         }
     };
-    
+
     // Use startActiveSpan if available (CDN mode) to properly set context for nested spans
     // This ensures FetchInstrumentation creates child spans under this UI Event
     if (typeof tracer.startActiveSpan === 'function') {
@@ -846,55 +842,44 @@ function unsubscribe(key) {
 
 /**
  * Discovers and registers event listeners for any custom (non-common) event types
- * in the given DOM subtree. Since common event types are pre-registered at startup,
- * this function only needs to scan for rare/custom event handlers.
+ * in the given DOM subtree. Common event types are pre-registered at startup,
+ * so this function primarily handles rare/custom event handlers.
  * 
- * For performance, this is now a no-op for most apps since all standard DOM events
- * are pre-registered. Custom event names will still be discovered via attribute
- * updates (UpdateAttribute/AddAttribute patches call ensureEventListener directly).
+ * Uses TreeWalker instead of querySelectorAll for better memory efficiency.
  */
 function addEventListeners(root) {
-    // All common event types are pre-registered at startup.
-    // This function now only handles edge cases where:
-    // 1. Initial page load contains custom (non-standard) event types
-    // 2. HTML injection bypasses attribute patching
-    // 
-    // For the vast majority of cases, this is a no-op since:
-    // - Common events are pre-registered
-    // - Attribute patches call ensureEventListener directly
-    //
-    // We keep the function signature for backward compatibility but make it
-    // much more efficient by only scanning when necessary.
+    // Scan the given scope for any data-event-* attributes.
+    // Since common events are pre-registered, this is mostly a no-op for typical apps,
+    // but we still need to scan for custom event types in newly added HTML.
+    const scope = root || document;
     
-    // Skip scanning entirely during incremental updates since:
-    // 1. Common events are already registered
-    // 2. Attribute patches handle event listener registration
-    if (root && root !== document) {
-        // For incremental updates (AddChild, ReplaceChild), skip expensive DOM scanning
-        // The pre-registered common events cover 99%+ of use cases
-        return;
+    // Use TreeWalker for memory-efficient iteration
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
+    
+    // Include the root element itself if it's an element
+    if (scope.nodeType === 1 /* ELEMENT_NODE */ && scope.attributes) {
+        for (const attr of scope.attributes) {
+            if (attr.name.startsWith('data-event-')) {
+                const name = attr.name.substring('data-event-'.length);
+                ensureEventListener(name);
+            }
+        }
     }
     
-    // Full page render (setAppContent) - scan once for any custom event types
-    // This only happens on initial load or full page navigation
-    const scope = root || document;
-    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
-    let el = walker.currentNode;
+    // Walk descendants
+    let el = walker.nextNode();
     while (el) {
         if (el.attributes) {
             for (const attr of el.attributes) {
                 if (attr.name.startsWith('data-event-')) {
                     const name = attr.name.substring('data-event-'.length);
-                    // Only registers if not already in registeredEvents (common events are already there)
                     ensureEventListener(name);
                 }
             }
         }
         el = walker.nextNode();
     }
-}
-
-/**
+}/**
  * Event handler for click events on elements with data-event-* attributes.
  * @param {Event} event - The DOM event.
  */
@@ -959,7 +944,7 @@ setModuleImports('abies.js', {
     setTitle: withSpan('setTitle', async (title) => {
         document.title = title;
     }),
-    
+
     /**
      * Removes a child element from the DOM.
      * @param {number} parentId - The ID of the parent element.
@@ -1408,11 +1393,16 @@ setModuleImports('abies.js', {
         unsubscribe(key);
     }
 });
-    
+
 const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 
 await runMain(); // Ensure the .NET runtime is initialized
+
+// Pre-register all common event types now that the runtime is ready.
+// This is done after runMain() to avoid TDZ issues with exports.
+// Since ensureEventListener checks registeredEvents Set, this is idempotent.
+COMMON_EVENT_TYPES.forEach(ensureEventListener);
 
 // Make sure any existing data-event-* attributes in the initial DOM are discovered
 try { addEventListeners(); } catch (err) { /* ignore */ }
