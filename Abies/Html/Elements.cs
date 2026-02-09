@@ -131,6 +131,31 @@ public static class Elements
         return new(elementId, tag, [Attributes.id(elementId), .. filteredAttributes], children);
     }
 
+    /// <summary>
+    /// Creates a memoized node that skips re-rendering when the key is unchanged.
+    /// Use this to optimize performance for expensive subtrees that rarely change.
+    /// </summary>
+    /// <typeparam name="TKey">The type of the memoization key (must implement equality)</typeparam>
+    /// <param name="key">The key to compare - when unchanged, the cached node is reused</param>
+    /// <param name="node">The node to cache and potentially skip re-rendering</param>
+    /// <param name="id">Optional unique identifier for the memo node</param>
+    /// <returns>A memoized node that will skip diffing when the key matches</returns>
+    public static Node memo<TKey>(TKey key, Node node, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null) where TKey : notnull
+        => new Memo<TKey>(id!, key, node);
+
+    /// <summary>
+    /// Creates a lazily-evaluated memoized node. Unlike memo(), the node factory is NOT called
+    /// until actually needed. If the key matches during diffing, the factory is never invoked.
+    /// This provides maximum performance for list items that don't change.
+    /// </summary>
+    /// <typeparam name="TKey">The type of the memo key (must support equality)</typeparam>
+    /// <param name="key">The key to compare for memoization. If equal to the previous key, the subtree is skipped.</param>
+    /// <param name="factory">A function that produces the node content - only called if key differs</param>
+    /// <param name="id">Optional unique identifier for the lazy memo node</param>
+    /// <returns>A lazily memoized node that defers evaluation until needed</returns>
+    public static Node lazy<TKey>(TKey key, Func<Node> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null) where TKey : notnull
+        => new LazyMemo<TKey>(id!, key, factory);
+
     public static Node output(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     => element("output", attributes, children, id);
 
