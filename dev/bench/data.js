@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770660940982,
+  "lastUpdate": 1770660942217,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -3010,6 +3010,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 188.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d80f18a5247b9accc25f7e41375c3a857c924b64",
+          "message": "perf: Reduce GC allocations in DOM diffing (#58)\n\n* perf: Defer OTel CDN loading to after first paint\n\nThis optimization improves First Paint performance by:\n\n1. Installing the lightweight OTel shim synchronously (no network dependency)\n2. Deferring CDN-based OTel SDK loading to requestIdleCallback/setTimeout\n3. Never blocking the critical path (dotnet.create() -> runMain())\n\nThe shim provides full tracing functionality during startup, and the\nCDN upgrade happens transparently in the background after first paint.\n\nKey changes:\n- Extract initLocalOtelShim() as a named synchronous function\n- Extract upgradeToFullOtel() as the async CDN loading function\n- Add scheduleDeferredOtelUpgrade() to run after app initialization\n- Remove the blocking async IIFE that ran at module load\n\nPerformance impact:\n- Before: ~4800ms First Paint (OTel CDN loading blocked startup)\n- After: ~100ms First Paint (OTel loads in background)\n\nFixes #3 in Performance Optimization Plan\n\n* fix: Unwrap memo nodes in MoveChild patch generation\n\nWhen generating MoveChild patches for keyed diffing, the code was comparing\nnode types without first unwrapping memo nodes. This caused incorrect type\ncomparisons when memoized elements were involved in reordering operations.\n\nAdded UnwrapMemoNode() calls before type checking to ensure we compare the\nactual underlying Element types, not the memo wrapper types.\n\n* ci: Increase benchmark threshold to 15% for CI variance\n\nCI runner benchmarks show up to 20% variance in confidence intervals due to:\n- GC timing differences between runs\n- Shared infrastructure resource contention\n- Complex benchmarks (larger allocations) showing more variance than simple ones\n\nIncreased threshold from 110% to 115% to reduce false positives while still\ncatching genuine regressions. Local benchmarks confirmed variance patterns:\n- CreateButtonWithHandler: ±20.30% CI\n- CreateInputWithMultipleHandlers: ±19.42% CI\n\n* perf: Defer OTel CDN loading to after first paint\n\nMoved OpenTelemetry SDK loading from blocking script execution to\nrequestIdleCallback (with setTimeout fallback). This ensures:\n- First paint is not blocked by CDN latency\n- OTel loads during browser idle time after initial render\n- Graceful degradation if CDN is slow or unavailable\n\nThe shim ensures all tracing calls work immediately, with real\nimplementation hydrated asynchronously after first paint.\n\n* fix: Address OTel review comments for PR #57\n\nReview fixes from copilot-pull-request-reviewer:\n\n1. Early return if isOtelDisabled in initLocalOtelShim() to respect\n   global disable switches and avoid unnecessary shim overhead\n\n2. Expanded fetch ignore condition to cover:\n   - OTLP proxy endpoint (/otlp/v1/traces)\n   - Common collector endpoints (/v1/traces)\n   - Custom configured exporter URL\n   - Blazor framework downloads (/_framework/)\n\n3. Restore original fetch before registering full OTel instrumentations\n   to prevent double-patching and context propagation issues\n\n4. Fix setVerbosity cache invalidation - both shim and full OTel now\n   call resetVerbosityCache() so runtime verbosity changes take effect\n\n5. Fix header guard that always evaluated to true (i && i.headers)\n\n* Cache Playwright browsers in CI workflow\n\nAdd caching for Playwright browsers to improve CI performance.\n\n* perf: Reduce GC allocations in DOM diffing\n\n- Pool PatchData lists using ConcurrentQueue to avoid allocations in ApplyBatch\n- Replace ComputeLIS array allocations with ArrayPool<int>.Shared rentals\n- Replace HashSet<int> for LIS membership with ArrayPool<bool>.Shared rental\n\nBenchmark impact (js-framework-benchmark):\n- Clear (09_clear1k): 173.2ms → 159.6ms (8% improvement)\n- Clear GC time: 18.1% → 12.2% (33% reduction)\n- Swap GC time: 10.4% → 9.4% (10% reduction)\n\nAlso documents the dotnet format multi-targeting issue in memory.instructions.md",
+          "timestamp": "2026-02-09T19:05:57+01:00",
+          "tree_id": "6c7300a4852fa48540f6fc2faad9db7d8b447316",
+          "url": "https://github.com/Picea/Abies/commit/d80f18a5247b9accc25f7e41375c3a857c924b64"
+        },
+        "date": 1770660941808,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 14.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 16.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 18.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
           }
         ]
       }
