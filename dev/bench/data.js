@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770670727860,
+  "lastUpdate": 1770670730229,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -3358,6 +3358,180 @@ window.BENCHMARK_DATA = {
             "value": 24344,
             "unit": "bytes",
             "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f00cf43304095503b41f1503b9aa03bec87aafc",
+          "message": "perf: add ClearChildren optimization for bulk child removal (#61)\n\nWhen clearing all children from an element, generate a single ClearChildren\npatch instead of N individual RemoveChild patches. This uses the native\nparent.replaceChildren() API which is much faster than N remove() calls.\n\nBenchmark improvement (09_clear1k):\n- Before: 159.6ms\n- After: 91.2ms\n- Improvement: 1.75x faster (43% reduction)\n\nChanges:\n- Add ClearChildren patch type in Operations.cs\n- Add ClearChildren JSImport in Interop.cs\n- Add clearChildren function and batch handler in abies.js\n- Add handler cleanup for ClearChildren in ApplyBatch\n- Add optimization in diff membership change path\n- Add 4 unit tests for ClearChildren behavior",
+          "timestamp": "2026-02-09T21:49:17+01:00",
+          "tree_id": "9f9e69e57d471a3f43030a804504452036d96691",
+          "url": "https://github.com/Picea/Abies/commit/4f00cf43304095503b41f1503b9aa03bec87aafc"
+        },
+        "date": 1770670729540,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 14.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 16.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 18.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 94.0000, Gen1: 7.0000"
           }
         ]
       }
