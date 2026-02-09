@@ -1580,18 +1580,21 @@ public static class Operations
                             {
                                 // This element needs to be moved
                                 // Use OLD element since it has the ID currently in the DOM
+                                // Unwrap memo nodes to get the actual element for patch creation
                                 var oldIndex = oldIndices[i];
-                                var oldNode = oldChildren[oldIndex];
+                                var oldNode = UnwrapMemoNode(oldChildren[oldIndex]);
                                 if (oldNode is Element oldChildElement)
                                 {
                                     // Find the element to insert before (the next sibling in new order)
                                     // Also use OLD element ID for the reference element
+                                    // Unwrap memo nodes for the reference element too
                                     string? beforeId = null;
                                     if (i + 1 < newLength)
                                     {
                                         // Get the OLD element for position i+1 (its ID is in the DOM)
                                         var nextOldIndex = oldIndices[i + 1];
-                                        beforeId = oldChildren[nextOldIndex].Id;
+                                        var nextOldNode = UnwrapMemoNode(oldChildren[nextOldIndex]);
+                                        beforeId = nextOldNode.Id;
                                     }
                                     patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
                                 }
