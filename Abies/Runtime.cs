@@ -176,6 +176,32 @@ public static partial class Runtime
 
     private static Node PreserveIds(Node? oldNode, Node newNode)
     {
+        // Handle LazyMemo nodes - preserve the lazy structure but don't evaluate
+        if (newNode is ILazyMemoNode newLazyMemo)
+        {
+            // If the old node was a lazy memo with the same key, we can skip evaluation
+            if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKey.Equals(newLazyMemo.MemoKey))
+            {
+                // Keys match - return the new lazy with old's cached content preserved
+                return oldLazyMemo.CachedNode != null 
+                    ? newLazyMemo.WithCachedNode(oldLazyMemo.CachedNode)
+                    : newNode;
+            }
+            // For lazy memos, we defer evaluation - just return as-is
+            return newNode;
+        }
+        
+        // Handle Memo nodes by recursing into their cached content
+        if (newNode is IMemoNode newMemo)
+        {
+            // Find the matching old memo or old content
+            var oldCached = oldNode is IMemoNode oldMemo ? oldMemo.CachedNode : oldNode;
+            var preservedCached = PreserveIds(oldCached, newMemo.CachedNode);
+            
+            // Return a new memo with the preserved cached content
+            return newMemo.WithCachedNode(preservedCached);
+        }
+        
         // Only preserve IDs when elements have the same tag AND the same element ID.
         // This is critical for keyed diffing (ADR-016): elements with different IDs
         // should NOT have their IDs swapped, as that would break key-based matching.
@@ -208,11 +234,26 @@ public static partial class Runtime
             var oldChildrenById = new Dictionary<string, Node>();
             foreach (var child in oldElement.Children)
             {
-                if (child is Element childElem)
+                // Unwrap memo nodes to get the actual element ID
+                Node effectiveChild;
+                if (child is ILazyMemoNode lazyMemo)
                 {
-                    oldChildrenById[childElem.Id] = child;
+                    effectiveChild = lazyMemo.CachedNode ?? lazyMemo.Evaluate();
                 }
-                else if (child is Text textNode)
+                else if (child is IMemoNode memo)
+                {
+                    effectiveChild = memo.CachedNode;
+                }
+                else
+                {
+                    effectiveChild = child;
+                }
+                
+                if (effectiveChild is Element childElem)
+                {
+                    oldChildrenById[childElem.Id] = child; // Store the original (possibly memo) node
+                }
+                else if (effectiveChild is Text textNode)
                 {
                     oldChildrenById[textNode.Id] = child;
                 }
@@ -224,14 +265,35 @@ public static partial class Runtime
                 var newChild = newElement.Children[i];
                 Node? matchingOldChild = null;
 
+                // Unwrap memo nodes to get the actual element ID for matching
+                Node effectiveNewChild;
+                if (newChild is ILazyMemoNode newLazyChild)
+                {
+                    // For lazy memo, use its own ID rather than evaluating
+                    effectiveNewChild = newChild;
+                }
+                else if (newChild is IMemoNode newMemoChild)
+                {
+                    effectiveNewChild = newMemoChild.CachedNode;
+                }
+                else
+                {
+                    effectiveNewChild = newChild;
+                }
+
                 // Find matching old child by key (element ID)
-                if (newChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
+                if (effectiveNewChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
                 {
                     matchingOldChild = oldMatch;
                 }
-                else if (newChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
+                else if (effectiveNewChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
                 {
                     matchingOldChild = oldTextMatch;
+                }
+                else if (effectiveNewChild is ILazyMemoNode lazyChild && oldChildrenById.TryGetValue(lazyChild.MemoKey?.ToString() ?? newChild.Id, out var oldLazyMatch))
+                {
+                    // Try to match lazy nodes by their ID
+                    matchingOldChild = oldLazyMatch;
                 }
 
                 children[i] = PreserveIds(matchingOldChild, newChild);

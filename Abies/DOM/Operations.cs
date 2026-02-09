@@ -74,6 +74,84 @@ public record Attribute(string Id, string Name, string Value);
 /// <param name="Children">The child nodes of the element.</param>
 public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
 
+/// <summary>
+/// Interface for memoized nodes to avoid reflection in trimmed WASM.
+/// </summary>
+public interface IMemoNode
+{
+    /// <summary>The memo key used to determine if the node should be re-rendered.</summary>
+    object MemoKey { get; }
+    /// <summary>The actual node content to render.</summary>
+    Node CachedNode { get; }
+    /// <summary>Creates a new memo node with the same key but different cached content.</summary>
+    Node WithCachedNode(Node newCachedNode);
+}
+
+/// <summary>
+/// Represents a memoized node in the Abies DOM.
+/// When diffing, if the memo key equals the previous key, the cached node is reused
+/// without re-diffing the subtree. This is useful for expensive-to-render components
+/// that don't change frequently.
+/// </summary>
+/// <param name="Id">The unique identifier for the node.</param>
+/// <param name="Key">The memo key used to determine if the node should be re-rendered.
+/// If the key equals the previous key, the cached node is reused.</param>
+/// <param name="CachedNode">The actual node content to render.</param>
+/// <remarks>
+/// Inspired by Elm's lazy function. Use this to wrap list items or components
+/// where re-rendering can be skipped when the underlying data hasn't changed.
+/// Example: memo(row, TableRow(row, isSelected)) where row is the key.
+/// </remarks>
+public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemoNode where TKey : notnull
+{
+    /// <summary>Gets the memo key as object for interface implementation.</summary>
+    object IMemoNode.MemoKey => Key;
+    
+    /// <summary>Creates a new memo with the same key but different cached content.</summary>
+    public Node WithCachedNode(Node newCachedNode) => this with { CachedNode = newCachedNode };
+}
+
+/// <summary>
+/// Interface for lazy memoized nodes that defer evaluation until needed.
+/// This is the key performance optimization - the function is only called if the key differs.
+/// </summary>
+public interface ILazyMemoNode
+{
+    /// <summary>The memo key used to determine if the node should be re-rendered.</summary>
+    object MemoKey { get; }
+    /// <summary>The cached node content (null if not yet evaluated).</summary>
+    Node? CachedNode { get; }
+    /// <summary>Evaluates the lazy function to produce the node content.</summary>
+    Node Evaluate();
+    /// <summary>Creates a new lazy memo with the cached content populated.</summary>
+    Node WithCachedNode(Node cachedNode);
+}
+
+/// <summary>
+/// Represents a lazily-evaluated memoized node in the Abies DOM.
+/// Unlike Memo&lt;TKey&gt;, the node content is NOT created until actually needed.
+/// During diffing, if the key matches the previous key, the function is never called.
+/// This provides the true performance benefit of Elm's lazy function.
+/// </summary>
+/// <param name="Id">The unique identifier for the node.</param>
+/// <param name="Key">The memo key used to determine if the node should be re-rendered.</param>
+/// <param name="Factory">The function that produces the node content (only called if key differs).</param>
+/// <param name="CachedNode">The cached node content after evaluation (null initially).</param>
+public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? CachedNode = null) : Node(Id), ILazyMemoNode where TKey : notnull
+{
+    /// <summary>Gets the memo key as object for interface implementation.</summary>
+    object ILazyMemoNode.MemoKey => Key;
+    
+    /// <summary>Gets the cached node content.</summary>
+    Node? ILazyMemoNode.CachedNode => CachedNode;
+    
+    /// <summary>Evaluates the lazy function to produce the node content.</summary>
+    public Node Evaluate() => Factory();
+    
+    /// <summary>Creates a new lazy memo with the cached content populated.</summary>
+    public Node WithCachedNode(Node cachedNode) => this with { CachedNode = cachedNode };
+}
+
 // =============================================================================
 // Event Attribute Name Cache - Performance Optimization
 // =============================================================================
@@ -627,8 +705,13 @@ public static class Render
                 sb.Append("<span id=\"").Append(raw.Id).Append("\">")
                   .Append(raw.Html).Append("</span>");
                 break;
-            // Handle other node types if necessary
-            default:
+            // Handle LazyMemo<T> nodes by evaluating and rendering their content
+            case ILazyMemoNode lazyMemo:
+                RenderNode(lazyMemo.CachedNode ?? lazyMemo.Evaluate(), sb);
+                break;
+            // Handle Memo<T> nodes by rendering their cached content
+            case IMemoNode memo:
+                RenderNode(memo.CachedNode, sb);
                 break;
         }
     }
@@ -1080,8 +1163,86 @@ public static class Operations
         }
     }
 
+    // =============================================================================
+    // Memo Node Helpers
+    // =============================================================================
+    // Memo node diffing - uses IMemoNode interface for trim-safe access
+    // =============================================================================
+
+    // Debug counters for memo performance analysis
+    internal static int MemoHits = 0;
+    internal static int MemoMisses = 0;
+    
+    internal static void ResetMemoCounters()
+    {
+        MemoHits = 0;
+        MemoMisses = 0;
+    }
+
+    /// <summary>
+    /// Unwraps a memo node (lazy or regular) to get its actual content.
+    /// For lazy memos, this evaluates the factory function.
+    /// </summary>
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static Node UnwrapMemoNode(Node node)
+    {
+        return node switch
+        {
+            ILazyMemoNode lazy => lazy.CachedNode ?? lazy.Evaluate(),
+            IMemoNode memo => memo.CachedNode,
+            _ => node
+        };
+    }
+
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
     {
+        // Lazy memo nodes: defer evaluation until keys differ
+        // This provides the true performance benefit - we don't even construct the node if unchanged
+        if (oldNode is ILazyMemoNode oldLazy && newNode is ILazyMemoNode newLazy)
+        {
+            if (oldLazy.MemoKey.Equals(newLazy.MemoKey))
+            {
+                // Keys match - skip evaluation AND diffing entirely
+                Interlocked.Increment(ref MemoHits);
+                return;
+            }
+
+            // Keys differ - evaluate the new lazy and diff
+            Interlocked.Increment(ref MemoMisses);
+            var oldCached = oldLazy.CachedNode ?? oldLazy.Evaluate();
+            var newCached = newLazy.Evaluate();
+            DiffInternal(oldCached, newCached, parent, patches);
+            return;
+        }
+
+        // Regular memo nodes: skip diffing subtree if keys are equal
+        // This is similar to Elm's lazy function - major performance win for list items
+        if (oldNode is IMemoNode oldMemo && newNode is IMemoNode newMemo)
+        {
+            if (oldMemo.MemoKey.Equals(newMemo.MemoKey))
+            {
+                // Keys match - skip diffing the subtree entirely
+                Interlocked.Increment(ref MemoHits);
+                return;
+            }
+
+            // Keys differ - diff the cached nodes
+            Interlocked.Increment(ref MemoMisses);
+            DiffInternal(oldMemo.CachedNode, newMemo.CachedNode, parent, patches);
+            return;
+        }
+
+        // Unwrap any type of memo node (lazy or regular)
+        var effectiveOld = UnwrapMemoNode(oldNode);
+        var effectiveNew = UnwrapMemoNode(newNode);
+
+        // If either was a memo, recurse with the unwrapped nodes
+        if (!ReferenceEquals(effectiveOld, oldNode) || !ReferenceEquals(effectiveNew, newNode))
+        {
+            DiffInternal(effectiveOld, effectiveNew, parent, patches);
+            return;
+        }
+
         // Text nodes only need an update when the value changes
         if (oldNode is Text oldText && newNode is Text newText)
         {
@@ -1481,15 +1642,18 @@ public static class Operations
                     for (int i = keysToRemove.Count - 1; i >= 0; i--)
                     {
                         var idx = keysToRemove[i];
-                        if (oldChildren[idx] is Element oldChild)
+                        // Unwrap memo nodes to get the actual content for patch creation
+                        var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
+                        
+                        if (effectiveOld is Element oldChild)
                         {
                             patches.Add(new RemoveChild(oldParent, oldChild));
                         }
-                        else if (oldChildren[idx] is RawHtml oldRaw)
+                        else if (effectiveOld is RawHtml oldRaw)
                         {
                             patches.Add(new RemoveRaw(oldParent, oldRaw));
                         }
-                        else if (oldChildren[idx] is Text oldText)
+                        else if (effectiveOld is Text oldText)
                         {
                             patches.Add(new RemoveText(oldParent, oldText));
                         }
@@ -1504,15 +1668,18 @@ public static class Operations
                     // Add new children that don't exist in old
                     foreach (var idx in keysToAdd)
                     {
-                        if (newChildren[idx] is Element newChild)
+                        // Unwrap memo nodes to get the actual content for patch creation
+                        var effectiveNode = UnwrapMemoNode(newChildren[idx]);
+                        
+                        if (effectiveNode is Element newChild)
                         {
                             patches.Add(new AddChild(newParent, newChild));
                         }
-                        else if (newChildren[idx] is RawHtml newRaw)
+                        else if (effectiveNode is RawHtml newRaw)
                         {
                             patches.Add(new AddRaw(newParent, newRaw));
                         }
-                        else if (newChildren[idx] is Text newText)
+                        else if (effectiveNode is Text newText)
                         {
                             patches.Add(new AddText(newParent, newText));
                         }
@@ -1543,15 +1710,18 @@ public static class Operations
         // Remove extra old children (iterate backwards to maintain DOM order)
         for (int i = oldLength - 1; i >= shared; i--)
         {
-            if (oldChildren[i] is Element oldChild)
+            // Unwrap memo nodes to get the actual content for patch creation
+            var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+            
+            if (effectiveOld is Element oldChild)
             {
                 patches.Add(new RemoveChild(oldParent, oldChild));
             }
-            else if (oldChildren[i] is RawHtml oldRaw)
+            else if (effectiveOld is RawHtml oldRaw)
             {
                 patches.Add(new RemoveRaw(oldParent, oldRaw));
             }
-            else if (oldChildren[i] is Text oldText)
+            else if (effectiveOld is Text oldText)
             {
                 patches.Add(new RemoveText(oldParent, oldText));
             }
@@ -1560,15 +1730,18 @@ public static class Operations
         // Add additional new children
         for (int i = shared; i < newLength; i++)
         {
-            if (newChildren[i] is Element newChild)
+            // Unwrap memo nodes to get the actual content for patch creation
+            var effectiveNode = UnwrapMemoNode(newChildren[i]);
+            
+            if (effectiveNode is Element newChild)
             {
                 patches.Add(new AddChild(newParent, newChild));
             }
-            else if (newChildren[i] is RawHtml newRaw)
+            else if (effectiveNode is RawHtml newRaw)
             {
                 patches.Add(new AddRaw(newParent, newRaw));
             }
-            else if (newChildren[i] is Text newText)
+            else if (effectiveNode is Text newText)
             {
                 patches.Add(new AddText(newParent, newText));
             }
@@ -1686,7 +1859,24 @@ public static class Operations
     /// </summary>
     private static string? GetKey(Node node)
     {
-        if (node is not Element element)
+        // Handle Memo nodes by getting the key of their cached content
+        // For lazy memos, we need to evaluate to get the key (or use the lazy node's own Id)
+        Node effective;
+        if (node is ILazyMemoNode lazyMemo)
+        {
+            // Use the lazy node's ID as the key - don't evaluate just for key lookup
+            return node.Id;
+        }
+        else if (node is IMemoNode memo)
+        {
+            effective = memo.CachedNode;
+        }
+        else
+        {
+            effective = node;
+        }
+        
+        if (effective is not Element element)
         {
             return null;
         }
