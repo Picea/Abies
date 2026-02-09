@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770562616932,
+  "lastUpdate": 1770631240495,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -1268,6 +1268,180 @@ window.BENCHMARK_DATA = {
             "value": 7403.217665536063,
             "unit": "ns",
             "range": "± 43.955577061801584"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7850fba6ccfa61343e1960cbba08fb55ef60fe65",
+          "message": "perf: Optimize swap rows with LIS-based minimal DOM moves (#50)\n\n* perf: Optimize swap rows with LIS algorithm\n\nImplement Longest Increasing Subsequence (LIS) algorithm for optimal\nDOM reordering during keyed diffing. This reduces DOM operations from\nO(n) remove+add pairs to O(k) moves where k = n - LIS length.\n\nChanges:\n- Add ComputeLIS() using O(n log n) binary search algorithm (from Inferno)\n- Add MoveChild patch type for efficient DOM repositioning via insertBefore\n- Update DiffChildrenCore to use LIS for identifying elements to move\n- Fix MoveChild to use OLD element IDs (elements exist in DOM before patch)\n- Add moveChild JS function and batch handler in abies.js\n- Add comprehensive unit tests for LIS edge cases\n- Update memory.instructions.md with js-framework-benchmark setup guide\n\nBenchmark results (05_swap1k):\n- Before: 2000 DOM ops (remove all + add all) - BROKEN\n- After: 2 DOM ops (MoveChild only) - 406.7ms median\n\nThe algorithm correctly identifies that swapping rows 1↔998 only requires\nmoving 2 elements, not rebuilding the entire list.\n\n* fix(e2e): Fix flaky EditArticle test by waiting for Update button visibility\n\nThe test was failing intermittently because it checked button enabled state\nbefore the article data finished loading. In some cases, the form still\nshowed \"Publish Article\" (new mode) instead of \"Update Article\" (edit mode).\n\nFix: Wait for \"Update Article\" button to be VISIBLE before modifying the\ntitle. This confirms the slug is loaded and we're in edit mode. Then wait\nfor ENABLED state after form modifications.\n\nFixes timeout in EditArticle_AuthorCanModify E2E test.\n\n* style(e2e): Fix formatting in ArticleTests.cs",
+          "timestamp": "2026-02-09T10:50:57+01:00",
+          "tree_id": "ed91d66281db5468977bc1e5e9471117afd81f15",
+          "url": "https://github.com/Picea/Abies/commit/7850fba6ccfa61343e1960cbba08fb55ef60fe65"
+        },
+        "date": 1770631240142,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 494.8377917607625,
+            "unit": "ns",
+            "range": "± 1.110715084276751"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 3024.475149888259,
+            "unit": "ns",
+            "range": "± 6.763991619456707"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 527.1427401029147,
+            "unit": "ns",
+            "range": "± 2.080621126147704"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 609.9081845650306,
+            "unit": "ns",
+            "range": "± 3.104478856117408"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 595.0028640747071,
+            "unit": "ns",
+            "range": "± 3.6200517754970094"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 632.6222932679312,
+            "unit": "ns",
+            "range": "± 2.659911225492679"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 638.203230197613,
+            "unit": "ns",
+            "range": "± 1.8183091409881447"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 188.5024595627418,
+            "unit": "ns",
+            "range": "± 1.6607748685067807"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 762.46257909139,
+            "unit": "ns",
+            "range": "± 5.897912717740722"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 374.74163958231605,
+            "unit": "ns",
+            "range": "± 3.541132819872819"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 659.2049060821533,
+            "unit": "ns",
+            "range": "± 7.949440181227854"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5208.106112343924,
+            "unit": "ns",
+            "range": "± 36.79862162535717"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 37403.954744466144,
+            "unit": "ns",
+            "range": "± 545.2191293548221"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 624.3969631195068,
+            "unit": "ns",
+            "range": "± 6.286728083690655"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4742.373024495443,
+            "unit": "ns",
+            "range": "± 41.969439536929656"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2418.852583058675,
+            "unit": "ns",
+            "range": "± 11.241812773825231"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 37.66785058577855,
+            "unit": "ns",
+            "range": "± 0.4770536017053965"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 51.93314459423224,
+            "unit": "ns",
+            "range": "± 0.26850733303560576"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 671.2604690551758,
+            "unit": "ns",
+            "range": "± 8.561952136761292"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2378.064096323649,
+            "unit": "ns",
+            "range": "± 36.185909715083255"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4259.307705402374,
+            "unit": "ns",
+            "range": "± 83.11689599039356"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 96.05685444978567,
+            "unit": "ns",
+            "range": "± 0.459946197623107"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 264.82489230082587,
+            "unit": "ns",
+            "range": "± 10.969793518469578"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 625.0770479348989,
+            "unit": "ns",
+            "range": "± 1.982414264642316"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7195.667129007975,
+            "unit": "ns",
+            "range": "± 40.96798125598442"
           }
         ]
       }
