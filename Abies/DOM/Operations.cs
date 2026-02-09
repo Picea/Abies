@@ -754,6 +754,7 @@ public static class Operations
     private static readonly ConcurrentQueue<Dictionary<string, int>> _keyIndexMapPool = new();
     private static readonly ConcurrentQueue<List<int>> _intListPool = new();
     private static readonly ConcurrentQueue<List<(int, int)>> _intPairListPool = new();
+    private static readonly ConcurrentQueue<List<PatchData>> _patchDataListPool = new();
 
     private static List<Patch> RentPatchList()
     {
@@ -842,6 +843,24 @@ public static class Operations
         if (list.Count < 500) // Prevent memory bloat
         {
             _intPairListPool.Enqueue(list);
+        }
+    }
+
+    private static List<PatchData> RentPatchDataList()
+    {
+        if (_patchDataListPool.TryDequeue(out var list))
+        {
+            list.Clear();
+            return list;
+        }
+        return [];
+    }
+
+    private static void ReturnPatchDataList(List<PatchData> list)
+    {
+        if (list.Count < 1000) // Prevent memory bloat
+        {
+            _patchDataListPool.Enqueue(list);
         }
     }
 
@@ -979,16 +998,24 @@ public static class Operations
             }
         }
 
-        // Step 2: Convert all patches to JSON-serializable format
-        var patchDataList = new List<PatchData>(patches.Count);
-        foreach (var patch in patches)
+        // Step 2: Convert all patches to JSON-serializable format - use pooled list
+        var patchDataList = RentPatchDataList();
+        try
         {
-            patchDataList.Add(ConvertToPatchData(patch));
-        }
+            patchDataList.EnsureCapacity(patches.Count);
+            foreach (var patch in patches)
+            {
+                patchDataList.Add(ConvertToPatchData(patch));
+            }
 
-        // Step 3: Apply all patches in a single JS interop call
-        var json = System.Text.Json.JsonSerializer.Serialize(patchDataList, AbiesJsonContext.Default.ListPatchData);
-        await Interop.ApplyPatches(json);
+            // Step 3: Apply all patches in a single JS interop call
+            var json = System.Text.Json.JsonSerializer.Serialize(patchDataList, AbiesJsonContext.Default.ListPatchData);
+            await Interop.ApplyPatches(json);
+        }
+        finally
+        {
+            ReturnPatchDataList(patchDataList);
+        }
 
         // Step 4: Post-process - unregister old handlers AFTER DOM changes
         foreach (var patch in patches)
@@ -1551,6 +1578,8 @@ public static class Operations
 
                     // Build sequence: for each position in newChildren, get the old index
                     var oldIndices = ArrayPool<int>.Shared.Rent(newLength);
+                    // Rent a bool array instead of allocating HashSet<int>
+                    var inLIS = ArrayPool<bool>.Shared.Rent(newLength);
                     try
                     {
                         for (int i = 0; i < newLength; i++)
@@ -1559,10 +1588,9 @@ public static class Operations
                         }
 
                         // Find LIS of old indices - elements in LIS are already in correct relative order
-                        var lisIndices = ComputeLIS(oldIndices.AsSpan(0, newLength));
-
-                        // Create a set of new positions that are in the LIS (don't need moving)
-                        var inLIS = new HashSet<int>(lisIndices);
+                        // The indices returned are positions in oldIndices that form the LIS
+                        // We mark those positions as "in LIS" (don't need moving)
+                        ComputeLISInto(oldIndices.AsSpan(0, newLength), inLIS.AsSpan(0, newLength));
 
                         // First, diff all elements (they all exist in both old and new)
                         for (int i = 0; i < newLength; i++)
@@ -1576,7 +1604,7 @@ public static class Operations
                         // IMPORTANT: We must use OLD element IDs since those are what exist in the DOM
                         for (int i = newLength - 1; i >= 0; i--)
                         {
-                            if (!inLIS.Contains(i))
+                            if (!inLIS[i])
                             {
                                 // This element needs to be moved
                                 // Use OLD element since it has the ID currently in the DOM
@@ -1605,6 +1633,9 @@ public static class Operations
                     }
                     finally
                     {
+                        // Clear the bool array before returning (avoid stale data on reuse)
+                        Array.Clear(inLIS, 0, newLength);
+                        ArrayPool<bool>.Shared.Return(inLIS);
                         ArrayPool<int>.Shared.Return(oldIndices);
                     }
                     return;
@@ -1767,81 +1798,88 @@ public static class Operations
     }
 
     /// <summary>
-    /// Computes the Longest Increasing Subsequence (LIS) of the input array.
-    /// Returns the indices in the input array that form the LIS.
+    /// Computes the Longest Increasing Subsequence (LIS) of the input array and marks
+    /// the positions that are in the LIS in the output bool span.
     /// Used for optimal DOM reordering - elements in the LIS don't need to be moved.
-    /// 
+    ///
     /// Algorithm: O(n log n) using binary search with patience sorting.
     /// Inspired by Inferno's virtual DOM implementation.
+    /// 
+    /// This version uses ArrayPool to avoid allocations on the hot path.
     /// </summary>
     /// <param name="arr">Array of old indices in new order.</param>
-    /// <returns>Indices in the input array that form the LIS.</returns>
-    private static int[] ComputeLIS(ReadOnlySpan<int> arr)
+    /// <param name="inLIS">Output span where inLIS[i] = true if position i is in the LIS.</param>
+    private static void ComputeLISInto(ReadOnlySpan<int> arr, Span<bool> inLIS)
     {
         var len = arr.Length;
         if (len == 0)
         {
-            return [];
+            return;
         }
 
-        // result[i] = index in arr of smallest ending element of LIS of length i+1
-        var result = new int[len];
-        // p[i] = predecessor index in arr for element at arr[i] in the LIS
-        var p = new int[len];
-        var k = 0; // Length of longest LIS found - 1
+        // Rent pooled arrays to avoid allocations
+        var result = ArrayPool<int>.Shared.Rent(len);
+        var p = ArrayPool<int>.Shared.Rent(len);
 
-        for (int i = 0; i < len; i++)
+        try
         {
-            var arrI = arr[i];
+            var k = 0; // Length of longest LIS found - 1
 
-            // Binary search for position to insert arrI
-            if (k > 0 && arr[result[k]] < arrI)
+            for (int i = 0; i < len; i++)
             {
-                // arrI extends the longest LIS
-                p[i] = result[k];
-                result[++k] = i;
+                var arrI = arr[i];
+
+                // Binary search for position to insert arrI
+                if (k > 0 && arr[result[k]] < arrI)
+                {
+                    // arrI extends the longest LIS
+                    p[i] = result[k];
+                    result[++k] = i;
+                }
+                else
+                {
+                    // Binary search to find the smallest LIS ending value >= arrI
+                    int lo = 0, hi = k;
+                    while (lo < hi)
+                    {
+                        var mid = (lo + hi) >> 1;
+                        if (arr[result[mid]] < arrI)
+                        {
+                            lo = mid + 1;
+                        }
+                        else
+                        {
+                            hi = mid;
+                        }
+                    }
+
+                    // Update result and predecessor
+                    if (lo > 0)
+                    {
+                        p[i] = result[lo - 1];
+                    }
+                    result[lo] = i;
+                    if (lo > k)
+                    {
+                        k = lo;
+                    }
+                }
             }
-            else
-            {
-                // Binary search to find the smallest LIS ending value >= arrI
-                int lo = 0, hi = k;
-                while (lo < hi)
-                {
-                    var mid = (lo + hi) >> 1;
-                    if (arr[result[mid]] < arrI)
-                    {
-                        lo = mid + 1;
-                    }
-                    else
-                    {
-                        hi = mid;
-                    }
-                }
 
-                // Update result and predecessor
-                if (lo > 0)
-                {
-                    p[i] = result[lo - 1];
-                }
-                result[lo] = i;
-                if (lo > k)
-                {
-                    k = lo;
-                }
+            // Mark LIS positions by following predecessor chain
+            // Instead of building an array, we directly mark the bool span
+            var idx = result[k];
+            for (int i = k; i >= 0; i--)
+            {
+                inLIS[idx] = true;
+                idx = p[idx];
             }
         }
-
-        // Reconstruct LIS by following predecessor chain
-        var lisLength = k + 1;
-        var lis = new int[lisLength];
-        var idx = result[k];
-        for (int i = lisLength - 1; i >= 0; i--)
+        finally
         {
-            lis[i] = idx;
-            idx = p[idx];
+            ArrayPool<int>.Shared.Return(result);
+            ArrayPool<int>.Shared.Return(p);
         }
-
-        return lis;
     }
 
     /// <summary>

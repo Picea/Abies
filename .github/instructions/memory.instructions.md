@@ -80,6 +80,20 @@ The following Toub-inspired optimizations have been applied:
 
 **Applied to**: Abies.Conduit, Abies.Counter, Abies.Presentation, Abies.SubscriptionsDemo
 
+### dotnet format - Multi-Targeted Solution Issues
+
+**Problem**: Running `dotnet format` on the solution creates merge conflict markers in some files (e.g., `Parser.cs`) due to the multi-targeted nature of the solution (net10.0 and potentially other targets).
+
+**Workaround**: 
+- **DO NOT** run `dotnet format` on the entire solution
+- Instead, manually format only the files you changed
+- If you accidentally run `dotnet format` and it corrupts files, revert with:
+  ```bash
+  git checkout -- <corrupted-files>
+  ```
+
+**Key Insight**: The formatter gets confused by multi-targeting and inserts erroneous merge conflict markers like `<<<<<<< TODO: Unmerged change from project 'Abies(net10.0)'`.
+
 ## js-framework-benchmark (Official Performance Testing)
 
 ### Setup
@@ -170,11 +184,65 @@ For reference, compare against:
 - `vanillajs-keyed` - Baseline (raw DOM manipulation)
 - `blazor-wasm-keyed` - .NET Blazor WASM (similar tech stack)
 
-### Benchmark Results (Feb 2025)
+### Latest Benchmark Results (2026-02-09)
 
-| Benchmark | Abies | Blazor | VanillaJS |
-|-----------|-------|--------|-----------|
-| 05_swap1k | 406.7ms | 94.4ms | 32.2ms |
+**Abies v1.0.151 vs Blazor WASM v10.0.0:**
 
-**Note**: Abies is ~4.3x slower than Blazor on swap due to O(n) diffing overhead, but the LIS algorithm is optimal (2 DOM ops vs 2000 with naive approach).
+| Benchmark | Abies | Blazor | Ratio | Notes |
+|-----------|-------|--------|-------|-------|
+| 01_run1k | 103.2ms | 87.6ms | 1.17x | Create 1000 rows |
+| 02_replace1k | 132.9ms | 102.4ms | 1.29x | Replace all rows |
+| 03_update10th | 132.1ms | 94.7ms | 1.39x | Update every 10th |
+| 04_select1k | 115.2ms | 82.9ms | 1.39x | Select a row |
+| **05_swap1k** | **326.6ms** | **94.2ms** | **3.47x** | **⚠️ CRITICAL** (was 328.8ms) |
+| 06_remove-one | 65.3ms | 55.6ms | 1.17x | Remove one row |
+| 07_create10k | 924.8ms | 810.7ms | 1.14x | Create 10k rows |
+| 08_append1k | 135.8ms | 102.9ms | 1.31x | Append 1k rows |
+| **09_clear1k** | **159.6ms** | **44.6ms** | **3.58x** | **⚠️ CRITICAL** (was 173.2ms, -8%) |
+
+**Allocation Optimization (2026-02-09):**
+Applied the following optimizations to reduce GC pressure:
+1. `ComputeLISInto` - Uses ArrayPool for `result` and `p` arrays instead of allocating new arrays
+2. `inLIS` bool array - Replaced `HashSet<int>` with `ArrayPool<bool>.Shared` for LIS membership
+3. `PatchDataList` pooling - Added `_patchDataListPool` to reuse List<PatchData> in ApplyBatch
+
+**GC Impact:**
+- Swap benchmark GC: 10.4% → 9.4% (10% reduction)
+- Clear benchmark GC: 18.1% → 12.2% (33% reduction)
+- Clear benchmark time: 173.2ms → 159.6ms (8% improvement)
+
+**Remaining Hotspots:**
+- Patch records (MoveChild, RemoveChild, etc.) are allocated on every diff
+- PatchData records are created for JSON serialization
+- JSON serialization itself allocates strings
+
+**Key Findings:**
+1. **Swap (05_swap1k)** is 3.47x slower - the LIS algorithm is optimal, but overhead comes from:
+   - Building key maps for ALL 1000 children
+   - Evaluating lazy memo nodes
+   - JSON serialization of patches
+   
+2. **Clear (09_clear1k)** is 3.58x slower - improved by 8% with allocation optimizations
+
+**Size Comparison:**
+- Abies compressed: 1,225 KB
+- Abies uncompressed: 3,938 KB
+- First paint: 4,811ms
+
+### Benchmark Command Reference
+
+```bash
+# Run full benchmark suite for Abies
+cd /path/to/js-framework-benchmark-fork
+npm run bench -- --headless keyed/abies
+
+# Run specific benchmarks only
+npm run bench -- --headless keyed/abies --benchmark 05_swap1k
+
+# Run Blazor for comparison
+npm run bench -- --headless keyed/blazor-wasm
+```
+
+````
+
 
