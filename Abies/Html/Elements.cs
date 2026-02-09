@@ -517,4 +517,33 @@ public static class Elements
     public static Node raw(string html, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => new RawHtml(id!, html);
 
+    /// <summary>
+    /// Creates a memoized node that skips diffing when the data hasn't changed.
+    /// Use this for list items or components that don't change frequently.
+    /// </summary>
+    /// <typeparam name="T">The type of the data (must implement proper Equals).</typeparam>
+    /// <param name="data">The data that determines when to re-render.</param>
+    /// <param name="render">A function that renders the data to a Node.</param>
+    /// <returns>A memoized node that only diffs when data changes.</returns>
+    /// <example>
+    /// // Without memo: diffs every row on every render
+    /// model.Rows.Select(row => TableRow(row))
+    /// 
+    /// // With memo: only diffs rows whose data changed
+    /// model.Rows.Select(row => memo(row, r => TableRow(r)))
+    /// </example>
+    public static Node memo<T>(T data, Func<T, Node> render) where T : notnull
+        => new Memo<T>(data, render(data));
+
+    /// <summary>
+    /// Creates a memoized node that skips diffing when the data hasn't changed.
+    /// Overload for already-rendered nodes where you want to track data separately.
+    /// </summary>
+    /// <typeparam name="T">The type of the data (must implement proper Equals).</typeparam>
+    /// <param name="data">The data that determines when to re-render.</param>
+    /// <param name="node">The pre-rendered node to wrap.</param>
+    /// <returns>A memoized node that only diffs when data changes.</returns>
+    public static Node memo<T>(T data, Node node) where T : notnull
+        => new Memo<T>(data, node);
+
 }

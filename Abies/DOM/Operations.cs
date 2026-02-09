@@ -281,6 +281,50 @@ public record Text(string Id, string Value) : Node(Id)
 public record Empty() : Node("");
 
 /// <summary>
+/// Interface for memoized nodes to enable non-generic data comparison.
+/// </summary>
+public interface IMemoNode
+{
+    /// <summary>
+    /// The underlying node that will be rendered.
+    /// </summary>
+    Node InnerNode { get; }
+
+    /// <summary>
+    /// Checks if this memo node has the same data as another memo node.
+    /// Returns false if the other node is not a compatible IMemoNode.
+    /// </summary>
+    bool HasSameData(IMemoNode other);
+}
+
+/// <summary>
+/// Represents a memoized node in the Abies DOM.
+/// The node is only re-rendered when the underlying data changes.
+/// This is similar to React.memo or Elm's lazy.
+/// </summary>
+/// <typeparam name="T">The type of the data used to create the node.</typeparam>
+/// <param name="Data">The data that was used to create the wrapped node.</param>
+/// <param name="InnerNode">The actual DOM node (will be rendered lazily or reused).</param>
+/// <remarks>
+/// When diffing, if two Memo nodes have equal Data (via Equals),
+/// the inner nodes are assumed to be identical and no diff is performed.
+/// This dramatically reduces diffing overhead for large lists of stable items.
+/// </remarks>
+public record Memo<T>(T Data, Node InnerNode) : Node(InnerNode.Id), IMemoNode where T : notnull
+{
+    Node IMemoNode.InnerNode => InnerNode;
+
+    bool IMemoNode.HasSameData(IMemoNode other)
+    {
+        if (other is Memo<T> otherMemo)
+        {
+            return EqualityComparer<T>.Default.Equals(Data, otherMemo.Data);
+        }
+        return false;
+    }
+}
+
+/// <summary>
 /// Represents a patch operation in the Abies DOM.
 /// </summary>
 public interface Patch { }
@@ -602,6 +646,10 @@ public static class Render
     {
         switch (node)
         {
+            case IMemoNode memo:
+                // Unwrap memo and render the inner node
+                RenderNode(memo.InnerNode, sb);
+                break;
             case Element element:
                 sb.Append('<').Append(element.Tag).Append(" id=\"").Append(element.Id).Append('"');
                 foreach (var attr in element.Attributes)
@@ -1082,6 +1130,26 @@ public static class Operations
 
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
     {
+        // =============================================================================
+        // Memo Node Optimization - Skip diffing when data hasn't changed
+        // =============================================================================
+        // If both nodes are Memo<T> with the same T, and their Data is equal,
+        // we can skip diffing entirely because the rendered content is guaranteed
+        // to be identical (pure rendering function).
+        // =============================================================================
+
+        // Unwrap Memo nodes, checking for data equality
+        var (unwrappedOld, unwrappedNew, skipDiff) = UnwrapMemoNodes(oldNode, newNode);
+        if (skipDiff)
+        {
+            // Data is equal - no changes needed, skip diffing completely
+            return;
+        }
+
+        // Continue with unwrapped nodes
+        oldNode = unwrappedOld;
+        newNode = unwrappedNew;
+
         // Text nodes only need an update when the value changes
         if (oldNode is Text oldText && newNode is Text newText)
         {
@@ -1686,6 +1754,12 @@ public static class Operations
     /// </summary>
     private static string? GetKey(Node node)
     {
+        // Unwrap Memo nodes to get the inner node's key
+        if (node is IMemoNode memo)
+        {
+            node = memo.InnerNode;
+        }
+
         if (node is not Element element)
         {
             return null;
@@ -1710,5 +1784,51 @@ public static class Operations
         // Use element Id as the key
         // Element IDs are always unique, making them ideal for keyed diffing
         return element.Id;
+    }
+
+    /// <summary>
+    /// Unwraps Memo nodes and checks if their data is equal.
+    /// Returns the unwrapped nodes and a flag indicating if diffing can be skipped.
+    /// </summary>
+    /// <returns>
+    /// A tuple of (unwrappedOld, unwrappedNew, skipDiff) where:
+    /// - unwrappedOld: The old node with Memo wrapper removed if present
+    /// - unwrappedNew: The new node with Memo wrapper removed if present
+    /// - skipDiff: True if both nodes were Memo with equal Data, meaning no diff needed
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static (Node unwrappedOld, Node unwrappedNew, bool skipDiff) UnwrapMemoNodes(Node oldNode, Node newNode)
+    {
+        // Fast path: neither is a Memo node
+        if (oldNode is not IMemoNode && newNode is not IMemoNode)
+        {
+            return (oldNode, newNode, false);
+        }
+
+        // Both are Memo nodes - check if data is equal
+        if (oldNode is IMemoNode oldMemo && newNode is IMemoNode newMemo)
+        {
+            if (oldMemo.HasSameData(newMemo))
+            {
+                // Data is equal - skip diffing entirely
+                return (oldMemo.InnerNode, newMemo.InnerNode, true);
+            }
+            // Data changed - need to diff the inner nodes
+            return (oldMemo.InnerNode, newMemo.InnerNode, false);
+        }
+
+        // Only one is Memo - unwrap it and continue diffing
+        if (oldNode is IMemoNode oldMemoOnly)
+        {
+            return (oldMemoOnly.InnerNode, newNode, false);
+        }
+
+        if (newNode is IMemoNode newMemoOnly)
+        {
+            return (oldNode, newMemoOnly.InnerNode, false);
+        }
+
+        // Shouldn't reach here, but return unchanged
+        return (oldNode, newNode, false);
     }
 }

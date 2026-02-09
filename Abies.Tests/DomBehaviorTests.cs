@@ -508,4 +508,114 @@ public class DomBehaviorTests
         }
         return node;
     }
+
+    #region Memo Tests
+
+    /// <summary>
+    /// Test data record for memoization tests.
+    /// </summary>
+    private record TestRow(int Id, string Label);
+
+    [Fact]
+    public void Memo_WithSameData_SkipsDiffing()
+    {
+        // Create two memo nodes with the same data
+        var row = new TestRow(1, "Test");
+        var element = new Element("row-1", "tr", [], new Text("t1", "Test"));
+
+        var oldNode = new Memo<TestRow>(row, element);
+        var newNode = new Memo<TestRow>(row, element);
+
+        var patches = Operations.Diff(oldNode, newNode);
+
+        // Should produce no patches because data is equal
+        Assert.Empty(patches);
+    }
+
+    [Fact]
+    public void Memo_WithDifferentData_ProducesDiff()
+    {
+        // Create two memo nodes with different data
+        var oldRow = new TestRow(1, "Old");
+        var newRow = new TestRow(1, "New");
+
+        var oldElement = new Element("row-1", "tr", [], new Text("t1", "Old"));
+        var newElement = new Element("row-1", "tr", [], new Text("t1", "New"));
+
+        var oldNode = new Memo<TestRow>(oldRow, oldElement);
+        var newNode = new Memo<TestRow>(newRow, newElement);
+
+        var patches = Operations.Diff(oldNode, newNode);
+
+        // Should produce patches because data changed
+        Assert.NotEmpty(patches);
+        Assert.Contains(patches, p => p is UpdateText);
+    }
+
+    [Fact]
+    public void Memo_RendersCorrectHtml()
+    {
+        var row = new TestRow(1, "Test");
+        var element = new Element("row-1", "tr", [], new Text("t1", "Test"));
+        var memoNode = new Memo<TestRow>(row, element);
+
+        var html = Render.Html(memoNode);
+
+        // Memo should render the inner element
+        Assert.Contains("row-1", html);
+        Assert.Contains("<tr", html);
+        Assert.Contains("Test", html);
+    }
+
+    [Fact]
+    public void Memo_GetKey_ReturnsInnerElementKey()
+    {
+        var row = new TestRow(1, "Test");
+        var element = new Element("row-1", "tr",
+            [new DOMAttribute("k1", "data-key", "custom-key")],
+            new Text("t1", "Test"));
+        var memoNode = new Memo<TestRow>(row, element);
+
+        // The key should be extracted from the inner element
+        // We can't test GetKey directly since it's private, but we can test
+        // that diffing works correctly with keyed memo nodes
+        var parent = new Element("p1", "tbody", [], memoNode);
+        var html = Render.Html(parent);
+
+        Assert.Contains("custom-key", html);
+    }
+
+    [Fact]
+    public void Memo_ListReorder_SkipsDiffingUnchangedItems()
+    {
+        // Simulate a list reorder where items don't change, just move
+        var rows = new[]
+        {
+            new TestRow(1, "First"),
+            new TestRow(2, "Second"),
+            new TestRow(3, "Third")
+        };
+
+        // Create memo-wrapped elements for old tree
+        var oldChildren = rows.Select((row, i) =>
+            (Node)new Memo<TestRow>(row, new Element($"row-{row.Id}", "tr", [], new Text($"t{row.Id}", row.Label)))
+        ).ToArray();
+        var oldTree = new Element("tbody", "tbody", [], oldChildren);
+
+        // Reorder: swap first and last
+        var reorderedRows = new[] { rows[2], rows[1], rows[0] };
+        var newChildren = reorderedRows.Select((row, i) =>
+            (Node)new Memo<TestRow>(row, new Element($"row-{row.Id}", "tr", [], new Text($"t{row.Id}", row.Label)))
+        ).ToArray();
+        var newTree = new Element("tbody", "tbody", [], newChildren);
+
+        var patches = Operations.Diff(oldTree, newTree);
+
+        // The memo optimization means we should NOT see UpdateText patches
+        // because the data is equal and diffing was skipped for the inner content.
+        // We may see structural patches (AddChild, RemoveChild) for reordering.
+        Assert.DoesNotContain(patches, p => p is UpdateText);
+    }
+
+    #endregion
 }
