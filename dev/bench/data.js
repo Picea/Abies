@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770637391437,
+  "lastUpdate": 1770645632741,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Virtual DOM Benchmarks": [
@@ -1616,6 +1616,180 @@ window.BENCHMARK_DATA = {
             "value": 8676.406733194986,
             "unit": "ns",
             "range": "± 118.95251744206367"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55acab27767ad13008b7368edbe4b09ade02531e",
+          "message": "perf: Add lazy memoization for deferred node evaluation (#56)\n\n* perf: Add lazy memoization for deferred node evaluation\n\nImplements ILazyMemoNode and LazyMemo<TKey> types that defer node\nconstruction until actually needed during diffing. This provides\ntrue Elm-style lazy semantics where the factory function is only\ncalled when memo keys differ.\n\nKey changes:\n- Add ILazyMemoNode interface with MemoKey, CachedNode, Evaluate()\n- Add LazyMemo<TKey> record implementing ILazyMemoNode\n- Add lazy<TKey>() helper function in Elements.cs\n- Update DiffInternal to handle lazy memo nodes before regular memo\n- Add UnwrapMemoNode helper for consistent memo unwrapping\n- Add MemoHits/MemoMisses counters for performance analysis\n- Update Runtime.PreserveIds to handle lazy memo nodes\n- Add comprehensive unit tests for lazy memo behavior\n\nBenchmark results (Select 1k):\n- Before lazy: ~152.4ms median\n- With lazy: ~111.9ms median (27% improvement)\n\nThe lazy approach skips both node construction AND subtree diffing\nfor unchanged rows, providing significant performance gains for\nlist-heavy UIs like the js-framework-benchmark.\n\n* style: fix formatting in changed files",
+          "timestamp": "2026-02-09T14:51:00+01:00",
+          "tree_id": "37da48bcc527851433203be9c55785d3a0d9f5ce",
+          "url": "https://github.com/Picea/Abies/commit/55acab27767ad13008b7368edbe4b09ade02531e"
+        },
+        "date": 1770645632463,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 516.3822961534772,
+            "unit": "ns",
+            "range": "± 2.3083624557176883"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 3172.552852376302,
+            "unit": "ns",
+            "range": "± 4.240378809997411"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 546.1475593021938,
+            "unit": "ns",
+            "range": "± 1.045383337036525"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 600.6553619248526,
+            "unit": "ns",
+            "range": "± 1.5305187120338493"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 618.9486166000366,
+            "unit": "ns",
+            "range": "± 1.3311732626066313"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 629.7284515087421,
+            "unit": "ns",
+            "range": "± 1.4586270178706424"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 637.9224793116251,
+            "unit": "ns",
+            "range": "± 0.806746994585975"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 189.93025661431827,
+            "unit": "ns",
+            "range": "± 0.23889932589880733"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 723.695557814378,
+            "unit": "ns",
+            "range": "± 1.1437479096981347"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 356.7506052335103,
+            "unit": "ns",
+            "range": "± 1.0626009495585929"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 643.1650519688924,
+            "unit": "ns",
+            "range": "± 1.2616905720263538"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5112.868414815267,
+            "unit": "ns",
+            "range": "± 13.477006377608182"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 36734.53280874399,
+            "unit": "ns",
+            "range": "± 164.75342205060662"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 633.1469256877899,
+            "unit": "ns",
+            "range": "± 12.488029508005017"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4781.056743367513,
+            "unit": "ns",
+            "range": "± 69.86434550608145"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2446.3850881788467,
+            "unit": "ns",
+            "range": "± 50.362898178220775"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 37.55402879204069,
+            "unit": "ns",
+            "range": "± 0.11543827769009936"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 52.005844903843744,
+            "unit": "ns",
+            "range": "± 0.5412062281376641"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 491.1856894493103,
+            "unit": "ns",
+            "range": "± 3.5481985385820747"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2679.2093818664553,
+            "unit": "ns",
+            "range": "± 45.41987355585029"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4017.2135581970215,
+            "unit": "ns",
+            "range": "± 87.75360584972097"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 100.43297999501229,
+            "unit": "ns",
+            "range": "± 2.380265040149932"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 265.1171269076211,
+            "unit": "ns",
+            "range": "± 3.8237224436135073"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 645.9117093616062,
+            "unit": "ns",
+            "range": "± 13.492166341501687"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7264.1616543361115,
+            "unit": "ns",
+            "range": "± 65.7174154827236"
           }
         ]
       }
