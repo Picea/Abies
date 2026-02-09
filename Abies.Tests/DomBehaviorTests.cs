@@ -1,8 +1,5 @@
-using Xunit;
-using Abies.DOM;
-using System.Linq;
-using System.Collections.Generic;
 using System.Runtime.Versioning;
+using Abies.DOM;
 using DOMAttribute = Abies.DOM.Attribute;
 
 namespace Abies.Tests;
@@ -181,10 +178,15 @@ public class DomBehaviorTests
     }
 
     [Fact]
-    public void KeyedChildren_Reorder_ShouldReplaceList()
+    public void KeyedChildren_Reorder_ShouldUseMoveChild()
     {
         // Per ADR-016: Element Id is used for keyed diffing, not data-key attribute.
         // When children have different IDs in different order, the algorithm detects reordering.
+        // With LIS optimization, reordering uses MoveChild instead of Remove+Add.
+        // 
+        // IMPORTANT: In a pure reorder, the NEW virtual DOM should have the SAME IDs as the old DOM.
+        // This is because Abies identifies elements by their ID, and a reorder doesn't change IDs.
+        // The MoveChild operation moves elements by their existing IDs, not creating new ones.
         var oldDom = new Element("root", "div", [],
             new Element("item-a", "div", new DOMAttribute[]
             {
@@ -195,24 +197,27 @@ public class DomBehaviorTests
                 new DOMAttribute("cb", "class", "item")
             }, new Text("tb", "B")));
 
+        // For a pure reorder test, new DOM has SAME IDs but DIFFERENT ORDER
+        // This simulates what happens when the same elements are rendered in a different order
         var newDom = new Element("root", "div", [],
             new Element("item-b", "div", new DOMAttribute[]
             {
-                new DOMAttribute("cb2", "class", "item")
-            }, new Text("tb2", "B")),
+                new DOMAttribute("cb", "class", "item")  // Same IDs as old
+            }, new Text("tb", "B")),
             new Element("item-a", "div", new DOMAttribute[]
             {
-                new DOMAttribute("ca2", "class", "item")
-            }, new Text("ta2", "A")));
+                new DOMAttribute("ca", "class", "item")  // Same IDs as old
+            }, new Text("ta", "A")));
 
         var patches = Operations.Diff(oldDom, newDom);
         var result = ApplyPatches(oldDom, patches, oldDom);
 
         Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
-        // When IDs are reordered, the algorithm removes and re-adds to preserve order
-        Assert.Contains(patches, p => p is RemoveChild);
-        Assert.Contains(patches, p => p is AddChild);
+        // With LIS optimization, reordering uses MoveChild instead of Remove+Add
+        Assert.Contains(patches, p => p is MoveChild);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
     }
 
     [Fact]
@@ -271,13 +276,13 @@ public class DomBehaviorTests
 
         Assert.NotNull(result);
         Assert.Equal(Render.Html(newDom), Render.Html(result));
-        
+
         // Should remove nav-login and nav-register
         var removePatches = patches.OfType<RemoveChild>().ToList();
         Assert.Equal(2, removePatches.Count);
         Assert.Contains(removePatches, p => p.Child.Id == "nav-login");
         Assert.Contains(removePatches, p => p.Child.Id == "nav-register");
-        
+
         // Should add nav-editor, nav-settings, nav-profile-bob
         var addPatches = patches.OfType<AddChild>().ToList();
         Assert.Equal(3, addPatches.Count);
@@ -292,31 +297,31 @@ public class DomBehaviorTests
         // Per ADR-016: Elements with matching IDs should be diffed in place, not replaced.
         // The "Home" link has the same ID in both states, so it should be updated, not replaced.
         var oldDom = new Element("root", "ul", [],
-            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item") }, 
+            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item") },
                 new Text("t1", "Home")),
-            new Element("nav-login", "li", new DOMAttribute[] { new DOMAttribute("c2", "class", "nav-item") }, 
+            new Element("nav-login", "li", new DOMAttribute[] { new DOMAttribute("c2", "class", "nav-item") },
                 new Text("t2", "Sign in")));
 
         var newDom = new Element("root", "ul", [],
-            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item active") }, 
+            new Element("nav-home", "li", new DOMAttribute[] { new DOMAttribute("c1", "class", "nav-item active") },
                 new Text("t1", "Home")),
-            new Element("nav-editor", "li", new DOMAttribute[] { new DOMAttribute("c3", "class", "nav-item") }, 
+            new Element("nav-editor", "li", new DOMAttribute[] { new DOMAttribute("c3", "class", "nav-item") },
                 new Text("t3", "New Article")));
 
         var patches = Operations.Diff(oldDom, newDom);
-        
+
         // nav-home should have an attribute update (class changed), not be removed/added
         var removePatches = patches.OfType<RemoveChild>().ToList();
         var addPatches = patches.OfType<AddChild>().ToList();
-        
+
         // Only nav-login should be removed
         Assert.Single(removePatches);
         Assert.Equal("nav-login", removePatches[0].Child.Id);
-        
+
         // Only nav-editor should be added
         Assert.Single(addPatches);
         Assert.Equal("nav-editor", addPatches[0].Child.Id);
-        
+
         // nav-home's class should be updated
         var attrPatches = patches.OfType<UpdateAttribute>().ToList();
         Assert.Contains(attrPatches, p => p.Element.Id == "nav-home" && p.Attribute.Name == "class");
@@ -352,10 +357,9 @@ public class DomBehaviorTests
             }, new Text("ta2", "A")));
 
         var patches = Operations.Diff(oldDom, newDom);
-        
-        // Keys are reordered, so should remove and add
-        Assert.Contains(patches, p => p is RemoveChild);
-        Assert.Contains(patches, p => p is AddChild);
+
+        // Keys are reordered, so should use MoveChild (optimized reordering)
+        Assert.Contains(patches, p => p is MoveChild);
     }
 
     private static Node? ApplyPatches(Node? root, IEnumerable<Patch> patches, Node? initialRoot)
@@ -376,6 +380,22 @@ public class DomBehaviorTests
             ReplaceChild rc => ReplaceNode(root!, rc.OldElement, rc.NewElement),
             AddChild ac => UpdateElement(root!, ac.Parent.Id, e => e with { Children = e.Children.Append(ac.Child).ToArray() }),
             RemoveChild rc => UpdateElement(root!, rc.Parent.Id, e => e with { Children = e.Children.Where(c => c.Id != rc.Child.Id).ToArray() }),
+            MoveChild mc => UpdateElement(root!, mc.Parent.Id, e =>
+            {
+                // Remove child from current position
+                var children = e.Children.Where(c => c.Id != mc.Child.Id).ToList();
+                // Find position to insert (before the specified element, or at end)
+                int insertIndex = mc.BeforeId != null
+                    ? children.FindIndex(c => c.Id == mc.BeforeId)
+                    : children.Count;
+                if (insertIndex < 0)
+                {
+                    insertIndex = children.Count;
+                }
+
+                children.Insert(insertIndex, mc.Child);
+                return e with { Children = children.ToArray() };
+            }),
             UpdateAttribute ua => UpdateElement(root!, ua.Element.Id, e =>
             {
                 var updated = false;
@@ -389,7 +409,10 @@ public class DomBehaviorTests
                     return a;
                 }).ToArray();
                 if (!updated)
+                {
                     attrs = attrs.Append(ua.Attribute with { Value = ua.Value }).ToArray();
+                }
+
                 return e with { Attributes = attrs };
             }),
             AddAttribute aa => UpdateElement(root!, aa.Element.Id, e =>
@@ -408,7 +431,9 @@ public class DomBehaviorTests
     private static Node ReplaceNode(Node node, Node target, Node newNode)
     {
         if (ReferenceEquals(node, target) || node.Id == target.Id)
+        {
             return newNode;
+        }
 
         if (node is Element el)
         {
@@ -430,9 +455,13 @@ public class DomBehaviorTests
                 var attrId = oldAttr?.Id ?? attr.Id;
 
                 if (attr.Name == "id")
+                {
                     attrs[i] = attr with { Id = attrId, Value = oldElement.Id };
+                }
                 else
+                {
                     attrs[i] = attr with { Id = attrId };
+                }
             }
 
             var children = new Node[newElement.Children.Length];
@@ -446,20 +475,25 @@ public class DomBehaviorTests
         }
 
         if (oldNode is Text oldText && newNode is Text newText)
+        {
             return new Text(oldText.Id, newText.Value);
+        }
 
         if (newNode is Element newElem)
         {
             var children = new Node[newElem.Children.Length];
             for (int i = 0; i < newElem.Children.Length; i++)
+            {
                 children[i] = PreserveIdsForTest(null, newElem.Children[i]);
+            }
+
             return new Element(newElem.Id, newElem.Tag, newElem.Attributes, children);
         }
 
         return newNode;
     }
 
-    private static Node UpdateElement(Node node, string targetId, System.Func<Element, Element> update)
+    private static Node UpdateElement(Node node, string targetId, Func<Element, Element> update)
     {
         if (node is Element el)
         {
