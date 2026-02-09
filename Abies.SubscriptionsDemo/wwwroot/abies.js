@@ -22,35 +22,39 @@ import { dotnet } from './_framework/dotnet.js';
 
 const VERBOSITY_LEVELS = { off: 0, user: 1, debug: 2 };
 
-const getVerbosity = (() => {
-  let cached = null;
-  return () => {
-    if (cached !== null) return cached;
-    try {
-      // Priority 1: Global variable
-      if (window.__OTEL_VERBOSITY) {
-        const v = String(window.__OTEL_VERBOSITY).toLowerCase();
-        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
-      }
-      // Priority 2: Meta tag
-      const meta = document.querySelector('meta[name="otel-verbosity"]');
-      if (meta) {
-        const v = (meta.getAttribute('content') || '').toLowerCase();
-        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
-      }
-      // Priority 3: URL parameter
-      const params = new URLSearchParams(window.location.search);
-      const urlParam = params.get('otel_verbosity');
-      if (urlParam) {
-        const v = urlParam.toLowerCase();
-        if (v in VERBOSITY_LEVELS) { cached = v; return cached; }
-      }
-    } catch {}
-    // Default
-    cached = 'user';
-    return cached;
-  };
-})();
+// Verbosity cache with invalidation support for runtime changes
+let _verbosityCache = null;
+
+function resetVerbosityCache() {
+  _verbosityCache = null;
+}
+
+function getVerbosity() {
+  if (_verbosityCache !== null) return _verbosityCache;
+  try {
+    // Priority 1: Global variable
+    if (window.__OTEL_VERBOSITY) {
+      const v = String(window.__OTEL_VERBOSITY).toLowerCase();
+      if (v in VERBOSITY_LEVELS) { _verbosityCache = v; return _verbosityCache; }
+    }
+    // Priority 2: Meta tag
+    const meta = document.querySelector('meta[name="otel-verbosity"]');
+    if (meta) {
+      const v = (meta.getAttribute('content') || '').toLowerCase();
+      if (v in VERBOSITY_LEVELS) { _verbosityCache = v; return _verbosityCache; }
+    }
+    // Priority 3: URL parameter
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get('otel_verbosity');
+    if (urlParam) {
+      const v = urlParam.toLowerCase();
+      if (v in VERBOSITY_LEVELS) { _verbosityCache = v; return _verbosityCache; }
+    }
+  } catch {}
+  // Default
+  _verbosityCache = 'user';
+  return _verbosityCache;
+}
 
 // Check if a span should be recorded based on verbosity level
 // 'user' spans: UI Event, HTTP (fetch/XHR)
@@ -105,6 +109,7 @@ const isOtelDisabled = (() => {
 
 // Install lightweight shim immediately for tracing during startup
 function initLocalOtelShim() {
+  if (isOtelDisabled) return; // Respect global disable switches
   if (window.__otel) return; // Already initialized
   
   const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -207,12 +212,36 @@ function initLocalOtelShim() {
   SpanStatusCode = { OK: 1, ERROR: 2 };
   // Don't set tracer here - it will be set after the shim function completes
 
+  // Helper to determine if a URL should be ignored for tracing
+  function shouldIgnoreFetchForTracing(url) {
+    try {
+      if (!url) return false;
+      // Ignore OTLP proxy endpoint
+      if (/\/otlp\/v1\/traces$/.test(url)) return true;
+      // Ignore common collector endpoints like http://localhost:4318/v1/traces
+      if (/\/v1\/traces$/.test(url)) return true;
+      // Ignore explicitly configured exporter URL if provided
+      if (typeof window !== 'undefined' && window.__OTEL_EXPORTER_URL) {
+        const configured = String(window.__OTEL_EXPORTER_URL);
+        if (configured && url.startsWith(configured)) return true;
+      }
+      // Ignore Blazor framework/runtime/resource downloads
+      if (url.includes('/_framework/')) return true;
+    } catch {
+      // On any error, fall back to tracing (do not silently skip)
+    }
+    return false;
+  }
+
+  // Store original fetch for potential restoration when upgrading to full OTel
+  const origFetch = window.fetch.bind(window);
+  window.__shimOrigFetch = origFetch;
+
   // Patch fetch for trace propagation
   try {
-    const origFetch = window.fetch.bind(window);
     window.fetch = async function(input, init) {
       const url = (typeof input === 'string') ? input : input.url;
-      if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
+      if (shouldIgnoreFetchForTracing(url)) return origFetch(input, init);
       const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
       const parent = state.currentSpan || state.activeTraceContext;
       const sp = makeSpan(`HTTP ${method}`, 3, parent);
@@ -220,7 +249,7 @@ function initLocalOtelShim() {
       sp.attributes['http.url'] = url;
       const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
       const i = init ? { ...init } : {};
-      const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
+      const h = new Headers((i.headers) || (typeof input !== 'string' && input.headers) || {});
       h.set('traceparent', traceparent);
       i.headers = h;
       try {
@@ -244,7 +273,10 @@ function initLocalOtelShim() {
     endpoint,
     getVerbosity,
     setVerbosity: (level) => {
-      if (level in VERBOSITY_LEVELS) window.__OTEL_VERBOSITY = level;
+      if (level in VERBOSITY_LEVELS) {
+        window.__OTEL_VERBOSITY = level;
+        resetVerbosityCache();
+      }
     }
   };
 }
@@ -327,6 +359,12 @@ async function upgradeToFullOtel() {
     } catch {}
 
     // Auto-instrument fetch/XHR
+    // First, restore original fetch to avoid double-patching (shim + OTel instrumentations)
+    if (window.__shimOrigFetch) {
+      window.fetch = window.__shimOrigFetch;
+      delete window.__shimOrigFetch;
+    }
+
     try {
       const [core, fetchI, xhrI, docI, uiI] = await Promise.all([
         import('https://unpkg.com/@opentelemetry/instrumentation@0.50.0/build/esm/index.js'),
@@ -340,7 +378,8 @@ async function upgradeToFullOtel() {
       const { XMLHttpRequestInstrumentation } = xhrI;
       const { DocumentLoadInstrumentation } = docI;
       const { UserInteractionInstrumentation } = uiI;
-      const ignore = [/\/otlp\/v1\/traces$/, /\/_framework\//];
+      // Include common collector endpoint patterns and framework downloads
+      const ignore = [/\/otlp\/v1\/traces$/, /\/v1\/traces$/, /\/_framework\//];
       const propagate = [/.*/];
       registerInstrumentations({
         instrumentations: [
@@ -359,7 +398,10 @@ async function upgradeToFullOtel() {
       endpoint: guessOtlp(),
       getVerbosity,
       setVerbosity: (level) => {
-        if (level in VERBOSITY_LEVELS) window.__OTEL_VERBOSITY = level;
+        if (level in VERBOSITY_LEVELS) {
+          window.__OTEL_VERBOSITY = level;
+          resetVerbosityCache();
+        }
       }
     };
   } catch { /* Upgrade failed, continue with shim */ }
