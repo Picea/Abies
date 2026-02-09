@@ -2,7 +2,7 @@ window.BENCHMARK_DATA = {
   "lastUpdate": 1770670730229,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
-    "Virtual DOM Benchmarks": [
+    "Rendering Engine Throughput": [
       {
         "commit": {
           "author": {
@@ -264,143 +264,7 @@ window.BENCHMARK_DATA = {
             "range": "± 1.4550259067139961"
           }
         ]
-      }
-    ],
-    "Virtual DOM Allocations": [
-      {
-        "commit": {
-          "author": {
-            "email": "MCGPPeters@users.noreply.github.com",
-            "name": "Maurice CGP Peters",
-            "username": "MCGPPeters"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ca386a0c66bd5355ec420092b2ad2274de8be88b",
-          "message": "feat: Add memory allocation tracking to benchmark dashboard (#31)\n\nAdd a second benchmark chart set 'Virtual DOM Allocations' that tracks\nBytesAllocatedPerOperation from the MemoryDiagnoser.\n\nChanges:\n- Add scripts/extract-allocations.py to parse BenchmarkDotNet JSON\n- Add allocation comparison and storage workflow steps\n- Use customSmallerIsBetter tool for allocation metrics\n- Stricter thresholds for allocations (120% alert, 150% fail)",
-          "timestamp": "2026-02-05T21:24:12+01:00",
-          "tree_id": "ffb124c7ee4615e0830ef5e86b89775577ed9126",
-          "url": "https://github.com/Picea/Abies/commit/ca386a0c66bd5355ec420092b2ad2274de8be88b"
-        },
-        "date": 1770323233858,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SmallDomDiff",
-            "value": 312,
-            "unit": "bytes",
-            "extra": "Gen0: 19"
-          },
-          {
-            "name": "MediumDomDiff",
-            "value": 384,
-            "unit": "bytes",
-            "extra": "Gen0: 24"
-          },
-          {
-            "name": "LargeDomDiff",
-            "value": 344,
-            "unit": "bytes",
-            "extra": "Gen0: 21"
-          },
-          {
-            "name": "AttributeOnlyDiff",
-            "value": 360,
-            "unit": "bytes",
-            "extra": "Gen0: 22"
-          },
-          {
-            "name": "TextOnlyDiff",
-            "value": 384,
-            "unit": "bytes",
-            "extra": "Gen0: 24"
-          },
-          {
-            "name": "NodeAdditionDiff",
-            "value": 424,
-            "unit": "bytes",
-            "extra": "Gen0: 26"
-          },
-          {
-            "name": "NodeRemovalDiff",
-            "value": 424,
-            "unit": "bytes",
-            "extra": "Gen0: 26"
-          }
-        ]
       },
-      {
-        "commit": {
-          "author": {
-            "email": "MCGPPeters@users.noreply.github.com",
-            "name": "Maurice CGP Peters",
-            "username": "MCGPPeters"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "1e3841179ba068b4110a0f1de4b971135de1318d",
-          "message": "perf: Toub-inspired optimizations for DOM operations (#33)\n\nApply techniques from Stephen Toub's .NET performance articles:\n\n1. Index String Cache (256 entries) - eliminates string interpolation for non-keyed child indices\n2. StringBuilder Pooling - reduces GC pressure during Apply operations  \n3. Append Chain Optimization - removes intermediate string allocations in RenderNode\n4. Refactored DiffChildrenCore - uses ReadOnlySpan<string> for key comparisons",
-          "timestamp": "2026-02-06T08:15:24+01:00",
-          "tree_id": "47f51052c8de39f05977793abf1c18d0c1c55a0f",
-          "url": "https://github.com/Picea/Abies/commit/1e3841179ba068b4110a0f1de4b971135de1318d"
-        },
-        "date": 1770362313312,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SmallDomDiff",
-            "value": 312,
-            "unit": "bytes",
-            "extra": "Gen0: 19"
-          },
-          {
-            "name": "MediumDomDiff",
-            "value": 384,
-            "unit": "bytes",
-            "extra": "Gen0: 24"
-          },
-          {
-            "name": "LargeDomDiff",
-            "value": 344,
-            "unit": "bytes",
-            "extra": "Gen0: 21"
-          },
-          {
-            "name": "AttributeOnlyDiff",
-            "value": 360,
-            "unit": "bytes",
-            "extra": "Gen0: 22"
-          },
-          {
-            "name": "TextOnlyDiff",
-            "value": 384,
-            "unit": "bytes",
-            "extra": "Gen0: 24"
-          },
-          {
-            "name": "NodeAdditionDiff",
-            "value": 424,
-            "unit": "bytes",
-            "extra": "Gen0: 26"
-          },
-          {
-            "name": "NodeRemovalDiff",
-            "value": 424,
-            "unit": "bytes",
-            "extra": "Gen0: 26"
-          }
-        ]
-      }
-    ],
-    "Rendering Engine Throughput": [
       {
         "commit": {
           "author": {
@@ -2317,6 +2181,138 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Rendering Engine Allocations": [
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca386a0c66bd5355ec420092b2ad2274de8be88b",
+          "message": "feat: Add memory allocation tracking to benchmark dashboard (#31)\n\nAdd a second benchmark chart set 'Virtual DOM Allocations' that tracks\nBytesAllocatedPerOperation from the MemoryDiagnoser.\n\nChanges:\n- Add scripts/extract-allocations.py to parse BenchmarkDotNet JSON\n- Add allocation comparison and storage workflow steps\n- Use customSmallerIsBetter tool for allocation metrics\n- Stricter thresholds for allocations (120% alert, 150% fail)",
+          "timestamp": "2026-02-05T21:24:12+01:00",
+          "tree_id": "ffb124c7ee4615e0830ef5e86b89775577ed9126",
+          "url": "https://github.com/Picea/Abies/commit/ca386a0c66bd5355ec420092b2ad2274de8be88b"
+        },
+        "date": 1770323233858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SmallDomDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19"
+          },
+          {
+            "name": "MediumDomDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "LargeDomDiff",
+            "value": 344,
+            "unit": "bytes",
+            "extra": "Gen0: 21"
+          },
+          {
+            "name": "AttributeOnlyDiff",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 22"
+          },
+          {
+            "name": "TextOnlyDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "NodeAdditionDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
+          },
+          {
+            "name": "NodeRemovalDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e3841179ba068b4110a0f1de4b971135de1318d",
+          "message": "perf: Toub-inspired optimizations for DOM operations (#33)\n\nApply techniques from Stephen Toub's .NET performance articles:\n\n1. Index String Cache (256 entries) - eliminates string interpolation for non-keyed child indices\n2. StringBuilder Pooling - reduces GC pressure during Apply operations  \n3. Append Chain Optimization - removes intermediate string allocations in RenderNode\n4. Refactored DiffChildrenCore - uses ReadOnlySpan<string> for key comparisons",
+          "timestamp": "2026-02-06T08:15:24+01:00",
+          "tree_id": "47f51052c8de39f05977793abf1c18d0c1c55a0f",
+          "url": "https://github.com/Picea/Abies/commit/1e3841179ba068b4110a0f1de4b971135de1318d"
+        },
+        "date": 1770362313312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SmallDomDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19"
+          },
+          {
+            "name": "MediumDomDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "LargeDomDiff",
+            "value": 344,
+            "unit": "bytes",
+            "extra": "Gen0: 21"
+          },
+          {
+            "name": "AttributeOnlyDiff",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 22"
+          },
+          {
+            "name": "TextOnlyDiff",
+            "value": 384,
+            "unit": "bytes",
+            "extra": "Gen0: 24"
+          },
+          {
+            "name": "NodeAdditionDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
+          },
+          {
+            "name": "NodeRemovalDiff",
+            "value": 424,
+            "unit": "bytes",
+            "extra": "Gen0: 26"
+          }
+        ]
+      },
       {
         "commit": {
           "author": {
