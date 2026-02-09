@@ -213,9 +213,9 @@ void (async () => {
       try { tracer = trace.getTracer('Abies.JS'); } catch {}
       // Expose OTel handle for forceFlush on page unload
       try {
-        window.__otel = { 
-          provider, 
-          exporter, 
+        window.__otel = {
+          provider,
+          exporter,
           endpoint: guessOtlp(),
           // Expose verbosity controls
           getVerbosity,
@@ -255,7 +255,7 @@ void (async () => {
         // currentSpan: the span that is currently active (for creating children)
         // activeTraceContext: persists trace context even after span ends (for fetch calls)
         const state = { currentSpan: null, activeTraceContext: null, pendingSpans: [] };
-        
+
         function makeSpan(name, kind = 1, explicitParent = undefined) {
           // Use explicit parent if provided, otherwise use current span, otherwise use active trace context
           const parent = explicitParent !== undefined ? explicitParent : (state.currentSpan || state.activeTraceContext);
@@ -263,13 +263,13 @@ void (async () => {
           const spanId = hex(8);
           return { traceId, spanId, parentSpanId: parent?.spanId, name, kind, start: nowNs(), end: null, attributes: {} };
         }
-        
+
         // Batch and export spans in OTLP JSON format
         let exportTimer = null;
         async function flushSpans() {
           if (state.pendingSpans.length === 0) return;
           const spans = state.pendingSpans.splice(0, state.pendingSpans.length);
-          
+
           // Build OTLP JSON payload
           const payload = {
             resourceSpans: [{
@@ -297,7 +297,7 @@ void (async () => {
               }]
             }]
           };
-          
+
           try {
             await fetch(endpoint, {
               method: 'POST',
@@ -308,7 +308,7 @@ void (async () => {
             // Silently ignore export errors
           }
         }
-        
+
         function scheduleFlush() {
           if (exportTimer) return;
           exportTimer = setTimeout(() => {
@@ -316,12 +316,12 @@ void (async () => {
             flushSpans();
           }, 500);
         }
-        
+
         async function exportSpan(span) {
           state.pendingSpans.push(span);
           scheduleFlush();
         }
-        
+
         // Minimal shim tracer used by existing code paths
         trace = {
           getTracer: () => ({
@@ -340,8 +340,8 @@ void (async () => {
                 setAttribute: (key, value) => { s.attributes[key] = value; },
                 setStatus: () => {},
                 recordException: () => {},
-                end: async () => { 
-                  s.end = nowNs(); 
+                end: async () => {
+                  s.end = nowNs();
                   state.currentSpan = prev;
                   // Keep activeTraceContext alive briefly for async operations (fetch)
                   // Clear it after a short delay to allow pending fetches to inherit context
@@ -350,7 +350,7 @@ void (async () => {
                       state.activeTraceContext = prev;
                     }
                   }, 100);
-                  await exportSpan(s); 
+                  await exportSpan(s);
                 }
               };
             }
@@ -367,23 +367,23 @@ void (async () => {
             const url = (typeof input === 'string') ? input : input.url;
             // Don't instrument OTLP export calls (would cause infinite loop)
             if (/\/otlp\/v1\/traces$/.test(url)) return origFetch(input, init);
-            
+
             const method = (init && init.method) || (typeof input !== 'string' && input.method) || 'GET';
-            
+
             // Create HTTP span as child of current span OR active trace context
             // This ensures fetch calls made after span.end() still link to the trace
             const parent = state.currentSpan || state.activeTraceContext;
             const sp = makeSpan(`HTTP ${method}`, 3 /* CLIENT */, parent);
             sp.attributes['http.method'] = method;
             sp.attributes['http.url'] = url;
-            
+
             // Build W3C traceparent header to propagate to backend
             const traceparent = `00-${sp.traceId}-${sp.spanId}-01`;
             const i = init ? { ...init } : {};
             const h = new Headers((i && i.headers) || (typeof input !== 'string' && input.headers) || {});
             h.set('traceparent', traceparent);
             i.headers = h;
-            
+
             try {
               const res = await origFetch(input, i);
               sp.attributes['http.status_code'] = res.status;
@@ -400,9 +400,9 @@ void (async () => {
         } catch {}
 
         // Expose OTel handle for forceFlush on page unload
-        window.__otel = { 
-          provider: { forceFlush: async () => { await flushSpans(); } }, 
-          exporter: { url: endpoint }, 
+        window.__otel = {
+          provider: { forceFlush: async () => { await flushSpans(); } },
+          exporter: { url: endpoint },
           endpoint,
           // Expose verbosity controls
           getVerbosity,
@@ -450,6 +450,36 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
     .create();
 
 const registeredEvents = new Set();
+
+// Pre-register all common event types at startup to avoid O(n) DOM scanning
+// on every incremental update. These match the event types defined in Operations.cs.
+const COMMON_EVENT_TYPES = [
+    // Mouse events
+    'click', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout',
+    'mouseenter', 'mouseleave', 'mousemove', 'contextmenu', 'wheel',
+    // Keyboard events
+    'keydown', 'keyup', 'keypress',
+    // Form events
+    'input', 'change', 'submit', 'reset', 'focus', 'blur', 'invalid', 'search',
+    // Touch events
+    'touchstart', 'touchend', 'touchmove', 'touchcancel',
+    // Pointer events
+    'pointerdown', 'pointerup', 'pointermove', 'pointercancel',
+    'pointerover', 'pointerout', 'pointerenter', 'pointerleave',
+    'gotpointercapture', 'lostpointercapture',
+    // Drag events
+    'drag', 'dragstart', 'dragend', 'dragenter', 'dragleave', 'dragover', 'drop',
+    // Clipboard events
+    'copy', 'cut', 'paste',
+    // Media events
+    'play', 'pause', 'ended', 'volumechange', 'timeupdate', 'seeking', 'seeked',
+    'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'playing',
+    'waiting', 'stalled', 'suspend', 'emptied', 'ratechange', 'durationchange',
+    // Other events
+    'scroll', 'resize', 'load', 'error', 'abort', 'select', 'toggle',
+    'animationstart', 'animationend', 'animationiteration', 'animationcancel',
+    'transitionstart', 'transitionend', 'transitionrun', 'transitioncancel'
+];
 
 function ensureEventListener(eventName) {
     if (registeredEvents.has(eventName)) return;
@@ -500,14 +530,14 @@ function genericEventHandler(event) {
     if (name === 'keydown' && event && event.key === 'Enter') {
         try { event.preventDefault(); } catch { /* ignore */ }
     }
-    
+
     // Build rich UI context for tracing
     const tag = (target.tagName || '').toLowerCase();
     const text = (target.textContent || '').trim().substring(0, 50); // Truncate long text
     const classes = target.className || '';
     const ariaLabel = target.getAttribute('aria-label') || '';
     const elId = target.id || '';
-    
+
     // Build human-readable action description
     let action = '';
     if (name === 'click') {
@@ -528,7 +558,7 @@ function genericEventHandler(event) {
     } else {
         action = `${name}: ${tag}${elId ? '#' + elId : ''}`;
     }
-    
+
     const spanOptions = {
         attributes: {
             'ui.event.type': name,
@@ -541,7 +571,7 @@ function genericEventHandler(event) {
             'abies.message_id': message
         }
     };
-    
+
     // Use startActiveSpan if available (CDN mode) to properly set context for nested spans
     // This ensures FetchInstrumentation creates child spans under this UI Event
     if (typeof tracer.startActiveSpan === 'function') {
@@ -811,27 +841,45 @@ function unsubscribe(key) {
 }
 
 /**
- * Adds event listeners to the document body for interactive elements.
+ * Discovers and registers event listeners for any custom (non-common) event types
+ * in the given DOM subtree. Common event types are pre-registered at startup,
+ * so this function primarily handles rare/custom event handlers.
+ * 
+ * Uses TreeWalker instead of querySelectorAll for better memory efficiency.
  */
 function addEventListeners(root) {
+    // Scan the given scope for any data-event-* attributes.
+    // Since common events are pre-registered, this is mostly a no-op for typical apps,
+    // but we still need to scan for custom event types in newly added HTML.
     const scope = root || document;
-    // Build a list including the scope element (if Element) plus all descendants
-    const nodes = [];
-    if (scope && scope.nodeType === 1 /* ELEMENT_NODE */) nodes.push(scope);
-    scope.querySelectorAll('*').forEach(el => {
-        nodes.push(el);
-    });
-    nodes.forEach(el => {
-        for (const attr of el.attributes) {
+    
+    // Use TreeWalker for memory-efficient iteration
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
+    
+    // Include the root element itself if it's an element
+    if (scope.nodeType === 1 /* ELEMENT_NODE */ && scope.attributes) {
+        for (const attr of scope.attributes) {
             if (attr.name.startsWith('data-event-')) {
                 const name = attr.name.substring('data-event-'.length);
                 ensureEventListener(name);
             }
         }
-    });
-}
-
-/**
+    }
+    
+    // Walk descendants
+    let el = walker.nextNode();
+    while (el) {
+        if (el.attributes) {
+            for (const attr of el.attributes) {
+                if (attr.name.startsWith('data-event-')) {
+                    const name = attr.name.substring('data-event-'.length);
+                    ensureEventListener(name);
+                }
+            }
+        }
+        el = walker.nextNode();
+    }
+}/**
  * Event handler for click events on elements with data-event-* attributes.
  * @param {Event} event - The DOM event.
  */
@@ -896,7 +944,7 @@ setModuleImports('abies.js', {
     setTitle: withSpan('setTitle', async (title) => {
         document.title = title;
     }),
-    
+
     /**
      * Removes a child element from the DOM.
      * @param {number} parentId - The ID of the parent element.
@@ -1345,11 +1393,16 @@ setModuleImports('abies.js', {
         unsubscribe(key);
     }
 });
-    
+
 const config = getConfig();
 const exports = await getAssemblyExports("Abies");
 
 await runMain(); // Ensure the .NET runtime is initialized
+
+// Pre-register all common event types now that the runtime is ready.
+// This is done after runMain() to avoid TDZ issues with exports.
+// Since ensureEventListener checks registeredEvents Set, this is idempotent.
+COMMON_EVENT_TYPES.forEach(ensureEventListener);
 
 // Make sure any existing data-event-* attributes in the initial DOM are discovered
 try { addEventListeners(); } catch (err) { /* ignore */ }
