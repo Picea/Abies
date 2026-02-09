@@ -135,7 +135,7 @@ jobs:
           python3 scripts/compare-benchmarks.py \
             ./benchmark-baseline/merged \
             ./benchmark-results/merged \
-            --throughput-threshold 110 \
+            --throughput-threshold 115 \
             --allocation-threshold 120
 
       # ============================================

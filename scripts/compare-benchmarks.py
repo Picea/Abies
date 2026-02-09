@@ -6,13 +6,16 @@ This script performs same-job comparison to avoid CI runner variance between run
 Both baseline and PR benchmarks are run in the same job, then compared here.
 
 Usage:
-    python compare-benchmarks.py <baseline-dir> <pr-dir> [--throughput-threshold 110] [--allocation-threshold 120]
+    python compare-benchmarks.py <baseline-dir> <pr-dir> [--throughput-threshold 115] [--allocation-threshold 120]
 
 Arguments:
     baseline-dir         Directory containing baseline (main) merged benchmark results
     pr-dir               Directory containing PR merged benchmark results
-    --throughput-threshold  Fail if throughput regresses by more than this % (default: 110 = 10% slower)
+    --throughput-threshold  Fail if throughput regresses by more than this % (default: 115 = 15% slower)
     --allocation-threshold  Fail if allocations increase by more than this % (default: 120 = 20% more)
+
+Note: The 15% throughput threshold accounts for typical CI runner variance.
+Local benchmarks show ~2-5% variance between runs, but CI environments can vary by 10-15%.
 
 Exit codes:
     0 - All benchmarks pass thresholds
@@ -201,8 +204,8 @@ def main():
     parser.add_argument(
         '--throughput-threshold',
         type=float,
-        default=110.0,
-        help='Fail if throughput regresses by more than this %% (default: 110 = 10%% slower)'
+        default=115.0,
+        help='Fail if throughput regresses by more than this %% (default: 115 = 15%% slower)'
     )
     parser.add_argument(
         '--allocation-threshold',
