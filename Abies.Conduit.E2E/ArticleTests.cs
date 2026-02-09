@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -54,7 +52,7 @@ public class ArticleTests : PlaywrightFixture
 
         // Should be on article page
         await Expect(Page.GetByTestId("article-page")).ToBeVisibleAsync();
-        
+
         // Article content should be displayed
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = title })).ToBeVisibleAsync();
         await Expect(Page.GetByText(body)).ToBeVisibleAsync();
@@ -81,17 +79,21 @@ public class ArticleTests : PlaywrightFixture
         // Wait for form to load with existing values - wait for the title to be populated
         var titleInput = Page.GetByPlaceholder("Article Title");
         await Expect(titleInput).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         // Wait for the title input to have the original title (meaning article data loaded)
         await Expect(titleInput).ToHaveValueAsync(originalTitle, new() { Timeout = 10000 });
+
+        // Wait for the button to show "Update Article" (not "Publish Article")
+        // This confirms the slug is loaded and we're in edit mode
+        var updateButton = Page.GetByRole(AriaRole.Button, new() { Name = "Update Article" });
+        await Expect(updateButton).ToBeVisibleAsync(new() { Timeout = 10000 });
 
         // Modify the title
         var newTitle = $"Updated Title {Guid.NewGuid():N}";
         await titleInput.FillAsync(newTitle);
 
-        // When editing (Slug is set), the button says "Update Article"
-        var updateButton = Page.GetByRole(AriaRole.Button, new() { Name = "Update Article" });
-        await Expect(updateButton).ToBeVisibleAsync(new() { Timeout = 5000 });
+        // Wait for the button to be enabled (form validation must pass)
+        await Expect(updateButton).ToBeEnabledAsync(new() { Timeout = 5000 });
         await updateButton.ClickAsync();
 
         // Should redirect back to article page with new title

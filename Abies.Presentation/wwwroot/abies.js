@@ -934,6 +934,34 @@ setModuleImports('abies.js', {
     }),
 
     /**
+     * Moves a child element to a new position within its parent.
+     * Uses insertBefore semantics: moves child before beforeId, or appends if beforeId is null.
+     * This is more efficient than remove+add as it preserves the element and its event listeners.
+     * @param {string} parentId - The ID of the parent element.
+     * @param {string} childId - The ID of the child element to move.
+     * @param {string|null} beforeId - The ID of the element to insert before, or null to append.
+     */
+    moveChild: withSpan('moveChild', async (parentId, childId, beforeId) => {
+        const parent = document.getElementById(parentId);
+        const child = document.getElementById(childId);
+        if (!parent) {
+            console.error(`Parent with ID ${parentId} not found for moveChild.`);
+            return;
+        }
+        if (!child) {
+            console.error(`Child with ID ${childId} not found for moveChild.`);
+            return;
+        }
+        const before = beforeId ? document.getElementById(beforeId) : null;
+        if (beforeId && !before) {
+            console.error(`Before element with ID ${beforeId} not found for moveChild.`);
+            return;
+        }
+        // insertBefore with null as second argument appends to end
+        parent.insertBefore(child, before);
+    }),
+
+    /**
      * Updates the text content of a DOM element.
      * @param {number} nodeId - The ID of the node to update.
      * @param {string} newText - The new text content.
@@ -1088,6 +1116,26 @@ setModuleImports('abies.js', {
                     } else {
                         console.error(`ReplaceChild failed: target=${patch.TargetId} not found.`);
                     }
+                    break;
+                }
+                case 'MoveChild': {
+                    const parent = document.getElementById(patch.ParentId);
+                    const child = document.getElementById(patch.ChildId);
+                    if (!parent) {
+                        console.error(`MoveChild failed: parent=${patch.ParentId} not found.`);
+                        break;
+                    }
+                    if (!child) {
+                        console.error(`MoveChild failed: child=${patch.ChildId} not found.`);
+                        break;
+                    }
+                    const before = patch.BeforeId ? document.getElementById(patch.BeforeId) : null;
+                    if (patch.BeforeId && !before) {
+                        console.error(`MoveChild failed: before=${patch.BeforeId} not found.`);
+                        break;
+                    }
+                    // insertBefore with null as second argument appends to end
+                    parent.insertBefore(child, before);
                     break;
                 }
                 case 'UpdateAttribute': {

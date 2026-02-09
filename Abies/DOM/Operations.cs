@@ -455,6 +455,20 @@ public readonly struct RemoveRaw(Element parent, RawHtml child) : Patch
 }
 
 /// <summary>
+/// Represents a patch operation to move a child element to a new position in the Abies DOM.
+/// Uses insertBefore semantics: move child before the element with BeforeId, or append if null.
+/// </summary>
+/// <param name="parent">The parent element containing the child.</param>
+/// <param name="child">The child element to move.</param>
+/// <param name="beforeId">The ID of the element to insert before, or null to append.</param>
+public readonly struct MoveChild(Element parent, Element child, string? beforeId) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Element Child = child;
+    public readonly string? BeforeId = beforeId;
+}
+
+/// <summary>
 /// Represents a patch operation to replace raw HTML in the Abies DOM.
 /// </summary>
 /// <param name="oldNode">The old raw HTML node to replace.</param>
@@ -505,6 +519,7 @@ public record PatchData
     public string? AttrValue { get; init; }
     public string? NewId { get; init; }
     public string? Text { get; init; }
+    public string? BeforeId { get; init; }
 }
 
 
@@ -829,6 +844,9 @@ public static class Operations
             case UpdateRaw updateRaw:
                 await Interop.ReplaceChildHtml(updateRaw.Node.Id, Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html)));
                 break;
+            case MoveChild moveChild:
+                await Interop.MoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
+                break;
             default:
                 throw new InvalidOperationException("Unknown patch type");
         }
@@ -1023,6 +1041,13 @@ public static class Operations
                 Type = "ReplaceChild",
                 TargetId = updateRaw.Node.Id,
                 Html = Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html))
+            },
+            MoveChild moveChild => new PatchData
+            {
+                Type = "MoveChild",
+                ParentId = moveChild.Parent.Id,
+                ChildId = moveChild.Child.Id,
+                BeforeId = moveChild.BeforeId
             },
             _ => throw new InvalidOperationException($"Unknown patch type: {patch.GetType().Name}")
         };
@@ -1357,38 +1382,66 @@ public static class Operations
 
                 if (isReorder)
                 {
-                    // Reorder detected: remove all old children and add all new children
-                    // to ensure correct DOM order
-                    for (int i = oldLength - 1; i >= 0; i--)
+                    // Reorder detected: use LIS algorithm to minimize DOM moves
+                    // 1. Build sequence of old indices in new order
+                    // 2. Find LIS - elements in LIS don't need to be moved
+                    // 3. Move elements NOT in LIS to their correct positions
+                    // 4. Diff each matched element pair for attribute/child changes
+
+                    // Build sequence: for each position in newChildren, get the old index
+                    var oldIndices = ArrayPool<int>.Shared.Rent(newLength);
+                    try
                     {
-                        if (oldChildren[i] is Element oldChild)
+                        for (int i = 0; i < newLength; i++)
                         {
-                            patches.Add(new RemoveChild(oldParent, oldChild));
+                            oldIndices[i] = oldKeyToIndex[newKeys[i]];
                         }
-                        else if (oldChildren[i] is RawHtml oldRaw)
+
+                        // Find LIS of old indices - elements in LIS are already in correct relative order
+                        var lisIndices = ComputeLIS(oldIndices.AsSpan(0, newLength));
+
+                        // Create a set of new positions that are in the LIS (don't need moving)
+                        var inLIS = new HashSet<int>(lisIndices);
+
+                        // First, diff all elements (they all exist in both old and new)
+                        for (int i = 0; i < newLength; i++)
                         {
-                            patches.Add(new RemoveRaw(oldParent, oldRaw));
+                            var oldIndex = oldIndices[i];
+                            DiffInternal(oldChildren[oldIndex], newChildren[i], oldParent, patches);
                         }
-                        else if (oldChildren[i] is Text oldText)
+
+                        // Move elements NOT in LIS to their correct positions
+                        // Process in reverse order so we can use "insertBefore" with known reference
+                        // IMPORTANT: We must use OLD element IDs since those are what exist in the DOM
+                        for (int i = newLength - 1; i >= 0; i--)
                         {
-                            patches.Add(new RemoveText(oldParent, oldText));
+                            if (!inLIS.Contains(i))
+                            {
+                                // This element needs to be moved
+                                // Use OLD element since it has the ID currently in the DOM
+                                var oldIndex = oldIndices[i];
+                                var oldNode = oldChildren[oldIndex];
+                                if (oldNode is Element oldChildElement)
+                                {
+                                    // Find the element to insert before (the next sibling in new order)
+                                    // Also use OLD element ID for the reference element
+                                    string? beforeId = null;
+                                    if (i + 1 < newLength)
+                                    {
+                                        // Get the OLD element for position i+1 (its ID is in the DOM)
+                                        var nextOldIndex = oldIndices[i + 1];
+                                        beforeId = oldChildren[nextOldIndex].Id;
+                                    }
+                                    patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
+                                }
+                                // Note: Text and RawHtml nodes would need similar handling
+                                // but they typically don't have stable keys for reordering
+                            }
                         }
                     }
-
-                    for (int i = 0; i < newLength; i++)
+                    finally
                     {
-                        if (newChildren[i] is Element newChild)
-                        {
-                            patches.Add(new AddChild(newParent, newChild));
-                        }
-                        else if (newChildren[i] is RawHtml newRaw)
-                        {
-                            patches.Add(new AddRaw(newParent, newRaw));
-                        }
-                        else if (newChildren[i] is Text newText)
-                        {
-                            patches.Add(new AddText(newParent, newText));
-                        }
+                        ArrayPool<int>.Shared.Return(oldIndices);
                     }
                     return;
                 }
@@ -1535,6 +1588,84 @@ public static class Operations
             }
         }
         return true;
+    }
+
+    /// <summary>
+    /// Computes the Longest Increasing Subsequence (LIS) of the input array.
+    /// Returns the indices in the input array that form the LIS.
+    /// Used for optimal DOM reordering - elements in the LIS don't need to be moved.
+    /// 
+    /// Algorithm: O(n log n) using binary search with patience sorting.
+    /// Inspired by Inferno's virtual DOM implementation.
+    /// </summary>
+    /// <param name="arr">Array of old indices in new order.</param>
+    /// <returns>Indices in the input array that form the LIS.</returns>
+    private static int[] ComputeLIS(ReadOnlySpan<int> arr)
+    {
+        var len = arr.Length;
+        if (len == 0)
+        {
+            return [];
+        }
+
+        // result[i] = index in arr of smallest ending element of LIS of length i+1
+        var result = new int[len];
+        // p[i] = predecessor index in arr for element at arr[i] in the LIS
+        var p = new int[len];
+        var k = 0; // Length of longest LIS found - 1
+
+        for (int i = 0; i < len; i++)
+        {
+            var arrI = arr[i];
+
+            // Binary search for position to insert arrI
+            if (k > 0 && arr[result[k]] < arrI)
+            {
+                // arrI extends the longest LIS
+                p[i] = result[k];
+                result[++k] = i;
+            }
+            else
+            {
+                // Binary search to find the smallest LIS ending value >= arrI
+                int lo = 0, hi = k;
+                while (lo < hi)
+                {
+                    var mid = (lo + hi) >> 1;
+                    if (arr[result[mid]] < arrI)
+                    {
+                        lo = mid + 1;
+                    }
+                    else
+                    {
+                        hi = mid;
+                    }
+                }
+
+                // Update result and predecessor
+                if (lo > 0)
+                {
+                    p[i] = result[lo - 1];
+                }
+                result[lo] = i;
+                if (lo > k)
+                {
+                    k = lo;
+                }
+            }
+        }
+
+        // Reconstruct LIS by following predecessor chain
+        var lisLength = k + 1;
+        var lis = new int[lisLength];
+        var idx = result[k];
+        for (int i = lisLength - 1; i >= 0; i--)
+        {
+            lis[i] = idx;
+            idx = p[idx];
+        }
+
+        return lis;
     }
 
     /// <summary>
