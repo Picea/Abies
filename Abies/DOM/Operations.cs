@@ -1534,6 +1534,12 @@ public static class Operations
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
 
+        // Early exit for both empty - avoids ArrayPool rent/return overhead
+        if (oldLength == 0 && newLength == 0)
+        {
+            return;
+        }
+
         // ADR-016: Use ID-based keyed diffing for all elements.
         // Build maps of old and new children by their keys (element Id or data-key).
         // Use ArrayPool to avoid allocations
@@ -2184,32 +2190,48 @@ public static class Operations
 
     /// <summary>
     /// Gets the key for a node used in keyed diffing.
-    /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+    /// Per ADR-016: data-key/key attribute is an explicit override; element Id is the default key.
+    /// Optimized with fast paths for common node types to avoid interface dispatch.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string? GetKey(Node node)
     {
-        // Handle Memo nodes by getting the key of their cached content
-        // For lazy memos, we need to evaluate to get the key (or use the lazy node's own Id)
-        Node effective;
-        if (node is ILazyMemoNode lazyMemo)
+        // Fast path for common case: Element (vast majority of nodes)
+        // Check this first to avoid interface dispatch overhead for IMemoNode/ILazyMemoNode
+        if (node is Element element)
         {
-            // Use the lazy node's ID as the key - don't evaluate just for key lookup
-            return node.Id;
-        }
-        else if (node is IMemoNode memo)
-        {
-            effective = memo.CachedNode;
-        }
-        else
-        {
-            effective = node;
+            return GetElementKey(element);
         }
 
-        if (effective is not Element element)
+        // Fast path: Text and RawHtml nodes have no key
+        if (node is Text or RawHtml)
         {
             return null;
         }
 
+        // Slow path: Memo nodes (rare in practice)
+        if (node is ILazyMemoNode)
+        {
+            // Use the lazy node's ID as the key - don't evaluate just for key lookup
+            return node.Id;
+        }
+
+        if (node is IMemoNode memo)
+        {
+            // Recurse into the cached content
+            return GetKey(memo.CachedNode);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the key for an Element node.
+    /// Checks for explicit data-key/key attribute first, then falls back to element Id.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetElementKey(Element element)
+    {
         // ADR-016: Use element Id as the primary key for diffing.
         // This allows developers to set stable IDs on elements,
         // and the diff algorithm will correctly match elements by ID.
@@ -2218,11 +2240,13 @@ public static class Operations
         // by checking for data-key attribute as an explicit override.
 
         // First, check for explicit data-key attribute (backward compatibility)
-        foreach (var attr in element.Attributes)
+        var attrs = element.Attributes;
+        for (int i = 0; i < attrs.Length; i++)
         {
-            if (attr.Name == "data-key" || attr.Name == "key")
+            var name = attrs[i].Name;
+            if (name == "data-key" || name == "key")
             {
-                return attr.Value;
+                return attrs[i].Value;
             }
         }
 
