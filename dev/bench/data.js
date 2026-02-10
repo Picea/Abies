@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770719866184,
+  "lastUpdate": 1770721170427,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -2524,6 +2524,180 @@ window.BENCHMARK_DATA = {
             "value": 7992.471223880083,
             "unit": "ns",
             "range": "± 279.54898256631895"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff524c970d3dee79bce5525a689cc1834ea43419",
+          "message": "fix: address Copilot review comments for ArrayPool clearing (#60)\n\n- Clear inLIS array after renting from ArrayPool to avoid stale data\n- Clear List<PatchData> before returning to pool to release references\n- Remove redundant Clear() calls (clear on rent vs on return)\n- Fix stray markdown fence in memory.instructions.md",
+          "timestamp": "2026-02-10T11:49:27+01:00",
+          "tree_id": "c307b1f7e3a0dfda4b71d3c76ae1364ef4d468a2",
+          "url": "https://github.com/Picea/Abies/commit/ff524c970d3dee79bce5525a689cc1834ea43419"
+        },
+        "date": 1770721170060,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 380.8551319562472,
+            "unit": "ns",
+            "range": "± 1.5059891109371648"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2575.009257976825,
+            "unit": "ns",
+            "range": "± 3.3636020728412546"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 379.6904497464498,
+            "unit": "ns",
+            "range": "± 2.228307731784953"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 630.0829729667076,
+            "unit": "ns",
+            "range": "± 1.7962941822735172"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 466.87957587608923,
+            "unit": "ns",
+            "range": "± 2.3846922913314694"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 466.7862602551778,
+            "unit": "ns",
+            "range": "± 1.0813190645845552"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 467.4774089959952,
+            "unit": "ns",
+            "range": "± 1.928131911586127"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 197.27962439060212,
+            "unit": "ns",
+            "range": "± 1.6695298812766879"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 778.534655204186,
+            "unit": "ns",
+            "range": "± 6.459051695687756"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 386.86363458633423,
+            "unit": "ns",
+            "range": "± 2.949905992878476"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 705.9313118798392,
+            "unit": "ns",
+            "range": "± 2.5486619945898785"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5687.679157002767,
+            "unit": "ns",
+            "range": "± 21.943879935919494"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 38680.043204171314,
+            "unit": "ns",
+            "range": "± 450.458049578025"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 653.9587871006557,
+            "unit": "ns",
+            "range": "± 9.959739904238262"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5088.568842206682,
+            "unit": "ns",
+            "range": "± 32.60261564919392"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2479.961382627487,
+            "unit": "ns",
+            "range": "± 47.24450919192442"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 38.16249174674352,
+            "unit": "ns",
+            "range": "± 0.7686492087572077"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 51.628154661506414,
+            "unit": "ns",
+            "range": "± 1.0709756831577415"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 543.6211392084757,
+            "unit": "ns",
+            "range": "± 8.531972391212395"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2435.2593101501466,
+            "unit": "ns",
+            "range": "± 44.419610756388636"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4318.9550043741865,
+            "unit": "ns",
+            "range": "± 46.17158590943417"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 117.15408070087433,
+            "unit": "ns",
+            "range": "± 1.8020463531714384"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 279.2969244321187,
+            "unit": "ns",
+            "range": "± 4.397489645361146"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 668.2784360779656,
+            "unit": "ns",
+            "range": "± 14.148113978410809"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7637.963277180989,
+            "unit": "ns",
+            "range": "± 128.66224831296356"
           }
         ]
       }
