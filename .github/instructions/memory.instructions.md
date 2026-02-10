@@ -70,6 +70,70 @@ The following Toub-inspired optimizations have been applied:
 - Do NOT revisit this approach unless moving to a binary protocol like Blazor's RenderBatch
 - The ~4.8% parseHtmlFragment overhead is acceptable and cannot be eliminated with JSON-based approaches
 
+### ✅ APPLIED: WASM Single-Thread Optimization (2026-02-10)
+
+**Hypothesis**: Since WASM is single-threaded, concurrent data structures add unnecessary overhead.
+
+**Implementation**:
+- Changed `ConcurrentQueue<T>` → `Stack<T>` for all object pools in `Operations.cs`
+- Changed `ConcurrentDictionary<TKey, TValue>` → `Dictionary<TKey, TValue>` for handler registries in `Runtime.cs`
+- Removed unused `System.Collections.Concurrent` using directives
+
+**Benchmark Results** (js-framework-benchmark):
+
+| Benchmark | Before (ConcurrentQueue) | After (Stack) | Change |
+|-----------|-------------------------|---------------|--------|
+| 01_run1k | 105.0 / 73.9 ms | 104.1 / 73.2 ms | **-0.9%** ✅ |
+| 05_swap1k | 115.6 / 94.6 ms | 116.2 / 94.7 ms | ~0% (within variance) |
+| 09_clear1k | 90.5 / 85.0 ms | 90.3 / 85.0 ms | **-0.2%** ✅ |
+
+**Why Stack<T> over Queue<T>**:
+- LIFO pattern is more cache-friendly (recently used items reused first)
+- Simpler implementation than Queue<T>'s circular buffer
+- Single backing array vs Queue's head/tail pointers
+
+**Key Insight**: The optimization is small (~1%) but the change is correct - we shouldn't pay for thread-safety we don't need. The real win is code simplicity and correctness.
+
+### ❌ REJECTED: PatchType Enum + PatchData Pooling (2026-02-10)
+
+**Hypothesis**: Reduce JSON payload size and allocation overhead by:
+1. Using `PatchType : byte` enum instead of string type names (e.g., `"Type":1` vs `"Type":"AddChild"`)
+2. Pooling `PatchData` objects to reduce allocations
+3. Using `Stack<T>` instead of `ConcurrentQueue<T>` for pools in single-threaded WASM
+
+**Implementation**:
+- Created `PatchType` enum with byte-sized values 0-10
+- Changed `PatchData` from `record` to `sealed class` with mutable properties
+- Added `_patchDataPool` and `_patchDataListPool` for object reuse
+- Changed all pool data structures from `ConcurrentQueue<T>` to `Stack<T>`
+- Updated JavaScript to use numeric switch cases
+
+**Benchmark Results** (js-framework-benchmark):
+
+| Benchmark | Baseline Total | Baseline Script | With Changes Total | With Changes Script | Δ Total | Δ Script |
+|-----------|----------------|-----------------|-------------------|---------------------|---------|----------|
+| 01_run1k | 105.0 ms | 73.9 ms | 110.3 ms | 77.8 ms | **+5.0%** | **+5.3%** |
+| 05_swap1k | 115.6 ms | 94.6 ms | 120.0 ms | 95.7 ms | **+3.8%** | **+1.2%** |
+| 09_clear1k | 90.5 ms | 85.0 ms | 92.9 ms | 87.2 ms | **+2.7%** | **+2.6%** |
+
+**Observations**:
+- BenchmarkDotNet micro-benchmarks showed **11-20% improvement** in DOM diffing
+- js-framework-benchmark showed **2-5% regression** in real-world scenarios
+- The discrepancy suggests micro-benchmarks don't capture real-world overhead
+
+**Root Cause Analysis**:
+1. **Pooling overhead in WASM** - Object pooling adds Rent/Return overhead that exceeds allocation savings in single-threaded WASM
+2. **Possible JSON enum serialization overhead** - System.Text.Json may have overhead converting enum values
+3. **record vs class** - Source-generated serializers may have optimized paths for records
+
+**Stack vs ConcurrentQueue**: Testing showed minimal difference (~1-2%), not the root cause.
+
+**Conclusion**:
+- Object pooling does NOT provide benefits in WASM for small, frequently-created objects like PatchData
+- WASM's single-threaded nature and different allocation characteristics make pooling counterproductive
+- Keep the existing `record PatchData` with string `Type` property
+- Do NOT attempt PatchData pooling again - the overhead exceeds the benefit
+
 ## Build System Issues & Fixes
 
 ### NETSDK1152 - Duplicate abies.js in Publish Output

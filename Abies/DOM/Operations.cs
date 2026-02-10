@@ -26,7 +26,6 @@
 // =============================================================================
 
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -619,7 +618,8 @@ public record PatchData
 public static class Render
 {
     // StringBuilder pool to avoid allocations during rendering
-    private static readonly ConcurrentQueue<StringBuilder> _stringBuilderPool = new();
+    // Uses Stack<T> instead of ConcurrentQueue<T> since WASM is single-threaded
+    private static readonly Stack<StringBuilder> _stringBuilderPool = new();
     private const int _maxPooledStringBuilderCapacity = 8192;
 
     // =============================================================================
@@ -653,7 +653,7 @@ public static class Render
 
     private static StringBuilder RentStringBuilder()
     {
-        if (_stringBuilderPool.TryDequeue(out var sb))
+        if (_stringBuilderPool.TryPop(out var sb))
         {
             sb.Clear();
             return sb;
@@ -665,7 +665,7 @@ public static class Render
     {
         if (sb.Capacity <= _maxPooledStringBuilderCapacity)
         {
-            _stringBuilderPool.Enqueue(sb);
+            _stringBuilderPool.Push(sb);
         }
     }
 
@@ -761,16 +761,17 @@ public static class Operations
         (uint)index < _indexStringCacheSize ? _indexStringCache[index] : $"__index:{index}";
 
     // Object pools to reduce allocations
-    private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
-    private static readonly ConcurrentQueue<Dictionary<string, Attribute>> _attributeMapPool = new();
-    private static readonly ConcurrentQueue<Dictionary<string, int>> _keyIndexMapPool = new();
-    private static readonly ConcurrentQueue<List<int>> _intListPool = new();
-    private static readonly ConcurrentQueue<List<(int, int)>> _intPairListPool = new();
-    private static readonly ConcurrentQueue<List<PatchData>> _patchDataListPool = new();
+    // Uses Stack<T> instead of ConcurrentQueue<T> since WASM is single-threaded
+    private static readonly Stack<List<Patch>> _patchListPool = new();
+    private static readonly Stack<Dictionary<string, Attribute>> _attributeMapPool = new();
+    private static readonly Stack<Dictionary<string, int>> _keyIndexMapPool = new();
+    private static readonly Stack<List<int>> _intListPool = new();
+    private static readonly Stack<List<(int, int)>> _intPairListPool = new();
+    private static readonly Stack<List<PatchData>> _patchDataListPool = new();
 
     private static List<Patch> RentPatchList()
     {
-        if (_patchListPool.TryDequeue(out var list))
+        if (_patchListPool.TryPop(out var list))
         {
             list.Clear();
             return list;
@@ -782,13 +783,13 @@ public static class Operations
     {
         if (list.Count < 1000) // Prevent memory bloat
         {
-            _patchListPool.Enqueue(list);
+            _patchListPool.Push(list);
         }
     }
 
     private static Dictionary<string, Attribute> RentAttributeMap()
     {
-        if (_attributeMapPool.TryDequeue(out var map))
+        if (_attributeMapPool.TryPop(out var map))
         {
             map.Clear();
             return map;
@@ -800,13 +801,13 @@ public static class Operations
     {
         if (map.Count < 100) // Prevent memory bloat
         {
-            _attributeMapPool.Enqueue(map);
+            _attributeMapPool.Push(map);
         }
     }
 
     private static Dictionary<string, int> RentKeyIndexMap()
     {
-        if (_keyIndexMapPool.TryDequeue(out var map))
+        if (_keyIndexMapPool.TryPop(out var map))
         {
             map.Clear();
             return map;
@@ -818,13 +819,13 @@ public static class Operations
     {
         if (map.Count < 200) // Prevent memory bloat
         {
-            _keyIndexMapPool.Enqueue(map);
+            _keyIndexMapPool.Push(map);
         }
     }
 
     private static List<int> RentIntList()
     {
-        if (_intListPool.TryDequeue(out var list))
+        if (_intListPool.TryPop(out var list))
         {
             list.Clear();
             return list;
@@ -836,13 +837,13 @@ public static class Operations
     {
         if (list.Count < 500) // Prevent memory bloat
         {
-            _intListPool.Enqueue(list);
+            _intListPool.Push(list);
         }
     }
 
     private static List<(int, int)> RentIntPairList()
     {
-        if (_intPairListPool.TryDequeue(out var list))
+        if (_intPairListPool.TryPop(out var list))
         {
             list.Clear();
             return list;
@@ -854,13 +855,13 @@ public static class Operations
     {
         if (list.Count < 500) // Prevent memory bloat
         {
-            _intPairListPool.Enqueue(list);
+            _intPairListPool.Push(list);
         }
     }
 
     private static List<PatchData> RentPatchDataList()
     {
-        if (_patchDataListPool.TryDequeue(out var list))
+        if (_patchDataListPool.TryPop(out var list))
         {
             // List was cleared when returned to pool
             return list;
@@ -873,7 +874,7 @@ public static class Operations
         if (list.Count < 1000) // Prevent memory bloat
         {
             list.Clear(); // Clear to avoid retaining PatchData references
-            _patchDataListPool.Enqueue(list);
+            _patchDataListPool.Push(list);
         }
     }
 
@@ -1262,12 +1263,13 @@ public static class Operations
             if (oldLazy.MemoKey.Equals(newLazy.MemoKey))
             {
                 // Keys match - skip evaluation AND diffing entirely
-                Interlocked.Increment(ref MemoHits);
+                // Simple increment since WASM is single-threaded (no Interlocked needed)
+                MemoHits++;
                 return;
             }
 
             // Keys differ - evaluate the new lazy and diff
-            Interlocked.Increment(ref MemoMisses);
+            MemoMisses++;
             var oldCached = oldLazy.CachedNode ?? oldLazy.Evaluate();
             var newCached = newLazy.Evaluate();
             DiffInternal(oldCached, newCached, parent, patches);
@@ -1281,12 +1283,12 @@ public static class Operations
             if (oldMemo.MemoKey.Equals(newMemo.MemoKey))
             {
                 // Keys match - skip diffing the subtree entirely
-                Interlocked.Increment(ref MemoHits);
+                MemoHits++;
                 return;
             }
 
             // Keys differ - diff the cached nodes
-            Interlocked.Increment(ref MemoMisses);
+            MemoMisses++;
             DiffInternal(oldMemo.CachedNode, newMemo.CachedNode, parent, patches);
             return;
         }

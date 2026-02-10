@@ -288,13 +288,13 @@ public static class Events
     // =============================================================================
     // Command ID Generation - Performance Optimization
     // =============================================================================
-    // Uses atomic counter instead of Guid.NewGuid().ToString() to reduce allocations.
+    // Uses simple counter instead of Guid.NewGuid().ToString() to reduce allocations.
     // Inspired by Stephen Toub's .NET performance articles.
     //
     // GUID allocation cost: ~200+ bytes per call (GUID struct + string allocation + formatting)
     // Counter allocation cost: ~8-16 bytes per call (long.ToString() for small numbers)
     //
-    // Thread safety: Interlocked.Increment ensures unique IDs across threads.
+    // Single-threaded: WASM is single-threaded, so we use simple ++ instead of Interlocked.
     // Format: "h{counter}" where h = handler prefix to distinguish from other IDs
     //
     // Overflow consideration: At 1 million handlers/second, overflow would take ~292 million
@@ -303,13 +303,14 @@ public static class Events
     private static long _commandIdCounter;
 
     /// <summary>
-    /// Generates a unique command ID using an atomic counter.
+    /// Generates a unique command ID using a simple counter.
     /// This is much faster and allocates less than Guid.NewGuid().ToString().
+    /// Uses simple increment since WASM is single-threaded (no Interlocked needed).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string NextCommandId()
     {
-        var id = Interlocked.Increment(ref _commandIdCounter);
+        var id = ++_commandIdCounter;
         // Buffer size 24: max long is 19 digits + 'h' prefix = 20 chars, with margin
         return string.Create(null, stackalloc char[24], $"h{id}");
     }
