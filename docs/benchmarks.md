@@ -1,10 +1,26 @@
-# Virtual DOM Benchmarks
+# Rendering Engine Benchmarks
 
-This document describes the benchmarking infrastructure for the Abies Virtual DOM diffing algorithm.
+This document describes the benchmarking infrastructure for the Abies rendering engine, including DOM diffing, HTML rendering, and event handler creation.
 
 ## Overview
 
 The Abies framework uses a Virtual DOM diffing algorithm to compute minimal patches between UI states. Performance of this algorithm is critical because it runs on every UI update.
+
+## Benchmark Categories
+
+The benchmark suite covers three categories:
+
+### DOM Diffing (`Abies.Benchmarks.Diffing/`)
+
+Measures the Virtual DOM diffing algorithm performance.
+
+### Rendering (`Abies.Benchmarks.Rendering/`)
+
+Measures HTML string rendering performance.
+
+### Event Handlers (`Abies.Benchmarks.Handlers/`)
+
+Measures event handler creation and registration performance.
 
 ## Benchmark Scenarios
 
@@ -110,11 +126,13 @@ public void YourNewBenchmark()
 
 ## Architecture
 
-```
+```text
 Abies.Benchmarks/
-├── DomDiffingBenchmarks.cs    # Virtual DOM benchmarks
+├── DomDiffingBenchmarks.cs    # Virtual DOM diffing benchmarks
+├── RenderingBenchmarks.cs     # HTML rendering benchmarks
+├── EventHandlerBenchmarks.cs  # Event handler creation benchmarks
 ├── UrlParsingBenchmarks.cs    # URL parsing benchmarks  
-├── Program.cs                  # Entry point
+├── Program.cs                 # Entry point
 └── Abies.Benchmarks.csproj    # Project file
 
 .github/workflows/
