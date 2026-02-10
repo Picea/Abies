@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770718550982,
+  "lastUpdate": 1770718553337,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -3702,6 +3702,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 94.0000, Gen1: 7.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef2e12424016ff472bdbb512e120fb824f76a05e",
+          "message": "perf: Optimize GetKey with fast paths and add early exit for empty children (#64)\n\n* perf: Optimize GetKey with fast paths and add early exit for empty children\n\nTwo micro-optimizations to reduce overhead in common cases:\n\n1. Early exit for both empty children arrays\n   - Avoids ArrayPool rent/return overhead when both old and new\n     children arrays are empty (common for leaf elements like buttons)\n\n2. Optimized GetKey with fast paths for common node types\n   - Check for Element first (vast majority of nodes) to avoid\n     interface dispatch overhead for IMemoNode/ILazyMemoNode\n   - Inline the Element key extraction into a separate method\n   - Use indexed loop instead of foreach for attribute scanning\n   - Add AggressiveInlining hints for hot path\n\nThese optimizations reduce per-node overhead in the diffing algorithm,\nparticularly benefiting large DOM trees with many leaf elements.\n\n* docs: fix XML doc to match actual key precedence\n\nAddress Copilot review comment: The XML doc said 'Element Id is the primary key,\nwith data-key/key attribute as fallback' but the code checks data-key/key first.\n\nUpdated to: 'data-key/key attribute is an explicit override; element Id is the default key'\nwhich accurately reflects the implementation.",
+          "timestamp": "2026-02-10T11:06:14+01:00",
+          "tree_id": "7f6830fb45f6bff37472ab424db9b1424bd20d5a",
+          "url": "https://github.com/Picea/Abies/commit/ef2e12424016ff472bdbb512e120fb824f76a05e"
+        },
+        "date": 1770718552741,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 14.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 16.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 18.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 207.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
           }
         ]
       }
