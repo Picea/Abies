@@ -581,37 +581,6 @@ public readonly struct UpdateRaw(RawHtml node, string html, string newId) : Patc
     public readonly string NewId = newId;
 }
 
-// =============================================================================
-// Batch Patching - Performance Optimization
-// =============================================================================
-// Converts patches to a JSON-serializable format for batch application.
-// This allows sending multiple patches to JavaScript in a single interop call,
-// dramatically reducing the overhead of N patches × N JS interop calls.
-//
-// Architecture Decision Records:
-// - ADR-003: Virtual DOM (docs/adr/ADR-003-virtual-dom.md)
-// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
-// =============================================================================
-
-/// <summary>
-/// JSON-serializable patch data for batch patching.
-/// All fields are nullable since different patch types use different fields.
-/// </summary>
-public record PatchData
-{
-    public string Type { get; init; } = "";
-    public string? ParentId { get; init; }
-    public string? TargetId { get; init; }
-    public string? ChildId { get; init; }
-    public string? Html { get; init; }
-    public string? AttrName { get; init; }
-    public string? AttrValue { get; init; }
-    public string? NewId { get; init; }
-    public string? Text { get; init; }
-    public string? BeforeId { get; init; }
-}
-
-
 /// <summary>
 /// Provides rendering utilities for the virtual DOM.
 /// </summary>
@@ -767,7 +736,6 @@ public static class Operations
     private static readonly Stack<Dictionary<string, int>> _keyIndexMapPool = new();
     private static readonly Stack<List<int>> _intListPool = new();
     private static readonly Stack<List<(int, int)>> _intPairListPool = new();
-    private static readonly Stack<List<PatchData>> _patchDataListPool = new();
 
     private static List<Patch> RentPatchList()
     {
@@ -856,25 +824,6 @@ public static class Operations
         if (list.Count < 500) // Prevent memory bloat
         {
             _intPairListPool.Push(list);
-        }
-    }
-
-    private static List<PatchData> RentPatchDataList()
-    {
-        if (_patchDataListPool.TryPop(out var list))
-        {
-            // List was cleared when returned to pool
-            return list;
-        }
-        return [];
-    }
-
-    private static void ReturnPatchDataList(List<PatchData> list)
-    {
-        if (list.Count < 1000) // Prevent memory bloat
-        {
-            list.Clear(); // Clear to avoid retaining PatchData references
-            _patchDataListPool.Push(list);
         }
     }
 
@@ -973,20 +922,20 @@ public static class Operations
     }
 
     /// <summary>
-    /// Apply a batch of patches to the real DOM in a single JavaScript interop call.
-    /// This is more efficient than calling Apply() for each patch individually
-    /// because it reduces the number of JS interop boundary crossings.
+    /// Apply a batch of patches to the real DOM using a binary protocol for zero-copy transfer.
+    /// This eliminates JSON serialization overhead by writing patches directly to a binary buffer
+    /// that JavaScript can read directly from WASM memory.
     /// </summary>
     /// <param name="patches">The list of patches to apply.</param>
-    public static async Task ApplyBatch(List<Patch> patches)
+    public static async ValueTask ApplyBatch(List<Patch> patches)
     {
         if (patches.Count == 0)
         {
             return;
         }
 
-        // Step 1: Pre-register all new handlers BEFORE making any DOM changes
-        // This ensures events dispatched immediately after DOM updates are handled correctly
+        // Step 1: Pre-process - register new handlers BEFORE DOM changes
+        // This includes handlers in newly added subtrees (AddChild, ReplaceChild, AddRoot)
         foreach (var patch in patches)
         {
             switch (patch)
@@ -995,30 +944,13 @@ public static class Operations
                     Runtime.RegisterHandlers(addRoot.Element);
                     break;
                 case ReplaceChild replaceChild:
-                    Runtime.UnregisterHandlers(replaceChild.OldElement);
                     Runtime.RegisterHandlers(replaceChild.NewElement);
                     break;
                 case AddChild addChild:
                     Runtime.RegisterHandlers(addChild.Child);
                     break;
-                case RemoveChild removeChild:
-                    Runtime.UnregisterHandlers(removeChild.Child);
-                    break;
-                case ClearChildren clearChildren:
-                    // Unregister handlers for all children being cleared
-                    foreach (var child in clearChildren.OldChildren)
-                    {
-                        if (child is Element element)
-                        {
-                            Runtime.UnregisterHandlers(element);
-                        }
-                    }
-                    break;
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
-                    break;
-                case RemoveHandler:
-                    // Don't unregister yet - wait until after DOM update
                     break;
                 case UpdateHandler updateHandler:
                     Runtime.RegisterHandler(updateHandler.NewHandler);
@@ -1026,30 +958,37 @@ public static class Operations
             }
         }
 
-        // Step 2: Convert all patches to JSON-serializable format - use pooled list
-        var patchDataList = RentPatchDataList();
+        // Step 2: Build binary batch
+        var writer = RenderBatchWriterPool.Rent();
         try
         {
-            patchDataList.EnsureCapacity(patches.Count);
             foreach (var patch in patches)
             {
-                patchDataList.Add(ConvertToPatchData(patch));
+                WritePatchToBinary(writer, patch);
             }
 
-            // Step 3: Apply all patches in a single JS interop call
-            var json = System.Text.Json.JsonSerializer.Serialize(patchDataList, AbiesJsonContext.Default.ListPatchData);
-            await Interop.ApplyPatches(json);
+            // Step 3: Apply the binary batch via zero-copy memory transfer
+            var memory = writer.ToMemory();
+            Interop.ApplyBinaryBatch(memory.Span);
         }
         finally
         {
-            ReturnPatchDataList(patchDataList);
+            RenderBatchWriterPool.Return(writer);
         }
 
         // Step 4: Post-process - unregister old handlers AFTER DOM changes
+        // Step 4: Post-process - unregister old handlers AFTER DOM changes
+        // This includes handlers in removed subtrees (RemoveChild, ReplaceChild)
         foreach (var patch in patches)
         {
             switch (patch)
             {
+                case ReplaceChild replaceChild:
+                    Runtime.UnregisterHandlers(replaceChild.OldElement);
+                    break;
+                case RemoveChild removeChild:
+                    Runtime.UnregisterHandlers(removeChild.Child);
+                    break;
                 case RemoveHandler removeHandler:
                     Runtime.UnregisterHandler(removeHandler.Handler);
                     break;
@@ -1061,139 +1000,98 @@ public static class Operations
     }
 
     /// <summary>
-    /// Convert a Patch to a JSON-serializable PatchData record.
+    /// Write a single patch to the binary batch writer.
     /// </summary>
-    private static PatchData ConvertToPatchData(Patch patch)
+    private static void WritePatchToBinary(RenderBatchWriter writer, Patch patch)
     {
-        return patch switch
+        switch (patch)
         {
-            AddRoot addRoot => new PatchData
-            {
-                Type = "SetAppContent",
-                Html = Render.Html(addRoot.Element)
-            },
-            ReplaceChild replaceChild => new PatchData
-            {
-                Type = "ReplaceChild",
-                TargetId = replaceChild.OldElement.Id,
-                Html = Render.Html(replaceChild.NewElement)
-            },
-            AddChild addChild => new PatchData
-            {
-                Type = "AddChild",
-                ParentId = addChild.Parent.Id,
-                Html = Render.Html(addChild.Child)
-            },
-            RemoveChild removeChild => new PatchData
-            {
-                Type = "RemoveChild",
-                ParentId = removeChild.Parent.Id,
-                ChildId = removeChild.Child.Id
-            },
-            ClearChildren clearChildren => new PatchData
-            {
-                Type = "ClearChildren",
-                ParentId = clearChildren.Parent.Id
-            },
-            UpdateAttribute updateAttribute => new PatchData
-            {
-                Type = "UpdateAttribute",
-                TargetId = updateAttribute.Element.Id,
-                AttrName = updateAttribute.Attribute.Name,
-                AttrValue = updateAttribute.Value
-            },
-            AddAttribute addAttribute => new PatchData
-            {
-                Type = "AddAttribute",
-                TargetId = addAttribute.Element.Id,
-                AttrName = addAttribute.Attribute.Name,
-                AttrValue = addAttribute.Attribute.Value
-            },
-            RemoveAttribute removeAttribute => new PatchData
-            {
-                Type = "RemoveAttribute",
-                TargetId = removeAttribute.Element.Id,
-                AttrName = removeAttribute.Attribute.Name
-            },
-            AddHandler addHandler => new PatchData
-            {
-                Type = "AddAttribute",
-                TargetId = addHandler.Element.Id,
-                AttrName = addHandler.Handler.Name,
-                AttrValue = addHandler.Handler.Value
-            },
-            RemoveHandler removeHandler => new PatchData
-            {
-                Type = "RemoveAttribute",
-                TargetId = removeHandler.Element.Id,
-                AttrName = removeHandler.Handler.Name
-            },
-            UpdateHandler updateHandler => new PatchData
-            {
-                Type = "UpdateAttribute",
-                TargetId = updateHandler.Element.Id,
-                AttrName = updateHandler.NewHandler.Name,
-                AttrValue = updateHandler.NewHandler.Value
-            },
-            UpdateText updateText => updateText.Node.Id == updateText.NewId
-                ? new PatchData
+            case AddRoot addRoot:
+                writer.WriteSetAppContent(Render.Html(addRoot.Element));
+                break;
+
+            case ReplaceChild replaceChild:
+                writer.WriteReplaceChild(replaceChild.OldElement.Id, Render.Html(replaceChild.NewElement));
+                break;
+
+            case AddChild addChild:
+                writer.WriteAddChild(addChild.Parent.Id, Render.Html(addChild.Child));
+                break;
+
+            case RemoveChild removeChild:
+                writer.WriteRemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
+                break;
+
+            case ClearChildren clearChildren:
+                writer.WriteClearChildren(clearChildren.Parent.Id);
+                break;
+
+            case UpdateAttribute updateAttribute:
+                writer.WriteUpdateAttribute(updateAttribute.Element.Id, updateAttribute.Attribute.Name, updateAttribute.Value);
+                break;
+
+            case AddAttribute addAttribute:
+                writer.WriteAddAttribute(addAttribute.Element.Id, addAttribute.Attribute.Name, addAttribute.Attribute.Value);
+                break;
+
+            case RemoveAttribute removeAttribute:
+                writer.WriteRemoveAttribute(removeAttribute.Element.Id, removeAttribute.Attribute.Name);
+                break;
+
+            case AddHandler addHandler:
+                writer.WriteAddAttribute(addHandler.Element.Id, addHandler.Handler.Name, addHandler.Handler.Value);
+                break;
+
+            case RemoveHandler removeHandler:
+                writer.WriteRemoveAttribute(removeHandler.Element.Id, removeHandler.Handler.Name);
+                break;
+
+            case UpdateHandler updateHandler:
+                writer.WriteUpdateAttribute(updateHandler.Element.Id, updateHandler.NewHandler.Name, updateHandler.NewHandler.Value);
+                break;
+
+            case UpdateText updateText:
+                if (updateText.Node.Id == updateText.NewId)
                 {
-                    Type = "UpdateText",
-                    TargetId = updateText.Node.Id,
-                    Text = updateText.Text
+                    writer.WriteUpdateText(updateText.Node.Id, updateText.Text);
                 }
-                : new PatchData
+                else
                 {
-                    Type = "UpdateTextWithId",
-                    TargetId = updateText.Node.Id,
-                    Text = updateText.Text,
-                    NewId = updateText.NewId
-                },
-            AddText addText => new PatchData
-            {
-                Type = "AddChild",
-                ParentId = addText.Parent.Id,
-                Html = Render.Html(addText.Child)
-            },
-            RemoveText removeText => new PatchData
-            {
-                Type = "RemoveChild",
-                ParentId = removeText.Parent.Id,
-                ChildId = removeText.Child.Id
-            },
-            AddRaw addRaw => new PatchData
-            {
-                Type = "AddChild",
-                ParentId = addRaw.Parent.Id,
-                Html = Render.Html(addRaw.Child)
-            },
-            RemoveRaw removeRaw => new PatchData
-            {
-                Type = "RemoveChild",
-                ParentId = removeRaw.Parent.Id,
-                ChildId = removeRaw.Child.Id
-            },
-            ReplaceRaw replaceRaw => new PatchData
-            {
-                Type = "ReplaceChild",
-                TargetId = replaceRaw.OldNode.Id,
-                Html = Render.Html(replaceRaw.NewNode)
-            },
-            UpdateRaw updateRaw => new PatchData
-            {
-                Type = "ReplaceChild",
-                TargetId = updateRaw.Node.Id,
-                Html = Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html))
-            },
-            MoveChild moveChild => new PatchData
-            {
-                Type = "MoveChild",
-                ParentId = moveChild.Parent.Id,
-                ChildId = moveChild.Child.Id,
-                BeforeId = moveChild.BeforeId
-            },
-            _ => throw new InvalidOperationException($"Unknown patch type: {patch.GetType().Name}")
-        };
+                    writer.WriteUpdateTextWithId(updateText.Node.Id, updateText.Text, updateText.NewId);
+                }
+                break;
+
+            case AddText addText:
+                writer.WriteAddChild(addText.Parent.Id, Render.Html(addText.Child));
+                break;
+
+            case RemoveText removeText:
+                writer.WriteRemoveChild(removeText.Parent.Id, removeText.Child.Id);
+                break;
+
+            case AddRaw addRaw:
+                writer.WriteAddChild(addRaw.Parent.Id, Render.Html(addRaw.Child));
+                break;
+
+            case RemoveRaw removeRaw:
+                writer.WriteRemoveChild(removeRaw.Parent.Id, removeRaw.Child.Id);
+                break;
+
+            case ReplaceRaw replaceRaw:
+                writer.WriteReplaceChild(replaceRaw.OldNode.Id, Render.Html(replaceRaw.NewNode));
+                break;
+
+            case UpdateRaw updateRaw:
+                writer.WriteReplaceChild(updateRaw.Node.Id, Render.Html(new RawHtml(updateRaw.NewId, updateRaw.Html)));
+                break;
+
+            case MoveChild moveChild:
+                writer.WriteMoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
+                break;
+
+            default:
+                throw new InvalidOperationException($"Unknown patch type: {patch.GetType().Name}");
+        }
     }
 
     /// <summary>
