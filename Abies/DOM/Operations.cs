@@ -1857,6 +1857,14 @@ public static class Operations
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
 
+        // Optimization: if removing ALL children and adding none, use ClearChildren
+        // This is the same optimization as in DiffChildrenCore
+        if (oldLength > 0 && newLength == 0)
+        {
+            patches.Add(new ClearChildren(oldParent, oldChildren));
+            return;
+        }
+
         // Fast path: keys are identical (use SequenceEqual for small spans)
         if (oldKeys.SequenceEqual(newKeys))
         {
