@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770750746738,
+  "lastUpdate": 1770750748544,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -4722,6 +4722,180 @@ window.BENCHMARK_DATA = {
             "value": 12824,
             "unit": "bytes",
             "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 188.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f4673a65179ba8b978c92dd878838567c46b4134",
+          "message": "perf: Remove thread-safety overhead for single-threaded WASM (#67)\n\n* docs: Document Direct DOM Commands investigation (rejected)\n\n- JSON-based createElement approach is 17% slower than HTML strings\n- Protobuf would still be ~10-15% slower due to decode + recursive createElement\n- Blazor's advantage is shared memory, not just binary format\n- HTML strings via innerHTML is the correct approach for Abies\n- The ~4.8% parseHtmlFragment overhead is acceptable\n\n* perf: remove thread-safety overhead for single-threaded WASM\n\nWASM is inherently single-threaded, so thread-safe constructs add\nunnecessary overhead. This commit removes that overhead:\n\n- Replace ConcurrentQueue<T> with Stack<T> for all object pools (7 pools)\n- Replace ConcurrentDictionary<K,V> with Dictionary<K,V> for handler registries (3 registries)\n- Replace Interlocked.Increment with simple ++ for command ID and memo counters\n\nBenchmark results (js-framework-benchmark):\n- 01_run1k: 104.1ms (-0.9% total)\n- 05_swap1k: 118.9ms (within variance)\n- 09_clear1k: 90.4ms (-0.1% total)\n\nThe improvements are marginal (~1%) because ARM64 atomics are fast and\nthese aren't the hot paths, but the changes are correct - we shouldn't\npay for thread-safety we don't need.\n\nFiles changed:\n- Abies/DOM/Operations.cs: Stack pools, simple memo counter increments\n- Abies/Html/Events.cs: Simple command ID increment\n- Abies/Runtime.cs: Dictionary handler registries\n- Abies/Types.cs: Removed unused System.Collections.Concurrent using\n\n* fix: restore Types.cs corrupted by dotnet format multi-targeting bug\n\nThe dotnet format command introduced merge conflict markers due to the\nmulti-targeting nature of the solution (known bug documented in memory.instructions.md).\n\nThis restores Types.cs to its main branch state and only removes the\nunused System.Collections.Concurrent using directive.\n\n* fix: remove unnecessary accessibility modifiers and simplify ValueTuple to Unit\n\n* fix: correct whitespace formatting in Types.cs",
+          "timestamp": "2026-02-10T20:02:11+01:00",
+          "tree_id": "5777b11a1a99adbd079e18134c41cf4924a176c1",
+          "url": "https://github.com/Picea/Abies/commit/f4673a65179ba8b978c92dd878838567c46b4134"
+        },
+        "date": 1770750747771,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
           },
           {
             "name": "Handlers/CreateButtonWithHandler",
