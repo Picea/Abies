@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770670730229,
+  "lastUpdate": 1770718550982,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -2176,6 +2176,180 @@ window.BENCHMARK_DATA = {
             "value": 7417.468812052409,
             "unit": "ns",
             "range": "± 88.26298060335702"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef2e12424016ff472bdbb512e120fb824f76a05e",
+          "message": "perf: Optimize GetKey with fast paths and add early exit for empty children (#64)\n\n* perf: Optimize GetKey with fast paths and add early exit for empty children\n\nTwo micro-optimizations to reduce overhead in common cases:\n\n1. Early exit for both empty children arrays\n   - Avoids ArrayPool rent/return overhead when both old and new\n     children arrays are empty (common for leaf elements like buttons)\n\n2. Optimized GetKey with fast paths for common node types\n   - Check for Element first (vast majority of nodes) to avoid\n     interface dispatch overhead for IMemoNode/ILazyMemoNode\n   - Inline the Element key extraction into a separate method\n   - Use indexed loop instead of foreach for attribute scanning\n   - Add AggressiveInlining hints for hot path\n\nThese optimizations reduce per-node overhead in the diffing algorithm,\nparticularly benefiting large DOM trees with many leaf elements.\n\n* docs: fix XML doc to match actual key precedence\n\nAddress Copilot review comment: The XML doc said 'Element Id is the primary key,\nwith data-key/key attribute as fallback' but the code checks data-key/key first.\n\nUpdated to: 'data-key/key attribute is an explicit override; element Id is the default key'\nwhich accurately reflects the implementation.",
+          "timestamp": "2026-02-10T11:06:14+01:00",
+          "tree_id": "7f6830fb45f6bff37472ab424db9b1424bd20d5a",
+          "url": "https://github.com/Picea/Abies/commit/ef2e12424016ff472bdbb512e120fb824f76a05e"
+        },
+        "date": 1770718550351,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 523.1513860702514,
+            "unit": "ns",
+            "range": "± 3.3188154999939345"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 3203.223025258382,
+            "unit": "ns",
+            "range": "± 6.794653100369437"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 557.3622877257211,
+            "unit": "ns",
+            "range": "± 1.9663630637010376"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 599.9191995348249,
+            "unit": "ns",
+            "range": "± 3.4725663448213613"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 629.3502912521362,
+            "unit": "ns",
+            "range": "± 2.8600188228247347"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 637.822909228007,
+            "unit": "ns",
+            "range": "± 3.0896578835616713"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 622.4009223937989,
+            "unit": "ns",
+            "range": "± 5.088928439048045"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 191.41019080479938,
+            "unit": "ns",
+            "range": "± 1.260435510995651"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 713.6502451896667,
+            "unit": "ns",
+            "range": "± 1.9194906480871352"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 364.7502975097069,
+            "unit": "ns",
+            "range": "± 0.8522103897079462"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 648.1760769623977,
+            "unit": "ns",
+            "range": "± 1.7233696844514654"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5226.014277866909,
+            "unit": "ns",
+            "range": "± 56.520603986928805"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 36775.49718017578,
+            "unit": "ns",
+            "range": "± 675.747211238687"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 666.2143898010254,
+            "unit": "ns",
+            "range": "± 5.647684807205959"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 4732.156685965402,
+            "unit": "ns",
+            "range": "± 12.595312788528748"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2278.1222937447683,
+            "unit": "ns",
+            "range": "± 3.107568239683125"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 37.04493663311005,
+            "unit": "ns",
+            "range": "± 0.12835177940627737"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 48.94621070367949,
+            "unit": "ns",
+            "range": "± 0.24479765415096996"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 470.4788101832072,
+            "unit": "ns",
+            "range": "± 1.7525073721038755"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2281.6448768615724,
+            "unit": "ns",
+            "range": "± 14.21441917047626"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 3911.79095026652,
+            "unit": "ns",
+            "range": "± 30.137517390042625"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 95.83535969257355,
+            "unit": "ns",
+            "range": "± 0.2734911102156058"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 258.106845442454,
+            "unit": "ns",
+            "range": "± 1.0513178278357367"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 625.787608464559,
+            "unit": "ns",
+            "range": "± 3.5049571464871283"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7212.292665608724,
+            "unit": "ns",
+            "range": "± 42.85227946601623"
           }
         ]
       }
