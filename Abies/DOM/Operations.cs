@@ -1593,6 +1593,47 @@ public static class Operations
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
 
+        // =============================================================================
+        // Clear Fast Path - O(1) detection before building any dictionaries
+        // =============================================================================
+        // When clearing all children (oldLength > 0, newLength == 0), we can skip:
+        // - Building key dictionaries (O(n) time + allocations)
+        // - Key categorization loops
+        // - The existing ClearChildren optimization is too late (after dict building)
+        // =============================================================================
+        if (oldLength > 0 && newLength == 0)
+        {
+            patches.Add(new ClearChildren(oldParent, oldChildren));
+            return;
+        }
+
+        // =============================================================================
+        // Add-All Fast Path - O(n) when starting from empty
+        // =============================================================================
+        // When adding all new children (oldLength == 0, newLength > 0), skip dict building
+        // and directly add all children. This is common when initializing a list.
+        // =============================================================================
+        if (oldLength == 0 && newLength > 0)
+        {
+            foreach (var child in newChildren)
+            {
+                var effectiveNode = UnwrapMemoNode(child);
+                if (effectiveNode is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNode is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNode is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
+            return;
+        }
+
         // Fast path for small child counts: use O(n²) linear scan instead of dictionaries
         // This eliminates dictionary allocation overhead for common cases
         if (oldLength <= SmallChildCountThreshold && newLength <= SmallChildCountThreshold)
@@ -1732,32 +1773,25 @@ public static class Operations
                         }
                     }
 
-                    // Optimization: if removing ALL children and adding none, use ClearChildren
-                    if (keysToRemove.Count == oldLength && keysToAdd.Count == 0 && keysToDiff.Count == 0)
+                    // Remove old children that don't exist in new (iterate backwards to maintain order)
+                    // Note: ClearChildren case (newLength == 0) is handled by early exit above
+                    for (int i = keysToRemove.Count - 1; i >= 0; i--)
                     {
-                        patches.Add(new ClearChildren(oldParent, oldChildren));
-                    }
-                    else
-                    {
-                        // Remove old children that don't exist in new (iterate backwards to maintain order)
-                        for (int i = keysToRemove.Count - 1; i >= 0; i--)
-                        {
-                            var idx = keysToRemove[i];
-                            // Unwrap memo nodes to get the actual content for patch creation
-                            var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
+                        var idx = keysToRemove[i];
+                        // Unwrap memo nodes to get the actual content for patch creation
+                        var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
 
-                            if (effectiveOld is Element oldChild)
-                            {
-                                patches.Add(new RemoveChild(oldParent, oldChild));
-                            }
-                            else if (effectiveOld is RawHtml oldRaw)
-                            {
-                                patches.Add(new RemoveRaw(oldParent, oldRaw));
-                            }
-                            else if (effectiveOld is Text oldText)
-                            {
-                                patches.Add(new RemoveText(oldParent, oldText));
-                            }
+                        if (effectiveOld is Element oldChild)
+                        {
+                            patches.Add(new RemoveChild(oldParent, oldChild));
+                        }
+                        else if (effectiveOld is RawHtml oldRaw)
+                        {
+                            patches.Add(new RemoveRaw(oldParent, oldRaw));
+                        }
+                        else if (effectiveOld is Text oldText)
+                        {
+                            patches.Add(new RemoveText(oldParent, oldText));
                         }
                     }
 
