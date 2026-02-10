@@ -346,7 +346,3 @@ Fixing this bug should:
 1. **Fix LIS bug** (HIGH) - 3x swap improvement expected
 2. **Direct DOM commands** (MEDIUM) - eliminate parseHtmlFragment (4.8%)
 3. **JSON serialization** (LOW) - after other fixes
-
-````
-
-
