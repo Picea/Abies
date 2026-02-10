@@ -1565,6 +1565,18 @@ public static class Operations
         }
     }
 
+    // =============================================================================
+    // Small Count Fast Path Threshold
+    // =============================================================================
+    // For child counts below this threshold, use O(n²) linear scan instead of
+    // building dictionaries. This eliminates dictionary allocation overhead for
+    // common cases (most elements have < 8 children).
+    //
+    // Based on profiling: Dictionary allocation + hashing overhead exceeds O(n²)
+    // scan cost for small n. Threshold of 8 chosen based on benchmarks.
+    // =============================================================================
+    private const int SmallChildCountThreshold = 8;
+
     /// <summary>
     /// Core diffing logic for child elements.
     /// </summary>
@@ -1579,6 +1591,14 @@ public static class Operations
     {
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
+
+        // Fast path for small child counts: use O(n²) linear scan instead of dictionaries
+        // This eliminates dictionary allocation overhead for common cases
+        if (oldLength <= SmallChildCountThreshold && newLength <= SmallChildCountThreshold)
+        {
+            DiffChildrenSmall(oldParent, newParent, oldChildren, newChildren, oldKeys, newKeys, patches);
+            return;
+        }
 
         // Check if keys differ at all
         if (!oldKeys.SequenceEqual(newKeys))
@@ -1823,6 +1843,234 @@ public static class Operations
             else if (effectiveNode is Text newText)
             {
                 patches.Add(new AddText(newParent, newText));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fast path for diffing small child lists using O(n²) linear scan.
+    /// Avoids dictionary allocation overhead which dominates for small n.
+    /// </summary>
+    private static void DiffChildrenSmall(
+        Element oldParent,
+        Element newParent,
+        Node[] oldChildren,
+        Node[] newChildren,
+        ReadOnlySpan<string> oldKeys,
+        ReadOnlySpan<string> newKeys,
+        List<Patch> patches)
+    {
+        var oldLength = oldChildren.Length;
+        var newLength = newChildren.Length;
+
+        // Optimization: if removing ALL children and adding none, use ClearChildren
+        // This is the same optimization as in DiffChildrenCore
+        if (oldLength > 0 && newLength == 0)
+        {
+            patches.Add(new ClearChildren(oldParent, oldChildren));
+            return;
+        }
+
+        // Fast path: keys are identical (use SequenceEqual for small spans)
+        if (oldKeys.SequenceEqual(newKeys))
+        {
+            // Keys match: diff children in place
+            for (int i = 0; i < oldLength; i++)
+            {
+                DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
+            }
+            return;
+        }
+
+        // Use stackalloc for tracking matched indices (no heap allocation)
+        // -1 = not matched, otherwise = index in the other array
+        Span<int> oldMatched = stackalloc int[oldLength];
+        Span<int> newMatched = stackalloc int[newLength];
+        oldMatched.Fill(-1);
+        newMatched.Fill(-1);
+
+        // O(n²) matching: for each old key, find its position in new keys
+        for (int i = 0; i < oldLength; i++)
+        {
+            var oldKey = oldKeys[i];
+            for (int j = 0; j < newLength; j++)
+            {
+                if (newMatched[j] == -1 && string.Equals(oldKey, newKeys[j], StringComparison.Ordinal))
+                {
+                    oldMatched[i] = j;
+                    newMatched[j] = i;
+                    break;
+                }
+            }
+        }
+
+        // Check if this is a pure reorder (all keys matched)
+        var allMatched = true;
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] == -1)
+            {
+                allMatched = false;
+                break;
+            }
+        }
+
+        if (allMatched && oldLength == newLength)
+        {
+            // Pure reorder: use simple approach for small lists
+            // For small lists, just diff each matched pair and emit moves
+            // Build old indices in new order for LIS
+            Span<int> oldIndices = stackalloc int[newLength];
+            for (int i = 0; i < newLength; i++)
+            {
+                oldIndices[i] = newMatched[i];
+            }
+
+            // For small lists, use simple in-LIS detection with stackalloc
+            // Note: stackalloc doesn't zero-initialize, so we must clear it
+            Span<bool> inLIS = stackalloc bool[newLength];
+            inLIS.Clear();
+            ComputeLISIntoSmall(oldIndices, inLIS);
+
+            // Diff all matched pairs
+            for (int i = 0; i < newLength; i++)
+            {
+                var oldIndex = oldIndices[i];
+                DiffInternal(oldChildren[oldIndex], newChildren[i], oldParent, patches);
+            }
+
+            // Move elements not in LIS
+            for (int i = newLength - 1; i >= 0; i--)
+            {
+                if (!inLIS[i])
+                {
+                    var oldIndex = oldIndices[i];
+                    var oldNode = UnwrapMemoNode(oldChildren[oldIndex]);
+                    if (oldNode is Element oldChildElement)
+                    {
+                        string? beforeId = null;
+                        if (i + 1 < newLength)
+                        {
+                            var nextOldIndex = oldIndices[i + 1];
+                            var nextOldNode = UnwrapMemoNode(oldChildren[nextOldIndex]);
+                            beforeId = nextOldNode.Id;
+                        }
+                        patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
+                    }
+                }
+            }
+            return;
+        }
+
+        // Membership change: some added, some removed
+        // Remove unmatched old children (backwards to maintain order)
+        for (int i = oldLength - 1; i >= 0; i--)
+        {
+            if (oldMatched[i] == -1)
+            {
+                var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+                if (effectiveOld is Element oldChild)
+                {
+                    patches.Add(new RemoveChild(oldParent, oldChild));
+                }
+                else if (effectiveOld is RawHtml oldRaw)
+                {
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                }
+                else if (effectiveOld is Text oldText)
+                {
+                    patches.Add(new RemoveText(oldParent, oldText));
+                }
+            }
+        }
+
+        // Diff matched children
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] != -1)
+            {
+                DiffInternal(oldChildren[i], newChildren[oldMatched[i]], oldParent, patches);
+            }
+        }
+
+        // Add unmatched new children
+        for (int i = 0; i < newLength; i++)
+        {
+            if (newMatched[i] == -1)
+            {
+                var effectiveNode = UnwrapMemoNode(newChildren[i]);
+                if (effectiveNode is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNode is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNode is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Simplified LIS computation for small arrays using stackalloc.
+    /// Same algorithm as ComputeLISInto but avoids ArrayPool overhead.
+    /// </summary>
+    private static void ComputeLISIntoSmall(ReadOnlySpan<int> arr, Span<bool> inLIS)
+    {
+        var len = arr.Length;
+        if (len == 0)
+        {
+            return;
+        }
+
+        // For small arrays, use stackalloc instead of ArrayPool
+        Span<int> result = stackalloc int[len];
+        Span<int> p = stackalloc int[len];
+
+        var lisLen = 0;
+
+        for (int i = 0; i < len; i++)
+        {
+            var val = arr[i];
+
+            int lo = 0, hi = lisLen;
+            while (lo < hi)
+            {
+                var mid = (lo + hi) >> 1;
+                if (arr[result[mid]] < val)
+                {
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid;
+                }
+            }
+
+            if (lo > 0)
+            {
+                p[i] = result[lo - 1];
+            }
+
+            result[lo] = i;
+
+            if (lo == lisLen)
+            {
+                lisLen++;
+            }
+        }
+
+        if (lisLen > 0)
+        {
+            var idx = result[lisLen - 1];
+            for (int i = lisLen - 1; i >= 0; i--)
+            {
+                inLIS[idx] = true;
+                idx = p[idx];
             }
         }
     }
