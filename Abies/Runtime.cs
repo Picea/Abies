@@ -14,7 +14,6 @@
 // - ADR-013: OpenTelemetry Instrumentation (docs/adr/ADR-013-opentelemetry.md)
 // =============================================================================
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Channels;
@@ -42,9 +41,10 @@ public static partial class Runtime
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
 
     // Handler registries for event dispatch (see ADR-011: JavaScript interop)
-    private static readonly ConcurrentDictionary<string, Message> _handlers = new();
-    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
-    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
+    // Uses Dictionary instead of ConcurrentDictionary since WASM is single-threaded
+    private static readonly Dictionary<string, Message> _handlers = new();
+    private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
+    private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
 
     /// <summary>
     /// Starts the MVU runtime loop for the specified program.
@@ -423,11 +423,11 @@ public static partial class Runtime
     {
         if (handler.Command is not null)
         {
-            _handlers.TryRemove(handler.CommandId, out _);
+            _handlers.Remove(handler.CommandId);
         }
         if (handler.WithData is not null)
         {
-            _dataHandlers.TryRemove(handler.CommandId, out _);
+            _dataHandlers.Remove(handler.CommandId);
         }
     }
 
@@ -441,11 +441,11 @@ public static partial class Runtime
                 {
                     if (handler.Command is not null)
                     {
-                        _handlers.TryRemove(handler.CommandId, out _);
+                        _handlers.Remove(handler.CommandId);
                     }
                     if (handler.WithData is not null)
                     {
-                        _dataHandlers.TryRemove(handler.CommandId, out _);
+                        _dataHandlers.Remove(handler.CommandId);
                     }
                 }
             }
@@ -476,7 +476,7 @@ public static partial class Runtime
             return;
         }
 
-        _subscriptionHandlers.TryRemove(key, out _);
+        _subscriptionHandlers.Remove(key);
     }
 
     private static Unit Dispatch(Message message)
