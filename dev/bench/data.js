@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770718553337,
+  "lastUpdate": 1770719866184,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -2350,6 +2350,180 @@ window.BENCHMARK_DATA = {
             "value": 7212.292665608724,
             "unit": "ns",
             "range": "± 42.85227946601623"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d1884589dfcec00a66fb1c79d013704e89a24b47",
+          "message": "perf: Add small-count fast path for child diffing (#63)\n\n* perf: Add small-count fast path for child diffing\n\nFor child counts below 8, use O(n²) linear scan with stackalloc\ninstead of building dictionaries. This eliminates dictionary\nallocation overhead for common cases where most elements have\nfew children.\n\nPerformance improvements (BenchmarkDotNet):\n- SmallDomDiff: 134.6 ns vs 160.2 ns (16% faster)\n- MediumDomDiff: 965.0 ns vs 1,088 ns (11% faster)\n- LargeDomDiff: 147.2 ns vs 228.9 ns (36% faster, 79% less memory)\n\njs-framework-benchmark swap1k: 115.1 ms median vs 121.6 ms (5% faster)\n\nKey changes:\n- Add SmallChildCountThreshold constant (8 elements)\n- Add DiffChildrenSmall() method with stackalloc for matching arrays\n- Add ComputeLISIntoSmall() using stackalloc instead of ArrayPool\n\nThe threshold of 8 was chosen based on profiling showing that\ndictionary allocation + hashing overhead exceeds O(n²) scan cost\nfor small n.\n\n* fix: add ClearChildren optimization to small-count fast path\n\nThe DiffChildrenSmall method was missing the ClearChildren optimization\nthat exists in DiffChildrenCore. This caused the test\nClearAllChildren_ShouldUseSingleClearChildrenPatch to fail when\nclearing small child lists (< 8 children).\n\nAdded early check for oldLength > 0 && newLength == 0 to emit\na single ClearChildren patch instead of N individual RemoveChild patches.\n\n* fix: clear stackalloc bool span before use\n\nAddress Copilot review comment: stackalloc bool[n] creates an uninitialized\nspan. ComputeLISIntoSmall only sets true for LIS positions and assumes the\nrest are false. Without clearing, this could yield nondeterministic behavior.\n\nAdded inLIS.Clear() to ensure deterministic results.",
+          "timestamp": "2026-02-10T11:27:25+01:00",
+          "tree_id": "522511d26e12d248d1c7a54ebbc5b044d9533163",
+          "url": "https://github.com/Picea/Abies/commit/d1884589dfcec00a66fb1c79d013704e89a24b47"
+        },
+        "date": 1770719865826,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 405.65125237978424,
+            "unit": "ns",
+            "range": "± 0.6038035359312841"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2520.4886313847132,
+            "unit": "ns",
+            "range": "± 6.676890527216153"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 392.10936678372894,
+            "unit": "ns",
+            "range": "± 0.6459487636606577"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 668.331634594844,
+            "unit": "ns",
+            "range": "± 1.6956919168927505"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 487.71019554138184,
+            "unit": "ns",
+            "range": "± 1.9369902814116196"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 471.2479518254598,
+            "unit": "ns",
+            "range": "± 1.1776077139013357"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 480.50602201315075,
+            "unit": "ns",
+            "range": "± 0.8660203453939047"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 190.97805554072062,
+            "unit": "ns",
+            "range": "± 0.9659801770034049"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 768.0305275235858,
+            "unit": "ns",
+            "range": "± 5.271388468040137"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 384.5393385546548,
+            "unit": "ns",
+            "range": "± 2.1725569489914536"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 703.9545783315386,
+            "unit": "ns",
+            "range": "± 3.5641230410671154"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5550.812739780971,
+            "unit": "ns",
+            "range": "± 36.97340039690638"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 40149.640075683594,
+            "unit": "ns",
+            "range": "± 614.881182611713"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 677.4081957499186,
+            "unit": "ns",
+            "range": "± 5.368917745457903"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5063.371039170485,
+            "unit": "ns",
+            "range": "± 44.21059212721133"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2399.492923482259,
+            "unit": "ns",
+            "range": "± 34.48176306546586"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 41.03117462992668,
+            "unit": "ns",
+            "range": "± 1.772819302047218"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 53.889156703438076,
+            "unit": "ns",
+            "range": "± 0.40009765273353304"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 503.12394189834595,
+            "unit": "ns",
+            "range": "± 4.7797660440670775"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2455.483626774379,
+            "unit": "ns",
+            "range": "± 16.260118150884015"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4207.526254781087,
+            "unit": "ns",
+            "range": "± 39.75320968978271"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 105.8505478978157,
+            "unit": "ns",
+            "range": "± 1.2936412037409275"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 299.0679543358939,
+            "unit": "ns",
+            "range": "± 3.9643690045596824"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 687.6394901911418,
+            "unit": "ns",
+            "range": "± 10.932913638302571"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7992.471223880083,
+            "unit": "ns",
+            "range": "± 279.54898256631895"
           }
         ]
       }
