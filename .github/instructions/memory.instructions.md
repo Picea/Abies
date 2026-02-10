@@ -279,17 +279,25 @@ For reference, compare against:
 - `vanillajs-keyed` - Baseline (raw DOM manipulation)
 - `blazor-wasm-keyed` - .NET Blazor WASM (similar tech stack)
 
-### Latest Benchmark Results (2026-02-10)
+### Latest Benchmark Results (2026-02-11)
 
-**Abies v1.0.151 vs Blazor WASM v10.0.0:**
+**Abies v1.0.152 vs Blazor WASM v10.0.0:**
 
 | Benchmark | Abies | Blazor | Ratio |
 |-----------|-------|--------|-------|
-| 09_clear1k | 89.0ms | 45.5ms | 1.96x |
+| 01_run1k | 107.1ms | 88.5ms | 1.21x |
+| 05_swap1k | 124.8ms | 95.2ms | 1.31x |
+| 09_clear1k | 85.1ms | 46.2ms | 1.84x |
 | **First Paint** | **74.2ms** | **75ms** | **0.99x ✅** |
 | Size (compressed) | 1,225 KB | 1,377 KB | 0.89x ✅ |
 | Ready Memory | 34.3 MB | 41.1 MB | 0.83x ✅ |
-| Run Memory | 44.6 MB | TBD | - |
+
+**🎉 Clear Fast Path Optimization (2026-02-11):**
+- **Clear benchmark**: 90.4ms → 85.1ms (**5.9% faster**)
+- Added O(1) early exit when clearing all children (`newLength == 0`)
+- Added O(n) early exit when adding all children (`oldLength == 0`)
+- Avoids building expensive dictionaries for keyed diffing
+- Removed dead code (redundant ClearChildren check)
 
 **🎉 First Paint Fix (2026-02-10):**
 - **First Paint**: 4,843ms → 74.2ms (**65x faster**)
@@ -298,7 +306,7 @@ For reference, compare against:
 
 **🎉 LIS Algorithm Fix (2026-02-09):**
 - **Swap benchmark**: 326.6ms → 121.6ms (**2.7x faster**)
-- Now only **1.29x** slower than Blazor (was 3.47x)
+- Now only **1.31x** slower than Blazor (was 3.47x)
 - Root cause: `ComputeLISInto` had bug where `k=0` tracking never incremented for first element
 
 **Allocation Optimization (2026-02-09):**
@@ -307,19 +315,14 @@ Applied the following optimizations to reduce GC pressure:
 2. `inLIS` bool array - Replaced `HashSet<int>` with `ArrayPool<bool>.Shared` for LIS membership
 3. `PatchDataList` pooling - Added `_patchDataListPool` to reuse List<PatchData> in ApplyBatch
 
-**GC Impact:**
-- Swap benchmark GC: 10.4% → 9.4% (10% reduction)
-- Clear benchmark GC: 18.1% → 12.2% (33% reduction)
-- Clear benchmark time: 173.2ms → 159.6ms (8% improvement)
-
-**Remaining Hotspots:**
-- Patch records (MoveChild, RemoveChild, etc.) are allocated on every diff
-- PatchData records are created for JSON serialization
-- JSON serialization itself allocates strings
-
-**Key Findings:**
-1. **Swap (05_swap1k)** is 3.47x slower
-2. **Clear (09_clear1k)** is 3.58x slower - improved by 8% with allocation optimizations
+**Remaining Hotspots (Priority Order):**
+1. **Clear (09_clear1k)** - Still 1.84x slower than Blazor
+   - parseHtmlFragment overhead (4.8% of runtime)
+   - Consider Direct DOM Commands to eliminate HTML string parsing
+2. **Swap (05_swap1k)** - 1.31x slower than Blazor
+   - Already heavily optimized with LIS algorithm
+3. **Create (01_run1k)** - 1.21x slower than Blazor
+   - Close to optimal for WASM-based framework
 
 **Size Comparison:**
 - Abies compressed: 1,225 KB
