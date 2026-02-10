@@ -1942,7 +1942,7 @@ public static class Operations
 
     /// <summary>
     /// Gets the key for a node used in keyed diffing.
-    /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+    /// Per ADR-016: data-key/key attribute is an explicit override; element Id is the default key.
     /// Optimized with fast paths for common node types to avoid interface dispatch.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
