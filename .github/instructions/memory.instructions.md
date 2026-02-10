@@ -39,6 +39,37 @@ The following Toub-inspired optimizations have been applied:
 - **Why**: Required for .NET 10 WASM compatibility - cannot use reflection-based JSON in trimmed builds
 - **Impact**: Event handler creation is still fast enough, and WASM bundle size/startup time improvements outweigh this cost
 
+### ❌ REJECTED: Direct DOM Commands (2026-02-10)
+
+**Hypothesis**: Replace innerHTML parsing with direct DOM API calls (createElement, setAttribute, appendChild) to eliminate the ~4.8% parseHtmlFragment overhead observed in profiling.
+
+**Implementation**: Created ElementData/AttributeData/ChildData records in C# that serialize to JSON, with corresponding JavaScript handlers that recursively call createElement() instead of innerHTML.
+
+**Benchmark Results** (Abies v1.0.152):
+
+| Benchmark | HTML Strings (baseline) | Direct DOM | Regression |
+|-----------|------------------------|------------|------------|
+| 01_run1k | 109.4ms (76.6ms script) | 114.6ms (85.7ms script) | +4.8% total, **+12% script** |
+| 09_clear1k | 91.7ms (86.2ms script) | 107.8ms (102.5ms script) | **+17.5% total, +19% script** |
+
+**Root Cause of Failure**:
+1. **JSON serialization overhead** - Creating and serializing nested ElementData objects is MORE expensive than serializing HTML strings
+2. **Object allocation pressure** - ElementData/AttributeData/ChildData creates more GC pressure than StringBuilder-based HTML rendering
+3. **Recursive JS execution** - Recursive createElement() calls are slower than browser's highly optimized innerHTML HTML parser
+4. **Clear benchmark especially hurt** - The initial 1000-row render is much slower, so clear (which includes re-creation) suffers most
+
+**Why Blazor's Approach Works**:
+- Blazor uses a **binary protocol** (RenderBatch), not JSON
+- Blazor writes directly to a binary buffer - no intermediate objects
+- The binary data is processed very efficiently in JavaScript
+- JSON's text serialization overhead negates the innerHTML parsing savings
+
+**Conclusion**: 
+- HTML string rendering via innerHTML is the correct approach for Abies
+- Browser HTML parsers are highly optimized and very hard to beat
+- Do NOT revisit this approach unless moving to a binary protocol like Blazor's RenderBatch
+- The ~4.8% parseHtmlFragment overhead is acceptable and cannot be eliminated with JSON-based approaches
+
 ## Build System Issues & Fixes
 
 ### NETSDK1152 - Duplicate abies.js in Publish Output
