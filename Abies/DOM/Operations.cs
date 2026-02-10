@@ -1921,7 +1921,9 @@ public static class Operations
             }
 
             // For small lists, use simple in-LIS detection with stackalloc
+            // Note: stackalloc doesn't zero-initialize, so we must clear it
             Span<bool> inLIS = stackalloc bool[newLength];
+            inLIS.Clear();
             ComputeLISIntoSmall(oldIndices, inLIS);
 
             // Diff all matched pairs
