@@ -406,6 +406,18 @@ public readonly struct RemoveChild(Element parent, Element child) : Patch
 }
 
 /// <summary>
+/// Represents a patch operation to clear all children from an element in the Abies DOM.
+/// This is more efficient than multiple RemoveChild operations when removing all children.
+/// </summary>
+/// <param name="parent">The parent element to clear.</param>
+/// <param name="oldChildren">The children being removed (needed for handler unregistration).</param>
+public readonly struct ClearChildren(Element parent, Node[] oldChildren) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Node[] OldChildren = oldChildren;
+}
+
+/// <summary>
 /// Represents a patch operation to update an attribute in the Abies DOM.
 /// </summary>
 /// <param name="element">The element to update.</param>
@@ -891,6 +903,10 @@ public static class Operations
                 Runtime.UnregisterHandlers(removeChild.Child);
                 await Interop.RemoveChild(removeChild.Parent.Id, removeChild.Child.Id);
                 break;
+            case ClearChildren clearChildren:
+                // Single DOM operation to clear all children - much faster than N RemoveChild operations
+                await Interop.ClearChildren(clearChildren.Parent.Id);
+                break;
             case UpdateAttribute updateAttribute:
                 await Interop.UpdateAttribute(updateAttribute.Element.Id, updateAttribute.Attribute.Name, updateAttribute.Value);
                 break;
@@ -987,6 +1003,16 @@ public static class Operations
                 case RemoveChild removeChild:
                     Runtime.UnregisterHandlers(removeChild.Child);
                     break;
+                case ClearChildren clearChildren:
+                    // Unregister handlers for all children being cleared
+                    foreach (var child in clearChildren.OldChildren)
+                    {
+                        if (child is Element element)
+                        {
+                            Runtime.UnregisterHandlers(element);
+                        }
+                    }
+                    break;
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
                     break;
@@ -1062,6 +1088,11 @@ public static class Operations
                 Type = "RemoveChild",
                 ParentId = removeChild.Parent.Id,
                 ChildId = removeChild.Child.Id
+            },
+            ClearChildren clearChildren => new PatchData
+            {
+                Type = "ClearChildren",
+                ParentId = clearChildren.Parent.Id
             },
             UpdateAttribute updateAttribute => new PatchData
             {
@@ -1504,6 +1535,12 @@ public static class Operations
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
 
+        // Early exit for both empty - avoids ArrayPool rent/return overhead
+        if (oldLength == 0 && newLength == 0)
+        {
+            return;
+        }
+
         // ADR-016: Use ID-based keyed diffing for all elements.
         // Build maps of old and new children by their keys (element Id or data-key).
         // Use ArrayPool to avoid allocations
@@ -1529,6 +1566,18 @@ public static class Operations
         }
     }
 
+    // =============================================================================
+    // Small Count Fast Path Threshold
+    // =============================================================================
+    // For child counts below this threshold, use O(n²) linear scan instead of
+    // building dictionaries. This eliminates dictionary allocation overhead for
+    // common cases (most elements have < 8 children).
+    //
+    // Based on profiling: Dictionary allocation + hashing overhead exceeds O(n²)
+    // scan cost for small n. Threshold of 8 chosen based on benchmarks.
+    // =============================================================================
+    private const int SmallChildCountThreshold = 8;
+
     /// <summary>
     /// Core diffing logic for child elements.
     /// </summary>
@@ -1543,6 +1592,14 @@ public static class Operations
     {
         var oldLength = oldChildren.Length;
         var newLength = newChildren.Length;
+
+        // Fast path for small child counts: use O(n²) linear scan instead of dictionaries
+        // This eliminates dictionary allocation overhead for common cases
+        if (oldLength <= SmallChildCountThreshold && newLength <= SmallChildCountThreshold)
+        {
+            DiffChildrenSmall(oldParent, newParent, oldChildren, newChildren, oldKeys, newKeys, patches);
+            return;
+        }
 
         // Check if keys differ at all
         if (!oldKeys.SequenceEqual(newKeys))
@@ -1675,24 +1732,32 @@ public static class Operations
                         }
                     }
 
-                    // Remove old children that don't exist in new (iterate backwards to maintain order)
-                    for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                    // Optimization: if removing ALL children and adding none, use ClearChildren
+                    if (keysToRemove.Count == oldLength && keysToAdd.Count == 0 && keysToDiff.Count == 0)
                     {
-                        var idx = keysToRemove[i];
-                        // Unwrap memo nodes to get the actual content for patch creation
-                        var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
+                        patches.Add(new ClearChildren(oldParent, oldChildren));
+                    }
+                    else
+                    {
+                        // Remove old children that don't exist in new (iterate backwards to maintain order)
+                        for (int i = keysToRemove.Count - 1; i >= 0; i--)
+                        {
+                            var idx = keysToRemove[i];
+                            // Unwrap memo nodes to get the actual content for patch creation
+                            var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
 
-                        if (effectiveOld is Element oldChild)
-                        {
-                            patches.Add(new RemoveChild(oldParent, oldChild));
-                        }
-                        else if (effectiveOld is RawHtml oldRaw)
-                        {
-                            patches.Add(new RemoveRaw(oldParent, oldRaw));
-                        }
-                        else if (effectiveOld is Text oldText)
-                        {
-                            patches.Add(new RemoveText(oldParent, oldText));
+                            if (effectiveOld is Element oldChild)
+                            {
+                                patches.Add(new RemoveChild(oldParent, oldChild));
+                            }
+                            else if (effectiveOld is RawHtml oldRaw)
+                            {
+                                patches.Add(new RemoveRaw(oldParent, oldRaw));
+                            }
+                            else if (effectiveOld is Text oldText)
+                            {
+                                patches.Add(new RemoveText(oldParent, oldText));
+                            }
                         }
                     }
 
@@ -1781,6 +1846,234 @@ public static class Operations
             else if (effectiveNode is Text newText)
             {
                 patches.Add(new AddText(newParent, newText));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fast path for diffing small child lists using O(n²) linear scan.
+    /// Avoids dictionary allocation overhead which dominates for small n.
+    /// </summary>
+    private static void DiffChildrenSmall(
+        Element oldParent,
+        Element newParent,
+        Node[] oldChildren,
+        Node[] newChildren,
+        ReadOnlySpan<string> oldKeys,
+        ReadOnlySpan<string> newKeys,
+        List<Patch> patches)
+    {
+        var oldLength = oldChildren.Length;
+        var newLength = newChildren.Length;
+
+        // Optimization: if removing ALL children and adding none, use ClearChildren
+        // This is the same optimization as in DiffChildrenCore
+        if (oldLength > 0 && newLength == 0)
+        {
+            patches.Add(new ClearChildren(oldParent, oldChildren));
+            return;
+        }
+
+        // Fast path: keys are identical (use SequenceEqual for small spans)
+        if (oldKeys.SequenceEqual(newKeys))
+        {
+            // Keys match: diff children in place
+            for (int i = 0; i < oldLength; i++)
+            {
+                DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
+            }
+            return;
+        }
+
+        // Use stackalloc for tracking matched indices (no heap allocation)
+        // -1 = not matched, otherwise = index in the other array
+        Span<int> oldMatched = stackalloc int[oldLength];
+        Span<int> newMatched = stackalloc int[newLength];
+        oldMatched.Fill(-1);
+        newMatched.Fill(-1);
+
+        // O(n²) matching: for each old key, find its position in new keys
+        for (int i = 0; i < oldLength; i++)
+        {
+            var oldKey = oldKeys[i];
+            for (int j = 0; j < newLength; j++)
+            {
+                if (newMatched[j] == -1 && string.Equals(oldKey, newKeys[j], StringComparison.Ordinal))
+                {
+                    oldMatched[i] = j;
+                    newMatched[j] = i;
+                    break;
+                }
+            }
+        }
+
+        // Check if this is a pure reorder (all keys matched)
+        var allMatched = true;
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] == -1)
+            {
+                allMatched = false;
+                break;
+            }
+        }
+
+        if (allMatched && oldLength == newLength)
+        {
+            // Pure reorder: use simple approach for small lists
+            // For small lists, just diff each matched pair and emit moves
+            // Build old indices in new order for LIS
+            Span<int> oldIndices = stackalloc int[newLength];
+            for (int i = 0; i < newLength; i++)
+            {
+                oldIndices[i] = newMatched[i];
+            }
+
+            // For small lists, use simple in-LIS detection with stackalloc
+            // Note: stackalloc doesn't zero-initialize, so we must clear it
+            Span<bool> inLIS = stackalloc bool[newLength];
+            inLIS.Clear();
+            ComputeLISIntoSmall(oldIndices, inLIS);
+
+            // Diff all matched pairs
+            for (int i = 0; i < newLength; i++)
+            {
+                var oldIndex = oldIndices[i];
+                DiffInternal(oldChildren[oldIndex], newChildren[i], oldParent, patches);
+            }
+
+            // Move elements not in LIS
+            for (int i = newLength - 1; i >= 0; i--)
+            {
+                if (!inLIS[i])
+                {
+                    var oldIndex = oldIndices[i];
+                    var oldNode = UnwrapMemoNode(oldChildren[oldIndex]);
+                    if (oldNode is Element oldChildElement)
+                    {
+                        string? beforeId = null;
+                        if (i + 1 < newLength)
+                        {
+                            var nextOldIndex = oldIndices[i + 1];
+                            var nextOldNode = UnwrapMemoNode(oldChildren[nextOldIndex]);
+                            beforeId = nextOldNode.Id;
+                        }
+                        patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
+                    }
+                }
+            }
+            return;
+        }
+
+        // Membership change: some added, some removed
+        // Remove unmatched old children (backwards to maintain order)
+        for (int i = oldLength - 1; i >= 0; i--)
+        {
+            if (oldMatched[i] == -1)
+            {
+                var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+                if (effectiveOld is Element oldChild)
+                {
+                    patches.Add(new RemoveChild(oldParent, oldChild));
+                }
+                else if (effectiveOld is RawHtml oldRaw)
+                {
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                }
+                else if (effectiveOld is Text oldText)
+                {
+                    patches.Add(new RemoveText(oldParent, oldText));
+                }
+            }
+        }
+
+        // Diff matched children
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] != -1)
+            {
+                DiffInternal(oldChildren[i], newChildren[oldMatched[i]], oldParent, patches);
+            }
+        }
+
+        // Add unmatched new children
+        for (int i = 0; i < newLength; i++)
+        {
+            if (newMatched[i] == -1)
+            {
+                var effectiveNode = UnwrapMemoNode(newChildren[i]);
+                if (effectiveNode is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNode is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNode is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Simplified LIS computation for small arrays using stackalloc.
+    /// Same algorithm as ComputeLISInto but avoids ArrayPool overhead.
+    /// </summary>
+    private static void ComputeLISIntoSmall(ReadOnlySpan<int> arr, Span<bool> inLIS)
+    {
+        var len = arr.Length;
+        if (len == 0)
+        {
+            return;
+        }
+
+        // For small arrays, use stackalloc instead of ArrayPool
+        Span<int> result = stackalloc int[len];
+        Span<int> p = stackalloc int[len];
+
+        var lisLen = 0;
+
+        for (int i = 0; i < len; i++)
+        {
+            var val = arr[i];
+
+            int lo = 0, hi = lisLen;
+            while (lo < hi)
+            {
+                var mid = (lo + hi) >> 1;
+                if (arr[result[mid]] < val)
+                {
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid;
+                }
+            }
+
+            if (lo > 0)
+            {
+                p[i] = result[lo - 1];
+            }
+
+            result[lo] = i;
+
+            if (lo == lisLen)
+            {
+                lisLen++;
+            }
+        }
+
+        if (lisLen > 0)
+        {
+            var idx = result[lisLen - 1];
+            for (int i = lisLen - 1; i >= 0; i--)
+            {
+                inLIS[idx] = true;
+                idx = p[idx];
             }
         }
     }
@@ -1900,32 +2193,48 @@ public static class Operations
 
     /// <summary>
     /// Gets the key for a node used in keyed diffing.
-    /// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
+    /// Per ADR-016: data-key/key attribute is an explicit override; element Id is the default key.
+    /// Optimized with fast paths for common node types to avoid interface dispatch.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string? GetKey(Node node)
     {
-        // Handle Memo nodes by getting the key of their cached content
-        // For lazy memos, we need to evaluate to get the key (or use the lazy node's own Id)
-        Node effective;
-        if (node is ILazyMemoNode lazyMemo)
+        // Fast path for common case: Element (vast majority of nodes)
+        // Check this first to avoid interface dispatch overhead for IMemoNode/ILazyMemoNode
+        if (node is Element element)
         {
-            // Use the lazy node's ID as the key - don't evaluate just for key lookup
-            return node.Id;
-        }
-        else if (node is IMemoNode memo)
-        {
-            effective = memo.CachedNode;
-        }
-        else
-        {
-            effective = node;
+            return GetElementKey(element);
         }
 
-        if (effective is not Element element)
+        // Fast path: Text and RawHtml nodes have no key
+        if (node is Text or RawHtml)
         {
             return null;
         }
 
+        // Slow path: Memo nodes (rare in practice)
+        if (node is ILazyMemoNode)
+        {
+            // Use the lazy node's ID as the key - don't evaluate just for key lookup
+            return node.Id;
+        }
+
+        if (node is IMemoNode memo)
+        {
+            // Recurse into the cached content
+            return GetKey(memo.CachedNode);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the key for an Element node.
+    /// Checks for explicit data-key/key attribute first, then falls back to element Id.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetElementKey(Element element)
+    {
         // ADR-016: Use element Id as the primary key for diffing.
         // This allows developers to set stable IDs on elements,
         // and the diff algorithm will correctly match elements by ID.
@@ -1934,11 +2243,13 @@ public static class Operations
         // by checking for data-key attribute as an explicit override.
 
         // First, check for explicit data-key attribute (backward compatibility)
-        foreach (var attr in element.Attributes)
+        var attrs = element.Attributes;
+        for (int i = 0; i < attrs.Length; i++)
         {
-            if (attr.Name == "data-key" || attr.Name == "key")
+            var name = attrs[i].Name;
+            if (name == "data-key" || name == "key")
             {
-                return attr.Value;
+                return attrs[i].Value;
             }
         }
 
