@@ -22,11 +22,10 @@ namespace Abies
     /// </remarks>
     public interface Element<TModel, in TArgument>
     {
-        public static abstract Node View(TModel model);
-        public static abstract (TModel model, Command command) Update(Message message, TModel model);
-        public static abstract TModel Initialize(TArgument argument);
-        public static abstract Subscription Subscriptions(TModel model);
-        
+        static abstract Node View(TModel model);
+        static abstract (TModel model, Command command) Update(Message message, TModel model);
+        static abstract TModel Initialize(TArgument argument);
+        static abstract Subscription Subscriptions(TModel model);
     }
 
     /// <summary>
@@ -46,14 +45,14 @@ namespace Abies
     /// </remarks>
     public interface Program<TModel, in TArgument> 
     {
-        public static abstract (TModel, Command) Initialize(Url url, TArgument argument);
-        public static abstract (TModel model, Command command) Update(Message message, TModel model);
-        public static abstract Document View(TModel model);
-        public static abstract Message OnUrlChanged(Url url);
-        public static abstract Message OnLinkClicked(UrlRequest urlRequest);
-        public static abstract Subscription Subscriptions(TModel model);
+        static abstract (TModel, Command) Initialize(Url url, TArgument argument);
+        static abstract (TModel model, Command command) Update(Message message, TModel model);
+        static abstract Document View(TModel model);
+        static abstract Message OnUrlChanged(Url url);
+        static abstract Message OnLinkClicked(UrlRequest urlRequest);
+        static abstract Subscription Subscriptions(TModel model);
         
-        public static abstract Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch);
+        static abstract Task HandleCommand(Command command, Func<Message, Unit> dispatch);
     }
 
     /// <summary>
@@ -66,8 +65,8 @@ namespace Abies
     /// </remarks>
     public interface UrlRequest : Message
     {
-        public sealed record Internal(Url Url) : UrlRequest;
-        public sealed record External(string Url) : UrlRequest;
+        sealed record Internal(Url Url) : UrlRequest;
+        sealed record External(string Url) : UrlRequest;
     }
 
 
@@ -96,10 +95,10 @@ namespace Abies
     public interface Command
     {
         /// <summary>No side effect to perform.</summary>
-        public record struct None : Command;
+        record struct None : Command;
         
         /// <summary>Execute multiple commands in sequence.</summary>
-        public record struct Batch(IEnumerable<Command> Commands) : Command;
+        record struct Batch(IEnumerable<Command> Commands) : Command;
                 
     }
 
