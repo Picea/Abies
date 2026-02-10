@@ -862,7 +862,7 @@ public static class Operations
     {
         if (_patchDataListPool.TryDequeue(out var list))
         {
-            list.Clear();
+            // List was cleared when returned to pool
             return list;
         }
         return [];
@@ -872,6 +872,7 @@ public static class Operations
     {
         if (list.Count < 1000) // Prevent memory bloat
         {
+            list.Clear(); // Clear to avoid retaining PatchData references
             _patchDataListPool.Enqueue(list);
         }
     }
@@ -1639,6 +1640,9 @@ public static class Operations
                     var inLIS = ArrayPool<bool>.Shared.Rent(newLength);
                     try
                     {
+                        // Clear inLIS to avoid stale data from pool (ArrayPool doesn't zero memory)
+                        inLIS.AsSpan(0, newLength).Clear();
+
                         for (int i = 0; i < newLength; i++)
                         {
                             oldIndices[i] = oldKeyToIndex[newKeys[i]];
@@ -1690,8 +1694,7 @@ public static class Operations
                     }
                     finally
                     {
-                        // Clear the bool array before returning (avoid stale data on reuse)
-                        Array.Clear(inLIS, 0, newLength);
+                        // No need to clear before returning - we clear on rent for safety
                         ArrayPool<bool>.Shared.Return(inLIS);
                         ArrayPool<int>.Shared.Return(oldIndices);
                     }
