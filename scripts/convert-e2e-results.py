@@ -68,18 +68,37 @@ def convert_to_benchmark_format(results: list[dict]) -> list[dict]:
     Expected output format:
     [
         {
-            "name": "01_run1k",
+            "name": "01_run1k (create 1000 rows)",
             "unit": "ms",
             "value": 92.5
         },
         ...
     ]
+
+    Each benchmark gets its own trend line in gh-pages.
     """
+    # Human-readable descriptions for key benchmarks
+    benchmark_descriptions = {
+        "01_run1k": "create 1000 rows",
+        "02_replace1k": "replace all 1000 rows",
+        "03_update10th1k": "update every 10th row",
+        "04_select1k": "select row",
+        "05_swap1k": "swap two rows",
+        "06_remove-one-1k": "remove one row",
+        "07_create10k": "create 10,000 rows",
+        "08_create1k-after1k_x2": "create 1k after 1k",
+        "09_clear1k": "clear all rows",
+    }
+
     benchmark_results = []
 
     for result in results:
+        name = result["name"]
+        description = benchmark_descriptions.get(name, "")
+        display_name = f"{name} ({description})" if description else name
+
         benchmark_results.append({
-            "name": result["name"],
+            "name": display_name,
             "unit": "ms",
             "value": result["median"],
             "extra": f"mean: {result['mean']:.1f}ms, samples: {len(result['values'])}"
