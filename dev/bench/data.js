@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770805751763,
+  "lastUpdate": 1770805753719,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -5094,6 +5094,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 188.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "683ccc926a6daf94c690cf0a072d8401e6cd151d",
+          "message": "perf: Implement binary batching protocol for DOM updates (#68)\n\n* perf: implement binary batching protocol for DOM updates\n\nBREAKING CHANGE: JSON batching has been removed in favor of binary batching.\n\n## Summary\nImplements a Blazor-inspired binary batching protocol that eliminates JSON\nserialization overhead for DOM patch operations, achieving ~17% performance\nimprovement on create benchmarks.\n\n## Changes\n\n### Binary Protocol Implementation\n- Add RenderBatchWriter.cs with LEB128 string encoding and string table deduplication\n- Use JSType.MemoryView with Span<byte> for zero-copy WASM memory transfer\n- JavaScript binary reader using DataView API\n\n### Handler Registration Bug Fix\n- Fixed critical bug where ApplyBatch wasn't registering handlers for AddChild/\n  ReplaceChild/AddRoot subtrees\n- Added pre-processing step to register handlers BEFORE DOM changes\n- Added post-processing step to unregister handlers AFTER DOM changes\n- This fix was essential for select and remove operations to work correctly\n\n### Code Cleanup\n- Removed ~469 lines of JSON batching code (UseBinaryBatching flag, JSON\n  serialization paths, PatchData records)\n- Binary batching is now the only pathway\n\n## Binary Format\n```\nHeader (8 bytes):\n  - PatchCount: int32 (4 bytes)\n  - StringTableOffset: int32 (4 bytes)\n\nPatch Entries (16 bytes each):\n  - Type: int32 (4 bytes) - BinaryPatchType enum value\n  - Field1-3: int32 (4 bytes each) - string table indices (-1 = null)\n\nString Table:\n  - LEB128 length prefix + UTF8 bytes per string\n  - String deduplication via Dictionary lookup\n```\n\n## Benchmark Results (Abies vs Blazor WASM)\n\n| Benchmark       | Abies   | Blazor  | Winner          |\n|-----------------|---------|---------|-----------------|\n| 01_run1k        | 88.1ms  | 87.4ms  | ≈ Even          |\n| 02_replace1k    | 114.3ms | 104.7ms | Blazor +9%      |\n| 03_update10th1k | 147.3ms | 95.6ms  | Blazor +35%     |\n| 04_select1k     | 122.8ms | 82.2ms  | Blazor +33%     |\n| 05_swap1k       | 122.5ms | 94.1ms  | Blazor +23%     |\n| 06_remove-one-1k| 66.4ms  | 46.7ms  | Blazor +30%     |\n| 07_create10k    | 773.9ms | 818.9ms | **Abies +5.5%** |\n\n## Test Results\n- Unit Tests: 105/105 passed\n- Integration Tests: 51/51 passed\n- All js-framework-benchmark plausibility checks pass\n\n* fix: Address PR review comments and CI validation issues\n\n- Remove duplicate comment in Operations.cs (line 979-980)\n- Update memory.instructions.md to reflect binary batching (not JSON)\n- Add historical note to blazor-performance-analysis.md",
+          "timestamp": "2026-02-11T11:19:30+01:00",
+          "tree_id": "e83f6e7bfdd2efc3c63f450f1b3d3001c68f6389",
+          "url": "https://github.com/Picea/Abies/commit/683ccc926a6daf94c690cf0a072d8401e6cd151d"
+        },
+        "date": 1770805753315,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 207.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
           }
         ]
       }
