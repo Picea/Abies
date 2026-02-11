@@ -316,6 +316,24 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork
 
+      # Cache npm dependencies
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('../js-framework-benchmark-fork/**/package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      # Cache Chrome browser for Selenium
+      - name: Cache Chrome for Testing
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/selenium
+          key: selenium-chrome-${{ runner.os }}
+          restore-keys: |
+            selenium-chrome-
+
       - name: Build Abies for benchmark
         run: |
           cd ../js-framework-benchmark-fork/frameworks/keyed/abies/src
