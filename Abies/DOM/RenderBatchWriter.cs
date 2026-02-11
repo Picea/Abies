@@ -87,7 +87,7 @@ public sealed class RenderBatchWriter : IDisposable
     // Initial buffer capacity
     private const int InitialCapacity = 4096;
 
-    // The buffer we write to
+    // The buffer we write to for final output
     private byte[] _buffer;
     private int _position;
 
@@ -96,7 +96,11 @@ public sealed class RenderBatchWriter : IDisposable
 
     // String table: maps strings to their index in the string data
     private readonly Dictionary<string, int> _stringIndices = new();
-    private readonly List<byte> _stringData = new();
+
+    // String data buffer (pooled to avoid allocations)
+    private byte[] _stringBuffer;
+    private int _stringPosition;
+    private const int InitialStringBufferCapacity = 4096;
 
     private bool _disposed;
 
@@ -122,7 +126,9 @@ public sealed class RenderBatchWriter : IDisposable
     public RenderBatchWriter()
     {
         _buffer = ArrayPool<byte>.Shared.Rent(InitialCapacity);
+        _stringBuffer = ArrayPool<byte>.Shared.Rent(InitialStringBufferCapacity);
         _position = 0;
+        _stringPosition = 0;
     }
 
     /// <summary>
@@ -144,26 +150,30 @@ public sealed class RenderBatchWriter : IDisposable
         }
 
         // Get the current position in string data as the index
-        var index = _stringData.Count;
+        var index = _stringPosition;
         _stringIndices[value] = index;
 
-        // Encode the string as UTF8
-        var utf8 = Encoding.UTF8.GetBytes(value);
+        // Get required byte count for UTF8 encoding (no allocation)
+        var byteCount = Encoding.UTF8.GetByteCount(value);
 
-        // Write LEB128 length prefix
-        WriteLEB128(_stringData, utf8.Length);
+        // Ensure string buffer capacity (including LEB128 overhead - max 5 bytes for 32-bit int)
+        EnsureStringBufferCapacity(_stringPosition + byteCount + 5);
 
-        // Write the UTF8 bytes
-        _stringData.AddRange(utf8);
+        // Write LEB128 length prefix directly to buffer
+        WriteLEB128ToBuffer(byteCount);
+
+        // Encode the string directly into the buffer (no intermediate allocation)
+        Encoding.UTF8.GetBytes(value.AsSpan(), _stringBuffer.AsSpan(_stringPosition));
+        _stringPosition += byteCount;
 
         return index;
     }
 
     /// <summary>
-    /// Writes an unsigned integer in LEB128 format.
+    /// Writes an unsigned integer in LEB128 format directly to string buffer.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WriteLEB128(List<byte> buffer, int value)
+    private void WriteLEB128ToBuffer(int value)
     {
         // LEB128 encoding: 7 bits per byte, MSB indicates continuation
         var remaining = (uint)value;
@@ -175,8 +185,25 @@ public sealed class RenderBatchWriter : IDisposable
             {
                 b |= 0x80; // Set continuation bit
             }
-            buffer.Add(b);
+            _stringBuffer[_stringPosition++] = b;
         } while (remaining != 0);
+    }
+
+    /// <summary>
+    /// Ensures the string buffer has sufficient capacity.
+    /// </summary>
+    private void EnsureStringBufferCapacity(int required)
+    {
+        if (_stringBuffer.Length >= required)
+        {
+            return;
+        }
+
+        var newCapacity = Math.Max(_stringBuffer.Length * 2, required);
+        var newBuffer = ArrayPool<byte>.Shared.Rent(newCapacity);
+        Buffer.BlockCopy(_stringBuffer, 0, newBuffer, 0, _stringPosition);
+        ArrayPool<byte>.Shared.Return(_stringBuffer);
+        _stringBuffer = newBuffer;
     }
 
     /// <summary>
@@ -310,7 +337,7 @@ public sealed class RenderBatchWriter : IDisposable
         // Calculate total size
         var patchDataSize = _patches.Count * PatchEntrySize;
         var stringTableOffset = HeaderSize + patchDataSize;
-        var totalSize = stringTableOffset + _stringData.Count;
+        var totalSize = stringTableOffset + _stringPosition;
 
         // Ensure buffer capacity
         EnsureCapacity(totalSize);
@@ -329,9 +356,9 @@ public sealed class RenderBatchWriter : IDisposable
             WriteInt32(patch.Field3);
         }
 
-        // Write string table
-        _stringData.CopyTo(_buffer, _position);
-        _position += _stringData.Count;
+        // Write string table from pooled buffer
+        Buffer.BlockCopy(_stringBuffer, 0, _buffer, _position, _stringPosition);
+        _position += _stringPosition;
 
         return new Memory<byte>(_buffer, 0, totalSize);
     }
@@ -342,9 +369,9 @@ public sealed class RenderBatchWriter : IDisposable
     public void Reset()
     {
         _position = 0;
+        _stringPosition = 0;
         _patches.Clear();
         _stringIndices.Clear();
-        _stringData.Clear();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -384,7 +411,9 @@ public sealed class RenderBatchWriter : IDisposable
         }
 
         ArrayPool<byte>.Shared.Return(_buffer);
+        ArrayPool<byte>.Shared.Return(_stringBuffer);
         _buffer = Array.Empty<byte>();
+        _stringBuffer = Array.Empty<byte>();
         _disposed = true;
     }
 }
