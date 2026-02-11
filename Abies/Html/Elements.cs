@@ -154,8 +154,27 @@ public static class Elements
     //
     // This is inspired by Elm's lazy optimization where reference equality (===)
     // enables skipping VDOM construction entirely.
+    //
+    // IMPORTANT: Cache eviction is required to prevent memory leaks!
+    // Call ClearViewCache() when navigating or when the view fundamentally changes.
+    // The cache is also automatically trimmed when it exceeds MaxViewCacheSize.
     // =============================================================================
     private static readonly Dictionary<string, Node> _lazyCache = new();
+    private const int MaxViewCacheSize = 2000;
+
+    /// <summary>
+    /// Clears the view cache to free memory and prevent stale references.
+    /// Call this when navigating to a new page or when the view structure changes significantly.
+    /// </summary>
+    public static void ClearViewCache()
+    {
+        _lazyCache.Clear();
+    }
+
+    /// <summary>
+    /// Gets the current size of the view cache for diagnostics.
+    /// </summary>
+    public static int ViewCacheCount => _lazyCache.Count;
 
     /// <summary>
     /// Creates a lazily-evaluated memoized node. Unlike memo(), the node factory is NOT called
@@ -184,6 +203,11 @@ public static class Elements
         var node = new LazyMemo<TKey>(id!, key, factory);
         if (id is not null)
         {
+            // Auto-trim cache if it gets too large to prevent memory leaks
+            if (_lazyCache.Count >= MaxViewCacheSize)
+            {
+                _lazyCache.Clear();
+            }
             _lazyCache[id] = node;
         }
         return node;

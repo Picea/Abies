@@ -1369,6 +1369,70 @@ public static class Operations
             return;
         }
 
+        // =============================================================================
+        // Same-Order Fast Path - Skip dictionary building when attributes match in order
+        // =============================================================================
+        // Most renders don't change attribute order or count. When old and new have
+        // the same count, try comparing them positionally first. This avoids:
+        // - Dictionary allocation and building (O(n) time + allocations)
+        // - Dictionary lookups (hash computation overhead)
+        // Only fall back to dictionary approach if names don't match.
+        // =============================================================================
+        if (oldAttrs.Length == newAttrs.Length)
+        {
+            var sameOrder = true;
+            for (int i = 0; i < oldAttrs.Length; i++)
+            {
+                var oldAttrName = oldAttrs[i] is Handler oh ? oh.Name : oldAttrs[i].Name;
+                var newAttrName = newAttrs[i] is Handler nh ? nh.Name : newAttrs[i].Name;
+                if (!string.Equals(oldAttrName, newAttrName, StringComparison.Ordinal))
+                {
+                    sameOrder = false;
+                    break;
+                }
+            }
+
+            if (sameOrder)
+            {
+                // Same order: diff each attribute pair positionally
+                for (int i = 0; i < oldAttrs.Length; i++)
+                {
+                    var oldAttr = oldAttrs[i];
+                    var newAttr = newAttrs[i];
+                    if (!newAttr.Equals(oldAttr))
+                    {
+                        if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
+                        {
+                            patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                        }
+                        else if (newAttr is Handler newHandler2)
+                        {
+                            if (oldAttr is Handler oldHandler2)
+                            {
+                                patches.Add(new UpdateHandler(newElement, oldHandler2, newHandler2));
+                            }
+                            else
+                            {
+                                patches.Add(new RemoveAttribute(oldElement, oldAttr));
+                                patches.Add(new AddHandler(newElement, newHandler2));
+                            }
+                        }
+                        else if (oldAttr is Handler oldHandler3)
+                        {
+                            patches.Add(new RemoveHandler(oldElement, oldHandler3));
+                            patches.Add(new AddAttribute(newElement, newAttr));
+                        }
+                        else
+                        {
+                            patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        // Fall back to dictionary-based diffing for different order/count
         var oldMap = RentAttributeMap();
         try
         {
