@@ -143,10 +143,27 @@ public static class Elements
     public static Node memo<TKey>(TKey key, Node node, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null) where TKey : notnull
         => new Memo<TKey>(id!, key, node);
 
+    // =============================================================================
+    // View Cache - Performance Optimization
+    // =============================================================================
+    // Caches LazyMemo nodes by their stable ID. When lazy() is called with the same
+    // ID and a matching key, we return the EXACT SAME reference, enabling:
+    // 1. ReferenceEquals bailout in DiffInternal (O(1) skip)
+    // 2. No dictionary building needed for unchanged nodes
+    // 3. No DiffInternal calls for unchanged nodes
+    //
+    // This is inspired by Elm's lazy optimization where reference equality (===)
+    // enables skipping VDOM construction entirely.
+    // =============================================================================
+    private static readonly Dictionary<string, Node> _lazyCache = new();
+
     /// <summary>
     /// Creates a lazily-evaluated memoized node. Unlike memo(), the node factory is NOT called
     /// until actually needed. If the key matches during diffing, the factory is never invoked.
     /// This provides maximum performance for list items that don't change.
+    /// 
+    /// Performance optimization: If called with the same ID and key as a previous call,
+    /// returns the exact same node reference, enabling O(1) reference equality checks.
     /// </summary>
     /// <typeparam name="TKey">The type of the memo key (must support equality)</typeparam>
     /// <param name="key">The key to compare for memoization. If equal to the previous key, the subtree is skipped.</param>
@@ -154,7 +171,23 @@ public static class Elements
     /// <param name="id">Optional unique identifier for the lazy memo node</param>
     /// <returns>A lazily memoized node that defers evaluation until needed</returns>
     public static Node lazy<TKey>(TKey key, Func<Node> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null) where TKey : notnull
-        => new LazyMemo<TKey>(id!, key, factory);
+    {
+        // View cache optimization: return same reference if ID and key match
+        // This enables ReferenceEquals bailout in DiffInternal
+        if (id is not null && _lazyCache.TryGetValue(id, out var cached) &&
+            cached is LazyMemo<TKey> lazyCached &&
+            EqualityComparer<TKey>.Default.Equals(lazyCached.Key, key))
+        {
+            return cached;  // Same reference - ReferenceEquals will work!
+        }
+
+        var node = new LazyMemo<TKey>(id!, key, factory);
+        if (id is not null)
+        {
+            _lazyCache[id] = node;
+        }
+        return node;
+    }
 
     public static Node output(DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     => element("output", attributes, children, id);

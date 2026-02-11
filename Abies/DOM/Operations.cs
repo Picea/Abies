@@ -84,6 +84,11 @@ public interface IMemoNode
     Node CachedNode { get; }
     /// <summary>Creates a new memo node with the same key but different cached content.</summary>
     Node WithCachedNode(Node newCachedNode);
+    /// <summary>
+    /// Compares memo keys without boxing overhead.
+    /// Uses generic EqualityComparer for value types to avoid allocation.
+    /// </summary>
+    bool MemoKeyEquals(IMemoNode other);
 }
 
 /// <summary>
@@ -108,6 +113,12 @@ public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemo
 
     /// <summary>Creates a new memo with the same key but different cached content.</summary>
     public Node WithCachedNode(Node newCachedNode) => this with { CachedNode = newCachedNode };
+
+    /// <summary>
+    /// Compares memo keys without boxing overhead using generic EqualityComparer.
+    /// </summary>
+    public bool MemoKeyEquals(IMemoNode other) =>
+        other is Memo<TKey> otherMemo && EqualityComparer<TKey>.Default.Equals(Key, otherMemo.Key);
 }
 
 /// <summary>
@@ -124,6 +135,11 @@ public interface ILazyMemoNode
     Node Evaluate();
     /// <summary>Creates a new lazy memo with the cached content populated.</summary>
     Node WithCachedNode(Node cachedNode);
+    /// <summary>
+    /// Compares memo keys without boxing overhead.
+    /// Uses generic EqualityComparer for value types to avoid allocation.
+    /// </summary>
+    bool MemoKeyEquals(ILazyMemoNode other);
 }
 
 /// <summary>
@@ -149,6 +165,12 @@ public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? Cach
 
     /// <summary>Creates a new lazy memo with the cached content populated.</summary>
     public Node WithCachedNode(Node cachedNode) => this with { CachedNode = cachedNode };
+
+    /// <summary>
+    /// Compares memo keys without boxing overhead using generic EqualityComparer.
+    /// </summary>
+    public bool MemoKeyEquals(ILazyMemoNode other) =>
+        other is LazyMemo<TKey> otherLazy && EqualityComparer<TKey>.Default.Equals(Key, otherLazy.Key);
 }
 
 // =============================================================================
@@ -1153,11 +1175,19 @@ public static class Operations
 
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
     {
+        // Quick bailout: if both nodes are the exact same reference, nothing to diff
+        // This can happen when a cached node is reused across renders
+        if (ReferenceEquals(oldNode, newNode))
+        {
+            return;
+        }
+
         // Lazy memo nodes: defer evaluation until keys differ
         // This provides the true performance benefit - we don't even construct the node if unchanged
+        // Uses MemoKeyEquals to avoid boxing overhead for value type keys
         if (oldNode is ILazyMemoNode oldLazy && newNode is ILazyMemoNode newLazy)
         {
-            if (oldLazy.MemoKey.Equals(newLazy.MemoKey))
+            if (oldLazy.MemoKeyEquals(newLazy))
             {
                 // Keys match - skip evaluation AND diffing entirely
                 // Simple increment since WASM is single-threaded (no Interlocked needed)
@@ -1175,9 +1205,10 @@ public static class Operations
 
         // Regular memo nodes: skip diffing subtree if keys are equal
         // This is similar to Elm's lazy function - major performance win for list items
+        // Uses MemoKeyEquals to avoid boxing overhead for value type keys
         if (oldNode is IMemoNode oldMemo && newNode is IMemoNode newMemo)
         {
-            if (oldMemo.MemoKey.Equals(newMemo.MemoKey))
+            if (oldMemo.MemoKeyEquals(newMemo))
             {
                 // Keys match - skip diffing the subtree entirely
                 MemoHits++;
