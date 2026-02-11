@@ -312,7 +312,7 @@ Implemented Blazor-inspired binary batching protocol to eliminate JSON serializa
 - `RenderBatchWriter.cs`: Binary batch writer with LEB128 string encoding and string table deduplication
 - `JSType.MemoryView` with `Span<byte>` for zero-copy memory transfer
 - JavaScript binary reader using `DataView` API
-- Feature flag `Operations.UseBinaryBatching` to toggle between protocols
+- Binary batching is always enabled; JSON batching has been removed
 
 **Binary Format**:
 ```
@@ -350,19 +350,24 @@ String Table:
    - No serialization whatsoever
    - Fixed-size entries enable O(1) indexing
 
-2. **Abies: JSON Protocol**
-   - Creates PatchData records
-   - Serializes to JSON string
-   - Transmits string to JavaScript
-   - Parses JSON in JavaScript
-   - For HTML content: another parse via innerHTML
+2. **Abies: Binary Batching Protocol** (Implemented 2026-02-11)
+   - Binary batch format written directly to pooled buffers
+   - `JSType.MemoryView` transfers data to JS without copying
+   - JavaScript reads binary data using `DataView` API
+   - LEB128-encoded string table with deduplication
+   - ~17% faster than previous JSON approach
+
+> **Note**: The JSON protocol described here was removed in the binary batching implementation.
+> See `RenderBatchWriter.cs` and `abies.js` for the current binary implementation.
 
 **The Math** (for 1000-row operations):
 - Blazor: Single pointer transfer → JS reads binary directly
-- Abies: 1000 patches → JSON (possibly 100KB+) → parse → apply
+- Abies: Binary batch → memory view transfer → JS reads binary directly
 
-**Optimization Paths Identified**:
-1. **Short-term**: Optimize JSON format (compact arrays, shorter keys) - 10-20% potential
+**Optimization Paths Completed**:
+1. ~~**Short-term**: Optimize JSON format (compact arrays, shorter keys) - 10-20% potential~~ Skipped
+2. ✅ **Medium-term**: Binary protocol implementation - **17% improvement achieved**
+3. **Future**: Consider SharedMemoryRenderBatch pattern for even more efficiency
 2. **Medium-term**: Binary protocol prototype - 40-60% potential
 3. **Long-term**: Full SharedMemoryRenderBatch implementation
 

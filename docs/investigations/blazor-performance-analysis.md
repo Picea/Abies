@@ -122,7 +122,11 @@ private insertMarkup(batch, parent, childIndex, markupFrame) {
 }
 ```
 
-## Abies Architecture (Current)
+## Abies Architecture (Historical - Pre-Binary-Batching)
+
+> **Note**: The `PatchData` model and JSON-based patch transport described below represent Abies's **pre-binary-batching** architecture. They are retained here for historical context and performance analysis but are no longer used in the current runtime.
+>
+> See `RenderBatchWriter.cs` and `abies.js` for the current binary protocol implementation that mirrors Blazor's design more closely.
 
 ### 1. JSON Serialization (Major Overhead)
 

@@ -977,7 +977,6 @@ public static class Operations
         }
 
         // Step 4: Post-process - unregister old handlers AFTER DOM changes
-        // Step 4: Post-process - unregister old handlers AFTER DOM changes
         // This includes handlers in removed subtrees (RemoveChild, ReplaceChild)
         foreach (var patch in patches)
         {
