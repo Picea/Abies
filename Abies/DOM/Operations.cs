@@ -1533,38 +1533,186 @@ public static class Operations
             return;
         }
 
-        // Fast path for small child counts: use O(n²) linear scan instead of dictionaries
-        // This eliminates dictionary allocation overhead for common cases
-        if (oldLength <= SmallChildCountThreshold && newLength <= SmallChildCountThreshold)
+        // =============================================================================
+        // Head/Tail Skip - Three-Phase Keyed Diff Optimization
+        // =============================================================================
+        // Before building key maps, skip common prefix (head) and suffix (tail).
+        // This optimization is especially effective for:
+        // - Append-only scenarios (chat, logs, feeds) - O(1) instead of O(n)
+        // - Prepend scenarios - O(1) head mismatch, tail skip handles most
+        // - Single item changes - minimal middle section to diff
+        //
+        // For swap benchmark (swap positions 1 and 998 of 1000 items):
+        // - Head: 1 element matches (index 0)
+        // - Tail: 1 element matches (index 999)
+        // - Middle: 998 elements still need key map + LIS
+        // Even though swap only saves 2 elements, this prepares for append-only fast path.
+        // =============================================================================
+        int headSkip = 0;
+        int tailSkip = 0;
+        int minLength = Math.Min(oldLength, newLength);
+
+        // Skip matching head (common prefix)
+        while (headSkip < minLength && oldKeys[headSkip] == newKeys[headSkip])
         {
-            DiffChildrenSmall(oldParent, newParent, oldChildren, newChildren, oldKeys, newKeys, patches);
+            // Diff the matching elements in place (they may have attribute/child changes)
+            DiffInternal(oldChildren[headSkip], newChildren[headSkip], oldParent, patches);
+            headSkip++;
+        }
+
+        // If all elements matched, handle length differences
+        if (headSkip == minLength)
+        {
+            // Remove extra old children (from end)
+            for (int i = oldLength - 1; i >= headSkip; i--)
+            {
+                var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+                if (effectiveOld is Element oldChild)
+                {
+                    patches.Add(new RemoveChild(oldParent, oldChild));
+                }
+                else if (effectiveOld is RawHtml oldRaw)
+                {
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                }
+                else if (effectiveOld is Text oldText)
+                {
+                    patches.Add(new RemoveText(oldParent, oldText));
+                }
+            }
+
+            // Add extra new children
+            for (int i = headSkip; i < newLength; i++)
+            {
+                var effectiveNew = UnwrapMemoNode(newChildren[i]);
+                if (effectiveNew is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNew is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNew is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
             return;
         }
 
-        // Check if keys differ at all
-        if (!oldKeys.SequenceEqual(newKeys))
+        // Skip matching tail (common suffix)
+        // Be careful not to overlap with head
+        int oldEnd = oldLength - 1;
+        int newEnd = newLength - 1;
+        while (oldEnd > headSkip && newEnd > headSkip &&
+               oldKeys[oldEnd] == newKeys[newEnd])
+        {
+            // Diff the matching elements (they may have attribute/child changes)
+            DiffInternal(oldChildren[oldEnd], newChildren[newEnd], oldParent, patches);
+            tailSkip++;
+            oldEnd--;
+            newEnd--;
+        }
+
+        // Calculate middle section bounds
+        int oldMiddleStart = headSkip;
+        int oldMiddleEnd = oldLength - tailSkip; // exclusive
+        int newMiddleStart = headSkip;
+        int newMiddleEnd = newLength - tailSkip; // exclusive
+        int oldMiddleLength = oldMiddleEnd - oldMiddleStart;
+        int newMiddleLength = newMiddleEnd - newMiddleStart;
+
+        // If middle is empty after skip, we're done
+        if (oldMiddleLength == 0 && newMiddleLength == 0)
+        {
+            return;
+        }
+
+        // Handle middle-only clear (all middle elements removed)
+        if (oldMiddleLength > 0 && newMiddleLength == 0)
+        {
+            for (int i = oldMiddleEnd - 1; i >= oldMiddleStart; i--)
+            {
+                var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+                if (effectiveOld is Element oldChild)
+                {
+                    patches.Add(new RemoveChild(oldParent, oldChild));
+                }
+                else if (effectiveOld is RawHtml oldRaw)
+                {
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                }
+                else if (effectiveOld is Text oldText)
+                {
+                    patches.Add(new RemoveText(oldParent, oldText));
+                }
+            }
+            return;
+        }
+
+        // Handle middle-only add (all middle elements are new)
+        if (oldMiddleLength == 0 && newMiddleLength > 0)
+        {
+            for (int i = newMiddleStart; i < newMiddleEnd; i++)
+            {
+                var effectiveNew = UnwrapMemoNode(newChildren[i]);
+                if (effectiveNew is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNew is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNew is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
+            return;
+        }
+
+        // Create slices for the middle section only
+        var oldMiddleChildren = oldChildren.AsSpan(oldMiddleStart, oldMiddleLength);
+        var newMiddleChildren = newChildren.AsSpan(newMiddleStart, newMiddleLength);
+        var oldMiddleKeys = oldKeys.Slice(oldMiddleStart, oldMiddleLength);
+        var newMiddleKeys = newKeys.Slice(newMiddleStart, newMiddleLength);
+
+        // Fast path for small middle counts: use O(n²) linear scan instead of dictionaries
+        // This eliminates dictionary allocation overhead for common cases
+        if (oldMiddleLength <= SmallChildCountThreshold && newMiddleLength <= SmallChildCountThreshold)
+        {
+            // Use array-based version with ToArray() since we need Node[] not Span
+            DiffChildrenSmall(oldParent, newParent, oldMiddleChildren.ToArray(), newMiddleChildren.ToArray(), oldMiddleKeys, newMiddleKeys, patches);
+            return;
+        }
+
+        // Check if middle keys differ at all
+        if (!oldMiddleKeys.SequenceEqual(newMiddleKeys))
         {
             // Build lookup maps for efficient matching - use pooled dictionaries
+            // Note: Maps are built for MIDDLE section only (head/tail already handled)
             var oldKeyToIndex = RentKeyIndexMap();
             var newKeyToIndex = RentKeyIndexMap();
 
             try
             {
-                oldKeyToIndex.EnsureCapacity(oldLength);
-                for (int i = 0; i < oldLength; i++)
+                oldKeyToIndex.EnsureCapacity(oldMiddleLength);
+                for (int i = 0; i < oldMiddleLength; i++)
                 {
-                    oldKeyToIndex[oldKeys[i]] = i;
+                    oldKeyToIndex[oldMiddleKeys[i]] = i;
                 }
 
-                newKeyToIndex.EnsureCapacity(newLength);
-                for (int i = 0; i < newLength; i++)
+                newKeyToIndex.EnsureCapacity(newMiddleLength);
+                for (int i = 0; i < newMiddleLength; i++)
                 {
-                    newKeyToIndex[newKeys[i]] = i;
+                    newKeyToIndex[newMiddleKeys[i]] = i;
                 }
 
                 // Check if this is a reorder (same keys, different order) or a membership change
                 // Avoid allocating HashSets - use dictionaries we already have
-                var isReorder = oldLength == newLength && AreKeysSameSet(oldKeys, newKeyToIndex);
+                var isReorder = oldMiddleLength == newMiddleLength && AreKeysSameSet(oldMiddleKeys, newKeyToIndex);
 
                 if (isReorder)
                 {
@@ -1574,36 +1722,36 @@ public static class Operations
                     // 3. Move elements NOT in LIS to their correct positions
                     // 4. Diff each matched element pair for attribute/child changes
 
-                    // Build sequence: for each position in newChildren, get the old index
-                    var oldIndices = ArrayPool<int>.Shared.Rent(newLength);
+                    // Build sequence: for each position in newMiddleChildren, get the old index
+                    var oldIndices = ArrayPool<int>.Shared.Rent(newMiddleLength);
                     // Rent a bool array instead of allocating HashSet<int>
-                    var inLIS = ArrayPool<bool>.Shared.Rent(newLength);
+                    var inLIS = ArrayPool<bool>.Shared.Rent(newMiddleLength);
                     try
                     {
                         // Clear inLIS to avoid stale data from pool (ArrayPool doesn't zero memory)
-                        inLIS.AsSpan(0, newLength).Clear();
+                        inLIS.AsSpan(0, newMiddleLength).Clear();
 
-                        for (int i = 0; i < newLength; i++)
+                        for (int i = 0; i < newMiddleLength; i++)
                         {
-                            oldIndices[i] = oldKeyToIndex[newKeys[i]];
+                            oldIndices[i] = oldKeyToIndex[newMiddleKeys[i]];
                         }
 
                         // Find LIS of old indices - elements in LIS are already in correct relative order
                         // The indices returned are positions in oldIndices that form the LIS
                         // We mark those positions as "in LIS" (don't need moving)
-                        ComputeLISInto(oldIndices.AsSpan(0, newLength), inLIS.AsSpan(0, newLength));
+                        ComputeLISInto(oldIndices.AsSpan(0, newMiddleLength), inLIS.AsSpan(0, newMiddleLength));
 
                         // First, diff all elements (they all exist in both old and new)
-                        for (int i = 0; i < newLength; i++)
+                        for (int i = 0; i < newMiddleLength; i++)
                         {
                             var oldIndex = oldIndices[i];
-                            DiffInternal(oldChildren[oldIndex], newChildren[i], oldParent, patches);
+                            DiffInternal(oldMiddleChildren[oldIndex], newMiddleChildren[i], oldParent, patches);
                         }
 
                         // Move elements NOT in LIS to their correct positions
                         // Process in reverse order so we can use "insertBefore" with known reference
                         // IMPORTANT: We must use OLD element IDs since those are what exist in the DOM
-                        for (int i = newLength - 1; i >= 0; i--)
+                        for (int i = newMiddleLength - 1; i >= 0; i--)
                         {
                             if (!inLIS[i])
                             {
@@ -1611,19 +1759,25 @@ public static class Operations
                                 // Use OLD element since it has the ID currently in the DOM
                                 // Unwrap memo nodes to get the actual element for patch creation
                                 var oldIndex = oldIndices[i];
-                                var oldNode = UnwrapMemoNode(oldChildren[oldIndex]);
+                                var oldNode = UnwrapMemoNode(oldMiddleChildren[oldIndex]);
                                 if (oldNode is Element oldChildElement)
                                 {
                                     // Find the element to insert before (the next sibling in new order)
                                     // Also use OLD element ID for the reference element
                                     // Unwrap memo nodes for the reference element too
                                     string? beforeId = null;
-                                    if (i + 1 < newLength)
+                                    if (i + 1 < newMiddleLength)
                                     {
                                         // Get the OLD element for position i+1 (its ID is in the DOM)
                                         var nextOldIndex = oldIndices[i + 1];
-                                        var nextOldNode = UnwrapMemoNode(oldChildren[nextOldIndex]);
+                                        var nextOldNode = UnwrapMemoNode(oldMiddleChildren[nextOldIndex]);
                                         beforeId = nextOldNode.Id;
+                                    }
+                                    else if (tailSkip > 0)
+                                    {
+                                        // Insert before the first tail element (which wasn't moved)
+                                        var firstTailNode = UnwrapMemoNode(oldChildren[oldMiddleEnd]);
+                                        beforeId = firstTailNode.Id;
                                     }
                                     patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
                                 }
@@ -1652,9 +1806,9 @@ public static class Operations
 
                 try
                 {
-                    for (int i = 0; i < oldLength; i++)
+                    for (int i = 0; i < oldMiddleLength; i++)
                     {
-                        if (newKeyToIndex.TryGetValue(oldKeys[i], out var newIndex))
+                        if (newKeyToIndex.TryGetValue(oldMiddleKeys[i], out var newIndex))
                         {
                             keysToDiff.Add((i, newIndex));
                         }
@@ -1664,9 +1818,9 @@ public static class Operations
                         }
                     }
 
-                    for (int i = 0; i < newLength; i++)
+                    for (int i = 0; i < newMiddleLength; i++)
                     {
-                        if (!oldKeyToIndex.ContainsKey(newKeys[i]))
+                        if (!oldKeyToIndex.ContainsKey(newMiddleKeys[i]))
                         {
                             keysToAdd.Add(i);
                         }
@@ -1678,7 +1832,7 @@ public static class Operations
                     {
                         var idx = keysToRemove[i];
                         // Unwrap memo nodes to get the actual content for patch creation
-                        var effectiveOld = UnwrapMemoNode(oldChildren[idx]);
+                        var effectiveOld = UnwrapMemoNode(oldMiddleChildren[idx]);
 
                         if (effectiveOld is Element oldChild)
                         {
@@ -1697,14 +1851,14 @@ public static class Operations
                     // Diff children that exist in both trees
                     foreach (var (oldIndex, newIndex) in keysToDiff)
                     {
-                        DiffInternal(oldChildren[oldIndex], newChildren[newIndex], oldParent, patches);
+                        DiffInternal(oldMiddleChildren[oldIndex], newMiddleChildren[newIndex], oldParent, patches);
                     }
 
                     // Add new children that don't exist in old
                     foreach (var idx in keysToAdd)
                     {
                         // Unwrap memo nodes to get the actual content for patch creation
-                        var effectiveNode = UnwrapMemoNode(newChildren[idx]);
+                        var effectiveNode = UnwrapMemoNode(newMiddleChildren[idx]);
 
                         if (effectiveNode is Element newChild)
                         {
@@ -1735,51 +1889,10 @@ public static class Operations
             }
         }
 
-        // Keys are identical: diff in place
-        var shared = Math.Min(oldLength, newLength);
-        for (int i = 0; i < shared; i++)
+        // Middle keys are identical: diff in place
+        for (int i = 0; i < oldMiddleLength; i++)
         {
-            DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
-        }
-
-        // Remove extra old children (iterate backwards to maintain DOM order)
-        for (int i = oldLength - 1; i >= shared; i--)
-        {
-            // Unwrap memo nodes to get the actual content for patch creation
-            var effectiveOld = UnwrapMemoNode(oldChildren[i]);
-
-            if (effectiveOld is Element oldChild)
-            {
-                patches.Add(new RemoveChild(oldParent, oldChild));
-            }
-            else if (effectiveOld is RawHtml oldRaw)
-            {
-                patches.Add(new RemoveRaw(oldParent, oldRaw));
-            }
-            else if (effectiveOld is Text oldText)
-            {
-                patches.Add(new RemoveText(oldParent, oldText));
-            }
-        }
-
-        // Add additional new children
-        for (int i = shared; i < newLength; i++)
-        {
-            // Unwrap memo nodes to get the actual content for patch creation
-            var effectiveNode = UnwrapMemoNode(newChildren[i]);
-
-            if (effectiveNode is Element newChild)
-            {
-                patches.Add(new AddChild(newParent, newChild));
-            }
-            else if (effectiveNode is RawHtml newRaw)
-            {
-                patches.Add(new AddRaw(newParent, newRaw));
-            }
-            else if (effectiveNode is Text newText)
-            {
-                patches.Add(new AddText(newParent, newText));
-            }
+            DiffInternal(oldMiddleChildren[i], newMiddleChildren[i], oldParent, patches);
         }
     }
 

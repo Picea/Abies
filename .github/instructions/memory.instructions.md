@@ -399,17 +399,44 @@ Applied the following optimizations to reduce GC pressure:
 2. `inLIS` bool array - Replaced `HashSet<int>` with `ArrayPool<bool>.Shared` for LIS membership
 3. `PatchDataList` pooling - Added `_patchDataListPool` to reuse List<PatchData> in ApplyBatch
 
-**Remaining Hotspots (Priority Order):**
-1. **Clear (09_clear1k)** - Still 1.84x slower than Blazor
-   - parseHtmlFragment overhead (4.8% of runtime)
-   - Consider Direct DOM Commands to eliminate HTML string parsing
-2. **Swap (05_swap1k)** - 1.31x slower than Blazor
-   - Already heavily optimized with LIS algorithm
-3. **Create (01_run1k)** - 1.21x slower than Blazor
-   - Close to optimal for WASM-based framework
+**Performance Priority List (Updated 2026-02-12):**
+
+Based on extensive trace analysis and VDOM optimization research. Current state:
+- **Create (01_run1k)**: 91.6ms total, 60.3ms script ✅ **MATCHES BLAZOR** (1.00x)
+- **Swap (05_swap1k)**: 121.7ms total, 99.1ms script ⚠️ **GAP: 1.95x script time** (vs Blazor 50.8ms)
+- **Replace (02_replace1k)**: 115.4ms total, 84.8ms script (1.18x vs Blazor)
+
+**✅ P0 IMPLEMENTED: Head/Tail Skip for Keyed Diffing (2026-02-12)**
+- **Implementation**: Added three-phase diff to `DiffChildrenCore`:
+  1. Skip matching head (common prefix)
+  2. Skip matching tail (common suffix)
+  3. Only build key maps and run LIS on the middle section
+- **Result**: No measurable improvement for swap benchmark
+  - Swap only has 2 matching elements (positions 0 and 999), so 998 still need LIS
+- **Benefit**: Prepares codebase for append-only fast path (chat, logs, feeds)
+- **Code**: Added ~100 lines to `Operations.cs` in `DiffChildrenCore`
+
+**P1 (MEDIUM - Requires Investigation): String Key Hashing Overhead**
+- **Problem**: Using `Dictionary<string, int>` requires hashing 998 string keys
+- **Hypothesis**: Int-based keys or array-based lookup would be faster
+- **Action**: Profile dictionary operations vs array lookup for keyed diffing
+- **Expected Impact**: 10-30% reduction in reorder scenarios
+
+**P2 (LOW - Research Required): Blazor Diff Architecture Analysis**
+- **Question**: Why is Blazor's swap 2x faster when both use LIS + binary protocol?
+- **Action**: Examine Blazor's RenderTreeDiff.cs source code
+- **Hypothesis**: Blazor may use int sequence numbers instead of string keys
+
+**P3 (FUTURE - After P1-P2): Additional Optimizations from Research**
+- **Memo Identity Bailout**: If `oldNode === newNode` (reference equality), skip diff entirely
+  - Already have Memo nodes but need to verify they skip at DiffInternal level
+- **Type Mismatch → Replace**: Different element tag = replace, don't morph
+  - Check if this is already implemented
+- **Append-Only Fast Path**: Head/tail skip now enables O(1) append detection
+  - When `headSkip == oldLength`, all new items are appends
 
 **Size Comparison:**
-- Abies compressed: 1,225 KB
+- Abies compressed: 1,225 KB (vs Blazor 1,377 KB - **11% smaller** ✅)
 - Abies uncompressed: 3,938 KB
 - First paint: 74.2ms ✅ (was 4,811ms before placeholder fix)
 
