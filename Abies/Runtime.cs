@@ -112,7 +112,7 @@ public static partial class Runtime
             // Compute the patches
             var patches = Operations.Diff(dom, alignedBody);
 
-            // Apply patches in batch (reduces JS interop overhead)
+            // Apply patches in batch using binary protocol for zero-copy transfer
             await Operations.ApplyBatch(patches);
 
             dom = alignedBody;

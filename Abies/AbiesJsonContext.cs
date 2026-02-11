@@ -10,7 +10,6 @@
 // =============================================================================
 
 using System.Text.Json.Serialization;
-using Abies.DOM;
 using Abies.Html;
 
 namespace Abies;
@@ -29,6 +28,4 @@ namespace Abies;
 [JsonSerializable(typeof(VisibilityEventData))]
 [JsonSerializable(typeof(WebSocketOptions))]
 [JsonSerializable(typeof(WebSocketEventData))]
-[JsonSerializable(typeof(List<PatchData>))]
-[JsonSerializable(typeof(PatchData))]
 internal partial class AbiesJsonContext : JsonSerializerContext;
