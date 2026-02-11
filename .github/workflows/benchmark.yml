@@ -325,23 +325,23 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork
 
-      # Cache npm dependencies
+      # Cache npm dependencies (key based on date since we can't hash files outside workspace)
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-${{ hashFiles('../js-framework-benchmark-fork/**/package-lock.json') }}
+          key: npm-js-framework-benchmark-${{ runner.os }}-v1
           restore-keys: |
-            npm-${{ runner.os }}-
+            npm-js-framework-benchmark-${{ runner.os }}-
 
       # Cache Chrome browser for Selenium
       - name: Cache Chrome for Testing
         uses: actions/cache@v4
         with:
           path: ~/.cache/selenium
-          key: selenium-chrome-${{ runner.os }}
+          key: selenium-chrome-${{ runner.os }}-v1
           restore-keys: |
-            selenium-chrome-
+            selenium-chrome-${{ runner.os }}-
 
       - name: Build Abies for benchmark
         run: |
