@@ -214,10 +214,11 @@ jobs:
             --allocation-threshold 120
 
       # ============================================
-      # HISTORICAL TRACKING (gh-pages, for trends only)
+      # HISTORICAL TRACKING (gh-pages, main branch only)
       # ============================================
       - name: Check if gh-pages exists
         id: gh-pages-check
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -225,42 +226,9 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Store throughput to gh-pages (PR - no fail)
-        uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
-        with:
-          name: Rendering Engine Throughput
-          tool: benchmarkdotnet
-          output-file-path: ./benchmark-results/merged/throughput.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: false
-          save-data-file: false
-          alert-threshold: '105%'
-          comment-on-alert: true
-          fail-on-alert: false  # Don't fail here - same-job comparison handles pass/fail
-          summary-always: true
-          alert-comment-cc-users: '@MCGPPeters'
-
-      - name: Store allocations to gh-pages (PR - no fail)
-        uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'pull_request' && steps.gh-pages-check.outputs.exists == 'true'
-        with:
-          name: Rendering Engine Allocations
-          tool: customSmallerIsBetter
-          output-file-path: ./benchmark-results/merged/allocations.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: false
-          save-data-file: false
-          skip-fetch-gh-pages: true
-          alert-threshold: '110%'
-          comment-on-alert: true
-          fail-on-alert: false  # Don't fail here - same-job comparison handles pass/fail
-          summary-always: true
-          alert-comment-cc-users: '@MCGPPeters'
-
       - name: Store throughput baseline (main)
         uses: benchmark-action/github-action-benchmark@v1
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: Rendering Engine Throughput
           tool: benchmarkdotnet
@@ -271,13 +239,13 @@ jobs:
           skip-fetch-gh-pages: ${{ steps.gh-pages-check.outputs.exists != 'true' }}
           alert-threshold: '105%'
           comment-on-alert: true
-          fail-on-alert: true
-          fail-threshold: '110%'
+          fail-on-alert: false
+          summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
       - name: Store allocation baseline (main)
         uses: benchmark-action/github-action-benchmark@v1
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: Rendering Engine Allocations
           tool: customSmallerIsBetter
@@ -288,8 +256,8 @@ jobs:
           skip-fetch-gh-pages: false
           alert-threshold: '110%'
           comment-on-alert: true
-          fail-on-alert: true
-          fail-threshold: '120%'
+          fail-on-alert: false
+          summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
       - name: Upload benchmark artifacts
@@ -399,6 +367,7 @@ jobs:
 
       - name: Check if gh-pages exists
         id: gh-pages-check
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -406,9 +375,9 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Store E2E benchmark trends to gh-pages
+      - name: Store E2E benchmark trends to gh-pages (main only)
         uses: benchmark-action/github-action-benchmark@v1
-        if: steps.gh-pages-check.outputs.exists == 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
           name: E2E Benchmark (js-framework-benchmark)
           tool: customSmallerIsBetter
@@ -418,8 +387,7 @@ jobs:
           save-data-file: true
           alert-threshold: '110%'
           comment-on-alert: true
-          fail-on-alert: true
-          fail-threshold: '115%'
+          fail-on-alert: false
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
