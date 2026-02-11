@@ -1778,8 +1778,8 @@ public static class Operations
         // This eliminates dictionary allocation overhead for common cases
         if (oldMiddleLength <= SmallChildCountThreshold && newMiddleLength <= SmallChildCountThreshold)
         {
-            // Use array-based version with ToArray() since we need Node[] not Span
-            DiffChildrenSmall(oldParent, newParent, oldMiddleChildren.ToArray(), newMiddleChildren.ToArray(), oldMiddleKeys, newMiddleKeys, patches);
+            // Use span-based overload to avoid ToArray() allocation
+            DiffChildrenSmallSpan(oldParent, newParent, oldMiddleChildren, newMiddleChildren, oldMiddleKeys, newMiddleKeys, patches);
             return;
         }
 
@@ -2138,6 +2138,165 @@ public static class Operations
         }
 
         // Add unmatched new children
+        for (int i = 0; i < newLength; i++)
+        {
+            if (newMatched[i] == -1)
+            {
+                var effectiveNode = UnwrapMemoNode(newChildren[i]);
+                if (effectiveNode is Element newChild)
+                {
+                    patches.Add(new AddChild(newParent, newChild));
+                }
+                else if (effectiveNode is RawHtml newRaw)
+                {
+                    patches.Add(new AddRaw(newParent, newRaw));
+                }
+                else if (effectiveNode is Text newText)
+                {
+                    patches.Add(new AddText(newParent, newText));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fast path for diffing small child lists using O(n²) linear scan.
+    /// Span-based overload to avoid ToArray() allocations when working with sliced spans.
+    /// Avoids dictionary allocation overhead which dominates for small n.
+    /// </summary>
+    /// <remarks>
+    /// This overload is used after head/tail skip optimization when the middle section
+    /// is small. The ClearChildren optimization is not applicable here since the caller
+    /// already handles the case when newMiddleLength == 0.
+    /// </remarks>
+    private static void DiffChildrenSmallSpan(
+        Element oldParent,
+        Element newParent,
+        ReadOnlySpan<Node> oldChildren,
+        ReadOnlySpan<Node> newChildren,
+        ReadOnlySpan<string> oldKeys,
+        ReadOnlySpan<string> newKeys,
+        List<Patch> patches)
+    {
+        var oldLength = oldChildren.Length;
+        var newLength = newChildren.Length;
+
+        // Fast path: keys are identical (use SequenceEqual for small spans)
+        if (oldKeys.SequenceEqual(newKeys))
+        {
+            // Keys match: diff children in place
+            for (int i = 0; i < oldLength; i++)
+            {
+                DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
+            }
+            return;
+        }
+
+        // Use stackalloc for tracking matched indices (no heap allocation)
+        // -1 = not matched, otherwise = index in the other array
+        Span<int> oldMatched = stackalloc int[oldLength];
+        Span<int> newMatched = stackalloc int[newLength];
+        oldMatched.Fill(-1);
+        newMatched.Fill(-1);
+
+        // O(n²) matching: for each old key, find its position in new keys
+        for (int i = 0; i < oldLength; i++)
+        {
+            var oldKey = oldKeys[i];
+            for (int j = 0; j < newLength; j++)
+            {
+                if (newMatched[j] == -1 && string.Equals(oldKey, newKeys[j], StringComparison.Ordinal))
+                {
+                    oldMatched[i] = j;
+                    newMatched[j] = i;
+                    break;
+                }
+            }
+        }
+
+        // Check if this is a pure reorder (all keys matched)
+        var allMatched = true;
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] == -1)
+            {
+                allMatched = false;
+                break;
+            }
+        }
+
+        if (allMatched && oldLength == newLength)
+        {
+            // Pure reorder: use simple approach for small lists
+            Span<int> oldIndices = stackalloc int[newLength];
+            for (int i = 0; i < newLength; i++)
+            {
+                oldIndices[i] = newMatched[i];
+            }
+
+            Span<bool> inLIS = stackalloc bool[newLength];
+            inLIS.Clear();
+            ComputeLISIntoSmall(oldIndices, inLIS);
+
+            // Diff all matched pairs
+            for (int i = 0; i < newLength; i++)
+            {
+                var oldIndex = oldIndices[i];
+                DiffInternal(oldChildren[oldIndex], newChildren[i], oldParent, patches);
+            }
+
+            // Move elements not in LIS
+            for (int i = newLength - 1; i >= 0; i--)
+            {
+                if (!inLIS[i])
+                {
+                    var oldIndex = oldIndices[i];
+                    var oldNode = UnwrapMemoNode(oldChildren[oldIndex]);
+                    if (oldNode is Element oldChildElement)
+                    {
+                        string? beforeId = null;
+                        if (i + 1 < newLength)
+                        {
+                            var nextOldIndex = oldIndices[i + 1];
+                            var nextOldNode = UnwrapMemoNode(oldChildren[nextOldIndex]);
+                            beforeId = nextOldNode.Id;
+                        }
+                        patches.Add(new MoveChild(oldParent, oldChildElement, beforeId));
+                    }
+                }
+            }
+            return;
+        }
+
+        // Membership change: some added, some removed
+        for (int i = oldLength - 1; i >= 0; i--)
+        {
+            if (oldMatched[i] == -1)
+            {
+                var effectiveOld = UnwrapMemoNode(oldChildren[i]);
+                if (effectiveOld is Element oldChild)
+                {
+                    patches.Add(new RemoveChild(oldParent, oldChild));
+                }
+                else if (effectiveOld is RawHtml oldRaw)
+                {
+                    patches.Add(new RemoveRaw(oldParent, oldRaw));
+                }
+                else if (effectiveOld is Text oldText)
+                {
+                    patches.Add(new RemoveText(oldParent, oldText));
+                }
+            }
+        }
+
+        for (int i = 0; i < oldLength; i++)
+        {
+            if (oldMatched[i] != -1)
+            {
+                DiffInternal(oldChildren[i], newChildren[oldMatched[i]], oldParent, patches);
+            }
+        }
+
         for (int i = 0; i < newLength; i++)
         {
             if (newMatched[i] == -1)
