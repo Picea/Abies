@@ -62,6 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       benchmark-paths: ${{ steps.filter.outputs.benchmark }}
+      e2e-scripts: ${{ steps.filter.outputs.e2e-scripts }}
       perf-pr: ${{ steps.check-perf.outputs.is-perf }}
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +78,11 @@ jobs:
               - 'scripts/compare-benchmarks.py'
               - 'scripts/compare-benchmark.py'
               - '.github/workflows/benchmark.yml'
+            e2e-scripts:
+              - '.github/workflows/benchmark.yml'
+              - 'scripts/compare-benchmark.py'
+              - 'scripts/convert-e2e-results.py'
+              - 'scripts/run-benchmarks.sh'
       - name: Check if performance PR
         id: check-perf
         run: |
@@ -282,11 +288,13 @@ jobs:
   # 1. Manual: workflow_dispatch with run_e2e_benchmark=true
   # 2. Auto on PR: when PR title starts with 'perf:' or 'perf('
   # 3. Auto on PR: when PR has 'performance' label
-  # 4. Auto on main: after merge to track baseline trends
+  # 4. Auto on PR: when benchmark workflow or E2E scripts change
+  # 5. Auto on main: after merge to track baseline trends
   #
   # To trigger automatically, either:
   # - Name your PR with 'perf:' or 'perf(' prefix (e.g., "perf: optimize diffing")
   # - Add the 'performance' label to the PR
+  # - Modify the benchmark workflow or E2E scripts
   # ============================================================================
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
@@ -296,6 +304,7 @@ jobs:
       github.event.inputs.run_e2e_benchmark == 'true' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       needs.changes.outputs.perf-pr == 'true' ||
+      needs.changes.outputs.e2e-scripts == 'true' ||
       contains(github.event.pull_request.labels.*.name, 'performance')
 
     steps:
