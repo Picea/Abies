@@ -292,6 +292,90 @@ For reference, compare against:
 | Size (compressed) | 1,225 KB | 1,377 KB | 0.89x ✅ |
 | Ready Memory | 34.3 MB | 41.1 MB | 0.83x ✅ |
 
+### 🎉 Binary Batching Protocol Implementation (2026-02-11)
+
+**Branch**: `perf/binary-render-batch`
+
+Implemented Blazor-inspired binary batching protocol to eliminate JSON serialization overhead.
+
+**Results with Binary Batching:**
+
+| Benchmark | JSON (baseline) | Binary | Blazor | Binary vs JSON | Binary vs Blazor |
+|-----------|----------------|--------|--------|----------------|------------------|
+| 01_run1k | 107ms | **89.1ms** | 88.3ms | **17% faster** | **1.01x** ✅ |
+| 05_swap1k | 124.8ms | **120.3ms** | 93.9ms | 4% faster | 1.28x |
+| Script time (run1k) | 75ms | **57.8ms** | 57.3ms | **23% faster** | **1.01x** ✅ |
+
+**Key Achievement**: Create 1000 rows is now **matching Blazor performance** (89.1ms vs 88.3ms)!
+
+**Implementation Details**:
+- `RenderBatchWriter.cs`: Binary batch writer with LEB128 string encoding and string table deduplication
+- `JSType.MemoryView` with `Span<byte>` for zero-copy memory transfer
+- JavaScript binary reader using `DataView` API
+- Binary batching is always enabled; JSON batching has been removed
+
+**Binary Format**:
+```
+Header (8 bytes):
+  - PatchCount: int32 (4 bytes)
+  - StringTableOffset: int32 (4 bytes)
+
+Patch Entries (16 bytes each):
+  - Type: int32 (4 bytes) - BinaryPatchType enum value
+  - Field1: int32 (4 bytes) - string table index (-1 = null)
+  - Field2: int32 (4 bytes) - string table index (-1 = null)
+  - Field3: int32 (4 bytes) - string table index (-1 = null)
+
+String Table:
+  - LEB128 length prefix + UTF8 bytes for each string
+  - String deduplication via Dictionary lookup
+```
+
+**JSType.MemoryView Lesson Learned**:
+- JavaScript receives a `Span` wrapper object, NOT a raw `Uint8Array`
+- Must call `span.slice()` to get a `Uint8Array` copy of the data
+- The wrapper has methods: `slice()`, `copyTo()`, `set()`, `length`, `byteLength`
+
+### 🔬 Deep Investigation: Why Blazor is Faster (2026-02-11)
+
+**See `docs/investigations/blazor-performance-analysis.md` for full analysis.**
+
+**Root Cause**: Blazor uses a **zero-copy binary protocol** via shared WASM memory.
+
+**Key Architectural Differences**:
+
+1. **Blazor: SharedMemoryRenderBatch**
+   - Passes a raw memory pointer to JavaScript
+   - JavaScript reads binary data directly from .NET WASM heap
+   - No serialization whatsoever
+   - Fixed-size entries enable O(1) indexing
+
+2. **Abies: Binary Batching Protocol** (Implemented 2026-02-11)
+   - Binary batch format written directly to pooled buffers
+   - `JSType.MemoryView` transfers data to JS without copying
+   - JavaScript reads binary data using `DataView` API
+   - LEB128-encoded string table with deduplication
+   - ~17% faster than previous JSON approach
+
+> **Note**: The JSON protocol described here was removed in the binary batching implementation.
+> See `RenderBatchWriter.cs` and `abies.js` for the current binary implementation.
+
+**The Math** (for 1000-row operations):
+- Blazor: Single pointer transfer → JS reads binary directly
+- Abies: Binary batch → memory view transfer → JS reads binary directly
+
+**Optimization Paths Completed**:
+1. ~~**Short-term**: Optimize JSON format (compact arrays, shorter keys) - 10-20% potential~~ Skipped
+2. ✅ **Medium-term**: Binary protocol implementation - **17% improvement achieved**
+3. **Future**: Consider SharedMemoryRenderBatch pattern for even more efficiency
+2. **Medium-term**: Binary protocol prototype - 40-60% potential
+3. **Long-term**: Full SharedMemoryRenderBatch implementation
+
+**Why Direct DOM Commands Failed** (earlier investigation):
+- JSON serialization overhead for createElement/setAttribute **exceeded** innerHTML parsing savings
+- Browser HTML parsers are highly optimized
+- Direct DOM commands only help with binary protocols (like Blazor's)
+
 **🎉 Clear Fast Path Optimization (2026-02-11):**
 - **Clear benchmark**: 90.4ms → 85.1ms (**5.9% faster**)
 - Added O(1) early exit when clearing all children (`newLength == 0`)

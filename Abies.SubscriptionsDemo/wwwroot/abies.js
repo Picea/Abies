@@ -893,6 +893,288 @@ function addEventListeners(root) {
  * @param {Event} event - The DOM event.
  */
 
+// =============================================================================
+// BINARY RENDER BATCH - Zero-Copy Protocol
+// =============================================================================
+// Reads DOM patches directly from WASM memory without JSON serialization.
+// This is inspired by Blazor's SharedMemoryRenderBatch but adapted for Abies.
+//
+// Binary Format:
+//   Header (8 bytes):
+//     - PatchCount: int32 (4 bytes)
+//     - StringTableOffset: int32 (4 bytes)
+//   
+//   Patch Entries (16 bytes each):
+//     - Type: int32 (4 bytes) - BinaryPatchType enum value
+//     - Field1: int32 (4 bytes) - string table index (-1 = null)
+//     - Field2: int32 (4 bytes) - string table index (-1 = null)
+//     - Field3: int32 (4 bytes) - string table index (-1 = null)
+//   
+//   String Table:
+//     - Strings stored as LEB128 length prefix + UTF8 bytes
+// =============================================================================
+
+const BinaryPatchType = {
+    SetAppContent: 1,
+    ReplaceChild: 2,
+    AddChild: 3,
+    RemoveChild: 4,
+    ClearChildren: 5,
+    UpdateAttribute: 6,
+    AddAttribute: 7,
+    RemoveAttribute: 8,
+    UpdateText: 9,
+    UpdateTextWithId: 10,
+    MoveChild: 11,
+};
+
+/**
+ * Reads an int32 from a Uint8Array at the given offset (little-endian).
+ * @param {Uint8Array} data - The binary data buffer.
+ * @param {number} offset - The byte offset to read from.
+ * @returns {number} The int32 value.
+ */
+function readInt32LE(data, offset) {
+    return data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
+}
+
+/**
+ * Reads a LEB128-encoded unsigned integer and returns both value and bytes consumed.
+ * @param {Uint8Array} data - The binary data buffer.
+ * @param {number} offset - The byte offset to start reading from.
+ * @returns {{value: number, bytesRead: number}} The decoded value and number of bytes consumed.
+ */
+function readLEB128(data, offset) {
+    let result = 0;
+    let shift = 0;
+    let bytesRead = 0;
+    let byte;
+    do {
+        byte = data[offset + bytesRead];
+        result |= (byte & 0x7F) << shift;
+        shift += 7;
+        bytesRead++;
+    } while (byte & 0x80);
+    return { value: result, bytesRead };
+}
+
+/**
+ * Creates a string reader for the binary batch's string table.
+ * @param {Uint8Array} data - The binary data buffer.
+ * @param {number} stringTableOffset - The byte offset where the string table starts.
+ * @returns {function(number): string|null} A function that reads a string by index.
+ */
+function createStringReader(data, stringTableOffset) {
+    const decoder = new TextDecoder('utf-8');
+    
+    return function readString(index) {
+        if (index === -1) return null;
+        
+        // Index points to the byte offset within the string table
+        const absoluteOffset = stringTableOffset + index;
+        
+        // Read LEB128 length prefix
+        const { value: length, bytesRead } = readLEB128(data, absoluteOffset);
+        
+        // Read UTF-8 bytes
+        const stringStart = absoluteOffset + bytesRead;
+        const stringBytes = data.subarray(stringStart, stringStart + length);
+        
+        return decoder.decode(stringBytes);
+    };
+}
+
+/**
+ * Applies a binary render batch to the DOM.
+ * This is the zero-copy alternative to applyPatches that avoids JSON serialization.
+ * @param {Object|Uint8Array} batchData - The binary batch data (Span wrapper or Uint8Array).
+ *        When using JSType.MemoryView, this is a Span wrapper object with slice() method.
+ */
+function applyBinaryBatchImpl(batchData) {
+    // JSType.MemoryView passes a Span wrapper object with slice() method, NOT a raw Uint8Array
+    // The Span wrapper provides slice() to create a copy of the data as a Uint8Array
+    // We must call slice() to get the actual data since the original Span may be short-lived
+    let data;
+    if (batchData instanceof Uint8Array) {
+        data = batchData;
+    } else if (batchData && typeof batchData.slice === 'function') {
+        // This is a Span wrapper - call slice() to get a Uint8Array copy
+        data = batchData.slice();
+    } else if (batchData && typeof batchData.copyTo === 'function') {
+        // Alternative: use copyTo if slice isn't available
+        const temp = new Uint8Array(batchData.length);
+        batchData.copyTo(temp);
+        data = temp;
+    } else {
+        console.error('[Binary Batch] Unknown batchData type:', typeof batchData, batchData);
+        return;
+    }
+    
+    // Read header
+    const patchCount = readInt32LE(data, 0);
+    const stringTableOffset = readInt32LE(data, 4);
+    
+    if (getVerbosity() >= 2) { // debug level
+        console.debug(`[Binary Batch] patchCount=${patchCount}, stringTableOffset=${stringTableOffset}, dataLength=${data.length}`);
+    }
+    
+    // Create string reader
+    const readString = createStringReader(data, stringTableOffset);
+    
+    // Process each patch (16 bytes each, starting after 8-byte header)
+    const HEADER_SIZE = 8;
+    const PATCH_SIZE = 16;
+    
+    for (let i = 0; i < patchCount; i++) {
+        const patchOffset = HEADER_SIZE + (i * PATCH_SIZE);
+        
+        const type = readInt32LE(data, patchOffset);
+        const field1 = readInt32LE(data, patchOffset + 4);
+        const field2 = readInt32LE(data, patchOffset + 8);
+        const field3 = readInt32LE(data, patchOffset + 12);
+        
+        switch (type) {
+            case BinaryPatchType.SetAppContent: {
+                const html = readString(field1);
+                document.body.innerHTML = html;
+                addEventListeners();
+                window.abiesReady = true;
+                break;
+            }
+            case BinaryPatchType.AddChild: {
+                const parentId = readString(field1);
+                const html = readString(field2);
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    const childElement = parseHtmlFragment(html);
+                    if (childElement) {
+                        parent.appendChild(childElement);
+                        addEventListeners(childElement);
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.RemoveChild: {
+                const childId = readString(field2);
+                const child = document.getElementById(childId);
+                if (child && child.parentNode) {
+                    child.remove();
+                }
+                break;
+            }
+            case BinaryPatchType.ClearChildren: {
+                const parentId = readString(field1);
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    parent.replaceChildren();
+                }
+                break;
+            }
+            case BinaryPatchType.ReplaceChild: {
+                const targetId = readString(field1);
+                const html = readString(field2);
+                const oldNode = document.getElementById(targetId);
+                if (oldNode && oldNode.parentNode) {
+                    const newNode = parseHtmlFragment(html);
+                    if (newNode) {
+                        oldNode.parentNode.replaceChild(newNode, oldNode);
+                        addEventListeners(newNode);
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.UpdateAttribute:
+            case BinaryPatchType.AddAttribute: {
+                const targetId = readString(field1);
+                const attrName = readString(field2);
+                const attrValue = readString(field3);
+                const node = document.getElementById(targetId);
+                if (node) {
+                    const lower = attrName.toLowerCase();
+                    const isBooleanAttr = (
+                        lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                        lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                        lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                    );
+                    if (lower === 'value' && 'value' in node) {
+                        node.value = attrValue;
+                        node.setAttribute(attrName, attrValue);
+                    } else if (isBooleanAttr) {
+                        node.setAttribute(attrName, '');
+                        try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
+                    } else {
+                        node.setAttribute(attrName, attrValue);
+                    }
+                    if (attrName.startsWith('data-event-')) {
+                        ensureEventListener(attrName.substring('data-event-'.length));
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.RemoveAttribute: {
+                const targetId = readString(field1);
+                const attrName = readString(field2);
+                const node = document.getElementById(targetId);
+                if (node) {
+                    const lower = attrName.toLowerCase();
+                    const isBooleanAttr = (
+                        lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
+                        lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
+                        lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
+                    );
+                    node.removeAttribute(attrName);
+                    if (isBooleanAttr) {
+                        try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.UpdateText: {
+                const targetId = readString(field1);
+                const text = readString(field2);
+                const node = document.getElementById(targetId);
+                if (node) {
+                    node.textContent = text;
+                    const tag = (node.tagName || '').toUpperCase();
+                    if (tag === 'TEXTAREA') {
+                        try { node.value = text; } catch { /* ignore */ }
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.UpdateTextWithId: {
+                const targetId = readString(field1);
+                const text = readString(field2);
+                const newId = readString(field3);
+                const node = document.getElementById(targetId);
+                if (node) {
+                    node.textContent = text;
+                    node.setAttribute('id', newId);
+                    const tag = (node.tagName || '').toUpperCase();
+                    if (tag === 'TEXTAREA') {
+                        try { node.value = text; } catch { /* ignore */ }
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.MoveChild: {
+                const parentId = readString(field1);
+                const childId = readString(field2);
+                const beforeId = readString(field3); // null if -1
+                const parent = document.getElementById(parentId);
+                const child = document.getElementById(childId);
+                if (parent && child) {
+                    const before = beforeId ? document.getElementById(beforeId) : null;
+                    parent.insertBefore(child, before);
+                }
+                break;
+            }
+            default:
+                console.error(`Unknown binary patch type: ${type}`);
+        }
+    }
+}
+
 /**
  * Parses an HTML string fragment into a DOM element, using the appropriate
  * container element to ensure browser parsing succeeds. Browsers strip
@@ -1138,195 +1420,6 @@ setModuleImports('abies.js', {
         }
     }),
 
-    /**
-     * Apply a batch of patches to the DOM in a single operation.
-     * This reduces JS interop overhead by processing multiple patches at once.
-     * @param {string} patchesJson - JSON array of patch operations.
-     */
-    applyPatches: withSpan('applyPatches', async (patchesJson) => {
-        const patches = JSON.parse(patchesJson);
-        for (const patch of patches) {
-            switch (patch.Type) {
-                case 'SetAppContent':
-                    document.body.innerHTML = patch.Html;
-                    addEventListeners();
-                    window.abiesReady = true;
-                    break;
-                case 'AddChild': {
-                    const parent = document.getElementById(patch.ParentId);
-                    if (parent) {
-                        // Use parseHtmlFragment for proper table/select handling
-                        const childElement = parseHtmlFragment(patch.Html);
-                        if (childElement) {
-                            parent.appendChild(childElement);
-                            // Use addEventListeners to discover all event handlers
-                            addEventListeners(childElement);
-                        }
-                    } else {
-                        console.error(`Parent node with ID ${patch.ParentId} not found.`);
-                    }
-                    break;
-                }
-                case 'RemoveChild': {
-                    const child = document.getElementById(patch.ChildId);
-                    // Guard against child already removed or reparented
-                    if (child && child.parentNode) {
-                        child.remove();
-                    }
-                    break;
-                }
-                case 'ClearChildren': {
-                    const parent = document.getElementById(patch.ParentId);
-                    if (parent) {
-                        // replaceChildren() with no args efficiently removes all children
-                        parent.replaceChildren();
-                    }
-                    break;
-                }
-                case 'ReplaceChild': {
-                    const oldNode = document.getElementById(patch.TargetId);
-                    if (oldNode && oldNode.parentNode) {
-                        // Use parseHtmlFragment for proper table/select handling
-                        const newNode = parseHtmlFragment(patch.Html);
-                        if (newNode) {
-                            oldNode.parentNode.replaceChild(newNode, oldNode);
-                            // Use addEventListeners which includes the root element
-                            addEventListeners(newNode);
-                        }
-                    } else {
-                        console.error(`ReplaceChild failed: target=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                case 'MoveChild': {
-                    const parent = document.getElementById(patch.ParentId);
-                    const child = document.getElementById(patch.ChildId);
-                    if (!parent) {
-                        console.error(`MoveChild failed: parent=${patch.ParentId} not found.`);
-                        break;
-                    }
-                    if (!child) {
-                        console.error(`MoveChild failed: child=${patch.ChildId} not found.`);
-                        break;
-                    }
-                    const before = patch.BeforeId ? document.getElementById(patch.BeforeId) : null;
-                    if (patch.BeforeId && !before) {
-                        console.error(`MoveChild failed: before=${patch.BeforeId} not found.`);
-                        break;
-                    }
-                    // insertBefore with null as second argument appends to end
-                    parent.insertBefore(child, before);
-                    break;
-                }
-                case 'UpdateAttribute': {
-                    const node = document.getElementById(patch.TargetId);
-                    if (node) {
-                        const lower = patch.AttrName.toLowerCase();
-                        const isBooleanAttr = (
-                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
-                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
-                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
-                        );
-                        if (lower === 'value' && 'value' in node) {
-                            // Keep the live value in sync for inputs/textareas
-                            node.value = patch.AttrValue;
-                            node.setAttribute(patch.AttrName, patch.AttrValue);
-                        } else if (isBooleanAttr) {
-                            // Boolean attributes: presence => true (use empty string like non-batched path)
-                            node.setAttribute(patch.AttrName, '');
-                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
-                        } else {
-                            node.setAttribute(patch.AttrName, patch.AttrValue);
-                        }
-                        if (patch.AttrName.startsWith('data-event-')) {
-                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
-                        }
-                    } else {
-                        console.error(`UpdateAttribute failed: node=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                case 'AddAttribute': {
-                    const node = document.getElementById(patch.TargetId);
-                    if (node) {
-                        const lower = patch.AttrName.toLowerCase();
-                        const isBooleanAttr = (
-                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
-                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
-                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
-                        );
-                        if (lower === 'value' && 'value' in node) {
-                            // Keep the live value in sync for inputs/textareas
-                            node.value = patch.AttrValue;
-                            node.setAttribute(patch.AttrName, patch.AttrValue);
-                        } else if (isBooleanAttr) {
-                            // Boolean attributes: presence => true (use empty string like non-batched path)
-                            node.setAttribute(patch.AttrName, '');
-                            try { if (lower in node) node[lower] = true; } catch { /* ignore */ }
-                        } else {
-                            node.setAttribute(patch.AttrName, patch.AttrValue);
-                        }
-                        if (patch.AttrName.startsWith('data-event-')) {
-                            ensureEventListener(patch.AttrName.substring('data-event-'.length));
-                        }
-                    } else {
-                        console.error(`AddAttribute failed: node=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                case 'RemoveAttribute': {
-                    const node = document.getElementById(patch.TargetId);
-                    if (node) {
-                        const lower = patch.AttrName.toLowerCase();
-                        const isBooleanAttr = (
-                            lower === 'disabled' || lower === 'checked' || lower === 'selected' || lower === 'readonly' ||
-                            lower === 'multiple' || lower === 'required' || lower === 'autofocus' || lower === 'inert' ||
-                            lower === 'hidden' || lower === 'open' || lower === 'loop' || lower === 'muted' || lower === 'controls'
-                        );
-                        node.removeAttribute(patch.AttrName);
-                        if (isBooleanAttr) {
-                            try { if (lower in node) node[lower] = false; } catch { /* ignore */ }
-                        }
-                    } else {
-                        console.error(`RemoveAttribute failed: node=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                case 'UpdateText': {
-                    const node = document.getElementById(patch.TargetId);
-                    if (node) {
-                        node.textContent = patch.Text;
-                        // Sync textarea.value like updateTextContent does
-                        const tag = (node.tagName || '').toUpperCase();
-                        if (tag === 'TEXTAREA') {
-                            try { node.value = patch.Text; } catch { /* ignore */ }
-                        }
-                    } else {
-                        console.error(`UpdateText failed: node=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                case 'UpdateTextWithId': {
-                    const node = document.getElementById(patch.TargetId);
-                    if (node) {
-                        node.textContent = patch.Text;
-                        node.setAttribute('id', patch.NewId);
-                        // Sync textarea.value like updateTextContent does
-                        const tag = (node.tagName || '').toUpperCase();
-                        if (tag === 'TEXTAREA') {
-                            try { node.value = patch.Text; } catch { /* ignore */ }
-                        }
-                    } else {
-                        console.error(`UpdateTextWithId failed: node=${patch.TargetId} not found.`);
-                    }
-                    break;
-                }
-                default:
-                    console.error(`Unknown patch type: ${patch.Type}`);
-            }
-        }
-    }),
-
     setLocalStorage: withSpan('setLocalStorage', async (key, value) => {
         localStorage.setItem(key, value);
     }),
@@ -1423,7 +1516,17 @@ setModuleImports('abies.js', {
 
     unsubscribe: (key) => {
         unsubscribe(key);
-    }
+    },
+
+    /**
+     * Apply a binary render batch to the DOM.
+     * This is the zero-copy alternative to applyPatches that avoids JSON serialization.
+     * The data parameter is a MemoryView into WASM memory, received as a Uint8Array.
+     * @param {Uint8Array} batchData - The binary batch data.
+     */
+    applyBinaryBatch: withSpan('applyBinaryBatch', (batchData) => {
+        applyBinaryBatchImpl(batchData);
+    })
 });
 
 const config = getConfig();

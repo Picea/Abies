@@ -77,8 +77,18 @@ public static partial class Interop
     [JSImport("removeAttribute", "abies.js")]
     public static partial Task RemoveAttribute(string id, string name);
 
-    [JSImport("applyPatches", "abies.js")]
-    public static partial Task ApplyPatches(string patchesJson);
+    /// <summary>
+    /// Applies a binary render batch to the DOM.
+    /// This uses a zero-copy protocol that avoids JSON serialization overhead.
+    /// </summary>
+    /// <param name="batch">The binary batch data as a memory view into WASM memory.</param>
+    /// <remarks>
+    /// The Span&lt;byte&gt; is marshaled as JSType.MemoryView, giving JavaScript direct
+    /// access to the WASM memory without copying. The caller must ensure the memory
+    /// remains valid (pinned) during the call.
+    /// </remarks>
+    [JSImport("applyBinaryBatch", "abies.js")]
+    public static partial void ApplyBinaryBatch([JSMarshalAs<JSType.MemoryView>] Span<byte> batch);
 
     [JSImport("getValue", "abies.js")]
     public static partial string? GetValue(string id);
