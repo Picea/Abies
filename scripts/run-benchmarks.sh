@@ -110,7 +110,7 @@ check_prerequisites() {
         # Check js-framework-benchmark directory
         if [[ ! -d "$JS_BENCHMARK_DIR" ]]; then
             print_warning "js-framework-benchmark not found at: $JS_BENCHMARK_DIR"
-            print_info "Clone it with: git clone https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork"
+            print_info "Clone it with: git clone https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork"
             exit 1
         fi
         print_success "js-framework-benchmark: $JS_BENCHMARK_DIR"

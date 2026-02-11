@@ -266,7 +266,7 @@ A convenience script is provided for running benchmarks locally before pushing t
 4. **js-framework-benchmark fork** - Clone to `../js-framework-benchmark-fork`:
 
    ```bash
-   git clone https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork
+   git clone https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork
    cd ../js-framework-benchmark-fork && npm ci
    cd webdriver-ts && npm ci
    ```

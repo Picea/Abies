@@ -323,7 +323,7 @@ jobs:
 
       - name: Clone js-framework-benchmark
         run: |
-          git clone --depth 1 https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork
+          git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork
 
       # Cache npm dependencies
       - name: Cache npm dependencies

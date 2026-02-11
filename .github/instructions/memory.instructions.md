@@ -280,13 +280,13 @@ The following Toub-inspired optimizations have been applied:
 
 ### Setup
 
-The [js-framework-benchmark](https://github.com/nicknash/js-framework-benchmark) is the standard benchmark for comparing frontend framework performance.
+The [js-framework-benchmark](https://github.com/krausest/js-framework-benchmark) is the standard benchmark for comparing frontend framework performance.
 
 **Clone the fork alongside Abies** (same parent directory):
 ```bash
 # From Abies parent directory
 cd ..
-git clone https://github.com/nicknash/js-framework-benchmark.git js-framework-benchmark-fork
+git clone https://github.com/krausest/js-framework-benchmark.git js-framework-benchmark-fork
 ```
 
 Expected structure:
