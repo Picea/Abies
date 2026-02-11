@@ -41,9 +41,12 @@ permissions:
 #
 # 1. PRIMARY (Quality Gate): js-framework-benchmark (E2E)
 #    - Measures real user-perceived latency (EventDispatch → Paint)
-#    - Run manually via workflow_dispatch with run_e2e_benchmark=true
 #    - ✅ BLOCKS merge if regression detected (>5% slower)
-#    - MUST be validated before merging any performance-related PR
+#    - Auto-triggers on:
+#      * PRs with title starting with 'perf:' or 'perf('
+#      * PRs with 'performance' label
+#      * Pushes to main (baseline tracking)
+#      * Manual workflow_dispatch
 #
 # 2. SECONDARY (Informational): BenchmarkDotNet micro-benchmarks
 #    - Fast feedback for algorithm comparison and allocation tracking
@@ -267,23 +270,36 @@ jobs:
           retention-days: 30
 
   # ============================================================================
-  # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
+  # E2E BENCHMARKS (js-framework-benchmark) - Quality Gate
   # ============================================================================
   # This job measures REAL user-perceived latency including:
   # - JS interop overhead (the biggest cost in WASM)
   # - Browser rendering pipeline (style → layout → paint)
   # - GC pressure at scale
   #
-  # Run manually when:
-  # - Merging ANY performance-related PR
-  # - Changing interop patterns (JSON format, binary batching)
-  # - Adding object pooling
-  # - Any optimization claiming >5% improvement
+  # Triggers:
+  # 1. Manual: workflow_dispatch with run_e2e_benchmark=true
+  # 2. Auto on PR: when PR title contains 'perf' or has 'performance' label
+  # 3. Auto on main: after merge to track baseline trends
+  #
+  # To trigger automatically, either:
+  # - Name your PR with 'perf:' or 'perf(' prefix (e.g., "perf: optimize diffing")
+  # - Add the 'performance' label to the PR
   # ============================================================================
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
     runs-on: ubuntu-latest
-    if: github.event.inputs.run_e2e_benchmark == 'true'
+    if: >
+      github.event.inputs.run_e2e_benchmark == 'true' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (
+        github.event_name == 'pull_request' && 
+        (
+          startsWith(github.event.pull_request.title, 'perf:') ||
+          startsWith(github.event.pull_request.title, 'perf(') ||
+          contains(github.event.pull_request.labels.*.name, 'performance')
+        )
+      )
 
     steps:
       - name: Checkout repository
