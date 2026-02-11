@@ -9,6 +9,7 @@ on:
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
       - 'scripts/compare-benchmarks.py'
+      - 'scripts/compare-benchmark.py'
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
@@ -18,15 +19,45 @@ on:
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
       - 'scripts/compare-benchmarks.py'
+      - 'scripts/compare-benchmark.py'
       - '.github/workflows/benchmark.yml'
   workflow_dispatch:
+    inputs:
+      run_e2e_benchmark:
+        description: 'Run E2E js-framework-benchmark (slower, more accurate)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
   deployments: write
   pull-requests: write
 
+# ==============================================================================
+# BENCHMARKING STRATEGY (see docs/investigations/benchmarking-strategy.md)
+# ==============================================================================
+# This workflow implements a DUAL-LAYER benchmarking strategy:
+#
+# 1. PRIMARY (Source of Truth): js-framework-benchmark
+#    - Measures real user-perceived latency (EventDispatch → Paint)
+#    - Run manually via workflow_dispatch with run_e2e_benchmark=true
+#    - MUST be validated before merging any performance-related PR
+#
+# 2. SECONDARY (Development Guidance): BenchmarkDotNet micro-benchmarks
+#    - Fast feedback for algorithm comparison and allocation tracking
+#    - Runs automatically on every PR
+#    - ⚠️ May show false positives/negatives due to missing JS interop overhead
+#
+# CRITICAL RULE: Never ship based on micro-benchmark improvements alone.
+# Historical evidence: PatchType enum optimization showed 11-20% micro-benchmark
+# improvement but caused 2-5% REGRESSION in E2E benchmarks.
+# ==============================================================================
+
 jobs:
+  # ============================================================================
+  # MICRO-BENCHMARKS (BenchmarkDotNet) - Development Guidance
+  # ============================================================================
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
@@ -225,4 +256,91 @@ jobs:
           path: |
             ./benchmark-results/
             ./benchmark-baseline/
+          retention-days: 30
+
+  # ============================================================================
+  # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
+  # ============================================================================
+  # This job measures REAL user-perceived latency including:
+  # - JS interop overhead (the biggest cost in WASM)
+  # - Browser rendering pipeline (style → layout → paint)
+  # - GC pressure at scale
+  #
+  # Run manually when:
+  # - Merging ANY performance-related PR
+  # - Changing interop patterns (JSON format, binary batching)
+  # - Adding object pooling
+  # - Any optimization claiming >5% improvement
+  # ============================================================================
+  e2e-benchmark:
+    name: E2E Benchmark (js-framework-benchmark)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.run_e2e_benchmark == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone js-framework-benchmark
+        run: |
+          git clone --depth 1 https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork
+
+      - name: Build Abies for benchmark
+        run: |
+          cd ../js-framework-benchmark-fork/frameworks/keyed/abies/src
+          # Copy project files from our repo
+          cp -R $GITHUB_WORKSPACE/Abies ./Abies
+          cp $GITHUB_WORKSPACE/Directory.Build.props ./
+          cp $GITHUB_WORKSPACE/global.json ./
+          # Publish
+          dotnet publish -c Release
+          # Copy to bundled-dist
+          mkdir -p ../bundled-dist
+          cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+
+      - name: Install benchmark dependencies
+        run: |
+          cd ../js-framework-benchmark-fork
+          npm ci
+          cd webdriver-ts
+          npm ci
+
+      - name: Start benchmark server
+        run: |
+          cd ../js-framework-benchmark-fork
+          npm start &
+          sleep 5  # Wait for server to start
+
+      - name: Run E2E benchmarks
+        run: |
+          cd ../js-framework-benchmark-fork/webdriver-ts
+          # Run key benchmarks
+          npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k
+          npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k
+          npm run bench -- --headless --framework abies-keyed --benchmark 09_clear1k
+
+      - name: Compare against baseline
+        run: |
+          python3 scripts/compare-benchmark.py \
+            --results-dir ../js-framework-benchmark-fork/webdriver-ts/results \
+            --baseline benchmark-results/baseline.json \
+            --threshold 5.0 \
+            --framework abies
+
+      - name: Upload E2E benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-benchmark-results
+          path: ../js-framework-benchmark-fork/webdriver-ts/results/
           retention-days: 30
