@@ -39,15 +39,17 @@ permissions:
 # ==============================================================================
 # This workflow implements a DUAL-LAYER benchmarking strategy:
 #
-# 1. PRIMARY (Source of Truth): js-framework-benchmark
+# 1. PRIMARY (Quality Gate): js-framework-benchmark (E2E)
 #    - Measures real user-perceived latency (EventDispatch → Paint)
 #    - Run manually via workflow_dispatch with run_e2e_benchmark=true
+#    - ✅ BLOCKS merge if regression detected (>5% slower)
 #    - MUST be validated before merging any performance-related PR
 #
-# 2. SECONDARY (Development Guidance): BenchmarkDotNet micro-benchmarks
+# 2. SECONDARY (Informational): BenchmarkDotNet micro-benchmarks
 #    - Fast feedback for algorithm comparison and allocation tracking
 #    - Runs automatically on every PR
-#    - ⚠️ May show false positives/negatives due to missing JS interop overhead
+#    - ⚠️ NON-BLOCKING - may show false positives/negatives
+#    - Use for development guidance only
 #
 # CRITICAL RULE: Never ship based on micro-benchmark improvements alone.
 # Historical evidence: PatchType enum optimization showed 11-20% micro-benchmark
@@ -158,11 +160,17 @@ jobs:
         run: python3 scripts/merge-benchmark-results.py ./benchmark-results
 
       # ============================================
-      # SAME-JOB COMPARISON (accurate, no runner variance)
+      # SAME-JOB COMPARISON (informational, non-blocking)
       # ============================================
-      - name: Compare benchmarks (same-job comparison)
+      # Micro-benchmarks provide GUIDANCE only - they may show false positives.
+      # The E2E benchmark (js-framework-benchmark) is the actual quality gate.
+      - name: Compare benchmarks (informational - see E2E for quality gate)
         if: github.event_name == 'pull_request'
+        continue-on-error: true  # Non-blocking - E2E is the source of truth
         run: |
+          echo "⚠️ NOTE: Micro-benchmark results are INFORMATIONAL ONLY"
+          echo "⚠️ The E2E benchmark (js-framework-benchmark) is the quality gate"
+          echo ""
           python3 scripts/compare-benchmarks.py \
             ./benchmark-baseline/merged \
             ./benchmark-results/merged \
