@@ -180,7 +180,8 @@ public static partial class Runtime
         if (newNode is ILazyMemoNode newLazyMemo)
         {
             // If the old node was a lazy memo with the same key, we can skip evaluation
-            if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKey.Equals(newLazyMemo.MemoKey))
+            // Uses MemoKeyEquals to avoid boxing overhead for value type keys
+            if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKeyEquals(newLazyMemo))
             {
                 // Keys match - return the new lazy with old's cached content preserved
                 return oldLazyMemo.CachedNode != null
