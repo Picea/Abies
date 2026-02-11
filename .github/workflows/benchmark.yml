@@ -13,14 +13,8 @@ on:
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'Abies/**'
-      - 'Abies.Benchmarks/**'
-      - 'scripts/extract-allocations.py'
-      - 'scripts/merge-benchmark-results.py'
-      - 'scripts/compare-benchmarks.py'
-      - 'scripts/compare-benchmark.py'
-      - '.github/workflows/benchmark.yml'
+    # No path filter for PRs - let the job-level conditions decide
+    # E2E runs on perf PRs, micro runs on Abies/** changes
   workflow_dispatch:
     inputs:
       run_e2e_benchmark:
@@ -61,11 +55,50 @@ permissions:
 
 jobs:
   # ============================================================================
+  # PATH DETECTION - Determine which jobs should run
+  # ============================================================================
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      benchmark-paths: ${{ steps.filter.outputs.benchmark }}
+      perf-pr: ${{ steps.check-perf.outputs.is-perf }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            benchmark:
+              - 'Abies/**'
+              - 'Abies.Benchmarks/**'
+              - 'scripts/extract-allocations.py'
+              - 'scripts/merge-benchmark-results.py'
+              - 'scripts/compare-benchmarks.py'
+              - 'scripts/compare-benchmark.py'
+              - '.github/workflows/benchmark.yml'
+      - name: Check if performance PR
+        id: check-perf
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            TITLE="${{ github.event.pull_request.title }}"
+            if [[ "$TITLE" == perf:* ]] || [[ "$TITLE" == perf\(* ]]; then
+              echo "is-perf=true" >> $GITHUB_OUTPUT
+            else
+              echo "is-perf=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "is-perf=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
   # MICRO-BENCHMARKS (BenchmarkDotNet) - Development Guidance
   # ============================================================================
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.benchmark-paths == 'true' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout PR branch
@@ -279,8 +312,9 @@ jobs:
   #
   # Triggers:
   # 1. Manual: workflow_dispatch with run_e2e_benchmark=true
-  # 2. Auto on PR: when PR title contains 'perf' or has 'performance' label
-  # 3. Auto on main: after merge to track baseline trends
+  # 2. Auto on PR: when PR title starts with 'perf:' or 'perf('
+  # 3. Auto on PR: when PR has 'performance' label
+  # 4. Auto on main: after merge to track baseline trends
   #
   # To trigger automatically, either:
   # - Name your PR with 'perf:' or 'perf(' prefix (e.g., "perf: optimize diffing")
@@ -289,17 +323,12 @@ jobs:
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
     runs-on: ubuntu-latest
+    needs: changes
     if: >
       github.event.inputs.run_e2e_benchmark == 'true' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (
-        github.event_name == 'pull_request' && 
-        (
-          startsWith(github.event.pull_request.title, 'perf:') ||
-          startsWith(github.event.pull_request.title, 'perf(') ||
-          contains(github.event.pull_request.labels.*.name, 'performance')
-        )
-      )
+      needs.changes.outputs.perf-pr == 'true' ||
+      contains(github.event.pull_request.labels.*.name, 'performance')
 
     steps:
       - name: Checkout repository
