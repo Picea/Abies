@@ -325,7 +325,23 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork
 
-      # Cache npm dependencies (key based on date since we can't hash files outside workspace)
+      # Set up Abies framework in the benchmark repo
+      - name: Setup Abies framework
+        run: |
+          # Create framework directory structure
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/bundled-dist
+          
+          # Copy framework files from contrib
+          cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
+          cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
+          
+          # Copy Abies library source
+          cp -r $GITHUB_WORKSPACE/Abies ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
+          cp $GITHUB_WORKSPACE/Directory.Build.props ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
+          cp $GITHUB_WORKSPACE/global.json ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
+
+      # Cache npm dependencies (key based on static version since files are outside workspace)
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
@@ -346,15 +362,10 @@ jobs:
       - name: Build Abies for benchmark
         run: |
           cd ../js-framework-benchmark-fork/frameworks/keyed/abies/src
-          # Copy project files from our repo
-          cp -R $GITHUB_WORKSPACE/Abies ./Abies
-          cp $GITHUB_WORKSPACE/Directory.Build.props ./
-          cp $GITHUB_WORKSPACE/global.json ./
           # Publish
           dotnet publish -c Release
           # Copy to bundled-dist
-          mkdir -p ../bundled-dist
-          cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+          cp -r bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
 
       - name: Install benchmark dependencies
         run: |

@@ -1,0 +1,28 @@
+{
+  "name": "js-framework-benchmark-abies",
+  "version": "1.0.0",
+  "description": "Abies MVU Framework Benchmark",
+  "js-framework-benchmark": {
+    "frameworkVersionFromPackage": "",
+    "frameworkVersion": "",
+    "customURL": "/bundled-dist/",
+    "frameworkHomeURL": "https://github.com/Picea/Abies"
+  },
+  "scripts": {
+    "build-prod": "echo 'Build handled by CI workflow'"
+  },
+  "keywords": [
+    "abies",
+    "mvu",
+    "webassembly",
+    "blazor",
+    "elm"
+  ],
+  "author": "Picea",
+  "license": "MIT",
+  "homepage": "https://github.com/krausest/js-framework-benchmark",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krausest/js-framework-benchmark.git"
+  }
+}
