@@ -337,10 +337,45 @@ jobs:
             --threshold 5.0 \
             --framework abies
 
+      - name: Convert E2E results to benchmark format
+        run: |
+          python3 scripts/convert-e2e-results.py \
+            --results-dir ../js-framework-benchmark-fork/webdriver-ts/results \
+            --output ./e2e-benchmark-results.json \
+            --framework abies
+
+      - name: Check if gh-pages exists
+        id: gh-pages-check
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Store E2E benchmark trends to gh-pages
+        uses: benchmark-action/github-action-benchmark@v1
+        if: steps.gh-pages-check.outputs.exists == 'true'
+        with:
+          name: E2E Benchmark (js-framework-benchmark)
+          tool: customSmallerIsBetter
+          output-file-path: ./e2e-benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          save-data-file: true
+          alert-threshold: '110%'
+          comment-on-alert: true
+          fail-on-alert: true
+          fail-threshold: '115%'
+          summary-always: true
+          alert-comment-cc-users: '@MCGPPeters'
+
       - name: Upload E2E benchmark results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e2e-benchmark-results
-          path: ../js-framework-benchmark-fork/webdriver-ts/results/
+          path: |
+            ../js-framework-benchmark-fork/webdriver-ts/results/
+            ./e2e-benchmark-results.json
           retention-days: 30
