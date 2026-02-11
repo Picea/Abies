@@ -418,12 +418,17 @@ jobs:
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
+      - name: Copy results to workspace for upload
+        if: always()
+        run: |
+          mkdir -p ./e2e-results
+          cp -r ../js-framework-benchmark-fork/webdriver-ts/results/* ./e2e-results/ 2>/dev/null || true
+          cp ./e2e-benchmark-results.json ./e2e-results/ 2>/dev/null || true
+
       - name: Upload E2E benchmark results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e2e-benchmark-results
-          path: |
-            ../js-framework-benchmark-fork/webdriver-ts/results/
-            ./e2e-benchmark-results.json
+          path: ./e2e-results/
           retention-days: 30
