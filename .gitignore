@@ -59,6 +59,7 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 benchmark-results/
+!benchmark-results/baseline.json
 benchmark-baseline/
 
 # .NET Core

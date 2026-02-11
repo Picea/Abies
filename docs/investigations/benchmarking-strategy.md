@@ -232,11 +232,69 @@ dotnet run -c Release --project Abies.Benchmarks -- --filter "*Swap1k*"
 
 ---
 
+## Local Benchmarking Workflow
+
+A convenience script is provided for running benchmarks locally before pushing to a PR.
+
+### Quick Start
+
+```bash
+# Fast feedback during development (micro-benchmarks)
+./scripts/run-benchmarks.sh --micro
+
+# Quick mode for even faster iteration (fewer iterations)
+./scripts/run-benchmarks.sh --micro --quick
+
+# Full validation before merging (E2E benchmarks)
+./scripts/run-benchmarks.sh --e2e
+
+# Compare E2E results against baseline
+./scripts/run-benchmarks.sh --e2e --compare
+
+# Update baseline after intentional changes
+./scripts/run-benchmarks.sh --e2e --update-baseline
+
+# Run everything (both micro and E2E)
+./scripts/run-benchmarks.sh --all
+```
+
+### Prerequisites
+
+1. **.NET SDK 10.0+** - For building and running benchmarks
+2. **Python 3.10+** - For result comparison scripts
+3. **Node.js 20+** - For E2E benchmarks (js-framework-benchmark)
+4. **js-framework-benchmark fork** - Clone to `../js-framework-benchmark-fork`:
+
+   ```bash
+   git clone https://github.com/nicknash/js-framework-benchmark.git ../js-framework-benchmark-fork
+   cd ../js-framework-benchmark-fork && npm ci
+   cd webdriver-ts && npm ci
+   ```
+
+### Workflow Before Pushing a Performance PR
+
+1. **During development**: Run `--micro --quick` for fast iteration
+2. **Before committing**: Run `--micro` for full micro-benchmark results
+3. **Before pushing**: Run `--e2e --compare` to validate against baseline
+4. **If regression detected**: Investigate and fix, or justify the regression
+5. **If intentional change**: Run `--e2e --update-baseline` and commit new baseline
+
+### Result Locations
+
+| Type             | Location                         |
+| ---------------- | -------------------------------- |
+| Micro-benchmarks | `benchmark-results/local/micro/` |
+| E2E benchmarks   | `benchmark-results/local/e2e/`   |
+| E2E baseline     | `benchmark-results/baseline.json`|
+
+---
+
 ## Proposed CI Integration
 
-### Phase 1: Current State (Manual)
+### Phase 1: Current State (Implemented)
 
 - Document exact js-framework-benchmark steps in memory.instructions.md ✅
+- Local benchmarking script for consistent developer workflow ✅
 - Run manually before perf PR merges
 
 ### Phase 2: Semi-Automated
