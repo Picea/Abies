@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770902370771,
+  "lastUpdate": 1770902411490,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -6182,6 +6182,98 @@ window.BENCHMARK_DATA = {
             "value": 24344,
             "unit": "bytes",
             "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      }
+    ],
+    "1. E2E Benchmark (js-framework-benchmark)": [
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1cafa25388fc2867d34addd96bd8009a42a23db2",
+          "message": "ci: E2E-only benchmark pipeline with memory benchmarks (#72)\n\nChanges:\n- Remove micro-benchmarks from PR builds (only run on push to main for historical tracking)\n- Add all 9 CPU benchmarks (01-09) to E2E pipeline\n- Add 3 memory benchmarks (21, 22, 25) to E2E pipeline\n- Simplify path detection (e2e-scripts now includes Abies changes)\n- Reorder gh-pages reports: E2E first (1.), Micro-benchmarks second (2.)\n- Update strategy comments to reflect single source of truth approach\n\nRationale:\nHistorical evidence shows micro-benchmarks can be misleading - PatchType enum\noptimization showed 11-20% improvement in BenchmarkDotNet but caused 2-5%\nREGRESSION in E2E benchmarks. E2E is now the sole quality gate.",
+          "timestamp": "2026-02-12T14:09:33+01:00",
+          "tree_id": "a9794360291353bf46f5b922aefe4e3faea91f11",
+          "url": "https://github.com/Picea/Abies/commit/1cafa25388fc2867d34addd96bd8009a42a23db2"
+        },
+        "date": 1770902410472,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 241.2,
+            "unit": "ms",
+            "extra": "mean: 243.9ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 287.9,
+            "unit": "ms",
+            "extra": "mean: 286.8ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 334,
+            "unit": "ms",
+            "extra": "mean: 335.9ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 305,
+            "unit": "ms",
+            "extra": "mean: 302.3ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 311.1,
+            "unit": "ms",
+            "extra": "mean: 307.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 166.2,
+            "unit": "ms",
+            "extra": "mean: 166.7ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2030.6,
+            "unit": "ms",
+            "extra": "mean: 2030.2ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 290.2,
+            "unit": "ms",
+            "extra": "mean: 287.3ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 259.3,
+            "unit": "ms",
+            "extra": "mean: 260.4ms, samples: 15"
+          },
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.47743797302246,
+            "unit": "ms",
+            "extra": "mean: 34.5ms, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.96933937072754,
+            "unit": "ms",
+            "extra": "mean: 38.0ms, samples: 1"
           }
         ]
       }
