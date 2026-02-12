@@ -115,7 +115,7 @@ public class KeyedDiffingBenchmarks
 var patches = Operations.Diff(old, new);
 
 // Real execution includes:
-// - JSON serialization of patches
+// - Binary batch building and serialization
 // - JSRuntime.InvokeAsync call
 // - WASM → JS memory boundary crossing
 // - JavaScript patch application

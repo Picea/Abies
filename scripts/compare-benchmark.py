@@ -17,6 +17,8 @@ Arguments:
 
 import argparse
 import json
+import os
+import statistics
 import sys
 from pathlib import Path
 from dataclasses import dataclass
@@ -44,27 +46,6 @@ class Comparison:
     is_improvement: bool
 
 
-# Benchmarks we care about (js-framework-benchmark naming)
-TRACKED_BENCHMARKS = [
-    "01_run1k",
-    "02_replace1k",
-    "03_update10th1k",
-    "04_select1k",
-    "05_swap1k",
-    "06_remove-one-1k",
-    "07_create10k",
-    "08_create1k-after1k_x2",
-    "09_clear1k",
-]
-
-# Target ratios vs Blazor (from benchmarking-strategy.md)
-PERFORMANCE_TARGETS = {
-    "01_run1k": 1.05,      # ≤1.05x Blazor
-    "05_swap1k": 1.5,      # ≤1.5x Blazor
-    "09_clear1k": 2.0,     # ≤2x Blazor
-}
-
-
 def find_result_files(results_dir: Path, framework: str = "abies") -> list[Path]:
     """Find all result JSON files for the specified framework."""
     pattern = f"{framework}*.json"
@@ -81,10 +62,9 @@ def parse_result_file(file_path: Path) -> Optional[BenchmarkResult]:
         # js-framework-benchmark format
         if "values" in data:
             values = data["values"]
-            median = sorted(values)[len(values) // 2]
-            mean = sum(values) / len(values)
-            variance = sum((x - mean) ** 2 for x in values) / len(values)
-            std_dev = variance ** 0.5
+            median = statistics.median(values)
+            mean = statistics.mean(values)
+            std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
 
             # Extract benchmark name from filename
             # Format: framework_benchmarkname.json
@@ -255,6 +235,10 @@ def main():
         print("\nCurrent results:")
         for name, result in sorted(results.items()):
             print(f"  {name}: {result.median:.1f}ms (±{result.std_dev:.1f}ms)")
+        # In CI, fail when baseline is missing to catch missing setup
+        if os.environ.get("CI") == "true":
+            print("\n❌ CI requires a baseline file for regression detection")
+            sys.exit(1)
         sys.exit(0)
 
     comparisons = compare_results(results, baseline, args.threshold)
