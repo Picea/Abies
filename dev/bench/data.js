@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770910500117,
+  "lastUpdate": 1770910549209,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -7498,6 +7498,84 @@ window.BENCHMARK_DATA = {
             "value": 37.91446495056152,
             "unit": "ms",
             "extra": "mean: 37.9ms, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c0190a7cd3f87a6b7ec1b3122e83a8b9e723f58",
+          "message": "ci: add separate E2E memory benchmark chart (#75)\n\nSplit CPU and memory metrics from js-framework-benchmark into\nseparate gh-pages charts. Memory benchmarks (21-25) now display\nwith correct MB unit instead of being mixed into the CPU chart\nwith ms.\n\nChanges:\n- Add --output-memory flag to convert-e2e-results.py\n- Add is_memory_benchmark() helper to filter by benchmark prefix\n- Add Store E2E memory benchmark trends step to benchmark.yml\n- Include e2e-benchmark-memory.json in artifact upload",
+          "timestamp": "2026-02-12T16:24:46+01:00",
+          "tree_id": "59007d3b8ef9bac1d182604e71aa0bc168b55118",
+          "url": "https://github.com/Picea/Abies/commit/0c0190a7cd3f87a6b7ec1b3122e83a8b9e723f58"
+        },
+        "date": 1770910548865,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 252.9,
+            "unit": "ms",
+            "extra": "mean: 255.4ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 297.7,
+            "unit": "ms",
+            "extra": "mean: 299.1ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 356.8,
+            "unit": "ms",
+            "extra": "mean: 362.7ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 321.6,
+            "unit": "ms",
+            "extra": "mean: 323.5ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 334.1,
+            "unit": "ms",
+            "extra": "mean: 330.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 180,
+            "unit": "ms",
+            "extra": "mean: 179.5ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2144.3,
+            "unit": "ms",
+            "extra": "mean: 2140.4ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 301.2,
+            "unit": "ms",
+            "extra": "mean: 300.0ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 272.5,
+            "unit": "ms",
+            "extra": "mean: 273.2ms, samples: 15"
           }
         ]
       }
