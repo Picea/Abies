@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       run_e2e_benchmark:
-        description: 'Run E2E js-framework-benchmark (slower, more accurate)'
+        description: 'Run E2E js-framework-benchmark'
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -31,26 +31,30 @@ permissions:
 # ==============================================================================
 # BENCHMARKING STRATEGY (see docs/investigations/benchmarking-strategy.md)
 # ==============================================================================
-# This workflow implements a DUAL-LAYER benchmarking strategy:
+# This workflow uses js-framework-benchmark as the SINGLE SOURCE OF TRUTH.
 #
-# 1. PRIMARY (Quality Gate): js-framework-benchmark (E2E)
-#    - Measures real user-perceived latency (EventDispatch → Paint)
-#    - ✅ BLOCKS merge if regression detected (>5% slower)
-#    - Auto-triggers on:
-#      * PRs with title starting with 'perf:' or 'perf('
-#      * PRs with 'performance' label
-#      * Pushes to main (baseline tracking)
-#      * Manual workflow_dispatch
+# Why E2E only (no micro-benchmarks in PR builds):
+# - Historical evidence: PatchType enum optimization showed 11-20% improvement
+#   in BenchmarkDotNet but caused 2-5% REGRESSION in E2E benchmarks
+# - Micro-benchmarks miss: JS interop overhead, browser rendering, GC pressure
+# - E2E measures real user-perceived latency (EventDispatch → Paint)
 #
-# 2. SECONDARY (Informational): BenchmarkDotNet micro-benchmarks
-#    - Fast feedback for algorithm comparison and allocation tracking
-#    - Runs automatically on every PR
-#    - ⚠️ NON-BLOCKING - may show false positives/negatives
-#    - Use for development guidance only
+# BenchmarkDotNet micro-benchmarks:
+# - ONLY run on push to main for historical tracking
+# - NOT run on PRs (removed to avoid misleading results)
+# - For local development: dotnet run --project Abies.Benchmarks -c Release
+# - Good for algorithm comparison and allocation tracking locally
 #
-# CRITICAL RULE: Never ship based on micro-benchmark improvements alone.
-# Historical evidence: PatchType enum optimization showed 11-20% micro-benchmark
-# improvement but caused 2-5% REGRESSION in E2E benchmarks.
+# E2E benchmarks auto-trigger on:
+# - PRs with title starting with 'perf:' or 'perf('
+# - PRs with 'performance' label
+# - PRs that modify benchmark workflow or scripts
+# - Pushes to main (baseline tracking)
+# - Manual workflow_dispatch
+#
+# Benchmarks included:
+# - CPU (01-09): Create, replace, update, select, swap, remove, clear rows
+# - Memory (21-25): Ready memory, run memory, clear memory
 # ==============================================================================
 
 jobs:
@@ -61,7 +65,6 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      benchmark-paths: ${{ steps.filter.outputs.benchmark }}
       e2e-scripts: ${{ steps.filter.outputs.e2e-scripts }}
       perf-pr: ${{ steps.check-perf.outputs.is-perf }}
     steps:
@@ -70,19 +73,13 @@ jobs:
         id: filter
         with:
           filters: |
-            benchmark:
-              - 'Abies/**'
-              - 'Abies.Benchmarks/**'
-              - 'scripts/extract-allocations.py'
-              - 'scripts/merge-benchmark-results.py'
-              - 'scripts/compare-benchmarks.py'
-              - 'scripts/compare-benchmark.py'
-              - '.github/workflows/benchmark.yml'
             e2e-scripts:
+              - 'Abies/**'
               - '.github/workflows/benchmark.yml'
               - 'scripts/compare-benchmark.py'
               - 'scripts/convert-e2e-results.py'
               - 'scripts/run-benchmarks.sh'
+              - 'contrib/js-framework-benchmark/**'
       - name: Check if performance PR
         id: check-perf
         run: |
@@ -98,133 +95,62 @@ jobs:
           fi
 
   # ============================================================================
-  # MICRO-BENCHMARKS (BenchmarkDotNet) - Development Guidance
+  # MICRO-BENCHMARKS (BenchmarkDotNet) - Historical Tracking Only
+  # ============================================================================
+  # ONLY runs on push to main for historical tracking.
+  # NOT run on PRs - micro-benchmarks have historically been misleading.
+  # For local development: dotnet run --project Abies.Benchmarks -c Release
   # ============================================================================
   benchmark:
-    name: Run Benchmarks
+    name: Micro-Benchmarks (main only)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.benchmark-paths == 'true' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for branch comparison
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      # ============================================
-      # BASELINE BENCHMARKS (main branch)
-      # ============================================
-      - name: Checkout main branch for baseline
-        if: github.event_name == 'pull_request'
-        run: |
-          git checkout origin/main
-          echo "Running baseline benchmarks on main branch..."
-
-      - name: Restore dependencies (baseline)
-        if: github.event_name == 'pull_request'
+      - name: Restore dependencies
         run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
 
-      - name: Build benchmarks (baseline)
-        if: github.event_name == 'pull_request'
+      - name: Build benchmarks
         run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
 
-      - name: Run DOM Diffing benchmarks (baseline)
-        if: github.event_name == 'pull_request'
-        run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
-          --filter '*DomDiffingBenchmarks*'
-          --exporters json
-          --artifacts ./benchmark-baseline/diffing
-
-      - name: Run Rendering benchmarks (baseline)
-        if: github.event_name == 'pull_request'
-        run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
-          --filter '*RenderingBenchmarks*'
-          --exporters json
-          --artifacts ./benchmark-baseline/rendering
-
-      - name: Run Event Handler benchmarks (baseline)
-        if: github.event_name == 'pull_request'
-        run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
-          --filter '*EventHandlerBenchmarks*'
-          --exporters json
-          --artifacts ./benchmark-baseline/handlers
-
-      - name: Merge baseline benchmark results
-        if: github.event_name == 'pull_request'
-        run: python3 scripts/merge-benchmark-results.py ./benchmark-baseline
-
-      # ============================================
-      # PR BENCHMARKS (current PR branch)
-      # ============================================
-      - name: Checkout PR branch
-        if: github.event_name == 'pull_request'
-        run: |
-          git checkout ${{ github.head_ref }}
-          echo "Running PR benchmarks on ${{ github.head_ref }} branch..."
-
-      - name: Restore dependencies (PR)
-        run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
-
-      - name: Build benchmarks (PR)
-        run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
-
-      - name: Run DOM Diffing benchmarks (PR)
+      - name: Run DOM Diffing benchmarks
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*DomDiffingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/diffing
 
-      - name: Run Rendering benchmarks (PR)
+      - name: Run Rendering benchmarks
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*RenderingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/rendering
 
-      - name: Run Event Handler benchmarks (PR)
+      - name: Run Event Handler benchmarks
         run: >
           dotnet run --project Abies.Benchmarks -c Release --no-build --
           --filter '*EventHandlerBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/handlers
 
-      - name: Merge PR benchmark results
+      - name: Merge benchmark results
         run: python3 scripts/merge-benchmark-results.py ./benchmark-results
 
       # ============================================
-      # SAME-JOB COMPARISON (informational, non-blocking)
-      # ============================================
-      # Micro-benchmarks provide GUIDANCE only - they may show false positives.
-      # The E2E benchmark (js-framework-benchmark) is the actual quality gate.
-      - name: Compare benchmarks (informational - see E2E for quality gate)
-        if: github.event_name == 'pull_request'
-        continue-on-error: true  # Non-blocking - E2E is the source of truth
-        run: |
-          echo "⚠️ NOTE: Micro-benchmark results are INFORMATIONAL ONLY"
-          echo "⚠️ The E2E benchmark (js-framework-benchmark) is the quality gate"
-          echo ""
-          python3 scripts/compare-benchmarks.py \
-            ./benchmark-baseline/merged \
-            ./benchmark-results/merged \
-            --throughput-threshold 115 \
-            --allocation-threshold 120
-
-      # ============================================
-      # HISTORICAL TRACKING (gh-pages, main branch only)
+      # HISTORICAL TRACKING (gh-pages)
       # ============================================
       - name: Check if gh-pages exists
         id: gh-pages-check
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -232,11 +158,10 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Store throughput baseline (main)
+      - name: Store throughput baseline
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          name: Rendering Engine Throughput
+          name: "2. Micro-Benchmarks: Throughput (BenchmarkDotNet)"
           tool: benchmarkdotnet
           output-file-path: ./benchmark-results/merged/throughput.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -249,11 +174,10 @@ jobs:
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
-      - name: Store allocation baseline (main)
+      - name: Store allocation baseline
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          name: Rendering Engine Allocations
+          name: "2. Micro-Benchmarks: Allocations (BenchmarkDotNet)"
           tool: customSmallerIsBetter
           output-file-path: ./benchmark-results/merged/allocations.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -270,38 +194,36 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: benchmark-results
-          path: |
-            ./benchmark-results/
-            ./benchmark-baseline/
+          name: micro-benchmark-results
+          path: ./benchmark-results/
           retention-days: 30
 
   # ============================================================================
-  # E2E BENCHMARKS (js-framework-benchmark) - Quality Gate
+  # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
   # ============================================================================
-  # This job measures REAL user-perceived latency including:
+  # This job measures REAL user-perceived performance including:
+  # - CPU benchmarks (01-09): Rendering latency (EventDispatch → Paint)
+  # - Memory benchmarks (21-25): Heap usage in MB
+  #
+  # What it captures that micro-benchmarks miss:
   # - JS interop overhead (the biggest cost in WASM)
   # - Browser rendering pipeline (style → layout → paint)
   # - GC pressure at scale
+  # - Real memory usage patterns
   #
-  # Triggers:
-  # 1. Manual: workflow_dispatch with run_e2e_benchmark=true
-  # 2. Auto on PR: when PR title starts with 'perf:' or 'perf('
-  # 3. Auto on PR: when PR has 'performance' label
-  # 4. Auto on PR: when benchmark workflow or E2E scripts change
-  # 5. Auto on main: after merge to track baseline trends
-  #
-  # To trigger automatically, either:
-  # - Name your PR with 'perf:' or 'perf(' prefix (e.g., "perf: optimize diffing")
-  # - Add the 'performance' label to the PR
-  # - Modify the benchmark workflow or E2E scripts
+  # Auto-triggers on:
+  # 1. Manual: workflow_dispatch
+  # 2. PR: Title starts with 'perf:' or 'perf('
+  # 3. PR: Has 'performance' label
+  # 4. PR: Modifies benchmark workflow or scripts
+  # 5. Push to main: Baseline tracking
   # ============================================================================
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
     runs-on: ubuntu-latest
     needs: changes
     if: >
-      github.event.inputs.run_e2e_benchmark == 'true' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       needs.changes.outputs.perf-pr == 'true' ||
       needs.changes.outputs.e2e-scripts == 'true' ||
@@ -331,19 +253,19 @@ jobs:
           # Create framework directory structure
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/bundled-dist
-          
+
           # Copy framework files from contrib (package.json AND package-lock.json required by /ls endpoint)
           cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
           cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package-lock.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
           cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
-          
+
           # Copy Abies library source (excluding bin/obj to avoid stale artifacts)
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
           rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies/
-          
+
           # Copy Global folder (referenced by Directory.Build.props)
           cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
-          
+
           # Copy build configuration
           cp $GITHUB_WORKSPACE/Directory.Build.props ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
           cp $GITHUB_WORKSPACE/global.json ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
@@ -401,13 +323,43 @@ jobs:
             sleep 1
           done
 
-      - name: Run E2E benchmarks
+      - name: Run E2E benchmarks (all CPU benchmarks)
         run: |
           cd ../js-framework-benchmark-fork/webdriver-ts
-          # Run key benchmarks (format: keyed/frameworkname per README)
+          # Run ALL js-framework-benchmark CPU benchmarks
+          # Format: keyed/frameworkname per README
+          #
+          # CPU Benchmarks (01-09):
+          # - 01_run1k: Create 1,000 rows
+          # - 02_replace1k: Replace all 1,000 rows (5 warmup iterations)
+          # - 03_update10th1k: Update every 10th row for 10k table (5 warmup)
+          # - 04_select1k: Select/highlight a row (5 warmup)
+          # - 05_swap1k: Swap 2 rows (5 warmup)
+          # - 06_remove-one-1k: Remove one row (5 warmup)
+          # - 07_create10k: Create 10,000 rows
+          # - 08_create1k-after1k_x2: Append 1,000 rows to 1k table
+          # - 09_clear1k: Clear table with 1k rows
+          #
           npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 02_replace1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 03_update10th1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 04_select1k
           npm run bench -- --headless --framework keyed/abies --benchmark 05_swap1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 06_remove-one-1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 07_create10k
+          npm run bench -- --headless --framework keyed/abies --benchmark 08_create1k-after1k_x2
           npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k
+
+      - name: Run Memory benchmarks
+        run: |
+          cd ../js-framework-benchmark-fork/webdriver-ts
+          # Memory benchmarks measure heap usage in MB
+          # 21_ready-memory: Ready memory (memory after page load)
+          # 22_run-memory: Run memory (after creating 1k rows)
+          # 25_clear-memory: Clear memory (after 5 create/clear cycles)
+          npm run bench -- --headless --framework keyed/abies --benchmark 21_ready-memory
+          npm run bench -- --headless --framework keyed/abies --benchmark 22_run-memory
+          npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory
 
       - name: Fetch baseline from gh-pages (if not in repo)
         if: ${{ !hashFiles('benchmark-results/baseline.json') }}
@@ -450,7 +402,7 @@ jobs:
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
-          name: E2E Benchmark (js-framework-benchmark)
+          name: "1. E2E Benchmark (js-framework-benchmark)"
           tool: customSmallerIsBetter
           output-file-path: ./e2e-benchmark-results.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
