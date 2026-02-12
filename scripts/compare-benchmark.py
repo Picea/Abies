@@ -135,10 +135,16 @@ def load_baseline(baseline_path: Path) -> dict[str, float]:
     if not baseline_path.exists():
         return {}
 
-    with open(baseline_path) as f:
-        data = json.load(f)
-
-    return data.get("benchmarks", {})
+    try:
+        with open(baseline_path) as f:
+            content = f.read().strip()
+            if not content:
+                return {}
+            data = json.loads(content)
+        return data.get("benchmarks", {})
+    except json.JSONDecodeError as e:
+        print(f"Warning: Could not parse baseline file {baseline_path}: {e}", file=sys.stderr)
+        return {}
 
 
 def save_baseline(baseline_path: Path, results: dict[str, BenchmarkResult]) -> None:
