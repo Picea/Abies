@@ -1,6 +1,6 @@
-using BenchmarkDotNet.Attributes;
 using Abies;
 using Abies.Benchmarks;
+using BenchmarkDotNet.Attributes;
 // Filename: UrlParsingBenchmarks.cs
 
 
@@ -33,9 +33,9 @@ public class UrlParsingBenchmarks
         foreach (var url in _testUrls)
         {
 #pragma warning disable CA1416 // Validate platform compatibility
-            Url.Create(new (url));
+            Url.Create(new(url));
 #pragma warning restore CA1416 // Validate platform compatibility
-                              // Perform operations if necessary
+            // Perform operations if necessary
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // Abies Core Types
 // =============================================================================
 // This file defines the fundamental types for the MVU (Model-View-Update) architecture.
@@ -9,13 +9,6 @@
 // - ADR-009: Sum Types for State Representation (docs/adr/ADR-009-sum-types.md)
 // =============================================================================
 
-using System.Collections.Concurrent;
-using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.JavaScript;
-using System.Threading;
-using Abies;
 using Abies.DOM;
 
 namespace Abies
@@ -29,11 +22,10 @@ namespace Abies
     /// </remarks>
     public interface Element<TModel, in TArgument>
     {
-        public static abstract Node View(TModel model);
-        public static abstract (TModel model, Command command) Update(Message message, TModel model);
-        public static abstract TModel Initialize(TArgument argument);
-        public static abstract Subscription Subscriptions(TModel model);
-        
+        static abstract Node View(TModel model);
+        static abstract (TModel model, Command command) Update(Message message, TModel model);
+        static abstract TModel Initialize(TArgument argument);
+        static abstract Subscription Subscriptions(TModel model);
     }
 
     /// <summary>
@@ -46,21 +38,20 @@ namespace Abies
     /// - View: Pure function rendering model to virtual DOM
     /// - Subscriptions: Declarative external event sources
     /// - HandleCommand: Side effect execution
-    /// 
+    ///
     /// See ADR-001: Model-View-Update Architecture
     /// See ADR-006: Command Pattern for Side Effects
     /// See ADR-007: Subscription Model for External Events
     /// </remarks>
-    public interface Program<TModel, in TArgument> 
+    public interface Program<TModel, in TArgument>
     {
-        public static abstract (TModel, Command) Initialize(Url url, TArgument argument);
-        public static abstract (TModel model, Command command) Update(Message message, TModel model);
-        public static abstract Document View(TModel model);
-        public static abstract Message OnUrlChanged(Url url);
-        public static abstract Message OnLinkClicked(UrlRequest urlRequest);
-        public static abstract Subscription Subscriptions(TModel model);
-        
-        public static abstract Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch);
+        static abstract (TModel, Command) Initialize(Url url, TArgument argument);
+        static abstract (TModel model, Command command) Update(Message message, TModel model);
+        static abstract Document View(TModel model);
+        static abstract Message OnUrlChanged(Url url);
+        static abstract Message OnLinkClicked(UrlRequest urlRequest);
+        static abstract Subscription Subscriptions(TModel model);
+        static abstract Task HandleCommand(Command command, Func<Message, Unit> dispatch);
     }
 
     /// <summary>
@@ -73,10 +64,9 @@ namespace Abies
     /// </remarks>
     public interface UrlRequest : Message
     {
-        public sealed record Internal(Url Url) : UrlRequest;
-        public sealed record External(string Url) : UrlRequest;
+        sealed record Internal(Url Url) : UrlRequest;
+        sealed record External(string Url) : UrlRequest;
     }
-
 
     /// <summary>
     /// Marker interface for all messages in the MVU loop.
@@ -84,7 +74,7 @@ namespace Abies
     /// <remarks>
     /// Messages are immutable records describing events that can change state.
     /// The Update function pattern-matches on message types.
-    /// 
+    ///
     /// See ADR-001: Model-View-Update Architecture
     /// See ADR-009: Sum Types for State Representation
     /// </remarks>
@@ -97,17 +87,16 @@ namespace Abies
     /// Commands keep the Update function pure. Instead of performing effects
     /// directly, Update returns a Command describing the intent.
     /// The runtime executes commands and dispatches result messages.
-    /// 
+    ///
     /// See ADR-006: Command Pattern for Side Effects
     /// </remarks>
     public interface Command
     {
         /// <summary>No side effect to perform.</summary>
-        public record struct None : Command;
-        
+        record struct None : Command;
+
         /// <summary>Execute multiple commands in sequence.</summary>
-        public record struct Batch(IEnumerable<Command> Commands) : Command;
-                
+        record struct Batch(IEnumerable<Command> Commands) : Command;
     }
 
     /// <summary>
@@ -116,20 +105,14 @@ namespace Abies
     public static class Commands
     {
         /// <summary>Returns a command that does nothing.</summary>
-        public static Command.None None = new(); 
-        
+        public static Command.None None = new();
+
         /// <summary>Combines multiple commands into a single batch.</summary>
         public static Command.Batch Batch(IEnumerable<Command> commands) => new(commands);
     }
-
-    
 }
-
-   
 
 namespace Abies.DOM
 {
-    
-
     // Operations class moved to a dedicated file for clarity
 }

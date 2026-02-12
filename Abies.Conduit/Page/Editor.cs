@@ -1,8 +1,5 @@
 using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
 using Abies.DOM;
-using System.Collections.Generic;
-using Abies.Conduit;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -10,17 +7,17 @@ namespace Abies.Conduit.Page.Editor;
 
 public interface Message : Abies.Message
 {
-    public record TitleChanged(string Value) : Message;
-    public record DescriptionChanged(string Value) : Message;
-    public record BodyChanged(string Value) : Message;
-    public record TagInputChanged(string Value) : Message;
-    public record AddTag : Message;
-    public record NoOp : Message;
-    public record RemoveTag(string Tag) : Message;
-    public record ArticleSubmitted : Message;
-    public record ArticleSubmitSuccess(string Slug) : Message;
-    public record ArticleSubmitError(Dictionary<string, string[]> Errors) : Message;
-    public record ArticleLoaded(Home.Article Article) : Message;
+    record TitleChanged(string Value) : Message;
+    record DescriptionChanged(string Value) : Message;
+    record BodyChanged(string Value) : Message;
+    record TagInputChanged(string Value) : Message;
+    record AddTag : Message;
+    record NoOp : Message;
+    record RemoveTag(string Tag) : Message;
+    record ArticleSubmitted : Message;
+    record ArticleSubmitSuccess(string Slug) : Message;
+    record ArticleSubmitError(Dictionary<string, string[]> Errors) : Message;
+    record ArticleLoaded(Home.Article Article) : Message;
 }
 
 public record Model(
@@ -72,13 +69,13 @@ public class Page : Element<Model, Message>
             ),
             Message.AddTag => (
         !string.IsNullOrWhiteSpace(model.TagInput)
-                    ? model with 
-                    { 
-            TagList = (model.TagList is null
+                    ? model with
+                    {
+                        TagList = (model.TagList is null
                                 ? [model.TagInput]
                                 : (model.TagList.Contains(model.TagInput)
                                     ? model.TagList
-                                    : [..model.TagList, model.TagInput])),
+                                    : [.. model.TagList, model.TagInput])),
                         TagInput = model.TagList is null || !model.TagList.Contains(model.TagInput) ? "" : model.TagInput
                     }
                     : model,
@@ -92,8 +89,8 @@ public class Page : Element<Model, Message>
             Message.ArticleSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
                 model.Slug is null
-                    ?  new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? []) 
-                    :  new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body) 
+                    ? new CreateArticleCommand(model.Title, model.Description, model.Body, model.TagList ?? [])
+                    : new UpdateArticleCommand(model.Slug, model.Title, model.Description, model.Body)
             ),
             Message.ArticleSubmitSuccess slug => (
                 model with { IsSubmitting = false, Errors = null, Slug = slug.Slug },
@@ -104,8 +101,8 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             Message.ArticleLoaded article => (
-                model with 
-                { 
+                model with
+                {
                     Title = article.Article.Title,
                     Description = article.Article.Description,
                     Body = article.Article.Body,
@@ -116,13 +113,13 @@ public class Page : Element<Model, Message>
                 Commands.None
             ),
             _ => (model, Commands.None)
-    };
+        };
 
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors is null
             ? text("")
             : ul([class_("error-messages")],
-                [.. errors.SelectMany(e => e.Value.Select(msg => 
+                [.. errors.SelectMany(e => e.Value.Select(msg =>
                     li([], [text($"{e.Key} {msg}")])
                 ))]
             );
@@ -139,7 +136,7 @@ public class Page : Element<Model, Message>
         ]);
 
     public static Node View(Model model) =>
-    div([class_("editor-page"), Abies.Html.Attributes.data("testid", "editor-page")], [
+    div([class_("editor-page"), data("testid", "editor-page")], [
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-10 offset-md-1 col-xs-12")], [
@@ -204,10 +201,10 @@ public class Page : Element<Model, Message>
                                           ? (DOM.Attribute[])[disabled()]
                                           : []),
                                     onclick(new Message.ArticleSubmitted())],
-                                    [text(model.IsSubmitting 
-                                        ? "Publishing Article..." 
-                                        : model.Slug is not null 
-                                            ? "Update Article" 
+                                    [text(model.IsSubmitting
+                                        ? "Publishing Article..."
+                                        : model.Slug is not null
+                                            ? "Update Article"
                                             : "Publish Article")]
                                 )
                             ])

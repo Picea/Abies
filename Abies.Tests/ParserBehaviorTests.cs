@@ -1,4 +1,4 @@
-﻿using System.Runtime.Versioning;
+using System.Runtime.Versioning;
 using FsCheck;
 using FsCheck.Xunit;
 
@@ -98,7 +98,7 @@ public class ParserBehaviorTests
         var result = parser.Parse(input.AsSpan());
 
         // Assert
-        if(char.IsLetter(c))
+        if (char.IsLetter(c))
         {
             Assert.True(result.Success);
             Assert.Equal(c.ToString(), result.Value.ToString());
@@ -229,11 +229,11 @@ public class ParserBehaviorTests
 
         // Assert
         Assert.True(result.Success);
-    // Many() should parse as many occurrences as possible.
-    Assert.True(result.Value.Count() >= 2);
-    // Remaining should be the unconsumed suffix. Depending on parser implementation,
-    // a shortest-remaining (greedy) parse is expected.
-    Assert.EndsWith(result.Remaining.ToString(), input, StringComparison.Ordinal);
+        // Many() should parse as many occurrences as possible.
+        Assert.True(result.Value.Count() >= 2);
+        // Remaining should be the unconsumed suffix. Depending on parser implementation,
+        // a shortest-remaining (greedy) parse is expected.
+        Assert.EndsWith(result.Remaining.ToString(), input, StringComparison.Ordinal);
     }
 
     [Property]
@@ -250,10 +250,10 @@ public class ParserBehaviorTests
 
         // Assert
         Assert.True(result.Success);
-    // Many1 is defined as "one or more" occurrences (1..n), so this must be >= 1.
-    Assert.NotEmpty(result.Value);
-    // Remaining should be a suffix of the original input.
-    Assert.EndsWith(result.Remaining.ToString(), input.ToString(), StringComparison.Ordinal);
+        // Many1 is defined as "one or more" occurrences (1..n), so this must be >= 1.
+        Assert.NotEmpty(result.Value);
+        // Remaining should be a suffix of the original input.
+        Assert.EndsWith(result.Remaining.ToString(), input.ToString(), StringComparison.Ordinal);
     }
 
     //[Property(Verbose = true)]
@@ -304,7 +304,7 @@ public class ParserBehaviorTests
     public void OptionalParser_ShouldReturnDefault_WhenParserFails(char a, string remaining)
     {
         // Arrange
-       
+
         var parser = Parse.Char('A').Optional();
         var input = a + remaining;
 
@@ -368,7 +368,7 @@ public class ParserBehaviorTests
     public void SelectManyParser_ShouldCombineParsedValues(char a, char b, string remaining)
     {
         // Arrange
-        var parser = 
+        var parser =
             from first in Parse.Char(a)
             from second in Parse.Char(b)
             select $"{first}{second}";

@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -123,7 +121,7 @@ public class FollowTests : PlaywrightFixture
 
         // Login as different user
         await RegisterTestUserAsync();
-        
+
         // Wait for auth state to be fully propagated before proceeding
         await WaitForAuthenticatedStateAsync();
 
@@ -131,7 +129,7 @@ public class FollowTests : PlaywrightFixture
         await Page.GetByRole(AriaRole.Link, new() { Name = "Home" }).ClickAsync();
         await WaitForAppReadyAsync();
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         // Find and click the article
         var articleLink = Page.Locator(".preview-link").Filter(new() { HasText = title });
         await articleLink.ClickAsync();

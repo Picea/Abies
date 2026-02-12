@@ -1,4 +1,3 @@
-using System.Linq;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Page.Home;
 using Abies.DOM;
@@ -23,18 +22,18 @@ public class HomeMoreDomJourneyTests
             CurrentUser: null);
 
         // Act: click "Global Feed" tab (anchor with direct text)
-            var (m1, _) = MvuDomTestHarness.DispatchClick(
-                model,
-                Abies.Conduit.Page.Home.Page.View,
-                Abies.Conduit.Page.Home.Page.Update,
-            MvuDomTestHarness.HasTag("a").And(MvuDomTestHarness.HasDirectText("Global Feed")));
+        var (m1, _) = MvuDomTestHarness.DispatchClick(
+            model,
+            Page.Home.Page.View,
+            Page.Home.Page.Update,
+        MvuDomTestHarness.HasTag("a").And(MvuDomTestHarness.HasDirectText("Global Feed")));
 
         // Assert
         Assert.Equal(FeedTab.Global, m1.ActiveTab);
         Assert.Equal(0, m1.CurrentPage);
 
         // Optional DOM sanity: active class on Global Feed tab
-            var dom = Abies.Conduit.Page.Home.Page.View(m1);
+        var dom = Page.Home.Page.View(m1);
         var activeGlobal = MvuDomTestHarness.FindFirstElement(dom,
             el => el.Tag == "a" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("active"))
                               && el.Children.OfType<Text>().Any(t => t.Value == "Global Feed"));
@@ -58,8 +57,8 @@ public class HomeMoreDomJourneyTests
         // Act: click the tag pill
         var (m1, _) = MvuDomTestHarness.DispatchClick(
             model,
-                Abies.Conduit.Page.Home.Page.View,
-                Abies.Conduit.Page.Home.Page.Update,
+                Page.Home.Page.View,
+                Page.Home.Page.Update,
             MvuDomTestHarness.HasTag("a").And(MvuDomTestHarness.HasDirectText("foo")));
 
         // Assert
@@ -67,7 +66,7 @@ public class HomeMoreDomJourneyTests
         Assert.Equal("foo", m1.ActiveTag);
 
         // DOM: should show the active tag breadcrumb "# foo"
-            var dom = Abies.Conduit.Page.Home.Page.View(m1);
+        var dom = Page.Home.Page.View(m1);
         var tagCrumb = MvuDomTestHarness.FindFirstElement(dom,
             MvuDomTestHarness.HasTag("a").And(MvuDomTestHarness.HasDirectText("# foo")));
         Assert.NotNull(tagCrumb);

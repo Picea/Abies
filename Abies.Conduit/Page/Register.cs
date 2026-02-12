@@ -1,11 +1,6 @@
-using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
-using Abies.Conduit;
-using Abies.DOM;
 using Abies;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
+using Abies.Conduit.Main;
+using Abies.DOM;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -13,12 +8,12 @@ namespace Abies.Conduit.Page.Register;
 
 public interface Message : Abies.Message
 {
-    public record RegisterSuccess(User User) : Message;
-    public record UsernameChanged(string Value) : Message;
-    public record EmailChanged(string Value) : Message;
-    public record PasswordChanged(string Value) : Message;
-    public record RegisterSubmitted : Message;
-    public record RegisterError(Dictionary<string, string[]> Errors) : Message;
+    record RegisterSuccess(User User) : Message;
+    record UsernameChanged(string Value) : Message;
+    record EmailChanged(string Value) : Message;
+    record PasswordChanged(string Value) : Message;
+    record RegisterSubmitted : Message;
+    record RegisterError(Dictionary<string, string[]> Errors) : Message;
 }
 
 public record Model(
@@ -59,9 +54,10 @@ public class Page : Element<Model, Message>
             Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
                 Commands.None
-            ),            Message.RegisterSubmitted => (
+            ),
+            Message.RegisterSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                new Abies.Conduit.RegisterCommand(model.Username, model.Email, model.Password)
+                new RegisterCommand(model.Username, model.Email, model.Password)
             ),
             Message.RegisterSuccess registerSuccess => (
                 model with { IsSubmitting = false, Errors = null },
@@ -77,8 +73,8 @@ public class Page : Element<Model, Message>
     private static Node ErrorList(Dictionary<string, string[]>? errors) =>
         errors is null
             ? text("")
-            : ul([class_("error-messages")], 
-                [..errors.SelectMany(e => e.Value.Select(msg => 
+            : ul([class_("error-messages")],
+                [..errors.SelectMany(e => e.Value.Select(msg =>
                     li([], [text($"{e.Key} {msg}")])
                 ))]
             );
@@ -92,7 +88,7 @@ public class Page : Element<Model, Message>
                         p([class_("text-xs-center")], [
                             a([href("/login")], [text("Have an account?")])
                         ]),
-                        
+
                         ErrorList(model.Errors),
 
                         form([onsubmit(new Message.RegisterSubmitted())], [

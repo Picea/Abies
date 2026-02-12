@@ -1,5 +1,4 @@
-﻿using System.Runtime.Versioning;
-using Xunit;
+using System.Runtime.Versioning;
 using static Abies.ParserExtensions;
 
 [SupportedOSPlatform("browser")]

@@ -14,7 +14,6 @@
 // - ADR-013: OpenTelemetry Instrumentation (docs/adr/ADR-013-opentelemetry.md)
 // =============================================================================
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Channels;
@@ -42,9 +41,10 @@ public static partial class Runtime
     private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
 
     // Handler registries for event dispatch (see ADR-011: JavaScript interop)
-    private static readonly ConcurrentDictionary<string, Message> _handlers = new();
-    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
-    private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
+    // Uses Dictionary instead of ConcurrentDictionary since WASM is single-threaded
+    private static readonly Dictionary<string, Message> _handlers = new();
+    private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
+    private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
 
     /// <summary>
     /// Starts the MVU runtime loop for the specified program.
@@ -112,7 +112,7 @@ public static partial class Runtime
             // Compute the patches
             var patches = Operations.Diff(dom, alignedBody);
 
-            // Apply patches in batch (reduces JS interop overhead)
+            // Apply patches in batch using binary protocol for zero-copy transfer
             await Operations.ApplyBatch(patches);
 
             dom = alignedBody;
@@ -176,6 +176,33 @@ public static partial class Runtime
 
     private static Node PreserveIds(Node? oldNode, Node newNode)
     {
+        // Handle LazyMemo nodes - preserve the lazy structure but don't evaluate
+        if (newNode is ILazyMemoNode newLazyMemo)
+        {
+            // If the old node was a lazy memo with the same key, we can skip evaluation
+            // Uses MemoKeyEquals to avoid boxing overhead for value type keys
+            if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKeyEquals(newLazyMemo))
+            {
+                // Keys match - return the new lazy with old's cached content preserved
+                return oldLazyMemo.CachedNode != null
+                    ? newLazyMemo.WithCachedNode(oldLazyMemo.CachedNode)
+                    : newNode;
+            }
+            // For lazy memos, we defer evaluation - just return as-is
+            return newNode;
+        }
+
+        // Handle Memo nodes by recursing into their cached content
+        if (newNode is IMemoNode newMemo)
+        {
+            // Find the matching old memo or old content
+            var oldCached = oldNode is IMemoNode oldMemo ? oldMemo.CachedNode : oldNode;
+            var preservedCached = PreserveIds(oldCached, newMemo.CachedNode);
+
+            // Return a new memo with the preserved cached content
+            return newMemo.WithCachedNode(preservedCached);
+        }
+
         // Only preserve IDs when elements have the same tag AND the same element ID.
         // This is critical for keyed diffing (ADR-016): elements with different IDs
         // should NOT have their IDs swapped, as that would break key-based matching.
@@ -208,11 +235,26 @@ public static partial class Runtime
             var oldChildrenById = new Dictionary<string, Node>();
             foreach (var child in oldElement.Children)
             {
-                if (child is Element childElem)
+                // Unwrap memo nodes to get the actual element ID
+                Node effectiveChild;
+                if (child is ILazyMemoNode lazyMemo)
                 {
-                    oldChildrenById[childElem.Id] = child;
+                    effectiveChild = lazyMemo.CachedNode ?? lazyMemo.Evaluate();
                 }
-                else if (child is Text textNode)
+                else if (child is IMemoNode memo)
+                {
+                    effectiveChild = memo.CachedNode;
+                }
+                else
+                {
+                    effectiveChild = child;
+                }
+
+                if (effectiveChild is Element childElem)
+                {
+                    oldChildrenById[childElem.Id] = child; // Store the original (possibly memo) node
+                }
+                else if (effectiveChild is Text textNode)
                 {
                     oldChildrenById[textNode.Id] = child;
                 }
@@ -224,14 +266,35 @@ public static partial class Runtime
                 var newChild = newElement.Children[i];
                 Node? matchingOldChild = null;
 
+                // Unwrap memo nodes to get the actual element ID for matching
+                Node effectiveNewChild;
+                if (newChild is ILazyMemoNode newLazyChild)
+                {
+                    // For lazy memo, use its own ID rather than evaluating
+                    effectiveNewChild = newChild;
+                }
+                else if (newChild is IMemoNode newMemoChild)
+                {
+                    effectiveNewChild = newMemoChild.CachedNode;
+                }
+                else
+                {
+                    effectiveNewChild = newChild;
+                }
+
                 // Find matching old child by key (element ID)
-                if (newChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
+                if (effectiveNewChild is Element newChildElem && oldChildrenById.TryGetValue(newChildElem.Id, out var oldMatch))
                 {
                     matchingOldChild = oldMatch;
                 }
-                else if (newChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
+                else if (effectiveNewChild is Text newTextNode && oldChildrenById.TryGetValue(newTextNode.Id, out var oldTextMatch))
                 {
                     matchingOldChild = oldTextMatch;
+                }
+                else if (effectiveNewChild is ILazyMemoNode lazyChild && oldChildrenById.TryGetValue(lazyChild.MemoKey?.ToString() ?? newChild.Id, out var oldLazyMatch))
+                {
+                    // Try to match lazy nodes by their ID
+                    matchingOldChild = oldLazyMatch;
                 }
 
                 children[i] = PreserveIds(matchingOldChild, newChild);
@@ -361,11 +424,11 @@ public static partial class Runtime
     {
         if (handler.Command is not null)
         {
-            _handlers.TryRemove(handler.CommandId, out _);
+            _handlers.Remove(handler.CommandId);
         }
         if (handler.WithData is not null)
         {
-            _dataHandlers.TryRemove(handler.CommandId, out _);
+            _dataHandlers.Remove(handler.CommandId);
         }
     }
 
@@ -379,11 +442,11 @@ public static partial class Runtime
                 {
                     if (handler.Command is not null)
                     {
-                        _handlers.TryRemove(handler.CommandId, out _);
+                        _handlers.Remove(handler.CommandId);
                     }
                     if (handler.WithData is not null)
                     {
-                        _dataHandlers.TryRemove(handler.CommandId, out _);
+                        _dataHandlers.Remove(handler.CommandId);
                     }
                 }
             }
@@ -414,7 +477,7 @@ public static partial class Runtime
             return;
         }
 
-        _subscriptionHandlers.TryRemove(key, out _);
+        _subscriptionHandlers.Remove(key);
     }
 
     private static Unit Dispatch(Message message)

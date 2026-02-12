@@ -1,5 +1,4 @@
 using Abies.Conduit.Main;
-using System.Threading.Tasks;
 
 namespace Abies.Conduit.Services;
 
@@ -19,7 +18,7 @@ public static class AuthService
     public static async Task<User> LoginAsync(string email, string password)
     {
         var response = await ApiClient.LoginAsync(email, password);
-        
+
         _currentUser = new User(
             new UserName(response.User.Username),
             new Email(response.User.Email),
@@ -27,17 +26,17 @@ public static class AuthService
             response.User.Image ?? "",
             response.User.Bio ?? ""
         );
-        
+
         ApiClient.SetAuthToken(response.User.Token);
         await SaveTokenAsync(response.User.Token);
-        
+
         return _currentUser;
     }
 
     public static async Task<User> RegisterAsync(string username, string email, string password)
     {
         var response = await ApiClient.RegisterAsync(username, email, password);
-        
+
         _currentUser = new User(
             new UserName(response.User.Username),
             new Email(response.User.Email),
@@ -45,7 +44,7 @@ public static class AuthService
             response.User.Image ?? "",
             response.User.Bio ?? ""
         );
-        
+
         ApiClient.SetAuthToken(response.User.Token);
         await SaveTokenAsync(response.User.Token);
 
@@ -58,7 +57,7 @@ public static class AuthService
         {
             return null;
         }
-        
+
         // Fast-path: set token immediately so UI can reflect authenticated state,
         // then try to hydrate full user details in the background.
         ApiClient.SetAuthToken(token);
@@ -97,10 +96,10 @@ public static class AuthService
         await RemoveTokenAsync();
     }
 
-public static async Task<User> UpdateUserAsync(string username, string email, string bio, string image, string? password = null)
+    public static async Task<User> UpdateUserAsync(string username, string email, string bio, string image, string? password = null)
     {
         var response = await ApiClient.UpdateUserAsync(email, username, bio, image, password);
-        
+
         _currentUser = new User(
             new UserName(response.User.Username),
             new Email(response.User.Email),
@@ -108,7 +107,7 @@ public static async Task<User> UpdateUserAsync(string username, string email, st
             response.User.Image ?? "",
             response.User.Bio ?? ""
         );
-        
+
         ApiClient.SetAuthToken(response.User.Token);
         await SaveTokenAsync(response.User.Token);
 

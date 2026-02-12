@@ -380,6 +380,7 @@ public class DomBehaviorTests
             ReplaceChild rc => ReplaceNode(root!, rc.OldElement, rc.NewElement),
             AddChild ac => UpdateElement(root!, ac.Parent.Id, e => e with { Children = e.Children.Append(ac.Child).ToArray() }),
             RemoveChild rc => UpdateElement(root!, rc.Parent.Id, e => e with { Children = e.Children.Where(c => c.Id != rc.Child.Id).ToArray() }),
+            ClearChildren cc => UpdateElement(root!, cc.Parent.Id, e => e with { Children = [] }),
             MoveChild mc => UpdateElement(root!, mc.Parent.Id, e =>
             {
                 // Remove child from current position
@@ -508,4 +509,510 @@ public class DomBehaviorTests
         }
         return node;
     }
+
+    #region Memo Node Tests
+
+    [Fact]
+    public void MemoNode_ShouldRenderCachedContent()
+    {
+        // Create a simple element wrapped in memo
+        var innerElement = new Element("inner-1", "div", [], new Text("text-1", "Hello"));
+        var memoNode = new Memo<string>("memo-1", "key-1", innerElement);
+
+        // Render should produce the inner element's HTML
+        var html = Render.Html(memoNode);
+
+        Assert.Contains("Hello", html);
+        Assert.Contains("div", html);
+        Assert.Contains("inner-1", html);
+        // The memo wrapper itself should not appear in output
+        Assert.DoesNotContain("memo-1", html);
+    }
+
+    [Fact]
+    public void MemoNode_InParent_ShouldRenderCorrectly()
+    {
+        // Create a parent with memo children (simulating a list)
+        var row1 = new Element("row-1", "tr", [], new Text("text-1", "Row 1"));
+        var row2 = new Element("row-2", "tr", [], new Text("text-2", "Row 2"));
+        var memo1 = new Memo<int>("m-1", 1, row1);
+        var memo2 = new Memo<int>("m-2", 2, row2);
+
+        var tbody = new Element("tbody-1", "tbody", [], memo1, memo2);
+
+        var html = Render.Html(tbody);
+
+        // Both rows should be rendered
+        Assert.Contains("Row 1", html);
+        Assert.Contains("Row 2", html);
+        Assert.Contains("row-1", html);
+        Assert.Contains("row-2", html);
+        // Memo wrappers should not appear
+        Assert.DoesNotContain("m-1", html);
+        Assert.DoesNotContain("m-2", html);
+    }
+
+    [Fact]
+    public void MemoNode_DiffWithSameKey_ShouldSkipSubtreeDiff()
+    {
+        // Old and new trees with same memo key
+        var oldInner = new Element("inner-1", "div", [], new Text("text-1", "Old"));
+        var newInner = new Element("inner-1", "div", [], new Text("text-1", "New")); // Different text!
+        var oldMemo = new Memo<string>("m-1", "same-key", oldInner);
+        var newMemo = new Memo<string>("m-1", "same-key", newInner);
+
+        var patches = Operations.Diff(oldMemo, newMemo);
+
+        // With same key, should produce NO patches (subtree is skipped)
+        Assert.Empty(patches);
+    }
+
+    [Fact]
+    public void MemoNode_DiffWithDifferentKey_ShouldDiffSubtrees()
+    {
+        // Old and new trees with different memo keys
+        var oldInner = new Element("inner-1", "div", [], new Text("text-1", "Old"));
+        var newInner = new Element("inner-1", "div", [], new Text("text-1", "New"));
+        var oldMemo = new Memo<string>("m-1", "key-1", oldInner);
+        var newMemo = new Memo<string>("m-1", "key-2", newInner);
+
+        var patches = Operations.Diff(oldMemo, newMemo);
+
+        // With different keys, should produce patches for the text change
+        Assert.NotEmpty(patches);
+        Assert.Contains(patches, p => p is UpdateText);
+    }
+
+    [Fact]
+    public void MemoNode_InitialRender_ShouldCreateElements()
+    {
+        // Simulating initial render: diff from null to memo node
+        var inner = new Element("row-1", "tr", [], new Text("text-1", "Hello"));
+        var memoNode = new Memo<int>("m-1", 42, inner);
+        var parent = new Element("tbody-1", "tbody", [], memoNode);
+
+        var patches = Operations.Diff(null, parent);
+
+        // Should have AddRoot patch
+        Assert.NotEmpty(patches);
+        Assert.Contains(patches, p => p is AddRoot);
+    }
+
+    [Fact]
+    public void MemoNode_EmptyToFilled_ShouldCreateChildren()
+    {
+        // This simulates the benchmark scenario:
+        // 1. Initial render: tbody with no children
+        // 2. After "Create 1000 rows": tbody with 1000 memo-wrapped children
+        var emptyTbody = new Element("tbody-1", "tbody", []);
+
+        var row1 = new Element("row-1", "tr", [], new Text("t-1", "Row 1"));
+        var row2 = new Element("row-2", "tr", [], new Text("t-2", "Row 2"));
+        var memo1 = new Memo<int>("m-1", 1, row1);
+        var memo2 = new Memo<int>("m-2", 2, row2);
+        var filledTbody = new Element("tbody-1", "tbody", [], memo1, memo2);
+
+        var patches = Operations.Diff(emptyTbody, filledTbody);
+
+        // Should have AddChild patches for the new rows
+        Assert.NotEmpty(patches);
+        // The rows should be inserted as children
+        Assert.Contains(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void MemoNode_InsertChildPatch_ShouldContainCachedContent()
+    {
+        // Verify that AddChild patches contain the actual element, not the memo wrapper
+        var emptyTbody = new Element("tbody-1", "tbody", []);
+
+        var row = new Element("row-1", "tr", [], new Text("t-1", "Hello"));
+        var memoRow = new Memo<int>("m-1", 42, row);
+        var filledTbody = new Element("tbody-1", "tbody", [], memoRow);
+
+        var patches = Operations.Diff(emptyTbody, filledTbody);
+
+        // Find the AddChild patch
+        var addPatches = patches.OfType<AddChild>().ToList();
+        Assert.Single(addPatches);
+        var addPatch = addPatches[0];
+
+        // The added child should be the actual element (row), not the memo
+        Assert.Equal("row-1", addPatch.Child.Id);
+    }
+
+    #endregion
+
+    #region Lazy Memo Node Tests
+
+    [Fact]
+    public void LazyMemoNode_ShouldDeferEvaluation()
+    {
+        // Create a lazy memo with a factory that tracks invocations
+        int invocationCount = 0;
+        Node Factory()
+        {
+            invocationCount++;
+            return new Element("inner-1", "div", [], new Text("text-1", "Hello"));
+        }
+
+        var lazyMemo = new LazyMemo<string>("lazy-1", "key-1", Factory);
+
+        // Factory should not be called at construction time
+        Assert.Equal(0, invocationCount);
+
+        // Evaluate should call the factory
+        var result = lazyMemo.Evaluate();
+        Assert.Equal(1, invocationCount);
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public void LazyMemoNode_DiffWithSameKey_ShouldNotEvaluate()
+    {
+        // Create old lazy memo with a cached result
+        int oldInvocationCount = 0;
+        var oldCached = new Element("inner-1", "div", [], new Text("text-1", "Old"));
+        var oldLazy = new LazyMemo<string>("lazy-1", "same-key", () =>
+        {
+            oldInvocationCount++;
+            return oldCached;
+        }, oldCached);
+
+        // Create new lazy memo with same key
+        int newInvocationCount = 0;
+        var newLazy = new LazyMemo<string>("lazy-1", "same-key", () =>
+        {
+            newInvocationCount++;
+            return new Element("inner-1", "div", [], new Text("text-1", "New"));
+        });
+
+        Operations.ResetMemoCounters();
+        var patches = Operations.Diff(oldLazy, newLazy);
+
+        // With same key, should produce NO patches (factory never called)
+        Assert.Empty(patches);
+        Assert.Equal(0, newInvocationCount);
+        Assert.Equal(1, Operations.MemoHits);
+        Assert.Equal(0, Operations.MemoMisses);
+    }
+
+    [Fact]
+    public void LazyMemoNode_DiffWithDifferentKey_ShouldEvaluate()
+    {
+        // Create old lazy memo with a cached result
+        var oldCached = new Element("inner-1", "div", [], new Text("text-1", "Old"));
+        var oldLazy = new LazyMemo<string>("lazy-1", "key-1", () => oldCached, oldCached);
+
+        // Create new lazy memo with different key
+        int newInvocationCount = 0;
+        var newLazy = new LazyMemo<string>("lazy-1", "key-2", () =>
+        {
+            newInvocationCount++;
+            return new Element("inner-1", "div", [], new Text("text-1", "New"));
+        });
+
+        Operations.ResetMemoCounters();
+        var patches = Operations.Diff(oldLazy, newLazy);
+
+        // With different keys, should evaluate and produce patches
+        Assert.Equal(1, newInvocationCount);
+        Assert.NotEmpty(patches);
+        Assert.Contains(patches, p => p is UpdateText);
+        Assert.Equal(0, Operations.MemoHits);
+        Assert.Equal(1, Operations.MemoMisses);
+    }
+
+    [Fact]
+    public void LazyMemoNode_ShouldRenderContent()
+    {
+        // Create a lazy memo
+        var inner = new Element("inner-1", "div", [], new Text("text-1", "Hello"));
+        var lazyMemo = new LazyMemo<string>("lazy-1", "key-1", () => inner);
+
+        // Render should evaluate and produce the inner element's HTML
+        var html = Render.Html(lazyMemo);
+
+        Assert.Contains("Hello", html);
+        Assert.Contains("div", html);
+        Assert.Contains("inner-1", html);
+    }
+
+    [Fact]
+    public void LazyMemoNode_InParent_ShouldRenderCorrectly()
+    {
+        // Create a parent with lazy memo children (simulating a list)
+        var row1 = new Element("row-1", "tr", [], new Text("text-1", "Row 1"));
+        var row2 = new Element("row-2", "tr", [], new Text("text-2", "Row 2"));
+        var lazy1 = new LazyMemo<int>("l-1", 1, () => row1);
+        var lazy2 = new LazyMemo<int>("l-2", 2, () => row2);
+
+        var tbody = new Element("tbody-1", "tbody", [], lazy1, lazy2);
+
+        var html = Render.Html(tbody);
+
+        // Both rows should be rendered
+        Assert.Contains("Row 1", html);
+        Assert.Contains("Row 2", html);
+    }
+
+    [Fact]
+    public void LazyMemoNode_SelectScenario_ShouldMinimizeEvaluations()
+    {
+        // Simulate the benchmark select scenario:
+        // 1000 rows, selecting row 5 (was unselected), unselecting row 999 (was selected)
+
+        // Create old tree with row 5 unselected, row 999 selected
+        var oldRows = new List<Node>();
+        var oldFactoryCalls = new int[10];
+        for (int i = 0; i < 10; i++)
+        {
+            int idx = i;
+            bool wasSelected = i == 9; // Row 9 was selected
+            var elem = new Element($"row-{i}", "tr",
+                [new DOMAttribute($"class-{i}", "class", wasSelected ? "danger" : "")],
+                new Text($"text-{i}", $"Row {i}"));
+            oldRows.Add(new LazyMemo<(int, bool)>($"lazy-{i}", (i, wasSelected), () =>
+            {
+                oldFactoryCalls[idx]++;
+                return elem;
+            }, elem)); // Pre-populate with cached value
+        }
+        var oldTbody = new Element("tbody-1", "tbody", [], oldRows.ToArray());
+
+        // Create new tree with row 5 selected, row 999 unselected
+        var newRows = new List<Node>();
+        var newFactoryCalls = new int[10];
+        for (int i = 0; i < 10; i++)
+        {
+            int idx = i;
+            bool isSelected = i == 5; // Row 5 is now selected
+            var elem = new Element($"row-{i}", "tr",
+                [new DOMAttribute($"class-{i}", "class", isSelected ? "danger" : "")],
+                new Text($"text-{i}", $"Row {i}"));
+            newRows.Add(new LazyMemo<(int, bool)>($"lazy-{i}", (i, isSelected), () =>
+            {
+                newFactoryCalls[idx]++;
+                return elem;
+            }));
+        }
+        var newTbody = new Element("tbody-1", "tbody", [], newRows.ToArray());
+
+        Operations.ResetMemoCounters();
+        var patches = Operations.Diff(oldTbody, newTbody);
+
+        // Only rows 5 and 9 should have their factories called (key changed)
+        // Rows 0-4, 6-8 should NOT have factories called (key unchanged)
+        Assert.Equal(0, newFactoryCalls[0]);
+        Assert.Equal(0, newFactoryCalls[1]);
+        Assert.Equal(0, newFactoryCalls[2]);
+        Assert.Equal(0, newFactoryCalls[3]);
+        Assert.Equal(0, newFactoryCalls[4]);
+        Assert.Equal(1, newFactoryCalls[5]); // Selected changed
+        Assert.Equal(0, newFactoryCalls[6]);
+        Assert.Equal(0, newFactoryCalls[7]);
+        Assert.Equal(0, newFactoryCalls[8]);
+        Assert.Equal(1, newFactoryCalls[9]); // Unselected changed
+
+        // Should have 8 hits (unchanged rows) and 2 misses (changed rows)
+        Assert.Equal(8, Operations.MemoHits);
+        Assert.Equal(2, Operations.MemoMisses);
+
+        // Should have patches for the 2 changed rows (class attribute change)
+        Assert.NotEmpty(patches);
+    }
+
+    #endregion
+
+    #region LIS Algorithm Tests (Swap Benchmark Scenario)
+
+    [Fact]
+    public void KeyedChildren_SwapTwoElements_ShouldOnlyMoveTwoElements()
+    {
+        // This test validates the LIS algorithm fix for the js-framework-benchmark swap scenario.
+        // When swapping 2 elements in a 1000-element list, only 2 MoveChild patches should be generated.
+        // Before the fix, the buggy LIS algorithm produced 999 MoveChild patches!
+
+        const int listSize = 1000;
+
+        // Create a list of 1000 elements with unique IDs
+        var oldChildren = new Node[listSize];
+        for (int i = 0; i < listSize; i++)
+        {
+            oldChildren[i] = new Element($"row-{i}", "tr", [], new Text($"text-{i}", $"Row {i}"));
+        }
+        var oldDom = new Element("tbody", "tbody", [], oldChildren);
+
+        // Swap positions 1 and 998 (same as js-framework-benchmark)
+        var newChildren = new Node[listSize];
+        Array.Copy(oldChildren, newChildren, listSize);
+        (newChildren[1], newChildren[998]) = (newChildren[998], newChildren[1]);
+        var newDom = new Element("tbody", "tbody", [], newChildren);
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Count MoveChild patches
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // With correct LIS algorithm: only 2 elements need to move
+        // LIS should be [0, 2, 3, 4, ..., 997, 999] (length 998)
+        // Non-LIS elements: positions 1 and 998
+        Assert.Equal(2, moveCount);
+
+        // Should NOT have any Remove/Add patches for a pure reorder
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_SwapAdjacentElements_ShouldOnlyMoveOneElement()
+    {
+        // Swapping adjacent elements should only require 1 move
+        // Original: A, B, C, D
+        // After swap B,C: A, C, B, D
+        // LIS: [A, C, D] (length 3) or [A, B, D]
+        // Either B or C needs to move, but not both
+
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // Should be exactly 1 move (either B moves after C, or C moves before B)
+        Assert.Equal(1, moveCount);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void KeyedChildren_ReverseOrder_ShouldMinimizeMoves()
+    {
+        // Reversing a list: A, B, C, D -> D, C, B, A
+        // LIS of [3, 2, 1, 0] is just [3] or any single element (length 1)
+        // So 3 moves are needed (all except one element)
+
+        var oldDom = new Element("root", "div", [],
+            new Element("a", "div", [], new Text("ta", "A")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("d", "div", [], new Text("td", "D")));
+
+        var newDom = new Element("root", "div", [],
+            new Element("d", "div", [], new Text("td", "D")),
+            new Element("c", "div", [], new Text("tc", "C")),
+            new Element("b", "div", [], new Text("tb", "B")),
+            new Element("a", "div", [], new Text("ta", "A")));
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var moveCount = patches.Count(p => p is MoveChild);
+
+        // Reversing 4 elements: LIS length is 1, so 3 moves needed
+        Assert.Equal(3, moveCount);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    #endregion
+
+    #region ClearChildren Optimization Tests
+
+    [Fact]
+    public void ClearAllChildren_ShouldUseSingleClearChildrenPatch()
+    {
+        // When removing ALL children, the diff should generate a single ClearChildren patch
+        // instead of N individual RemoveChild patches
+
+        var oldDom = new Element("tbody", "tbody", [],
+            new Element("row-0", "tr", [], new Text("t0", "Row 0")),
+            new Element("row-1", "tr", [], new Text("t1", "Row 1")),
+            new Element("row-2", "tr", [], new Text("t2", "Row 2")),
+            new Element("row-3", "tr", [], new Text("t3", "Row 3")),
+            new Element("row-4", "tr", [], new Text("t4", "Row 4")));
+
+        var newDom = new Element("tbody", "tbody", []); // Empty children
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should have exactly 1 ClearChildren patch, no RemoveChild patches
+        Assert.Single(patches);
+        Assert.IsType<ClearChildren>(patches.First());
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+
+        // Verify the patch contains the old children for handler cleanup
+        var clearPatch = (ClearChildren)patches.First();
+        Assert.Equal(5, clearPatch.OldChildren.Length);
+    }
+
+    [Fact]
+    public void ClearManyChildren_ShouldUseSingleClearChildrenPatch()
+    {
+        // Test with larger list to verify performance benefit
+        const int listSize = 100;
+
+        var oldChildren = new Node[listSize];
+        for (int i = 0; i < listSize; i++)
+        {
+            oldChildren[i] = new Element($"row-{i}", "tr", [], new Text($"text-{i}", $"Row {i}"));
+        }
+        var oldDom = new Element("tbody", "tbody", [], oldChildren);
+        var newDom = new Element("tbody", "tbody", []); // Empty
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should be 1 ClearChildren instead of 100 RemoveChild patches
+        Assert.Single(patches);
+        Assert.IsType<ClearChildren>(patches.First());
+    }
+
+    [Fact]
+    public void RemoveSomeChildren_ShouldNotUseClearChildren()
+    {
+        // When removing SOME children but not all, should use individual RemoveChild patches
+
+        var oldDom = new Element("div", "div", [],
+            new Element("a", "span", []),
+            new Element("b", "span", []),
+            new Element("c", "span", []));
+
+        var newDom = new Element("div", "div", [],
+            new Element("a", "span", [])); // Keep first, remove b and c
+
+        var patches = Operations.Diff(oldDom, newDom);
+
+        // Should have 2 RemoveChild patches, not ClearChildren
+        Assert.DoesNotContain(patches, p => p is ClearChildren);
+        Assert.Equal(2, patches.Count(p => p is RemoveChild));
+    }
+
+    [Fact]
+    public void ClearChildren_ShouldApplyCorrectly()
+    {
+        // Verify that ClearChildren patch applies correctly
+        var oldDom = new Element("div", "div", [],
+            new Element("a", "span", []),
+            new Element("b", "span", []),
+            new Element("c", "span", []));
+
+        var newDom = new Element("div", "div", []);
+
+        var patches = Operations.Diff(oldDom, newDom);
+        var result = ApplyPatches(oldDom, patches, oldDom);
+
+        Assert.NotNull(result);
+        Assert.IsType<Element>(result);
+        var resultElement = (Element)result;
+        Assert.Empty(resultElement.Children);
+    }
+
+    #endregion
 }
