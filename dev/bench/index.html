@@ -161,8 +161,9 @@
             a.click();
           };
 
-          // Prepare data points for charts
-          return Object.keys(data.entries).map(name => ({
+          // Prepare data points for charts, sorted alphabetically by name
+          // so "1. E2E..." appears before "2. Micro-Benchmarks..."
+          return Object.keys(data.entries).sort().map(name => ({
             name,
             dataSet: collectBenchesPerTestCase(data.entries[name]),
           }));
