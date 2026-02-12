@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770890955330,
+  "lastUpdate": 1770890957712,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -5222,6 +5222,180 @@ window.BENCHMARK_DATA = {
             "value": 24344,
             "unit": "bytes",
             "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4264f5eff759193c9b1d4fc617d369b5dc70816",
+          "message": "docs: Add dual-layer benchmarking strategy (#70)\n\n* docs: Add dual-layer benchmarking strategy\n\nImplement the recommended benchmarking approach based on deep research\nof how Blazor, React, Vue, and other frameworks handle performance testing.\n\nKey changes:\n- Add docs/investigations/benchmarking-strategy.md with full analysis\n- Add scripts/compare-benchmark.py for baseline comparison\n- Update benchmark.yml with E2E benchmark job (manual trigger)\n- Update memory.instructions.md with strategy summary\n\nDual-Layer Strategy:\n1. PRIMARY (Source of Truth): js-framework-benchmark\n   - Measures real user-perceived latency (EventDispatch → Paint)\n   - Must validate before merging ANY performance-related PR\n\n2. SECONDARY (Development Guidance): BenchmarkDotNet micro-benchmarks\n   - Fast feedback for algorithm comparison and allocation tracking\n   - May show false positives due to missing JS interop overhead\n\nCRITICAL RULE: Never ship based on micro-benchmark improvements alone.\n\nHistorical evidence: PatchType enum optimization showed 11-20%\nmicro-benchmark improvement but caused 2-5% REGRESSION in E2E benchmarks.\n\n* feat: Add E2E benchmark trend tracking to gh-pages\n\n- Add convert-e2e-results.py to transform js-framework-benchmark\n  results to github-action-benchmark format\n- Update benchmark.yml to store E2E results in gh-pages for\n  historical trend tracking\n- Now both micro-benchmarks AND E2E benchmarks are tracked over time\n\nThis enables visualization of E2E performance trends alongside\nmicro-benchmark trends, providing the complete picture.\n\n* fix: Add human-readable descriptions to E2E benchmark names\n\nEach benchmark now has a descriptive name in gh-pages:\n- 01_run1k (create 1000 rows)\n- 05_swap1k (swap two rows)\n- 09_clear1k (clear all rows)\n\nThis makes the trend charts more readable.\n\n* feat: Add local benchmarking script and workflow documentation\n\n- Add scripts/run-benchmarks.sh for consistent local benchmark execution\n- Support --micro, --e2e, --quick, --compare, --update-baseline options\n- Document local benchmarking workflow in benchmarking-strategy.md\n- Update .gitignore to preserve baseline.json while ignoring local results\n\n* fix: Make micro-benchmarks non-blocking, E2E is quality gate\n\n- Micro-benchmarks now use continue-on-error: true (informational only)\n- E2E js-framework-benchmark remains the blocking quality gate\n- Updated header comments to clarify blocking vs non-blocking\n\n* feat: Auto-trigger E2E benchmarks for performance PRs\n\nE2E benchmarks now run automatically when:\n- PR title starts with 'perf:' or 'perf(' (Conventional Commits)\n- PR has 'performance' label\n- Push to main (baseline tracking)\n- Manual workflow_dispatch\n\nThis ensures the quality gate is enforced without manual intervention.\n\n* fix: Remove path filter blocking E2E benchmark on PRs\n\n- Remove global path filter on pull_request trigger\n- Add dedicated 'changes' job with dorny/paths-filter\n- Micro-benchmarks only run when Abies/** paths change\n- E2E benchmarks run on perf PRs regardless of paths changed\n\n* fix: Only update gh-pages on main branch builds\n\n- Remove gh-pages updates from PR builds\n- Both micro and E2E benchmarks only push to gh-pages on main\n- PRs still get benchmark results but don't pollute trend data\n\n* perf: Add caching for npm and Chrome in E2E benchmark\n\n- Cache npm dependencies (~/.npm)\n- Cache Chrome for Selenium (~/.cache/selenium)\n- Speeds up E2E benchmark runs\n\n* fix: Trigger E2E benchmark when benchmark workflow/scripts change\n\n* fix: Copy E2E results to workspace before artifact upload\n\n* fix: Use correct js-framework-benchmark repo (krausest/js-framework-benchmark)\n\n* fix: Use static cache key for npm (can't hash files outside workspace)\n\n* feat: Add js-framework-benchmark scaffold and fix E2E workflow\n\n- Add contrib/js-framework-benchmark/ with benchmark implementation\n- Update workflow to set up Abies framework in upstream benchmark repo\n- This allows running benchmarks without needing a pre-configured fork\n\n* fix: Address review comments on benchmark comparison\n\n- Use statistics.median for proper median calculation\n- Remove unused TRACKED_BENCHMARKS and PERFORMANCE_TARGETS constants\n- Exit with error code 1 when baseline is missing in CI\n- Replace flaky sleep with curl readiness check (30s timeout)\n- Add step to fetch baseline from gh-pages if not in repo\n- Update docs: JSON serialization → binary batch building\n\n* fix: Copy Global folder for Abies build in E2E benchmark\n\nThe Abies.csproj references Global/Usings.cs and Global/Suppressions.cs\nwhich need to be present in the build context.\n\n* fix(benchmark): exclude Abies sources from AbiesBenchmark compilation\n\nSDK-style projects auto-include all .cs files in subdirectories. Since\nAbies/ is a subfolder of src/, all Abies source files were being compiled\ninto both Abies.dll (via ProjectReference) AND AbiesBenchmark.dll directly.\n\nThis caused CS0121 'ambiguous call' errors because every type existed twice.\n\nFix: Add explicit <Compile Remove=\"Abies/**/*.cs\" /> to exclude Abies\nsources from AbiesBenchmark compilation - they should only be referenced\nvia the ProjectReference.\n\n* fix(benchmark): compile webdriver-ts TypeScript before running benchmarks\n\nThe npm run bench command requires dist/benchmarkRunner.js which is\ngenerated by compiling TypeScript sources with 'npm run compile'.\n\n* fix(benchmark): use correct framework path format keyed/abies\n\nThe js-framework-benchmark expects format 'keyed/frameworkname' not\n'frameworkname-keyed' as documented in the README.\n\n* fix(benchmark): add package-lock.json required by /ls endpoint\n\nThe js-framework-benchmark server's /ls endpoint requires both\npackage.json AND package-lock.json to exist in each framework directory\nbefore it will be included in framework discovery.\n\n* fix(benchmark): handle nested values format from js-framework-benchmark\n\nCPU benchmarks output format:\n{values: {total: {median, values: [...]}, script: {...}, paint: {...}}}\n\nNot the flat array format the scripts expected. Now correctly extracts\nthe 'total' timing from nested structure.\n\n* fix(benchmark): handle empty baseline file gracefully\n\nWhen gh-pages doesn't have e2e-baseline.json, git show fails silently\nand creates an empty file. The script now handles this case by\nreturning an empty baseline dict rather than crashing.\n\n* fix(benchmark): allow first run without baseline in CI\n\nThe first E2E benchmark run cannot compare against a baseline that\ndoesn't exist yet. Changed the behavior from failing to:\n- Print current results\n- Exit with code 0 (pass)\n- Indicate baseline will be created after merge to main\n\nThe baseline gets created when results are pushed to gh-pages after\nmerging to main. Subsequent PR runs will then compare against it.",
+          "timestamp": "2026-02-12T10:59:18+01:00",
+          "tree_id": "b00253bcdd2f100b2b5bae902f84a03468802fed",
+          "url": "https://github.com/Picea/Abies/commit/c4264f5eff759193c9b1d4fc617d369b5dc70816"
+        },
+        "date": 1770890957062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 672,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 240,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1392,
+            "unit": "bytes",
+            "extra": "Gen0: 87.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 776,
+            "unit": "bytes",
+            "extra": "Gen0: 97.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1144,
+            "unit": "bytes",
+            "extra": "Gen0: 71.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 9944,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 150176,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 36.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9384,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4848,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 188.0000, Gen1: 14.0000"
           }
         ]
       }
