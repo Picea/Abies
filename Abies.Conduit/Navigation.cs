@@ -1,7 +1,5 @@
 using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
 using Abies.DOM;
-using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 
 namespace Abies.Conduit;
@@ -20,8 +18,10 @@ public static class Navigation
         // and the browser's getElementById returns the correct element.
         var stableId = $"nav-{url.Replace("/", "-").TrimStart('-').TrimEnd('-')}";
         if (string.IsNullOrEmpty(stableId) || stableId == "nav-")
+        {
             stableId = "nav-home";
-        
+        }
+
         // ADR-016: The id: parameter serves as both the DOM id and the diffing key.
         // No separate key() attribute needed.
         return li([class_("nav-item")], [
@@ -32,7 +32,7 @@ public static class Navigation
     public static Node View(Model model)
     {
         Node[] userLinks;
-        
+
         // While initializing (checking localStorage for user), don't show auth links
         // This prevents a brief flash of "Sign in" before user state loads
         if (model.IsInitializing)
@@ -49,9 +49,9 @@ public static class Navigation
         }
         else
         {
-            var links = new System.Collections.Generic.List<Node>
+            var links = new List<Node>
             {
-                NavLink("/editor", "New Article", model.CurrentRoute is Abies.Conduit.Routing.Route.NewArticle),
+                NavLink("/editor", "New Article", model.CurrentRoute is Routing.Route.NewArticle),
                 NavLink("/settings", "Settings", model.CurrentRoute is Routing.Route.Settings)
             };
             if (!string.IsNullOrWhiteSpace(model.CurrentUser.Username.Value))

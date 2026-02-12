@@ -1,16 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Main;
 using Abies.Conduit.Services;
 using Abies.DOM;
 using Xunit;
+using ArticleMessage = Abies.Conduit.Page.Article.Message;
 using ArticleModel = Abies.Conduit.Page.Article.Model;
 using ArticlePage = Abies.Conduit.Page.Article.Page;
-using ArticleMessage = Abies.Conduit.Page.Article.Message;
 using Comment = Abies.Conduit.Page.Article.Comment;
 
 namespace Abies.Conduit.IntegrationTests;
@@ -26,7 +22,7 @@ public class MultiCommentJourneyTests
     public void CommentList_MultipleComments_AllCommentsRenderedWithUniqueIds()
     {
         // Arrange: model with multiple comments
-        var article = new Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-article",
             Title: "Test Article",
             Description: "Description",
@@ -36,16 +32,16 @@ public class MultiCommentJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Conduit.Page.Home.Profile("author", "", "", Following: false));
+            Author: new Page.Home.Profile("author", "", "", Following: false));
 
         var comments = new List<Comment>
         {
-            new("1", "2020-01-01T00:00:00Z", "2020-01-01T00:00:00Z", "First comment", 
-                new Conduit.Page.Home.Profile("alice", "", "", false)),
-            new("2", "2020-01-02T00:00:00Z", "2020-01-02T00:00:00Z", "Second comment", 
-                new Conduit.Page.Home.Profile("bob", "", "", false)),
-            new("3", "2020-01-03T00:00:00Z", "2020-01-03T00:00:00Z", "Third comment", 
-                new Conduit.Page.Home.Profile("charlie", "", "", false))
+            new("1", "2020-01-01T00:00:00Z", "2020-01-01T00:00:00Z", "First comment",
+                new Page.Home.Profile("alice", "", "", false)),
+            new("2", "2020-01-02T00:00:00Z", "2020-01-02T00:00:00Z", "Second comment",
+                new Page.Home.Profile("bob", "", "", false)),
+            new("3", "2020-01-03T00:00:00Z", "2020-01-03T00:00:00Z", "Third comment",
+                new Page.Home.Profile("charlie", "", "", false))
         };
 
         var model = new ArticleModel(
@@ -86,7 +82,7 @@ public class MultiCommentJourneyTests
     public void CommentList_AddSecondComment_BothCommentsVisible()
     {
         // Arrange: start with one comment
-        var article = new Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-article",
             Title: "Test Article",
             Description: "Description",
@@ -96,24 +92,24 @@ public class MultiCommentJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Conduit.Page.Home.Profile("author", "", "", Following: false));
+            Author: new Page.Home.Profile("author", "", "", Following: false));
 
         var initialModel = new ArticleModel(
             Slug: new Slug("test-article"),
             IsLoading: false,
             Article: article,
             Comments: [new Comment("1", "2020-01-01T00:00:00Z", "2020-01-01T00:00:00Z", "First comment",
-                new Conduit.Page.Home.Profile("alice", "", "", false))],
+                new Page.Home.Profile("alice", "", "", false))],
             CommentInput: "",
             SubmittingComment: false,
             CurrentUser: new User(new UserName("viewer"), new Email("viewer@x"), new Token("t"), "", ""));
 
         // Act: simulate adding a second comment via CommentSubmitted message
         var newComment = new Comment("2", "2020-01-02T00:00:00Z", "2020-01-02T00:00:00Z", "Second comment",
-            new Conduit.Page.Home.Profile("bob", "", "", false));
-        
+            new Page.Home.Profile("bob", "", "", false));
+
         var (modelAfterSubmit, _) = ArticlePage.Update(
-            new ArticleMessage.CommentSubmitted(newComment), 
+            new ArticleMessage.CommentSubmitted(newComment),
             initialModel);
 
         // Assert: model should now have both comments
@@ -178,11 +174,11 @@ public class MultiCommentJourneyTests
                 }
             });
 
-        var httpClient = new HttpClient(handler) { BaseAddress = new System.Uri("http://fake") };
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://fake") };
         ApiClient.ConfigureHttpClient(httpClient);
         ApiClient.ConfigureBaseUrl("http://fake/api");
 
-        var article = new Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "a",
             Title: "T",
             Description: "D",
@@ -192,7 +188,7 @@ public class MultiCommentJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Conduit.Page.Home.Profile("bob", "", "", Following: false));
+            Author: new Page.Home.Profile("bob", "", "", Following: false));
 
         var model = new ArticleModel(
             Slug: new Slug("a"),
@@ -218,7 +214,7 @@ public class MultiCommentJourneyTests
         var view = ArticlePage.View(result.Model);
         var commentCards = FindAllCommentCards(view);
         Assert.Single(commentCards);
-        
+
         // The comment card should have a stable ID based on comment ID (format: "comment-{id}")
         var card = commentCards[0];
         Assert.Equal("comment-1", card.Id);

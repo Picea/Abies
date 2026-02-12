@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Main;
 using Abies.Conduit.Services;
@@ -24,7 +20,7 @@ public class MultiUserJourneyTests
 {
     private static HttpClient ConfigureApiWithStatefulFake(StatefulFakeApi fakeApi)
     {
-        var httpClient = new HttpClient(fakeApi) { BaseAddress = new System.Uri("http://fake") };
+        var httpClient = new HttpClient(fakeApi) { BaseAddress = new Uri("http://fake") };
         ApiClient.ConfigureHttpClient(httpClient);
         ApiClient.ConfigureBaseUrl("http://fake/api");
         Storage.Configure(new InMemoryStorageProvider());
@@ -52,10 +48,10 @@ public class MultiUserJourneyTests
         // Act: User B favorites User A's article
         SetCurrentUser(userB);
 
-        var model = new Abies.Conduit.Page.Article.Model(
+        var model = new Page.Article.Model(
             Slug: new Slug("alice-article"),
             IsLoading: false,
-            Article: new Abies.Conduit.Page.Home.Article(
+            Article: new Page.Home.Article(
                 Slug: "alice-article",
                 Title: "Alice's Great Article",
                 Description: "Description",
@@ -65,24 +61,24 @@ public class MultiUserJourneyTests
                 UpdatedAt: article.UpdatedAt,
                 Favorited: false,
                 FavoritesCount: 0,
-                Author: new Abies.Conduit.Page.Home.Profile("alice", "I write articles", "", Following: false)),
+                Author: new Page.Home.Profile("alice", "I write articles", "", Following: false)),
             Comments: [],
             CommentInput: "",
             SubmittingComment: false,
             CurrentUser: new User(new UserName("bob"), new Email("bob@example.com"), new Token(userB.Token), "", "I read articles"));
 
         // Find and click favorite button
-        var dom = Abies.Conduit.Page.Article.Page.View(model);
+        var dom = Page.Article.Page.View(model);
         var (_, favHandler) = MvuDomTestHarness.FindFirstHandler(
             dom, "click",
             el => el.Tag == "button" && el.Children.OfType<Text>().Any(t => t.Value.Contains("Favorite Article")));
 
         Assert.NotNull(favHandler.Command);
-        var toggleMsg = (Abies.Message)favHandler.Command!;
+        var toggleMsg = favHandler.Command!;
 
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Article.Page.Update,
+            update: Page.Article.Page.Update,
             initialMessage: toggleMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -92,7 +88,7 @@ public class MultiUserJourneyTests
 
         // Verify the API received the favorite request
         Assert.Contains(fakeApi.Requests, r =>
-            r.Method == HttpMethod.Post && 
+            r.Method == HttpMethod.Post &&
             r.Uri.PathAndQuery == "/api/articles/alice-article/favorite" &&
             r.AuthUser == "bob");
 
@@ -109,7 +105,7 @@ public class MultiUserJourneyTests
         var userA = fakeApi.AddUser("alice", "alice@example.com", "password");
         var userB = fakeApi.AddUser("bob", "bob@example.com", "password");
         var article = fakeApi.AddArticle("alice-article", "Alice's Article", "Desc", "Body", "alice");
-        
+
         // User B favorited the article
         fakeApi.SetFavorite("bob", "alice-article", true);
 

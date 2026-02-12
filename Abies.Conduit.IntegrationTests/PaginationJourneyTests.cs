@@ -1,8 +1,4 @@
-using System;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Services;
 using Xunit;
@@ -64,12 +60,12 @@ public class PaginationJourneyTests
         ApiClient.ConfigureBaseUrl("http://localhost:5179/api");
 
         // Act
-    var (page1Articles, total1) = await ArticleService.GetFeedArticlesAsync(limit: 10, offset: 0);
-    var (page2Articles, total2) = await ArticleService.GetFeedArticlesAsync(limit: 10, offset: 10);
+        var (page1Articles, total1) = await ArticleService.GetFeedArticlesAsync(limit: 10, offset: 0);
+        var (page2Articles, total2) = await ArticleService.GetFeedArticlesAsync(limit: 10, offset: 10);
 
         // Assert (requests)
-    Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=0");
-    Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=10");
+        Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=0");
+        Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=10");
 
         // Assert (mapping)
         Assert.Equal(11, total1);

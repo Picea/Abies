@@ -1,4 +1,3 @@
-using System.Linq;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Page.Home;
 using Abies.DOM;
@@ -35,12 +34,12 @@ public class HomeFavoriteDomJourneyTests
             CurrentUser: null);
 
         // Act: click favorite button (ion-heart)
-            var (m1, cmd) = MvuDomTestHarness.DispatchClick(
-                model,
-                Abies.Conduit.Page.Home.Page.View,
-                Abies.Conduit.Page.Home.Page.Update,
-            el => el.Tag == "button" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("btn"))
-                                  && el.Children.OfType<Element>().Any(c => c.Tag == "i" && c.Attributes.Any(a => a.Name == "class" && a.Value.Contains("ion-heart"))));
+        var (m1, cmd) = MvuDomTestHarness.DispatchClick(
+            model,
+            Page.Home.Page.View,
+            Page.Home.Page.Update,
+        el => el.Tag == "button" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("btn"))
+                              && el.Children.OfType<Element>().Any(c => c.Tag == "i" && c.Attributes.Any(a => a.Name == "class" && a.Value.Contains("ion-heart"))));
 
         // Assert: Update sets IsLoading true and returns a command batch (toggle favorite + reload).
         Assert.True(m1.IsLoading);

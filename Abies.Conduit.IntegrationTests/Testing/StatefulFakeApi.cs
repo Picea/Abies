@@ -1,13 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Abies.Conduit.IntegrationTests.Testing;
 
@@ -54,19 +48,19 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     /// <summary>
     /// Add an article to the fake API.
     /// </summary>
-    public FakeArticle AddArticle(string slug, string title, string description, string body, 
+    public FakeArticle AddArticle(string slug, string title, string description, string body,
         string authorUsername, List<string>? tagList = null)
     {
-        var author = _users.GetValueOrDefault(authorUsername) 
+        var author = _users.GetValueOrDefault(authorUsername)
             ?? throw new InvalidOperationException($"Author '{authorUsername}' not found. Add user first.");
-        
+
         var article = new FakeArticle(
             slug, title, description, body,
             tagList ?? [],
             DateTime.UtcNow.ToString("o"),
             DateTime.UtcNow.ToString("o"),
             authorUsername);
-        
+
         _articles[slug] = article;
         _comments[slug] = [];
         return article;
@@ -78,9 +72,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     public FakeComment AddComment(string slug, string authorUsername, string body)
     {
         if (!_articles.ContainsKey(slug))
+        {
             throw new InvalidOperationException($"Article '{slug}' not found.");
+        }
+
         if (!_users.ContainsKey(authorUsername))
+        {
             throw new InvalidOperationException($"User '{authorUsername}' not found.");
+        }
 
         var comment = new FakeComment(_nextCommentId++, body, authorUsername, DateTime.UtcNow.ToString("o"));
         _comments[slug].Add(comment);
@@ -93,9 +92,13 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     public void SetFavorite(string username, string slug, bool isFavorited)
     {
         if (isFavorited)
+        {
             _favorites.Add((username, slug));
+        }
         else
+        {
             _favorites.Remove((username, slug));
+        }
     }
 
     /// <summary>
@@ -104,9 +107,13 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     public void SetFollow(string followerUsername, string followedUsername, bool isFollowing)
     {
         if (isFollowing)
+        {
             _follows.Add((followerUsername, followedUsername));
+        }
         else
+        {
             _follows.Remove((followerUsername, followedUsername));
+        }
     }
 
     /// <summary>
@@ -156,34 +163,34 @@ public sealed class StatefulFakeApi : HttpMessageHandler
                 ("POST", "/api/users/login") => HandleLogin(body),
                 ("POST", "/api/users") => HandleRegister(body),
                 ("GET", "/api/user") => HandleGetCurrentUser(),
-                
+
                 // Articles
                 ("GET", var p) when p == "/api/articles" => HandleGetArticles(query),
-                ("GET", var p) when p.StartsWith("/api/articles/") && !p.Contains("/comments") && !p.Contains("/favorite") 
+                ("GET", var p) when p.StartsWith("/api/articles/") && !p.Contains("/comments") && !p.Contains("/favorite")
                     => HandleGetArticle(ExtractSlug(p)),
                 ("POST", "/api/articles") => HandleCreateArticle(body),
                 ("DELETE", var p) when p.StartsWith("/api/articles/") && !p.Contains("/comments") && !p.Contains("/favorite")
                     => HandleDeleteArticle(ExtractSlug(p)),
-                
+
                 // Favorites
                 ("POST", var p) when p.EndsWith("/favorite") => HandleFavorite(ExtractSlugFromFavorite(p)),
                 ("DELETE", var p) when p.EndsWith("/favorite") => HandleUnfavorite(ExtractSlugFromFavorite(p)),
-                
+
                 // Comments
                 ("GET", var p) when p.Contains("/comments") => HandleGetComments(ExtractSlugFromComments(p)),
                 ("POST", var p) when p.Contains("/comments") => HandleAddComment(ExtractSlugFromComments(p), body),
-                ("DELETE", var p) when Regex.IsMatch(p, @"/api/articles/.+/comments/\d+") 
+                ("DELETE", var p) when Regex.IsMatch(p, @"/api/articles/.+/comments/\d+")
                     => HandleDeleteComment(ExtractSlugFromComments(p), ExtractCommentId(p)),
-                
+
                 // Profiles
                 ("GET", var p) when p.StartsWith("/api/profiles/") && !p.Contains("/follow")
                     => HandleGetProfile(ExtractUsername(p)),
                 ("POST", var p) when p.EndsWith("/follow") => HandleFollow(ExtractUsernameFromFollow(p)),
                 ("DELETE", var p) when p.EndsWith("/follow") => HandleUnfollow(ExtractUsernameFromFollow(p)),
-                
+
                 // Tags
                 ("GET", "/api/tags") => HandleGetTags(),
-                
+
                 _ => NotFound($"No handler for {request.Method} {path}")
             };
         }
@@ -201,7 +208,9 @@ public sealed class StatefulFakeApi : HttpMessageHandler
             // Token format: jwt-{username}-{guid}
             var parts = auth.Parameter.Split('-');
             if (parts.Length >= 2)
+            {
                 return parts[1];
+            }
         }
         return null;
     }
@@ -214,9 +223,11 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     {
         var request = Deserialize<LoginRequest>(body);
         var user = _users.Values.FirstOrDefault(u => u.Email == request.User.Email && u.Password == request.User.Password);
-        
+
         if (user is null)
+        {
             return ValidationError("email or password", "is invalid");
+        }
 
         return Json(new { user = UserToDto(user) });
     }
@@ -224,11 +235,16 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleRegister(string? body)
     {
         var request = Deserialize<RegisterRequest>(body);
-        
+
         if (_users.ContainsKey(request.User.Username))
+        {
             return ValidationError("username", "has already been taken");
+        }
+
         if (_users.Values.Any(u => u.Email == request.User.Email))
+        {
             return ValidationError("email", "has already been taken");
+        }
 
         var user = AddUser(request.User.Username, request.User.Email, request.User.Password);
         return Json(new { user = UserToDto(user) });
@@ -237,7 +253,9 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleGetCurrentUser()
     {
         if (_currentUsername is null || !_users.TryGetValue(_currentUsername, out var user))
+        {
             return Unauthorized();
+        }
 
         return Json(new { user = UserToDto(user) });
     }
@@ -255,11 +273,19 @@ public sealed class StatefulFakeApi : HttpMessageHandler
         var offset = int.TryParse(queryParams["offset"], out var o) ? o : 0;
 
         if (!string.IsNullOrEmpty(tag))
+        {
             articles = articles.Where(a => a.TagList.Contains(tag));
+        }
+
         if (!string.IsNullOrEmpty(author))
+        {
             articles = articles.Where(a => a.AuthorUsername == author);
+        }
+
         if (!string.IsNullOrEmpty(favorited))
+        {
             articles = articles.Where(a => _favorites.Contains((favorited, a.Slug)));
+        }
 
         var total = articles.Count();
         var page = articles.Skip(offset).Take(limit).ToList();
@@ -274,7 +300,9 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleGetArticle(string slug)
     {
         if (!_articles.TryGetValue(slug, out var article))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         return Json(new { article = ArticleToDto(article, _currentUsername) });
     }
@@ -282,12 +310,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleCreateArticle(string? body)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         var request = Deserialize<CreateArticleRequest>(body);
         var slug = Slugify(request.Article.Title);
-        
-        var article = AddArticle(slug, request.Article.Title, request.Article.Description, 
+
+        var article = AddArticle(slug, request.Article.Title, request.Article.Description,
             request.Article.Body, _currentUsername, request.Article.TagList);
 
         return Json(new { article = ArticleToDto(article, _currentUsername) });
@@ -296,13 +326,19 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleDeleteArticle(string slug)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_articles.TryGetValue(slug, out var article))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         if (article.AuthorUsername != _currentUsername)
+        {
             return Forbidden("You can only delete your own articles");
+        }
 
         _articles.Remove(slug);
         _comments.Remove(slug);
@@ -314,10 +350,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleFavorite(string slug)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_articles.TryGetValue(slug, out var article))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         _favorites.Add((_currentUsername, slug));
 
@@ -327,10 +367,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleUnfavorite(string slug)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_articles.TryGetValue(slug, out var article))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         _favorites.Remove((_currentUsername, slug));
 
@@ -340,7 +384,9 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleGetComments(string slug)
     {
         if (!_comments.TryGetValue(slug, out var comments))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         return Json(new
         {
@@ -351,10 +397,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleAddComment(string slug, string? body)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_articles.ContainsKey(slug))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         var request = Deserialize<AddCommentRequest>(body);
         var comment = AddComment(slug, _currentUsername, request.Comment.Body);
@@ -365,17 +415,25 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleDeleteComment(string slug, int commentId)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_comments.TryGetValue(slug, out var comments))
+        {
             return NotFound($"Article '{slug}' not found");
+        }
 
         var comment = comments.FirstOrDefault(c => c.Id == commentId);
         if (comment is null)
+        {
             return NotFound($"Comment '{commentId}' not found");
+        }
 
         if (comment.AuthorUsername != _currentUsername)
+        {
             return Forbidden("You can only delete your own comments");
+        }
 
         comments.Remove(comment);
         return new HttpResponseMessage(HttpStatusCode.OK);
@@ -384,7 +442,9 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleGetProfile(string username)
     {
         if (!_users.TryGetValue(username, out var user))
+        {
             return NotFound($"User '{username}' not found");
+        }
 
         return Json(new { profile = ProfileToDto(user, _currentUsername) });
     }
@@ -392,10 +452,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleFollow(string username)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_users.TryGetValue(username, out var user))
+        {
             return NotFound($"User '{username}' not found");
+        }
 
         _follows.Add((_currentUsername, username));
 
@@ -405,10 +469,14 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private HttpResponseMessage HandleUnfollow(string username)
     {
         if (_currentUsername is null)
+        {
             return Unauthorized();
+        }
 
         if (!_users.TryGetValue(username, out var user))
+        {
             return NotFound($"User '{username}' not found");
+        }
 
         _follows.Remove((_currentUsername, username));
 
@@ -472,8 +540,11 @@ public sealed class StatefulFakeApi : HttpMessageHandler
     private T Deserialize<T>(string? json)
     {
         if (string.IsNullOrEmpty(json))
+        {
             throw new InvalidOperationException("Request body is required");
-        return JsonSerializer.Deserialize<T>(json, _jsonOptions) 
+        }
+
+        return JsonSerializer.Deserialize<T>(json, _jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize request");
     }
 
