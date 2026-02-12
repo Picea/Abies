@@ -1,4 +1,3 @@
-using System.Linq;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Page.Article;
 using Abies.Conduit.Page.Home;
@@ -25,37 +24,37 @@ public class ArticleDomJourneyTests
             FavoritesCount: 0,
             Author: new Profile("bob", "", "img", Following: false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
-            Slug: new Abies.Conduit.Main.Slug("a"),
+        var model = new Page.Article.Model(
+            Slug: new Main.Slug("a"),
             IsLoading: false,
             Article: article,
             Comments: [],
             CommentInput: "",
             SubmittingComment: false,
-            CurrentUser: new Abies.Conduit.Main.User(
-                new Abies.Conduit.Main.UserName("alice"),
-                new Abies.Conduit.Main.Email("alice@x"),
-                new Abies.Conduit.Main.Token("token"),
+            CurrentUser: new Main.User(
+                new Main.UserName("alice"),
+                new Main.Email("alice@x"),
+                new Main.Token("token"),
                 Bio: "",
                 Image: ""));
 
         // Act: type comment
         var (m1, _) = MvuDomTestHarness.DispatchInput(
             model,
-            Abies.Conduit.Page.Article.Page.View,
-            Abies.Conduit.Page.Article.Page.Update,
+            Page.Article.Page.View,
+            Page.Article.Page.Update,
             el => el.Tag == "textarea" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Write a comment..."),
             value: "Hello");
 
         // submit via button click (there is also onsubmit)
         var (m2, cmd) = MvuDomTestHarness.DispatchClick(
             m1,
-            Abies.Conduit.Page.Article.Page.View,
-            Abies.Conduit.Page.Article.Page.Update,
+            Page.Article.Page.View,
+            Page.Article.Page.Update,
             el => el.Tag == "button" && el.Children.OfType<Text>().Any(t => t.Value == "Post Comment"));
 
         // Assert: update should move into submitting state
-    Assert.True(m2.SubmittingComment);
+        Assert.True(m2.SubmittingComment);
         Assert.NotNull(cmd);
     }
 
@@ -82,29 +81,29 @@ public class ArticleDomJourneyTests
             Body: "Hi",
             Author: new Profile("alice", "", "img", Following: false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
-            Slug: new Abies.Conduit.Main.Slug("a"),
+        var model = new Page.Article.Model(
+            Slug: new Main.Slug("a"),
             IsLoading: false,
             Article: article,
             Comments: [comment],
             CommentInput: "",
             SubmittingComment: false,
-            CurrentUser: new Abies.Conduit.Main.User(
-                new Abies.Conduit.Main.UserName("alice"),
-                new Abies.Conduit.Main.Email("alice@x"),
-                new Abies.Conduit.Main.Token("token"),
+            CurrentUser: new Main.User(
+                new Main.UserName("alice"),
+                new Main.Email("alice@x"),
+                new Main.Token("token"),
                 Bio: "",
                 Image: ""));
 
         // Act: click trash icon
         var (m1, _) = MvuDomTestHarness.DispatchClick(
             model,
-            Abies.Conduit.Page.Article.Page.View,
-            Abies.Conduit.Page.Article.Page.Update,
+            Page.Article.Page.View,
+            Page.Article.Page.Update,
             el => el.Tag == "i" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("ion-trash-a")));
 
         // Follow-up: simulate server completion
-    var (m2, _) = Abies.Conduit.Page.Article.Page.Update(new Abies.Conduit.Page.Article.Message.CommentDeleted("c1"), m1);
+        var (m2, _) = Page.Article.Page.Update(new Page.Article.Message.CommentDeleted("c1"), m1);
 
         // Assert
         Assert.NotNull(m2.Comments);

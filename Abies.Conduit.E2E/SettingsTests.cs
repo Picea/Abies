@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>

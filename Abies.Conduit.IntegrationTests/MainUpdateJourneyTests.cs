@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Main;
 using Abies.Conduit.Services;
@@ -21,7 +17,7 @@ public class MainUpdateJourneyTests
 {
     private static void ConfigureFakeApi(FakeHttpMessageHandler handler)
     {
-        var httpClient = new HttpClient(handler) { BaseAddress = new System.Uri("http://fake") };
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://fake") };
         ApiClient.ConfigureHttpClient(httpClient);
         ApiClient.ConfigureBaseUrl("http://fake/api");
         Storage.Configure(new InMemoryStorageProvider());
@@ -40,7 +36,7 @@ public class MainUpdateJourneyTests
     public void Register_Success_UpdatesNavigationToShowAuthenticatedLinks()
     {
         // Arrange: Create a Main.Model with Register page active
-        var registerModel = new Abies.Conduit.Page.Register.Model(
+        var registerModel = new Page.Register.Model(
             Username: "newuser",
             Email: "newuser@example.com",
             Password: "password123",
@@ -50,7 +46,7 @@ public class MainUpdateJourneyTests
 
         var mainModel = new Model(
             Page: new MainPage.Register(registerModel),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Register(),
+            CurrentRoute: new Routing.Route.Register(),
             CurrentUser: null);
 
         // Verify initial state: navigation shows unauthenticated links
@@ -59,7 +55,7 @@ public class MainUpdateJourneyTests
             el => el.Tag == "a" && el.Children.OfType<Text>().Any(t => t.Value == "Sign in"));
         var signUpBefore = MvuDomTestHarness.TryFindFirstElement(navBefore,
             el => el.Tag == "a" && el.Children.OfType<Text>().Any(t => t.Value == "Sign up"));
-        
+
         Assert.NotNull(signInBefore); // Should see Sign in link
         Assert.NotNull(signUpBefore); // Should see Sign up link
 
@@ -70,8 +66,8 @@ public class MainUpdateJourneyTests
             Token: new Token("jwt-token-123"),
             Image: "",
             Bio: "");
-        
-        var registerSuccessMsg = new Abies.Conduit.Page.Register.Message.RegisterSuccess(registeredUser);
+
+        var registerSuccessMsg = new Page.Register.Message.RegisterSuccess(registeredUser);
         var (updatedModel, _) = Program.Update(registerSuccessMsg, mainModel);
 
         // Assert: Model should have CurrentUser set
@@ -81,7 +77,7 @@ public class MainUpdateJourneyTests
 
         // Assert: Navigation should now show authenticated links
         var navAfter = Navigation.View(updatedModel);
-        
+
         var signInAfter = MvuDomTestHarness.TryFindFirstElement(navAfter,
             el => el.Tag == "a" && el.Children.OfType<Text>().Any(t => t.Value == "Sign in"));
         var signUpAfter = MvuDomTestHarness.TryFindFirstElement(navAfter,
@@ -108,7 +104,7 @@ public class MainUpdateJourneyTests
     public void Register_Success_FollowedByUrlChanged_PreservesCurrentUser()
     {
         // Arrange: Create a Main.Model with Register page active
-        var registerModel = new Abies.Conduit.Page.Register.Model(
+        var registerModel = new Page.Register.Model(
             Username: "newuser",
             Email: "newuser@example.com",
             Password: "password123",
@@ -118,7 +114,7 @@ public class MainUpdateJourneyTests
 
         var mainModel = new Model(
             Page: new MainPage.Register(registerModel),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Register(),
+            CurrentRoute: new Routing.Route.Register(),
             CurrentUser: null);
 
         // Act 1: Dispatch RegisterSuccess message
@@ -128,13 +124,13 @@ public class MainUpdateJourneyTests
             Token: new Token("jwt-token-123"),
             Image: "",
             Bio: "");
-        
-        var registerSuccessMsg = new Abies.Conduit.Page.Register.Message.RegisterSuccess(registeredUser);
+
+        var registerSuccessMsg = new Page.Register.Message.RegisterSuccess(registeredUser);
         var (afterRegister, command) = Program.Update(registerSuccessMsg, mainModel);
 
         // Verify command includes PushState
-        Assert.IsType<Abies.Command.Batch>(command);
-        var batch = (Abies.Command.Batch)command;
+        Assert.IsType<Command.Batch>(command);
+        var batch = (Command.Batch)command;
         Assert.Contains(batch.Commands, c => c is Abies.Navigation.Command.PushState);
 
         // Act 2: Simulate what the runtime does - dispatch UrlChanged after PushState
@@ -159,7 +155,7 @@ public class MainUpdateJourneyTests
     public void Login_Success_UpdatesNavigationToShowAuthenticatedLinks()
     {
         // Arrange: Create a Main.Model with Login page active
-        var loginModel = new Abies.Conduit.Page.Login.Model(
+        var loginModel = new Page.Login.Model(
             Email: "user@example.com",
             Password: "password123",
             IsSubmitting: true,
@@ -168,7 +164,7 @@ public class MainUpdateJourneyTests
 
         var mainModel = new Model(
             Page: new MainPage.Login(loginModel),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Login(),
+            CurrentRoute: new Routing.Route.Login(),
             CurrentUser: null);
 
         // Act: Dispatch LoginSuccess message to Main.Update
@@ -178,8 +174,8 @@ public class MainUpdateJourneyTests
             Token: new Token("jwt-token-456"),
             Image: "",
             Bio: "");
-        
-        var loginSuccessMsg = new Abies.Conduit.Page.Login.Message.LoginSuccess(loggedInUser);
+
+        var loginSuccessMsg = new Page.Login.Message.LoginSuccess(loggedInUser);
         var (updatedModel, _) = Program.Update(loginSuccessMsg, mainModel);
 
         // Assert: Model should have CurrentUser set
@@ -188,7 +184,7 @@ public class MainUpdateJourneyTests
 
         // Assert: Navigation should show authenticated links
         var navAfter = Navigation.View(updatedModel);
-        
+
         var newArticleLink = MvuDomTestHarness.TryFindFirstElement(navAfter,
             el => el.Tag == "a" && el.Children.OfType<Text>().Any(t => t.Value == "New Article"));
         var settingsLink = MvuDomTestHarness.TryFindFirstElement(navAfter,
@@ -208,7 +204,7 @@ public class MainUpdateJourneyTests
     {
         // Arrange: Set up fake API
         var handler = new FakeHttpMessageHandler { StrictMode = true };
-        
+
         handler.When(
             HttpMethod.Post,
             "/api/users",
@@ -228,7 +224,7 @@ public class MainUpdateJourneyTests
         ConfigureFakeApi(handler);
 
         // Create Main.Model with Register page active
-        var registerModel = new Abies.Conduit.Page.Register.Model(
+        var registerModel = new Page.Register.Model(
             Username: "newuser",
             Email: "newuser@example.com",
             Password: "password123",
@@ -238,12 +234,12 @@ public class MainUpdateJourneyTests
 
         var mainModel = new Model(
             Page: new MainPage.Register(registerModel),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Register(),
+            CurrentRoute: new Routing.Route.Register(),
             CurrentUser: null);
 
         // Act: Run the full MVU loop with Main.Update (not page-level Update)
-        var submitMsg = new Abies.Conduit.Page.Register.Message.RegisterSubmitted();
-        
+        var submitMsg = new Page.Register.Message.RegisterSubmitted();
+
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: mainModel,
             update: Program.Update,
@@ -272,7 +268,7 @@ public class MainUpdateJourneyTests
         var navInPage = MvuDomTestHarness.TryFindFirstElement(fullPage.Body,
             el => el.Tag == "nav" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("navbar")));
         Assert.NotNull(navInPage);
-        
+
         // Find New Article link within the navbar
         var newArticleInNav = MvuDomTestHarness.TryFindFirstElement(navInPage!,
             el => el.Tag == "a" && el.Children.OfType<Text>().Any(t => t.Value == "New Article"));
@@ -280,7 +276,7 @@ public class MainUpdateJourneyTests
 
         // Debug: Print the full navigation HTML to see what's actually rendered
         var navHtml = MvuDomTestHarness.Html(navInPage!);
-        
+
         // Verify there's NO "Sign in" or "Sign up" in the rendered HTML
         Assert.DoesNotContain("Sign in", navHtml);
         Assert.DoesNotContain("Sign up", navHtml);
@@ -295,8 +291,8 @@ public class MainUpdateJourneyTests
     {
         // Arrange: Create unauthenticated model
         var unauthModel = new Model(
-            Page: new MainPage.Home(new Abies.Conduit.Page.Home.Model([], 0, [], Abies.Conduit.Page.Home.FeedTab.Global, "", false, 0, null)),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Home(),
+            Page: new MainPage.Home(new Page.Home.Model([], 0, [], Page.Home.FeedTab.Global, "", false, 0, null)),
+            CurrentRoute: new Routing.Route.Home(),
             CurrentUser: null);
 
         // Create authenticated model
@@ -306,10 +302,10 @@ public class MainUpdateJourneyTests
             Token: new Token("jwt-123"),
             Image: "",
             Bio: "");
-        
+
         var authModel = new Model(
-            Page: new MainPage.Home(new Abies.Conduit.Page.Home.Model([], 0, [], Abies.Conduit.Page.Home.FeedTab.Global, "", false, 0, authUser)),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Home(),
+            Page: new MainPage.Home(new Page.Home.Model([], 0, [], Page.Home.FeedTab.Global, "", false, 0, authUser)),
+            CurrentRoute: new Routing.Route.Home(),
             CurrentUser: authUser);
 
         // Get DOM for both states
@@ -334,7 +330,7 @@ public class MainUpdateJourneyTests
         Assert.Contains("testuser", authHtml);
 
         // Now test DOM diffing - compute patches
-        var patches = Abies.DOM.Operations.Diff(unauthDom.Body, authDom.Body);
+        var patches = Operations.Diff(unauthDom.Body, authDom.Body);
 
         // There should be patches that remove Sign in/Sign up and add New Article/Settings
         Assert.NotEmpty(patches);
@@ -355,8 +351,8 @@ public class MainUpdateJourneyTests
     {
         // Arrange: Create unauthenticated navigation
         var unauthModel = new Model(
-            Page: new MainPage.Home(new Abies.Conduit.Page.Home.Model([], 0, [], Abies.Conduit.Page.Home.FeedTab.Global, "", false, 0, null)),
-            CurrentRoute: new Abies.Conduit.Routing.Route.Home(),
+            Page: new MainPage.Home(new Page.Home.Model([], 0, [], Page.Home.FeedTab.Global, "", false, 0, null)),
+            CurrentRoute: new Routing.Route.Home(),
             CurrentUser: null);
 
         var authUser = new User(
@@ -365,7 +361,7 @@ public class MainUpdateJourneyTests
             Token: new Token("jwt-123"),
             Image: "",
             Bio: "");
-        
+
         var authModel = unauthModel with { CurrentUser = authUser };
 
         // Get the navigation views specifically
@@ -373,9 +369,9 @@ public class MainUpdateJourneyTests
         var navAfter = Navigation.View(authModel);
 
         // Get the ul element (navigation links container)
-        var ulBefore = MvuDomTestHarness.FindFirstElement(navBefore, 
+        var ulBefore = MvuDomTestHarness.FindFirstElement(navBefore,
             el => el.Tag == "ul" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("navbar-nav")));
-        var ulAfter = MvuDomTestHarness.FindFirstElement(navAfter, 
+        var ulAfter = MvuDomTestHarness.FindFirstElement(navAfter,
             el => el.Tag == "ul" && el.Attributes.Any(a => a.Name == "class" && a.Value.Contains("navbar-nav")));
 
         Assert.NotNull(ulBefore);
@@ -393,22 +389,22 @@ public class MainUpdateJourneyTests
         // Verify element IDs are stable and unique
         var beforeIds = liBefore.Select(li => li.Id).ToList();
         var afterIds = liAfter.Select(li => li.Id).ToList();
-        
+
         // Home should have the same ID in both states
         Assert.Contains("nav-home", beforeIds);
         Assert.Contains("nav-home", afterIds);
-        
+
         // Unauthenticated IDs
         Assert.Contains("nav-login", beforeIds);
         Assert.Contains("nav-register", beforeIds);
-        
+
         // Authenticated IDs
         Assert.Contains("nav-editor", afterIds);
         Assert.Contains("nav-settings", afterIds);
         Assert.Contains("nav-profile-testuser", afterIds);
 
         // Compute patches for just the navigation ul
-        var patches = Abies.DOM.Operations.Diff(ulBefore, ulAfter);
+        var patches = Operations.Diff(ulBefore, ulAfter);
 
         // Log patches for debugging
         var patchDescriptions = new List<string>();
@@ -430,20 +426,20 @@ public class MainUpdateJourneyTests
         }
 
         var patchSummary = string.Join("\n", patchDescriptions);
-        
+
         // Per ADR-016: ID-based diffing
         // Elements with different IDs should be removed and added.
         // Elements with same ID (nav-home) should be diffed in place.
         var addChildPatches = patches.OfType<AddChild>().ToList();
         var removeChildPatches = patches.OfType<RemoveChild>().ToList();
-        
+
         // Should remove only nav-login and nav-register (2 items, not 3)
         // nav-home has the same ID so it should NOT be removed
         Assert.Equal(2, removeChildPatches.Count);
         Assert.Contains(removeChildPatches, p => p.Child.Id == "nav-login");
         Assert.Contains(removeChildPatches, p => p.Child.Id == "nav-register");
         Assert.DoesNotContain(removeChildPatches, p => p.Child.Id == "nav-home");
-        
+
         // Should add nav-editor, nav-settings, nav-profile-testuser (3 items, not 4)
         // nav-home is already present so it should NOT be added
         Assert.Equal(3, addChildPatches.Count);
@@ -451,14 +447,14 @@ public class MainUpdateJourneyTests
         Assert.Contains(addChildPatches, p => p.Child.Id == "nav-settings");
         Assert.Contains(addChildPatches, p => p.Child.Id == "nav-profile-testuser");
         Assert.DoesNotContain(addChildPatches, p => p.Child.Id == "nav-home");
-        
+
         // Verify the specific items being removed/added have unique IDs
         var removedIds = removeChildPatches.Select(p => p.Child.Id).Distinct().ToList();
         var addedIds = addChildPatches.Select(p => p.Child.Id).Distinct().ToList();
-        
+
         // All removed items should have unique IDs
         Assert.Equal(2, removedIds.Count); // nav-login, nav-register
-        
+
         // All added items should have unique IDs
         Assert.Equal(3, addedIds.Count); // nav-editor, nav-settings, nav-profile-testuser
     }

@@ -1,9 +1,8 @@
-using System.Linq;
 using Abies.Conduit.IntegrationTests.Testing;
-using HomePage = Abies.Conduit.Page.Home.Page;
 using Abies.Conduit.Page.Home;
 using Abies.DOM;
 using Xunit;
+using HomePage = Abies.Conduit.Page.Home.Page;
 
 namespace Abies.Conduit.IntegrationTests;
 

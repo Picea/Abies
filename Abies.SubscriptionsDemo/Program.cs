@@ -44,55 +44,55 @@ public interface Message : Abies.Message
     /// <summary>
     /// Emitted on timer ticks.
     /// </summary>
-    public sealed record Tick(DateTimeOffset Now) : Message;
+    sealed record Tick(DateTimeOffset Now) : Message;
     /// <summary>
     /// Emitted on visibility changes.
     /// </summary>
-    public sealed record VisibilityChanged(VisibilityState State, DateTimeOffset At) : Message;
+    sealed record VisibilityChanged(VisibilityState State, DateTimeOffset At) : Message;
     /// <summary>
     /// Emitted on resize events.
     /// </summary>
-    public sealed record Resized(ViewportSize Size, DateTimeOffset At) : Message;
+    sealed record Resized(ViewportSize Size, DateTimeOffset At) : Message;
     /// <summary>
     /// Emitted on mouse movement.
     /// </summary>
-    public sealed record MouseMoved(PointerEventData Data, DateTimeOffset At) : Message;
+    sealed record MouseMoved(PointerEventData Data, DateTimeOffset At) : Message;
     /// <summary>
     /// Toggles the timer subscription.
     /// </summary>
-    public sealed record ToggleAutoTick : Message;
+    sealed record ToggleAutoTick : Message;
     /// <summary>
     /// Toggles mouse tracking.
     /// </summary>
-    public sealed record ToggleMouse : Message;
+    sealed record ToggleMouse : Message;
     /// <summary>
     /// Toggles the WebSocket subscription.
     /// </summary>
-    public sealed record ToggleWebSocket : Message;
+    sealed record ToggleWebSocket : Message;
     /// <summary>
     /// Toggles the mock WebSocket subscription.
     /// </summary>
-    public sealed record ToggleMockWebSocket : Message;
+    sealed record ToggleMockWebSocket : Message;
     /// <summary>
     /// Updates the WebSocket URL input.
     /// </summary>
-    public sealed record WebSocketUrlChanged(string Value) : Message;
+    sealed record WebSocketUrlChanged(string Value) : Message;
     /// <summary>
     /// Emitted for WebSocket events.
     /// </summary>
-    public sealed record SocketEvent(WebSocketEvent Event, DateTimeOffset At) : Message;
+    sealed record SocketEvent(WebSocketEvent Event, DateTimeOffset At) : Message;
     /// <summary>
     /// Emits mock WebSocket events on a timer.
     /// </summary>
-    public sealed record MockSocketTick(DateTimeOffset At) : Message;
+    sealed record MockSocketTick(DateTimeOffset At) : Message;
     /// <summary>
     /// Clears the event log.
     /// </summary>
-    public sealed record ClearEvents : Message;
+    sealed record ClearEvents : Message;
     /// <summary>
     /// No-op message for unused hooks.
     /// </summary>
-    public sealed record NoOp : Message;
+    sealed record NoOp : Message;
 }
 
 /// <summary>
@@ -173,7 +173,7 @@ public class SubscriptionsDemo : Program<Model, Arguments>
     /// <summary>
     /// Executes commands; this demo has none.
     /// </summary>
-    public static Task HandleCommand(Command command, Func<Abies.Message, System.ValueTuple> dispatch)
+    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
         => Task.CompletedTask;
 
     /// <summary>
@@ -331,7 +331,7 @@ public class SubscriptionsDemo : Program<Model, Arguments>
     {
         var stamp = at?.ToString("HH:mm:ss.fff");
         var formatted = stamp is null ? entry : $"{stamp} {entry}";
-        var next = (string[])[formatted, ..events];
+        var next = (string[])[formatted, .. events];
         return next.Length > 12 ? next[..12] : next;
     }
 

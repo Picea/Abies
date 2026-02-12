@@ -1,6 +1,4 @@
-using System;
 using System.Runtime.Versioning;
-using Xunit;
 using ConduitRoute = Abies.Conduit.Routing.Route;
 
 namespace Abies.Tests;
@@ -14,11 +12,11 @@ public class ProfileFavoritesTests
         // Verify ProfileFavorites route type exists in the routing namespace
         var routingAssembly = typeof(ConduitRoute).Assembly;
         var profileFavoritesType = routingAssembly.GetType("Abies.Conduit.Routing.Route+ProfileFavorites");
-        
+
         Assert.NotNull(profileFavoritesType);
         Assert.True(profileFavoritesType.IsClass);
     }
-    
+
     [Fact]
     public void ProfileFavorites_Template_Route_Should_Match()
     {
@@ -29,7 +27,7 @@ public class ProfileFavoritesTests
         Assert.Equal("janedoe", profileFavorites.UserName.Value);
         Assert.Equal("janedoe", match.GetRequired<string>("userName"));
     }
-    
+
     [Fact]
     public void Profile_And_ProfileFavorites_Routes_Should_Be_Distinct_Types()
     {
@@ -37,7 +35,7 @@ public class ProfileFavoritesTests
         var routingAssembly = typeof(ConduitRoute).Assembly;
         var profileType = routingAssembly.GetType("Abies.Conduit.Routing.Route+Profile");
         var profileFavoritesType = routingAssembly.GetType("Abies.Conduit.Routing.Route+ProfileFavorites");
-        
+
         Assert.NotNull(profileType);
         Assert.NotNull(profileFavoritesType);
         Assert.NotEqual(profileType, profileFavoritesType);

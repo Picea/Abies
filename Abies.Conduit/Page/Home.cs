@@ -1,10 +1,6 @@
-using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
-using Abies.Conduit;
-using Abies.DOM;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Globalization;
+using Abies.Conduit.Main;
+using Abies.DOM;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -12,12 +8,12 @@ namespace Abies.Conduit.Page.Home;
 
 public interface Message : Abies.Message
 {
-    public record ArticlesLoaded(List<Article> Articles, int ArticlesCount) : Message;
-    public record TagsLoaded(List<string> Tags) : Message;
-    public record ToggleFeedTab(FeedTab Tab) : Message;
-    public record TagSelected(string Tag) : Message;
-    public record ToggleFavorite(string Slug, bool CurrentState) : Message;
-    public record PageSelected(int Page) : Message;
+    record ArticlesLoaded(List<Article> Articles, int ArticlesCount) : Message;
+    record TagsLoaded(List<string> Tags) : Message;
+    record ToggleFeedTab(FeedTab Tab) : Message;
+    record TagSelected(string Tag) : Message;
+    record ToggleFavorite(string Slug, bool CurrentState) : Message;
+    record PageSelected(int Page) : Message;
 }
 
 public enum FeedTab
@@ -58,19 +54,22 @@ public record Model(
     User? CurrentUser = null
 );
 
-    public class Page : Element<Model, Message>
+public class Page : Element<Model, Message>
+{
+    private static string FormatDate(string value)
     {
-        private static string FormatDate(string value)
+        if (DateTime.TryParse(value, out var dt))
         {
-            if (DateTime.TryParse(value, out var dt))
-                return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
-            return value;
+            return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
         }
+
+        return value;
+    }
     public static Model Initialize(Message argument)
     {
         return new Model([], 0, [], FeedTab.Global, "", true, 0, null);
     }
-    
+
     public static (Model model, IEnumerable<Command> commands) Init()
     {
         return (
@@ -86,50 +85,50 @@ public record Model(
     public static (Model model, Command command) Update(Abies.Message message, Model model)
     {
 
-            return message switch
-            {
-                Message.ArticlesLoaded articlesLoaded => (
-                    model with
-                    {
-                        Articles = articlesLoaded.Articles,
-                        ArticlesCount = articlesLoaded.ArticlesCount,
-                        IsLoading = false
-                    },
-                    Commands.None
-                ),
-                Message.TagsLoaded tagsLoaded => (
-                    model with { Tags = tagsLoaded.Tags },
-                    Commands.None
-                ),
-                Message.ToggleFeedTab toggleFeed => (
-                    model with
-                    {
-                        ActiveTab = toggleFeed.Tab,
-                        ActiveTag = toggleFeed.Tab == FeedTab.Tag ? model.ActiveTag : "",
-                        IsLoading = true,
-                        CurrentPage = 0
-                    },
-                    toggleFeed.Tab switch
-                    {
-                        FeedTab.YourFeed => new LoadFeedCommand(Offset: 0),
-                        FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: 0),
-                        _ => new LoadArticlesCommand(Offset: 0)
-                    }
-                ),
-                Message.TagSelected tagSelected => (
-                    model with
-                    {
-                        ActiveTab = FeedTab.Tag,
-                        ActiveTag = tagSelected.Tag,
-                        IsLoading = true,
-                        CurrentPage = 0
-                    },
-                    new LoadArticlesCommand(tagSelected.Tag, Offset: 0)
-                ),
-                Message.ToggleFavorite fav => (
-                    model with { IsLoading = true },
-                    Commands.Batch(new Command[]
-                    {
+        return message switch
+        {
+            Message.ArticlesLoaded articlesLoaded => (
+                model with
+                {
+                    Articles = articlesLoaded.Articles,
+                    ArticlesCount = articlesLoaded.ArticlesCount,
+                    IsLoading = false
+                },
+                Commands.None
+            ),
+            Message.TagsLoaded tagsLoaded => (
+                model with { Tags = tagsLoaded.Tags },
+                Commands.None
+            ),
+            Message.ToggleFeedTab toggleFeed => (
+                model with
+                {
+                    ActiveTab = toggleFeed.Tab,
+                    ActiveTag = toggleFeed.Tab == FeedTab.Tag ? model.ActiveTag : "",
+                    IsLoading = true,
+                    CurrentPage = 0
+                },
+                toggleFeed.Tab switch
+                {
+                    FeedTab.YourFeed => new LoadFeedCommand(Offset: 0),
+                    FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: 0),
+                    _ => new LoadArticlesCommand(Offset: 0)
+                }
+            ),
+            Message.TagSelected tagSelected => (
+                model with
+                {
+                    ActiveTab = FeedTab.Tag,
+                    ActiveTag = tagSelected.Tag,
+                    IsLoading = true,
+                    CurrentPage = 0
+                },
+                new LoadArticlesCommand(tagSelected.Tag, Offset: 0)
+            ),
+            Message.ToggleFavorite fav => (
+                model with { IsLoading = true },
+                Commands.Batch(new Command[]
+                {
                         new ToggleFavoriteCommand(fav.Slug, fav.CurrentState),
                         model.ActiveTab switch
                         {
@@ -137,22 +136,22 @@ public record Model(
                             FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: model.CurrentPage * 10),
                             _ => new LoadArticlesCommand(Offset: model.CurrentPage * 10)
                         }
-                    })
-                ),
-                Message.PageSelected pageSel => (
-                    model with { IsLoading = true, CurrentPage = pageSel.Page },
-                    model.ActiveTab switch
-                    {
-                        FeedTab.YourFeed => new LoadFeedCommand(Offset: pageSel.Page * 10),
-                        FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: pageSel.Page * 10),
-                        _ => new LoadArticlesCommand(Offset: pageSel.Page * 10)
-                    }
-                ),
-                _ => (model, Commands.None)
-            };
+                })
+            ),
+            Message.PageSelected pageSel => (
+                model with { IsLoading = true, CurrentPage = pageSel.Page },
+                model.ActiveTab switch
+                {
+                    FeedTab.YourFeed => new LoadFeedCommand(Offset: pageSel.Page * 10),
+                    FeedTab.Tag => new LoadArticlesCommand(model.ActiveTag, Offset: pageSel.Page * 10),
+                    _ => new LoadArticlesCommand(Offset: pageSel.Page * 10)
+                }
+            ),
+            _ => (model, Commands.None)
+        };
     }
 
-    private static Node Banner() => 
+    private static Node Banner() =>
         div([class_("banner")], [
             div([class_("container")], [
                 h1([class_("logo-font")], [text("conduit")]),
@@ -174,8 +173,8 @@ public record Model(
                       ])
                     : text(""),
                 li([class_("nav-item")], [
-                    a([class_(model.ActiveTab == FeedTab.Global 
-                        ? "nav-link active" 
+                    a([class_(model.ActiveTab == FeedTab.Global
+                        ? "nav-link active"
                         : "nav-link"),
                       onclick(new Message.ToggleFeedTab(FeedTab.Global)),
                       href("#")],
@@ -183,8 +182,8 @@ public record Model(
                 ]),
                 model.ActiveTab == FeedTab.Tag
                     ? li([class_("nav-item")], [
-                        a([class_("nav-link active"), 
-                          href("#")], 
+                        a([class_("nav-link active"),
+                          href("#")],
                           [text($"# {model.ActiveTag}")])
                       ])
                     : text("")
@@ -237,12 +236,15 @@ public record Model(
             ? div([class_("article-preview")], [text("Loading articles...")])
             : model.Articles is null || model.Articles.Count == 0
                 ? div([class_("article-preview")], [text("No articles are here... yet.")])
-                : div([], [..model.Articles.ConvertAll(article => ArticlePreview(article))]);
+                : div([], [.. model.Articles.ConvertAll(article => ArticlePreview(article))]);
 
     private static Node Pagination(Model model)
     {
-        int pageCount = (int)System.Math.Ceiling(model.ArticlesCount / 10.0);
-        if (pageCount <= 1) return text("");
+        int pageCount = (int)Math.Ceiling(model.ArticlesCount / 10.0);
+        if (pageCount <= 1)
+        {
+            return text("");
+        }
 
         List<Node> items = [];
         for (int i = 0; i < pageCount; i++)
@@ -254,7 +256,10 @@ public record Model(
                 type("button"),
                 onclick(new Message.PageSelected(i))
             ];
-            if (isActive) attrs.Add(ariaCurrent("page"));
+            if (isActive)
+            {
+                attrs.Add(ariaCurrent("page"));
+            }
 
             items.Add(
                 li([class_(isActive ? "page-item active" : "page-item")], [
@@ -262,12 +267,12 @@ public record Model(
                 ]));
         }
 
-    return nav([], [
-        ul([
+        return nav([], [
+            ul([
             class_("pagination"),
-            Abies.Html.Attributes.data("current-page", (model.CurrentPage + 1).ToString())
+            data("current-page", (model.CurrentPage + 1).ToString())
         ], [..items])
-    ]);
+        ]);
     }
 
     private static Node TagCloud(Model model) =>
@@ -285,15 +290,15 @@ public record Model(
         ]);
 
     public static Node View(Model model) =>
-        div([class_("home-page"), Abies.Html.Attributes.data("testid", "home-page")], [
+        div([class_("home-page"), data("testid", "home-page")], [
             Banner(),
             div([class_("container page")], [
                 div([class_("row")], [
                     div([class_("col-md-9")], [
                         FeedToggle(model),
                         div([
-                                Abies.Html.Attributes.data("testid", "article-list"),
-                                Abies.Html.Attributes.data("status", model.IsLoading ? "loading" : "loaded")
+                                data("testid", "article-list"),
+                                data("status", model.IsLoading ? "loading" : "loaded")
                             ], [
                                 ArticleList(model)
                             ]),

@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -29,10 +27,10 @@ public class FavoriteTests : PlaywrightFixture
         // First go via home page to get article link
         await Page.GetByRole(AriaRole.Link, new() { Name = "Home" }).ClickAsync();
         await WaitForAppReadyAsync();
-        
+
         // Wait for articles to load
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         // Click on the article
         var articleLink = Page.Locator(".preview-link").Filter(new() { HasText = title });
         await articleLink.ClickAsync();
@@ -77,7 +75,7 @@ public class FavoriteTests : PlaywrightFixture
         await Page.GetByRole(AriaRole.Link, new() { Name = "Home" }).ClickAsync();
         await WaitForAppReadyAsync();
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         var articleLink = Page.Locator(".preview-link").Filter(new() { HasText = title });
         await articleLink.ClickAsync();
         await Page.WaitForURLAsync($"**/article/{slug}", new() { Timeout = 10000 });
@@ -132,7 +130,7 @@ public class FavoriteTests : PlaywrightFixture
 
         // Click to favorite
         await heartButton.ClickAsync();
-        
+
         // Wait for loading state and then loaded state (the page reloads articles after favorite)
         await Page.WaitForTimeoutAsync(500);
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
@@ -141,10 +139,10 @@ public class FavoriteTests : PlaywrightFixture
         // Re-query the article preview and button (DOM was recreated)
         articlePreview = Page.Locator(".article-preview").Filter(new() { HasText = title });
         await Expect(articlePreview).ToBeVisibleAsync(new() { Timeout = 5000 });
-        
+
         heartButton = articlePreview.Locator("button.btn-outline-primary, button.btn-primary");
         var newText = await heartButton.TextContentAsync();
-        
+
         // Count should now be 1
         Assert.Contains("1", newText);
     }
@@ -165,13 +163,13 @@ public class FavoriteTests : PlaywrightFixture
 
         // Register new user who will favorite
         var (favUsername, _, _) = await RegisterTestUserAsync();
-        
+
         // Wait for auth state to propagate after registration
         await WaitForAuthenticatedStateAsync();
 
         // After registration we're on home page - wait for articles to load
         await Expect(Page.Locator("[data-testid='article-list'][data-status='loaded']")).ToBeVisibleAsync(new() { Timeout = 10000 });
-        
+
         // Find and click the article link
         var articleLink = Page.Locator(".preview-link").Filter(new() { HasText = title });
         await articleLink.ClickAsync();
@@ -192,10 +190,10 @@ public class FavoriteTests : PlaywrightFixture
         var favoritedTab = Page.GetByRole(AriaRole.Link, new() { Name = "Favorited Articles" });
         await Expect(favoritedTab).ToBeVisibleAsync(new() { Timeout = 5000 });
         await favoritedTab.ClickAsync();
-        
+
         // Wait for URL to change (may already be there if clicked quickly)
         await Page.WaitForTimeoutAsync(1000);
-        
+
         // Verify we're on the favorites page
         await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($".*/profile/{favUsername}/favorites"), new() { Timeout = 10000 });
 
@@ -207,7 +205,7 @@ public class FavoriteTests : PlaywrightFixture
     public async Task ProfileMyArticles_ShowsOwnArticles()
     {
         var (username, _, _) = await RegisterTestUserAsync();
-        
+
         var title = $"My Own Article {Guid.NewGuid():N}";
         await CreateTestArticleAsync(title, "Description", "Body", "my-article");
 

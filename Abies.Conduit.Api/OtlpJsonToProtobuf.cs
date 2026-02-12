@@ -312,7 +312,7 @@ public static class OtlpJsonToProtobuf
     {
         // Remove any dashes or spaces
         hex = hex.Replace("-", "").Replace(" ", "");
-        
+
         if (hex.Length % 2 != 0)
         {
             // Pad with leading zero if odd length

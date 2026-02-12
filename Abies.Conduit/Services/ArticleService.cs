@@ -1,18 +1,14 @@
-using Abies.Conduit.Main;
 using Abies.Conduit.Page.Article;
 using Abies.Conduit.Page.Home;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Abies.Conduit.Services;
 
 public static class ArticleService
 {
-public static async Task<(List<Article> articles, int count)> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
+    public static async Task<(List<Article> articles, int count)> GetArticlesAsync(string? tag = null, string? author = null, string? favoritedBy = null, int limit = 10, int offset = 0)
     {
         var response = await ApiClient.GetArticlesAsync(tag, author, favoritedBy, limit, offset);
-        
+
         return (
             response.Articles.Select(a => MapArticleFromApi(a)).ToList(),
             response.ArticlesCount
@@ -22,7 +18,7 @@ public static async Task<(List<Article> articles, int count)> GetArticlesAsync(s
     public static async Task<(List<Article> articles, int count)> GetFeedArticlesAsync(int limit = 10, int offset = 0)
     {
         var response = await ApiClient.GetFeedArticlesAsync(limit, offset);
-        
+
         return (
             response.Articles.Select(a => MapArticleFromApi(a)).ToList(),
             response.ArticlesCount
@@ -71,7 +67,7 @@ public static async Task<(List<Article> articles, int count)> GetArticlesAsync(s
 
     public static async Task DeleteCommentAsync(string slug, string id)
     {
-    await ApiClient.DeleteCommentAsync(slug, id);
+        await ApiClient.DeleteCommentAsync(slug, id);
     }
 
     public static async Task<Article> CreateArticleAsync(string title, string description, string body, List<string> tagList)

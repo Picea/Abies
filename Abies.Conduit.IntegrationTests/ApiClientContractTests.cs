@@ -1,7 +1,4 @@
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Services;
 using Xunit;
@@ -33,20 +30,20 @@ public class ApiClientContractTests
 
         var http = new HttpClient(handler)
         {
-            BaseAddress = new System.Uri("http://localhost:5179")
+            BaseAddress = new Uri("http://localhost:5179")
         };
 
         ApiClient.ConfigureHttpClient(http);
         ApiClient.ConfigureBaseUrl("http://localhost:5179/api");
 
-    // Act
-    _ = await ApiClient.GetFeedArticlesAsync(limit: 10, offset: 0);
+        // Act
+        _ = await ApiClient.GetFeedArticlesAsync(limit: 10, offset: 0);
 
-    // Assert
-    // If this fails again, it means the ApiClient didn't use our injected HttpClient.
-    // In that case the test should be rewritten (or ApiClient refactored) before we can
-    // rely on this style of contract test.
-    Assert.True(handler.Requests.Count > 0, "Expected the fake HttpMessageHandler to record at least one request.");
-    Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=0");
+        // Assert
+        // If this fails again, it means the ApiClient didn't use our injected HttpClient.
+        // In that case the test should be rewritten (or ApiClient refactored) before we can
+        // rely on this style of contract test.
+        Assert.True(handler.Requests.Count > 0, "Expected the fake HttpMessageHandler to record at least one request.");
+        Assert.Contains(handler.Requests, r => r.Method == HttpMethod.Get && r.Uri.PathAndQuery == "/api/articles/feed?limit=10&offset=0");
     }
 }

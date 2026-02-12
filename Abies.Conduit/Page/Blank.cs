@@ -1,7 +1,5 @@
-﻿using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
+using Abies.Conduit.Main;
 using Abies.DOM;
-using System.Collections.Generic;
 
 namespace Abies.Conduit.Page.Blank;
 
@@ -13,7 +11,7 @@ public class Page : Element<Model, Message>
 {
     public static Model Initialize(Message argument)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public static Subscription Subscriptions(Model model)

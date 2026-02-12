@@ -1,5 +1,3 @@
-using Aspire.Hosting;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Aspire Dashboard can be launched by the Aspire CLI/workload; desired port can be set via env var

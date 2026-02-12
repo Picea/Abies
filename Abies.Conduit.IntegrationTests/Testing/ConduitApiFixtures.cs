@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Abies.Conduit.IntegrationTests.Testing;
 
 internal static class ConduitApiFixtures
@@ -31,7 +29,7 @@ internal static class ConduitApiFixtures
             title,
             description,
             body,
-            tagList = tagList is null ? (string[])[] : [..tagList],
+            tagList = tagList is null ? (string[])[] : [.. tagList],
             createdAt,
             updatedAt,
             favorited,

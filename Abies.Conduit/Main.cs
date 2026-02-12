@@ -1,14 +1,9 @@
-using Abies.Conduit.Routing;
+using System.Diagnostics;
 using Abies.Conduit.Services;
 using Abies.DOM;
-using Abies;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using static Abies.Conduit.Main.Message.Event;
-using static Abies.UrlRequest;
 using static Abies.Navigation.Command;
+using static Abies.UrlRequest;
 
 namespace Abies.Conduit.Main;
 
@@ -20,7 +15,7 @@ internal static class Log
     [Conditional("DEBUG")]
     internal static void Error(string context, Exception ex) =>
         Console.Error.WriteLine($"[Conduit] {context}: {ex.GetType().Name} - {ex.Message}");
-    
+
     [Conditional("DEBUG")]
     internal static void Warn(string message) =>
         Console.WriteLine($"[Conduit] WARN: {message}");
@@ -45,36 +40,36 @@ public record Model(Page Page, Routing.Route CurrentRoute, User? CurrentUser = n
 
 public interface Message : Abies.Message
 {
-    public interface Command : Message
+    interface Command : Message
     {
-        public sealed record ChangeRoute(Routing.Route? Route) : Abies.Command;
-        public sealed record LoadCurrentUser : Abies.Command;
+        sealed record ChangeRoute(Routing.Route? Route) : Abies.Command;
+        sealed record LoadCurrentUser : Abies.Command;
     }
 
-    public interface Event : Message
+    interface Event : Message
     {
-        public sealed record UrlChanged(Url Url) : Event;
-        public sealed record LinkClicked(UrlRequest UrlRequest) : Event;
-        public sealed record UserLoggedIn(User User) : Event;
-        public sealed record UserLoggedOut : Event;
+        sealed record UrlChanged(Url Url) : Event;
+        sealed record LinkClicked(UrlRequest UrlRequest) : Event;
+        sealed record UserLoggedIn(User User) : Event;
+        sealed record UserLoggedOut : Event;
         /// <summary>
         /// Dispatched when the initial user check from localStorage completes with no user found.
         /// </summary>
-        public sealed record InitializationComplete : Event;
+        sealed record InitializationComplete : Event;
     }
 }
 
 public interface Page
 {
-    public sealed record Redirect : Page;
-    public sealed record NotFound : Page;
-    public sealed record Home(Conduit.Page.Home.Model Model) : Page;
-    public sealed record Settings(Conduit.Page.Settings.Model Model) : Page;
-    public sealed record Login(Conduit.Page.Login.Model Model) : Page;
-    public sealed record Register(Conduit.Page.Register.Model Model) : Page;    public sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
-    public sealed record ProfileFavorites(Conduit.Page.Profile.Model Model) : Page;
-    public sealed record Article(Conduit.Page.Article.Model Model) : Page;
-    public sealed record NewArticle(Conduit.Page.Editor.Model Model) : Page;
+    sealed record Redirect : Page;
+    sealed record NotFound : Page;
+    sealed record Home(Conduit.Page.Home.Model Model) : Page;
+    sealed record Settings(Conduit.Page.Settings.Model Model) : Page;
+    sealed record Login(Conduit.Page.Login.Model Model) : Page;
+    sealed record Register(Conduit.Page.Register.Model Model) : Page; sealed record Profile(Conduit.Page.Profile.Model Model) : Page;
+    sealed record ProfileFavorites(Conduit.Page.Profile.Model Model) : Page;
+    sealed record Article(Conduit.Page.Article.Model Model) : Page;
+    sealed record NewArticle(Conduit.Page.Editor.Model Model) : Page;
 }
 
 /// <summary>
@@ -87,7 +82,7 @@ public record Arguments;
 /// </summary>
 public class Program : Program<Model, Arguments>
 {
-    private static string Title = "Conduit - {0}";
+    private static readonly string Title = "Conduit - {0}";
 
     /// <summary>
     /// Determines the next model based on the given URL.
@@ -145,7 +140,7 @@ public class Program : Program<Model, Arguments>
         }
         return (nextModel, Commands.None);
     }
-    
+
     /// <summary>
     /// Handles the link clicked event.
     /// </summary>
@@ -180,7 +175,7 @@ public class Program : Program<Model, Arguments>
     /// <returns>The subscription.</returns>
     public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
 
-    public static async Task HandleCommand(Command command, Func<Abies.Message, System.ValueTuple> dispatch)
+    public static async Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
     {
         switch (command)
         {
@@ -202,13 +197,13 @@ public class Program : Program<Model, Arguments>
                     }
                     else
                     {
-                        dispatch(new Message.Event.InitializationComplete());
+                        dispatch(new InitializationComplete());
                     }
                 }
                 catch (Exception ex)
                 {
                     Log.Error("LoadCurrentUser", ex);
-                    dispatch(new Message.Event.InitializationComplete());
+                    dispatch(new InitializationComplete());
                 }
                 break;
             case LoginCommand login:
@@ -248,7 +243,7 @@ public class Program : Program<Model, Arguments>
                 catch (Exception ex)
                 {
                     Log.Error("Register", ex);
-                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    var errors = new Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
                     };
@@ -272,7 +267,7 @@ public class Program : Program<Model, Arguments>
                 catch (Exception ex)
                 {
                     Log.Error("UpdateUser", ex);
-                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    var errors = new Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
                     };
@@ -454,7 +449,7 @@ public class Program : Program<Model, Arguments>
                 catch (Exception ex)
                 {
                     Log.Error("CreateArticle", ex);
-                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    var errors = new Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
                     };
@@ -478,7 +473,7 @@ public class Program : Program<Model, Arguments>
                 catch (Exception ex)
                 {
                     Log.Error("UpdateArticle", ex);
-                    var errors = new System.Collections.Generic.Dictionary<string, string[]>
+                    var errors = new Dictionary<string, string[]>
                     {
                         { "error", ["An unexpected error occurred"] }
                     };
@@ -636,7 +631,7 @@ public class Program : Program<Model, Arguments>
                     },
                     Commands.None);
 
-            case Message.Event.InitializationComplete:
+            case InitializationComplete:
                 return (model with { IsInitializing = false }, Commands.None);
 
             case UserLoggedOut:
@@ -742,10 +737,10 @@ public class Program : Program<Model, Arguments>
         var current = new Uri(Interop.GetCurrentUrl());
         var root = new Uri(current.GetLeftPart(UriPartial.Authority) + "/");
         var url = Url.Create($"{root}article/{slug}");
-    var (next, _) = GetNextModel(url, user);
-    var init = GetInitCommandForRoute(next);
-    var batch = Commands.Batch(new Command[] { new PushState(url), init });
-    return (next, batch);
+        var (next, _) = GetNextModel(url, user);
+        var init = GetInitCommandForRoute(next);
+        var batch = Commands.Batch(new Command[] { new PushState(url), init });
+        return (next, batch);
     }
 
     private static (Model, Command) LogoutAndPushHome()
@@ -783,7 +778,7 @@ public class Program : Program<Model, Arguments>
 
 
 
-    
+
 
     public static Abies.Message OnUrlChanged(Url url)
         => new UrlChanged(url);

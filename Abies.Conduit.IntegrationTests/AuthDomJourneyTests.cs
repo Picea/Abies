@@ -1,6 +1,4 @@
-using System.Linq;
 using Abies.Conduit.IntegrationTests.Testing;
-using Abies.DOM;
 using Xunit;
 
 namespace Abies.Conduit.IntegrationTests;
@@ -11,20 +9,20 @@ public class AuthDomJourneyTests
     public void Login_TypingEmailAndPassword_UpdatesModel()
     {
         // Arrange
-    var model = Abies.Conduit.Page.Login.Page.Initialize(new Abies.Conduit.Page.Login.Message.EmailChanged(""));
+        var model = Page.Login.Page.Initialize(new Page.Login.Message.EmailChanged(""));
 
         // Act
         var (m1, _) = MvuDomTestHarness.DispatchInput(
             model,
-            Abies.Conduit.Page.Login.Page.View,
-            Abies.Conduit.Page.Login.Page.Update,
+            Page.Login.Page.View,
+            Page.Login.Page.Update,
             elementPredicate: el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Email"),
             value: "a@b.com");
 
         var (m2, _) = MvuDomTestHarness.DispatchInput(
             m1,
-            Abies.Conduit.Page.Login.Page.View,
-            Abies.Conduit.Page.Login.Page.Update,
+            Page.Login.Page.View,
+            Page.Login.Page.Update,
             elementPredicate: el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Password"),
             value: "secret");
 
@@ -33,7 +31,7 @@ public class AuthDomJourneyTests
         Assert.Equal("secret", m2.Password);
 
         // Also ensure the DOM reflects the values
-        var dom = Abies.Conduit.Page.Login.Page.View(m2);
+        var dom = Page.Login.Page.View(m2);
         var emailInput = MvuDomTestHarness.FindFirstElement(dom,
             el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Email"));
 
@@ -44,27 +42,27 @@ public class AuthDomJourneyTests
     public void Register_TypingFields_UpdatesModel()
     {
         // Arrange
-    var model = Abies.Conduit.Page.Register.Page.Initialize(new Abies.Conduit.Page.Register.Message.UsernameChanged(""));
+        var model = Page.Register.Page.Initialize(new Page.Register.Message.UsernameChanged(""));
 
         // Act
         var (m1, _) = MvuDomTestHarness.DispatchInput(
             model,
-            Abies.Conduit.Page.Register.Page.View,
-            Abies.Conduit.Page.Register.Page.Update,
+            Page.Register.Page.View,
+            Page.Register.Page.Update,
             elementPredicate: el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Username"),
             value: "alice");
 
         var (m2, _) = MvuDomTestHarness.DispatchInput(
             m1,
-            Abies.Conduit.Page.Register.Page.View,
-            Abies.Conduit.Page.Register.Page.Update,
+            Page.Register.Page.View,
+            Page.Register.Page.Update,
             elementPredicate: el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Email"),
             value: "alice@example.com");
 
         var (m3, _) = MvuDomTestHarness.DispatchInput(
             m2,
-            Abies.Conduit.Page.Register.Page.View,
-            Abies.Conduit.Page.Register.Page.Update,
+            Page.Register.Page.View,
+            Page.Register.Page.Update,
             elementPredicate: el => el.Tag == "input" && el.Attributes.Any(a => a.Name == "placeholder" && a.Value == "Password"),
             value: "pw");
 

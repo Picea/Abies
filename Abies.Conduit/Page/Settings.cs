@@ -1,7 +1,5 @@
 using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
 using Abies.DOM;
-using System.Collections.Generic;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
@@ -9,15 +7,15 @@ namespace Abies.Conduit.Page.Settings;
 
 public interface Message : Abies.Message
 {
-    public record ImageUrlChanged(string Value) : Message;
-    public record UsernameChanged(string Value) : Message;
-    public record BioChanged(string Value) : Message;
-    public record EmailChanged(string Value) : Message;
-    public record PasswordChanged(string Value) : Message;
-    public record SettingsSubmitted : Message;
-    public record SettingsSuccess(User User) : Message;
-    public record SettingsError(Dictionary<string, string[]> Errors) : Message;
-    public record LogoutRequested : Message;
+    record ImageUrlChanged(string Value) : Message;
+    record UsernameChanged(string Value) : Message;
+    record BioChanged(string Value) : Message;
+    record EmailChanged(string Value) : Message;
+    record PasswordChanged(string Value) : Message;
+    record SettingsSubmitted : Message;
+    record SettingsSuccess(User User) : Message;
+    record SettingsError(Dictionary<string, string[]> Errors) : Message;
+    record LogoutRequested : Message;
 }
 
 public record Model(
@@ -67,9 +65,10 @@ public class Page : Element<Model, Message>
             Message.PasswordChanged passwordChanged => (
                 model with { Password = passwordChanged.Value },
                 Commands.None
-            ),            Message.SettingsSubmitted => (
+            ),
+            Message.SettingsSubmitted => (
                 model with { IsSubmitting = true, Errors = null },
-                new Abies.Conduit.UpdateUserCommand(model.Username, model.Email, model.Bio, model.ImageUrl, 
+                new UpdateUserCommand(model.Username, model.Email, model.Bio, model.ImageUrl,
                     string.IsNullOrEmpty(model.Password) ? null : model.Password)
             ),
             Message.SettingsSuccess success => (
@@ -82,16 +81,16 @@ public class Page : Element<Model, Message>
             ),
             Message.LogoutRequested => (model, Commands.None),
             _ => (model, Commands.None)
-        };    
+        };
 
-        private static Node ErrorList(Dictionary<string, string[]>? errors) =>
-        errors is null
-            ? text("")
-            : ul([class_("error-messages")], 
-                [..errors.SelectMany(e => e.Value.Select(msg => 
+    private static Node ErrorList(Dictionary<string, string[]>? errors) =>
+    errors is null
+        ? text("")
+        : ul([class_("error-messages")],
+            [..errors.SelectMany(e => e.Value.Select(msg =>
                     li([], [text($"{e.Key} {msg}")])
                 ))]
-            );
+        );
 
     public static Node View(Model model)
     {
@@ -99,15 +98,30 @@ public class Page : Element<Model, Message>
         if (initial.CurrentUser is User u)
         {
             // Prefill from current user if fields are empty
-            if (string.IsNullOrEmpty(initial.Username)) initial = initial with { Username = u.Username.Value };
-            if (string.IsNullOrEmpty(initial.Email)) initial = initial with { Email = u.Email.Value };
-            if (string.IsNullOrEmpty(initial.ImageUrl)) initial = initial with { ImageUrl = u.Image };
-            if (string.IsNullOrEmpty(initial.Bio)) initial = initial with { Bio = u.Bio };
+            if (string.IsNullOrEmpty(initial.Username))
+            {
+                initial = initial with { Username = u.Username.Value };
+            }
+
+            if (string.IsNullOrEmpty(initial.Email))
+            {
+                initial = initial with { Email = u.Email.Value };
+            }
+
+            if (string.IsNullOrEmpty(initial.ImageUrl))
+            {
+                initial = initial with { ImageUrl = u.Image };
+            }
+
+            if (string.IsNullOrEmpty(initial.Bio))
+            {
+                initial = initial with { Bio = u.Bio };
+            }
         }
         model = initial;
 
         return
-            div([class_("settings-page"), Abies.Html.Attributes.data("testid", "settings-page")], [
+            div([class_("settings-page"), data("testid", "settings-page")], [
                 div([class_("container page")], [
                     div([class_("row")], [
                         div([class_("col-md-6 offset-md-3 col-xs-12")], [

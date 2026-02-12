@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
 namespace Abies.Conduit.IntegrationTests.Testing;
 
 /// <summary>
@@ -26,7 +21,7 @@ internal static class MvuLoopRuntime
 
     public sealed record StepLog(
         int Iteration,
-        Abies.Message? AppliedMessage,
+        Message? AppliedMessage,
         int CommandsExecuted,
         int MessagesDispatched);
 
@@ -38,8 +33,8 @@ internal static class MvuLoopRuntime
 
     public static async Task<RunResult<TModel>> RunUntilQuiescentAsync<TModel>(
         TModel initialModel,
-        Func<Abies.Message, TModel, (TModel model, Abies.Command command)> update,
-    Abies.Message initialMessage,
+        Func<Message, TModel, (TModel model, Command command)> update,
+    Message initialMessage,
         Options? options = null)
     {
         options ??= new Options();
@@ -47,17 +42,17 @@ internal static class MvuLoopRuntime
         var model = initialModel;
         List<StepLog> steps = [];
 
-        var pendingMessages = new Queue<Abies.Message>();
+        var pendingMessages = new Queue<Message>();
         pendingMessages.Enqueue(initialMessage);
 
-        var pendingCommands = new Queue<Abies.Command>();
+        var pendingCommands = new Queue<Command>();
 
         var totalCommandsExecuted = 0;
         var totalMessagesDispatched = 0;
 
-    for (var iteration = 1; iteration <= options.MaxIterations; iteration++)
+        for (var iteration = 1; iteration <= options.MaxIterations; iteration++)
         {
-            Abies.Message? applied = null;
+            Message? applied = null;
 
             // 1) Apply exactly one pending UI/dispatched message (if any)
             if (pendingMessages.TryDequeue(out var msg))
@@ -69,13 +64,15 @@ internal static class MvuLoopRuntime
                 model = nextModel;
 
                 // Treat the returned command as work to do
-                if (cmd is not Abies.Command.None)
+                if (cmd is not Command.None)
                 {
                     foreach (var flat in ConduitCommandRunner.Flatten(cmd))
+                    {
                         pendingCommands.Enqueue(flat);
+                    }
                 }
 
-                if (options.StrictUnhandledMessages && cmd is Abies.Command.None && Equals(before, model))
+                if (options.StrictUnhandledMessages && cmd is Command.None && Equals(before, model))
                 {
                     throw new InvalidOperationException(
                         $"Unhandled message: {msg.GetType().FullName}. " +
@@ -96,7 +93,9 @@ internal static class MvuLoopRuntime
                 totalMessagesDispatched += dispatched.Count;
 
                 foreach (var d in dispatched)
+                {
                     pendingMessages.Enqueue(d);
+                }
             }
 
             steps.Add(new StepLog(iteration, applied, executedThisIter, dispatchedThisIter));

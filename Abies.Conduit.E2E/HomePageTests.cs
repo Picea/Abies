@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -64,7 +62,7 @@ public class HomePageTests : PlaywrightFixture
         // Find the tag link (a.tag-pill) in the article's tag-list
         var tagLink = articlePreview.Locator(".tag-list a.tag-pill").Filter(new() { HasText = uniqueTag });
         await Expect(tagLink).ToBeVisibleAsync(new() { Timeout = 5000 });
-        
+
         // Click the tag link
         await tagLink.ClickAsync();
 
