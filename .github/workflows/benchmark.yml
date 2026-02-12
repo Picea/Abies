@@ -403,10 +403,10 @@ jobs:
       - name: Run E2E benchmarks
         run: |
           cd ../js-framework-benchmark-fork/webdriver-ts
-          # Run key benchmarks
-          npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k
-          npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k
-          npm run bench -- --headless --framework abies-keyed --benchmark 09_clear1k
+          # Run key benchmarks (format: keyed/frameworkname per README)
+          npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 05_swap1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k
 
       - name: Fetch baseline from gh-pages (if not in repo)
         if: ${{ !hashFiles('benchmark-results/baseline.json') }}
