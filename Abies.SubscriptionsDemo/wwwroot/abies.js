@@ -1130,29 +1130,46 @@ function applyBinaryBatchImpl(batchData) {
                 break;
             }
             case BinaryPatchType.UpdateText: {
-                const targetId = readString(field1);
+                // targetId is now the PARENT element's ID (text nodes no longer have wrapper spans)
+                const parentId = readString(field1);
                 const text = readString(field2);
-                const node = document.getElementById(targetId);
-                if (node) {
-                    node.textContent = text;
-                    const tag = (node.tagName || '').toUpperCase();
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    // Find and update the first text node child
+                    let foundText = false;
+                    for (const child of parent.childNodes) {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            child.textContent = text;
+                            foundText = true;
+                            break;
+                        }
+                    }
+                    // If no text node found, create one (shouldn't happen normally)
+                    if (!foundText) {
+                        parent.insertBefore(document.createTextNode(text), parent.firstChild);
+                    }
+                    // Handle TEXTAREA special case
+                    const tag = (parent.tagName || '').toUpperCase();
                     if (tag === 'TEXTAREA') {
-                        try { node.value = text; } catch { /* ignore */ }
+                        try { parent.value = text; } catch { /* ignore */ }
                     }
                 }
                 break;
             }
             case BinaryPatchType.UpdateTextWithId: {
-                const targetId = readString(field1);
+                // This case is no longer used since text nodes don't have IDs
+                // Keep for backwards compatibility but log a warning
+                console.warn('UpdateTextWithId is deprecated - text nodes no longer have wrapper spans');
+                const parentId = readString(field1);
                 const text = readString(field2);
                 const newId = readString(field3);
-                const node = document.getElementById(targetId);
-                if (node) {
-                    node.textContent = text;
-                    node.setAttribute('id', newId);
-                    const tag = (node.tagName || '').toUpperCase();
-                    if (tag === 'TEXTAREA') {
-                        try { node.value = text; } catch { /* ignore */ }
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    for (const child of parent.childNodes) {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            child.textContent = text;
+                            break;
+                        }
                     }
                 }
                 break;

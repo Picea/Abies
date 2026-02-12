@@ -111,7 +111,7 @@ const isOtelDisabled = (() => {
 function initLocalOtelShim() {
   if (isOtelDisabled) return; // Respect global disable switches
   if (window.__otel) return; // Already initialized
-  
+
   const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
   const nowNs = () => {
     const t = performance.timeOrigin + performance.now();
@@ -284,7 +284,7 @@ function initLocalOtelShim() {
 // CDN-based OTel upgrade (deferred to after first paint)
 async function upgradeToFullOtel() {
   if (isOtelDisabled) return;
-  
+
   // Check if CDN is enabled
   const useCdn = (() => {
     try {
@@ -410,13 +410,13 @@ async function upgradeToFullOtel() {
 // Schedule deferred OTel upgrade using requestIdleCallback or fallback
 function scheduleDeferredOtelUpgrade() {
   if (isOtelDisabled) return;
-  
+
   const doUpgrade = () => {
     // Cap OTel init time to avoid blocking for too long
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel timeout')), 5000));
     Promise.race([upgradeToFullOtel(), timeout]).catch(() => {});
   };
-  
+
   // Use requestIdleCallback if available, otherwise setTimeout with 0ms delay
   // This ensures OTel loading happens during browser idle time, after first paint
   if (typeof requestIdleCallback === 'function') {
@@ -853,7 +853,7 @@ function unsubscribe(key) {
  * Discovers and registers event listeners for any custom (non-common) event types
  * in the given DOM subtree. Common event types are pre-registered at startup,
  * so this function primarily handles rare/custom event handlers.
- * 
+ *
  * Uses TreeWalker instead of querySelectorAll for better memory efficiency.
  */
 function addEventListeners(root) {
@@ -861,10 +861,10 @@ function addEventListeners(root) {
     // Since common events are pre-registered, this is mostly a no-op for typical apps,
     // but we still need to scan for custom event types in newly added HTML.
     const scope = root || document;
-    
+
     // Use TreeWalker for memory-efficient iteration
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
-    
+
     // Include the root element itself if it's an element
     if (scope.nodeType === 1 /* ELEMENT_NODE */ && scope.attributes) {
         for (const attr of scope.attributes) {
@@ -874,7 +874,7 @@ function addEventListeners(root) {
             }
         }
     }
-    
+
     // Walk descendants
     let el = walker.nextNode();
     while (el) {
@@ -903,13 +903,13 @@ function addEventListeners(root) {
 //   Header (8 bytes):
 //     - PatchCount: int32 (4 bytes)
 //     - StringTableOffset: int32 (4 bytes)
-//   
+//
 //   Patch Entries (16 bytes each):
 //     - Type: int32 (4 bytes) - BinaryPatchType enum value
 //     - Field1: int32 (4 bytes) - string table index (-1 = null)
 //     - Field2: int32 (4 bytes) - string table index (-1 = null)
 //     - Field3: int32 (4 bytes) - string table index (-1 = null)
-//   
+//
 //   String Table:
 //     - Strings stored as LEB128 length prefix + UTF8 bytes
 // =============================================================================
@@ -966,20 +966,20 @@ function readLEB128(data, offset) {
  */
 function createStringReader(data, stringTableOffset) {
     const decoder = new TextDecoder('utf-8');
-    
+
     return function readString(index) {
         if (index === -1) return null;
-        
+
         // Index points to the byte offset within the string table
         const absoluteOffset = stringTableOffset + index;
-        
+
         // Read LEB128 length prefix
         const { value: length, bytesRead } = readLEB128(data, absoluteOffset);
-        
+
         // Read UTF-8 bytes
         const stringStart = absoluteOffset + bytesRead;
         const stringBytes = data.subarray(stringStart, stringStart + length);
-        
+
         return decoder.decode(stringBytes);
     };
 }
@@ -1009,30 +1009,30 @@ function applyBinaryBatchImpl(batchData) {
         console.error('[Binary Batch] Unknown batchData type:', typeof batchData, batchData);
         return;
     }
-    
+
     // Read header
     const patchCount = readInt32LE(data, 0);
     const stringTableOffset = readInt32LE(data, 4);
-    
+
     if (getVerbosity() >= 2) { // debug level
         console.debug(`[Binary Batch] patchCount=${patchCount}, stringTableOffset=${stringTableOffset}, dataLength=${data.length}`);
     }
-    
+
     // Create string reader
     const readString = createStringReader(data, stringTableOffset);
-    
+
     // Process each patch (16 bytes each, starting after 8-byte header)
     const HEADER_SIZE = 8;
     const PATCH_SIZE = 16;
-    
+
     for (let i = 0; i < patchCount; i++) {
         const patchOffset = HEADER_SIZE + (i * PATCH_SIZE);
-        
+
         const type = readInt32LE(data, patchOffset);
         const field1 = readInt32LE(data, patchOffset + 4);
         const field2 = readInt32LE(data, patchOffset + 8);
         const field3 = readInt32LE(data, patchOffset + 12);
-        
+
         switch (type) {
             case BinaryPatchType.SetAppContent: {
                 const html = readString(field1);
@@ -1130,29 +1130,46 @@ function applyBinaryBatchImpl(batchData) {
                 break;
             }
             case BinaryPatchType.UpdateText: {
-                const targetId = readString(field1);
+                // targetId is now the PARENT element's ID (text nodes no longer have wrapper spans)
+                const parentId = readString(field1);
                 const text = readString(field2);
-                const node = document.getElementById(targetId);
-                if (node) {
-                    node.textContent = text;
-                    const tag = (node.tagName || '').toUpperCase();
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    // Find and update the first text node child
+                    let foundText = false;
+                    for (const child of parent.childNodes) {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            child.textContent = text;
+                            foundText = true;
+                            break;
+                        }
+                    }
+                    // If no text node found, create one (shouldn't happen normally)
+                    if (!foundText) {
+                        parent.insertBefore(document.createTextNode(text), parent.firstChild);
+                    }
+                    // Handle TEXTAREA special case
+                    const tag = (parent.tagName || '').toUpperCase();
                     if (tag === 'TEXTAREA') {
-                        try { node.value = text; } catch { /* ignore */ }
+                        try { parent.value = text; } catch { /* ignore */ }
                     }
                 }
                 break;
             }
             case BinaryPatchType.UpdateTextWithId: {
-                const targetId = readString(field1);
+                // This case is no longer used since text nodes don't have IDs
+                // Keep for backwards compatibility but log a warning
+                console.warn('UpdateTextWithId is deprecated - text nodes no longer have wrapper spans');
+                const parentId = readString(field1);
                 const text = readString(field2);
                 const newId = readString(field3);
-                const node = document.getElementById(targetId);
-                if (node) {
-                    node.textContent = text;
-                    node.setAttribute('id', newId);
-                    const tag = (node.tagName || '').toUpperCase();
-                    if (tag === 'TEXTAREA') {
-                        try { node.value = text; } catch { /* ignore */ }
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    for (const child of parent.childNodes) {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            child.textContent = text;
+                            break;
+                        }
                     }
                 }
                 break;

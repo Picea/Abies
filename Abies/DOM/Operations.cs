@@ -511,11 +511,13 @@ public readonly struct UpdateHandler(Element element, Handler oldHandler, Handle
 /// <summary>
 /// Represents a patch operation to update a text node in the Abies DOM.
 /// </summary>
+/// <param name="parent">The parent element containing the text node.</param>
 /// <param name="node">The text node to update.</param>
 /// <param name="text">The current text content of the node.</param>
 /// <param name="newId">The new ID to assign to the node.</param>
-public readonly struct UpdateText(Text node, string text, string newId) : Patch
+public readonly struct UpdateText(Element parent, Text node, string text, string newId) : Patch
 {
+    public readonly Element Parent = parent;
     public readonly Text Node = node;
     public readonly string Text = text;
     public readonly string NewId = newId;
@@ -700,9 +702,11 @@ public static class Render
                 sb.Append("</").Append(element.Tag).Append('>');
                 break;
             case Text text:
-                sb.Append("<span id=\"").Append(text.Id).Append("\">");
+                // Render text directly without wrapper span.
+                // Text updates are handled by targeting the parent element and
+                // updating the first text node child.
+                // The text.Id is stored for diffing but not rendered to HTML.
                 AppendHtmlEncoded(sb, text.Value);
-                sb.Append("</span>");
                 break;
             case RawHtml raw:
                 sb.Append("<span id=\"").Append(raw.Id).Append("\">")
@@ -909,13 +913,9 @@ public static class Operations
                 Runtime.UnregisterHandler(updateHandler.OldHandler);
                 break;
             case UpdateText updateText:
-                // Update the text content first using the old ID
-                await Interop.UpdateTextContent(updateText.Node.Id, updateText.Text);
-                // If the text node's ID changed, update the DOM element's id attribute
-                if (!string.Equals(updateText.Node.Id, updateText.NewId, StringComparison.Ordinal))
-                {
-                    await Interop.UpdateAttribute(updateText.Node.Id, "id", updateText.NewId);
-                }
+                // Text nodes no longer have wrapper spans, so target the parent element.
+                // The Interop handler finds and updates the first text node child.
+                await Interop.UpdateTextContent(updateText.Parent.Id, updateText.Text);
                 break;
             case AddText addText:
                 await Interop.AddChildHtml(addText.Parent.Id, Render.Html(addText.Child));
@@ -1072,14 +1072,9 @@ public static class Operations
                 break;
 
             case UpdateText updateText:
-                if (updateText.Node.Id == updateText.NewId)
-                {
-                    writer.WriteUpdateText(updateText.Node.Id, updateText.Text);
-                }
-                else
-                {
-                    writer.WriteUpdateTextWithId(updateText.Node.Id, updateText.Text, updateText.NewId);
-                }
+                // Text nodes no longer have wrapper spans, so target the parent element.
+                // The JS handler finds and updates the first text node child.
+                writer.WriteUpdateText(updateText.Parent.Id, updateText.Text);
                 break;
 
             case AddText addText:
@@ -1237,7 +1232,7 @@ public static class Operations
         {
             if (!string.Equals(oldText.Value, newText.Value, StringComparison.Ordinal) || !string.Equals(oldText.Id, newText.Id, StringComparison.Ordinal))
             {
-                patches.Add(new UpdateText(oldText, newText.Value, newText.Id));
+                patches.Add(new UpdateText(parent!, oldText, newText.Value, newText.Id));
             }
 
             return;
@@ -1302,7 +1297,7 @@ public static class Operations
             }
             else if (oldNode is Text ot && newNode is Text nt)
             {
-                patches.Add(new UpdateText(ot, nt.Value, nt.Id));
+                patches.Add(new UpdateText(parent!, ot, nt.Value, nt.Id));
             }
             else if (oldNode is Text ot2 && newNode is Element ne3)
             {
@@ -2400,7 +2395,7 @@ public static class Operations
     ///
     /// Algorithm: O(n log n) using binary search with patience sorting.
     /// Inspired by Inferno's virtual DOM implementation.
-    /// 
+    ///
     /// This version uses ArrayPool to avoid allocations on the hot path.
     /// </summary>
     /// <param name="arr">Array of old indices in new order.</param>
