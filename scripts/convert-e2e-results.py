@@ -33,12 +33,43 @@ def parse_result_file(file_path: Path) -> dict | None:
         if "values" not in data:
             return None
 
-        values = data["values"]
-        if not values:
+        values_obj = data["values"]
+        if not values_obj:
             return None
 
-        median = sorted(values)[len(values) // 2]
-        mean = sum(values) / len(values)
+        # Handle nested format (CPU benchmarks)
+        # Format: {"total": {"min": ..., "values": [...]}, "script": {...}, "paint": {...}}
+        if isinstance(values_obj, dict):
+            # Use "total" timing as the primary metric
+            if "total" in values_obj:
+                total_data = values_obj["total"]
+                if isinstance(total_data, dict):
+                    values = total_data.get("values", [])
+                    median = total_data.get("median", sorted(values)[len(values) // 2] if values else 0)
+                    mean = total_data.get("mean", sum(values) / len(values) if values else 0)
+                else:
+                    values = total_data if isinstance(total_data, list) else []
+                    median = sorted(values)[len(values) // 2] if values else 0
+                    mean = sum(values) / len(values) if values else 0
+            elif "DEFAULT" in values_obj:
+                # Memory/startup benchmarks use DEFAULT key
+                default_data = values_obj["DEFAULT"]
+                if isinstance(default_data, dict):
+                    values = default_data.get("values", [])
+                    median = default_data.get("median", sorted(values)[len(values) // 2] if values else 0)
+                    mean = default_data.get("mean", sum(values) / len(values) if values else 0)
+                else:
+                    values = default_data if isinstance(default_data, list) else []
+                    median = sorted(values)[len(values) // 2] if values else 0
+                    mean = sum(values) / len(values) if values else 0
+            else:
+                print(f"Warning: Unknown values format in {file_path}", file=sys.stderr)
+                return None
+        else:
+            # Legacy format: values is directly an array
+            values = values_obj
+            median = sorted(values)[len(values) // 2]
+            mean = sum(values) / len(values)
 
         # Extract benchmark name from filename
         # Format: framework_benchmarkname.json or framework-version_benchmarkname.json
@@ -54,7 +85,7 @@ def parse_result_file(file_path: Path) -> dict | None:
             "name": benchmark_name,
             "median": median,
             "mean": mean,
-            "values": values,
+            "values": values if isinstance(values, list) else [],
         }
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)

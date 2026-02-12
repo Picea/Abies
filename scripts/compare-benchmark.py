@@ -59,12 +59,59 @@ def parse_result_file(file_path: Path) -> Optional[BenchmarkResult]:
         with open(file_path) as f:
             data = json.load(f)
 
-        # js-framework-benchmark format
+        # js-framework-benchmark format for CPU benchmarks:
+        # {
+        #   "framework": "abies-keyed",
+        #   "benchmark": "01_run1k",
+        #   "type": "cpu",
+        #   "values": {
+        #     "total": {"min": ..., "max": ..., "mean": ..., "median": ..., "values": [...]},
+        #     "script": {...},
+        #     "paint": {...}
+        #   }
+        # }
         if "values" in data:
-            values = data["values"]
-            median = statistics.median(values)
-            mean = statistics.mean(values)
-            std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
+            values_obj = data["values"]
+
+            # Handle nested format (CPU benchmarks)
+            if isinstance(values_obj, dict):
+                # Use "total" timing as the primary metric
+                if "total" in values_obj:
+                    total_data = values_obj["total"]
+                    # The stats object has pre-computed values
+                    if isinstance(total_data, dict):
+                        values = total_data.get("values", [])
+                        median = total_data.get("median", statistics.median(values) if values else 0)
+                        mean = total_data.get("mean", statistics.mean(values) if values else 0)
+                        std_dev = total_data.get("stddev", statistics.stdev(values) if len(values) > 1 else 0)
+                    else:
+                        # Legacy format: values is directly an array
+                        values = total_data if isinstance(total_data, list) else []
+                        median = statistics.median(values) if values else 0
+                        mean = statistics.mean(values) if values else 0
+                        std_dev = statistics.stdev(values) if len(values) > 1 else 0
+                elif "DEFAULT" in values_obj:
+                    # Memory/startup benchmarks use DEFAULT key
+                    default_data = values_obj["DEFAULT"]
+                    if isinstance(default_data, dict):
+                        values = default_data.get("values", [])
+                        median = default_data.get("median", statistics.median(values) if values else 0)
+                        mean = default_data.get("mean", statistics.mean(values) if values else 0)
+                        std_dev = default_data.get("stddev", statistics.stdev(values) if len(values) > 1 else 0)
+                    else:
+                        values = default_data if isinstance(default_data, list) else []
+                        median = statistics.median(values) if values else 0
+                        mean = statistics.mean(values) if values else 0
+                        std_dev = statistics.stdev(values) if len(values) > 1 else 0
+                else:
+                    print(f"Warning: Unknown values format in {file_path}", file=sys.stderr)
+                    return None
+            else:
+                # Legacy format: values is directly an array
+                values = values_obj
+                median = statistics.median(values)
+                mean = statistics.mean(values)
+                std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
 
             # Extract benchmark name from filename
             # Format: framework_benchmarkname.json
@@ -75,7 +122,7 @@ def parse_result_file(file_path: Path) -> Optional[BenchmarkResult]:
                 median=median,
                 mean=mean,
                 std_dev=std_dev,
-                values=values
+                values=values if isinstance(values, list) else []
             )
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
