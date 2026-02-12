@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770908180698,
+  "lastUpdate": 1770908248731,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -6622,6 +6622,96 @@ window.BENCHMARK_DATA = {
             "value": 37.96933937072754,
             "unit": "ms",
             "extra": "mean: 38.0ms, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c07cd3647150b94730f2c5c93ba12f3ef95d787e",
+          "message": "chore: target .NET 10 LTS only (#73)\n\nRemove .NET 9 multi-targeting. Going forward:\n- Current release: .NET 10 (LTS)\n- Next release: .NET 11 + 10\n- Following: .NET 12 only (LTS)\n\nThis simplifies the build and aligns with LTS release strategy.",
+          "timestamp": "2026-02-12T15:46:43+01:00",
+          "tree_id": "257f670637d04bf2e693ff59801a8d0b352885f2",
+          "url": "https://github.com/Picea/Abies/commit/c07cd3647150b94730f2c5c93ba12f3ef95d787e"
+        },
+        "date": 1770908247978,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 251.1,
+            "unit": "ms",
+            "extra": "mean: 252.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 302.4,
+            "unit": "ms",
+            "extra": "mean: 300.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 350.1,
+            "unit": "ms",
+            "extra": "mean: 352.1ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 314.8,
+            "unit": "ms",
+            "extra": "mean: 312.3ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 331.2,
+            "unit": "ms",
+            "extra": "mean: 330.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 176.5,
+            "unit": "ms",
+            "extra": "mean: 174.6ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2037.3,
+            "unit": "ms",
+            "extra": "mean: 2036.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 298.8,
+            "unit": "ms",
+            "extra": "mean: 299.2ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 269.3,
+            "unit": "ms",
+            "extra": "mean: 267.1ms, samples: 15"
+          },
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.4551944732666,
+            "unit": "ms",
+            "extra": "mean: 34.5ms, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.92978763580322,
+            "unit": "ms",
+            "extra": "mean: 37.9ms, samples: 1"
           }
         ]
       }
