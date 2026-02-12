@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770911421636,
+  "lastUpdate": 1770911498660,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -7924,6 +7924,84 @@ window.BENCHMARK_DATA = {
             "value": 272.5,
             "unit": "ms",
             "extra": "mean: 273.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5aa5fc4e64635303b3adf87d383bfdb6ba6bc98d",
+          "message": "chore(deps): bump actions/upload-artifact from 4 to 6 (#54)\n\nBumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 4 to 6.\n- [Release notes](https://github.com/actions/upload-artifact/releases)\n- [Commits](https://github.com/actions/upload-artifact/compare/v4...v6)\n\n---\nupdated-dependencies:\n- dependency-name: actions/upload-artifact\n  dependency-version: '6'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Maurice CGP Peters <MCGPPeters@users.noreply.github.com>",
+          "timestamp": "2026-02-12T16:40:31+01:00",
+          "tree_id": "1164d2c94c68ef340df82dfcc9e85124cbf57c5d",
+          "url": "https://github.com/Picea/Abies/commit/5aa5fc4e64635303b3adf87d383bfdb6ba6bc98d"
+        },
+        "date": 1770911498263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 247.1,
+            "unit": "ms",
+            "extra": "mean: 242.6ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 297.3,
+            "unit": "ms",
+            "extra": "mean: 300.2ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 335.4,
+            "unit": "ms",
+            "extra": "mean: 339.7ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 300.3,
+            "unit": "ms",
+            "extra": "mean: 303.0ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 312.9,
+            "unit": "ms",
+            "extra": "mean: 311.3ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 164.2,
+            "unit": "ms",
+            "extra": "mean: 162.7ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1990.8,
+            "unit": "ms",
+            "extra": "mean: 1992.6ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 288.4,
+            "unit": "ms",
+            "extra": "mean: 287.2ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 260.9,
+            "unit": "ms",
+            "extra": "mean: 259.5ms, samples: 15"
           }
         ]
       }
