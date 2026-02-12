@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770890957712,
+  "lastUpdate": 1770899253871,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -5440,6 +5440,48 @@ window.BENCHMARK_DATA = {
             "value": 256,
             "unit": "ms",
             "extra": "mean: 251.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bd5d86b808a8bd846df00b7b115e3e3ecdd1b94",
+          "message": "fix: Remove span wrapper from text nodes for js-framework-benchmark compliance (#71)\n\n* fix: remove span wrapper from text nodes for js-framework-benchmark compliance\n\nText nodes were previously wrapped in <span id='...'> elements, causing:\n1. HTML structure mismatch in js-framework-benchmark tests\n2. Framework being incorrectly categorized as non-keyed\n\nChanges:\n- Render text content directly without span wrapper in Operations.cs\n- UpdateText struct now includes parent element reference\n- Binary patch targets parent element, finds text node via childNodes\n- JavaScript handler updated to find and update first text node child\n\nAddresses review comments from js-framework-benchmark PR #1971.\n\n* docs: Add labeling guidelines for pull requests to improve categorization",
+          "timestamp": "2026-02-12T13:23:16+01:00",
+          "tree_id": "69523f5be92717237d9f733c475e97a2d03891e8",
+          "url": "https://github.com/Picea/Abies/commit/1bd5d86b808a8bd846df00b7b115e3e3ecdd1b94"
+        },
+        "date": 1770899252844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 242,
+            "unit": "ms",
+            "extra": "mean: 242.5ms, samples: 15"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 320.6,
+            "unit": "ms",
+            "extra": "mean: 326.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 274.1,
+            "unit": "ms",
+            "extra": "mean: 279.0ms, samples: 15"
           }
         ]
       }
