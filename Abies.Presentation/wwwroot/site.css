@@ -322,6 +322,8 @@ fluent-badge {
   font-size: var(--font-size-200);
   color: var(--colorNeutralForeground2);
   background: transparent;
+  cursor: pointer;
+  user-select: none;
   transition: background var(--transition-fast), border var(--transition-fast);
 }
 
@@ -631,6 +633,130 @@ fluent-button.ghost {
 }
 
 .log-empty {
+  color: var(--colorNeutralForeground3);
+}
+
+/* ─── Menu / Start Screen ──────────────────────────────────────────────────── */
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  gap: var(--space-8);
+  animation: rise var(--transition-medium);
+}
+
+.menu-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.menu-header h1 {
+  margin: 0;
+  font-size: var(--font-size-700);
+  font-weight: 700;
+  color: var(--abies-brand-800);
+}
+
+.menu-header .subtitle {
+  font-size: var(--font-size-500);
+  color: var(--colorNeutralForeground2);
+}
+
+.menu-logo {
+  width: 80px;
+  height: 80px;
+}
+
+.presentation-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  max-width: 720px;
+  width: 100%;
+}
+
+.presentation-card {
+  padding: var(--space-7);
+  border-radius: var(--radius-4);
+  background: var(--colorNeutralBackground1);
+  border: var(--stroke-2) solid var(--colorNeutralStroke1);
+  box-shadow: var(--shadow-4);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.presentation-card:hover {
+  border-color: var(--colorBrandStroke1);
+  box-shadow: var(--shadow-8);
+  transform: translateY(-2px);
+}
+
+.presentation-card:focus-visible {
+  outline: var(--stroke-2) solid var(--colorFocusRing);
+  outline-offset: var(--space-1);
+}
+
+.presentation-card h2 {
+  margin: 0;
+  font-size: var(--font-size-500);
+  font-weight: 600;
+}
+
+.card-icon {
+  font-size: var(--font-size-700);
+  line-height: 1;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: var(--font-size-300);
+  line-height: var(--line-height-400);
+  color: var(--colorNeutralForeground2);
+}
+
+.card-meta {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .presentation-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Input ────────────────────────────────────────────────────────────────── */
+
+input {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  border: var(--stroke-1) solid var(--colorNeutralStroke1);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-200);
+  color: var(--colorNeutralForeground1);
+  background: var(--colorNeutralBackground1);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+
+input:focus {
+  outline: var(--stroke-2) solid var(--colorFocusRing);
+  outline-offset: var(--space-1);
+  border-color: var(--colorBrandStroke1);
+}
+
+input::placeholder {
   color: var(--colorNeutralForeground3);
 }
 
