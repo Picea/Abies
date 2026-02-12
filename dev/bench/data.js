@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770899253871,
+  "lastUpdate": 1770899570934,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -3306,6 +3306,180 @@ window.BENCHMARK_DATA = {
             "value": 7812.222460428874,
             "unit": "ns",
             "range": "± 66.17987744915413"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bd5d86b808a8bd846df00b7b115e3e3ecdd1b94",
+          "message": "fix: Remove span wrapper from text nodes for js-framework-benchmark compliance (#71)\n\n* fix: remove span wrapper from text nodes for js-framework-benchmark compliance\n\nText nodes were previously wrapped in <span id='...'> elements, causing:\n1. HTML structure mismatch in js-framework-benchmark tests\n2. Framework being incorrectly categorized as non-keyed\n\nChanges:\n- Render text content directly without span wrapper in Operations.cs\n- UpdateText struct now includes parent element reference\n- Binary patch targets parent element, finds text node via childNodes\n- JavaScript handler updated to find and update first text node child\n\nAddresses review comments from js-framework-benchmark PR #1971.\n\n* docs: Add labeling guidelines for pull requests to improve categorization",
+          "timestamp": "2026-02-12T13:23:16+01:00",
+          "tree_id": "69523f5be92717237d9f733c475e97a2d03891e8",
+          "url": "https://github.com/Picea/Abies/commit/1bd5d86b808a8bd846df00b7b115e3e3ecdd1b94"
+        },
+        "date": 1770899570193,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 319.2865589582003,
+            "unit": "ns",
+            "range": "± 0.6717726763299886"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2157.655335998535,
+            "unit": "ns",
+            "range": "± 3.2641701313824716"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 408.9456012930189,
+            "unit": "ns",
+            "range": "± 0.7035876608638381"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 592.1987182753427,
+            "unit": "ns",
+            "range": "± 1.2772093354095284"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 437.84774899482727,
+            "unit": "ns",
+            "range": "± 0.3452748574695851"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 460.6287005864657,
+            "unit": "ns",
+            "range": "± 0.6109799081817584"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 456.55247424443564,
+            "unit": "ns",
+            "range": "± 0.5391865821892451"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 135.0056007385254,
+            "unit": "ns",
+            "range": "± 0.6313917693903478"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 615.7890211105347,
+            "unit": "ns",
+            "range": "± 1.5169143075958829"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 359.54142786906317,
+            "unit": "ns",
+            "range": "± 0.6458171307996545"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 505.23966561830963,
+            "unit": "ns",
+            "range": "± 3.4213170929196006"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 3964.0076538085937,
+            "unit": "ns",
+            "range": "± 14.858828737699886"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 34256.76986897786,
+            "unit": "ns",
+            "range": "± 313.6305778766808"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 629.7704960959298,
+            "unit": "ns",
+            "range": "± 1.0835102222864645"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 3607.3615398406982,
+            "unit": "ns",
+            "range": "± 11.417650534023501"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2023.7469576322114,
+            "unit": "ns",
+            "range": "± 6.805189689834026"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 44.09053014431681,
+            "unit": "ns",
+            "range": "± 0.14053895279049408"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 57.69572554429372,
+            "unit": "ns",
+            "range": "± 1.1093964758318395"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 568.5382364136832,
+            "unit": "ns",
+            "range": "± 2.397636584693114"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2748.8809975215368,
+            "unit": "ns",
+            "range": "± 18.044581748210803"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4603.733956400553,
+            "unit": "ns",
+            "range": "± 31.007116703925597"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 118.51360324223836,
+            "unit": "ns",
+            "range": "± 0.9551387477109764"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 313.9496976852417,
+            "unit": "ns",
+            "range": "± 3.8676994011661763"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 766.9997859954834,
+            "unit": "ns",
+            "range": "± 7.325815558357059"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 8838.055752563476,
+            "unit": "ns",
+            "range": "± 30.798997953062905"
           }
         ]
       }
