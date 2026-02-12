@@ -92,7 +92,12 @@ def parse_result_file(file_path: Path) -> dict | None:
         return None
 
 
-def convert_to_benchmark_format(results: list[dict]) -> list[dict]:
+def is_memory_benchmark(name: str) -> bool:
+    """Check if a benchmark name corresponds to a memory benchmark."""
+    return name.startswith(("21_", "22_", "23_", "24_", "25_", "26_"))
+
+
+def convert_to_benchmark_format(results: list[dict], memory_only: bool = False) -> list[dict]:
     """
     Convert results to github-action-benchmark customSmallerIsBetter format.
 
@@ -107,6 +112,11 @@ def convert_to_benchmark_format(results: list[dict]) -> list[dict]:
     ]
 
     Each benchmark gets its own trend line in gh-pages.
+
+    Args:
+        results: Parsed benchmark results.
+        memory_only: If True, only include memory benchmarks (21-26) with MB unit.
+                     If False, only include CPU benchmarks (01-09) with ms unit.
     """
     # Human-readable descriptions for all benchmarks
     benchmark_descriptions = {
@@ -134,18 +144,27 @@ def convert_to_benchmark_format(results: list[dict]) -> list[dict]:
         "34_startup-totalbytes": "total byte weight",
     }
 
+    unit = "MB" if memory_only else "ms"
     benchmark_results = []
 
     for result in results:
         name = result["name"]
+        is_mem = is_memory_benchmark(name)
+
+        # Filter: only include memory benchmarks if memory_only, else only CPU
+        if memory_only and not is_mem:
+            continue
+        if not memory_only and is_mem:
+            continue
+
         description = benchmark_descriptions.get(name, "")
         display_name = f"{name} ({description})" if description else name
 
         benchmark_results.append({
             "name": display_name,
-            "unit": "ms",
+            "unit": unit,
             "value": result["median"],
-            "extra": f"mean: {result['mean']:.1f}ms, samples: {len(result['values'])}"
+            "extra": f"mean: {result['mean']:.1f}{unit}, samples: {len(result['values'])}"
         })
 
     return benchmark_results
@@ -165,7 +184,13 @@ def main():
         "--output",
         type=Path,
         required=True,
-        help="Output JSON file path"
+        help="Output JSON file path for CPU benchmarks (ms)"
+    )
+    parser.add_argument(
+        "--output-memory",
+        type=Path,
+        default=None,
+        help="Output JSON file path for memory benchmarks (MB). If omitted, memory benchmarks are skipped."
     )
     parser.add_argument(
         "--framework",
@@ -198,22 +223,34 @@ def main():
 
     print(f"Parsed {len(results)} benchmark results")
 
-    # Convert to benchmark format
-    benchmark_data = convert_to_benchmark_format(results)
+    # Convert CPU benchmarks (01-09) to benchmark format
+    cpu_data = convert_to_benchmark_format(results, memory_only=False)
 
-    # Write output
+    # Write CPU output
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
-        json.dump(benchmark_data, f, indent=2)
+        json.dump(cpu_data, f, indent=2)
 
-    print(f"✅ Wrote {len(benchmark_data)} results to {args.output}")
+    print(f"✅ Wrote {len(cpu_data)} CPU results to {args.output}")
+
+    # Write memory output if requested
+    if args.output_memory:
+        memory_data = convert_to_benchmark_format(results, memory_only=True)
+        if memory_data:
+            args.output_memory.parent.mkdir(parents=True, exist_ok=True)
+            with open(args.output_memory, "w") as f:
+                json.dump(memory_data, f, indent=2)
+            print(f"✅ Wrote {len(memory_data)} memory results to {args.output_memory}")
+        else:
+            print("⚠️  No memory benchmarks found in results")
 
     # Print summary
     print("\n## E2E Benchmark Results\n")
-    print("| Benchmark | Median | Mean |")
-    print("|-----------|--------|------|")
+    print("| Benchmark | Median | Mean | Unit |")
+    print("|-----------|--------|------|------|")
     for result in sorted(results, key=lambda r: r["name"]):
-        print(f"| {result['name']} | {result['median']:.1f}ms | {result['mean']:.1f}ms |")
+        unit = "MB" if is_memory_benchmark(result["name"]) else "ms"
+        print(f"| {result['name']} | {result['median']:.1f}{unit} | {result['mean']:.1f}{unit} | {unit} |")
 
 
 if __name__ == "__main__":
