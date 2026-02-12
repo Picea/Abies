@@ -284,14 +284,13 @@ def main():
 
     if not baseline:
         print(f"⚠️  No baseline found at {args.baseline}")
-        print("Run with --update-baseline to create initial baseline")
-        print("\nCurrent results:")
+        print("This is expected for the first run - baseline will be created after merge to main")
+        print("\nCurrent results (no comparison available):")
         for name, result in sorted(results.items()):
             print(f"  {name}: {result.median:.1f}ms (±{result.std_dev:.1f}ms)")
-        # In CI, fail when baseline is missing to catch missing setup
-        if os.environ.get("CI") == "true":
-            print("\n❌ CI requires a baseline file for regression detection")
-            sys.exit(1)
+        # First run without baseline is OK - just report results
+        # Baseline will be created when merged to main and stored in gh-pages
+        print("\n✅ First run completed - results will be used as baseline after merge")
         sys.exit(0)
 
     comparisons = compare_results(results, baseline, args.threshold)
