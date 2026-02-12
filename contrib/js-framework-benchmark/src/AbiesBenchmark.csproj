@@ -15,6 +15,13 @@
     <NoWarn>$(NoWarn);CA1416;CA2252</NoWarn>
   </PropertyGroup>
 
+  <!-- Exclude Abies source files - they are referenced via ProjectReference, not compiled directly -->
+  <ItemGroup>
+    <Compile Remove="Abies/**/*.cs" />
+    <None Remove="Abies/**/*" />
+    <Content Remove="Abies/**/*" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="Abies/Abies.csproj" />
   </ItemGroup>
