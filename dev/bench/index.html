@@ -146,6 +146,24 @@
 
           const data = window.BENCHMARK_DATA;
 
+          // Merge renamed benchmark entries to eliminate duplicate charts.
+          // Old entries are prepended (chronologically first), then old key is removed.
+          const renames = {
+            "Rendering Engine Throughput": "2. Micro-Benchmarks: Throughput (BenchmarkDotNet)",
+            "Rendering Engine Allocations": "2. Micro-Benchmarks: Allocations (BenchmarkDotNet)",
+            "E2E Benchmark (js-framework-benchmark)": "1. E2E Benchmark (js-framework-benchmark)"
+          };
+          for (const [oldName, newName] of Object.entries(renames)) {
+            if (data.entries[oldName]) {
+              if (data.entries[newName]) {
+                data.entries[newName] = [...data.entries[oldName], ...data.entries[newName]];
+              } else {
+                data.entries[newName] = data.entries[oldName];
+              }
+              delete data.entries[oldName];
+            }
+          }
+
           // Render header
           document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
           const repoLink = document.getElementById('repository-link');
