@@ -332,8 +332,9 @@ jobs:
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/bundled-dist
           
-          # Copy framework files from contrib
+          # Copy framework files from contrib (package.json AND package-lock.json required by /ls endpoint)
           cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
+          cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package-lock.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
           cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
           
           # Copy Abies library source (excluding bin/obj to avoid stale artifacts)
