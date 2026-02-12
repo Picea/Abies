@@ -338,6 +338,7 @@ jobs:
           
           # Copy Abies library source
           cp -r $GITHUB_WORKSPACE/Abies ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
+          cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
           cp $GITHUB_WORKSPACE/Directory.Build.props ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
           cp $GITHUB_WORKSPACE/global.json ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
 
