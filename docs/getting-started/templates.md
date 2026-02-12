@@ -55,7 +55,7 @@ Both templates support these options:
 |--------|-------------|---------|
 | `-n, --name` | The name for the project | Current directory name |
 | `-o, --output` | Location to place the generated output | Current directory |
-| `--Framework` | Target framework (`net10.0` or `net9.0`) | `net10.0` |
+| `--Framework` | Target framework (`net10.0`) | `net10.0` |
 | `--skipRestore` | Skip automatic package restore | `false` |
 
 ### Examples
@@ -66,9 +66,6 @@ dotnet new abies -n MyCounter
 
 # Create in specific directory
 dotnet new abies -n MyApp -o ./projects/MyApp
-
-# Target .NET 9
-dotnet new abies -n MyApp --Framework net9.0
 
 # Skip restore (useful for CI)
 dotnet new abies -n MyApp --skipRestore

@@ -8,7 +8,7 @@
 ## Context
 
 The Abies framework is a public open-source project that:
-- Targets .NET 9 and .NET 10
+- Targets .NET 10
 - Has minimal external dependencies (only Praefixum package)
 - Publishes to NuGet.org
 - Includes a production example (Conduit) that demonstrates real-world usage
@@ -80,7 +80,7 @@ We need to decide whether to implement automated security scanning (SAST/DAST/SC
 ### Phase 1: Immediate Implementation (Now)
 ✅ **SCA - Software Composition Analysis**
 - Use built-in `dotnet list package --vulnerable`
-- Enable NuGetAudit in projects (already enabled by default in .NET 9+)
+- Enable NuGetAudit in projects (already enabled by default in .NET 10+)
 - Add CI check in all workflows
 - Configure as **warning** initially, not error
 
