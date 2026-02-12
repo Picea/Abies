@@ -169,6 +169,8 @@ private static void DiffChildren(Element oldParent, Element newParent, List<Patc
 | `ReplaceChild(old, new)` | Replace element with another |
 | `AddChild(parent, child)` | Append child element |
 | `RemoveChild(parent, child)` | Remove child element |
+| `MoveChild(parent, child, before)` | Move child to new position |
+| `ClearChildren(parent)` | Remove all children at once |
 | `UpdateAttribute(el, attr, value)` | Update attribute value |
 | `AddAttribute(el, attr)` | Add new attribute |
 | `RemoveAttribute(el, attr)` | Remove attribute |
@@ -185,46 +187,46 @@ private static void DiffChildren(Element oldParent, Element newParent, List<Patc
 
 ## Patch Application
 
-Patches are applied via JavaScript interop:
+Patches are serialized into a binary batch format and transferred to JavaScript via
+`JSType.MemoryView` for zero-copy memory transfer. This binary protocol replaces the
+original JSON-based approach and provides ~17% better performance.
 
-```csharp
-public static async Task Apply(Patch patch)
-{
-    switch (patch)
-    {
-        case AddRoot addRoot:
-            await Interop.SetAppContent(Render.Html(addRoot.Element));
-            Runtime.RegisterHandlers(addRoot.Element);
-            break;
-            
-        case ReplaceChild replace:
-            Runtime.UnregisterHandlers(replace.OldElement);
-            await Interop.ReplaceChildHtml(replace.OldElement.Id, Render.Html(replace.NewElement));
-            Runtime.RegisterHandlers(replace.NewElement);
-            break;
-            
-        case UpdateAttribute update:
-            await Interop.UpdateAttribute(update.Element.Id, update.Attribute.Name, update.Value);
-            break;
-            
-        // ... other cases
-    }
-}
+### Binary Batch Format
+
+```text
+Header (8 bytes):
+  - PatchCount: int32 (4 bytes)
+  - StringTableOffset: int32 (4 bytes)
+
+Patch Entries (16 bytes each):
+  - Type: int32 (4 bytes) — BinaryPatchType enum value
+  - Field1: int32 (4 bytes) — string table index (-1 = null)
+  - Field2: int32 (4 bytes) — string table index (-1 = null)
+  - Field3: int32 (4 bytes) — string table index (-1 = null)
+
+String Table:
+  - LEB128 length prefix + UTF8 bytes for each string
+  - String deduplication via Dictionary lookup
 ```
+
+The JavaScript side reads the binary data using `DataView` and applies DOM mutations
+in a single synchronous pass. See `RenderBatchWriter.cs` and `abies.js` for the
+full implementation.
 
 ## Performance Optimizations
 
 ### Object Pooling
 
-Lists and dictionaries are pooled to reduce allocations:
+Lists and dictionaries are pooled to reduce allocations. Since WASM is single-threaded,
+pools use `Stack<T>` instead of `ConcurrentQueue<T>` for better cache locality (LIFO reuse):
 
 ```csharp
-private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
-private static readonly ConcurrentQueue<Dictionary<string, Attribute>> _attributeMapPool = new();
+private static readonly Stack<List<Patch>> _patchListPool = new();
+private static readonly Stack<Dictionary<string, Attribute>> _attributeMapPool = new();
 
 private static List<Patch> RentPatchList()
 {
-    if (_patchListPool.TryDequeue(out var list))
+    if (_patchListPool.TryPop(out var list))
     {
         list.Clear();
         return list;
@@ -235,7 +237,7 @@ private static List<Patch> RentPatchList()
 private static void ReturnPatchList(List<Patch> list)
 {
     if (list.Count < 1000)  // Prevent memory bloat
-        _patchListPool.Enqueue(list);
+        _patchListPool.Push(list);
 }
 ```
 
@@ -283,61 +285,46 @@ private static Node PreserveIds(Node? oldNode, Node newNode)
 ## Keyed Reconciliation (ADR-016)
 
 Element IDs enable efficient list diffing. Per ADR-016, the element's `Id` is used
-as the primary key for matching elements across renders:
+as the primary key for matching elements across renders.
+
+### Three-Phase Diff
+
+Keyed child diffing uses a three-phase approach to minimize DOM mutations:
+
+1. **Head skip** — Skip matching elements at the start (common prefix)
+2. **Tail skip** — Skip matching elements at the end (common suffix)
+3. **Middle reconciliation** — Build key maps and apply LIS for the remaining section
+
+This makes append-only and prepend-only operations O(1) in terms of key-map overhead.
+
+### Longest Increasing Subsequence (LIS)
+
+For reordering operations, the algorithm computes the Longest Increasing Subsequence
+of old-to-new index mappings to determine the minimum number of DOM moves:
 
 ```csharp
-/// <summary>
-/// Gets the key for a node used in keyed diffing.
-/// Per ADR-016: Element Id is the primary key, with data-key/key attribute as fallback.
-/// </summary>
-private static string? GetKey(Node node)
-{
-    if (node is not Element element)
-        return null;
-    
-    // Check for explicit data-key attribute (backward compatibility)
-    foreach (var attr in element.Attributes)
-    {
-        if (attr.Name == "data-key" || attr.Name == "key")
-            return attr.Value;
-    }
-    
-    // Use element Id as the key
-    return element.Id;
-}
+// For a swap of rows 1 and 998 in a 1000-element list:
+// LIS = [0, 2, 3, ..., 997, 999] (length 998)
+// Only 2 MoveChild patches needed (positions 1 and 998)
 ```
 
-When key sets differ, the algorithm:
+Elements in the LIS stay in place; elements not in the LIS are moved using
+`MoveChild(parentId, childId, beforeId)` patches with stable element IDs.
 
-1. Removes elements whose IDs don't exist in the new list
-2. Diffs elements whose IDs exist in both lists
-3. Adds elements whose IDs don't exist in the old list
+### Memoization
 
-When key order changes (same keys, different positions), all children are replaced
-to preserve correct DOM ordering:
+The diffing algorithm supports memoized nodes via `LazyMemo`. When a `LazyMemo` node's
+key matches between old and new trees (checked via `MemoKeyEquals<TKey>()` with
+`EqualityComparer<TKey>.Default`), the diff exits early without traversing the subtree.
 
-```csharp
-if (!oldKeys.SequenceEqual(newKeys))
-{
-    var oldKeySet = new HashSet<string>(oldKeys);
-    var newKeySet = new HashSet<string>(newKeys);
-    var isReorder = oldKeySet.SetEquals(newKeySet);
-    
-    if (isReorder)
-    {
-        // Reorder: remove all and add all
-        for (int i = oldLength - 1; i >= 0; i--)
-            patches.Add(new RemoveChild(oldParent, oldChildren[i]));
-        for (int i = 0; i < newLength; i++)
-            patches.Add(new AddChild(newParent, newChildren[i]));
-    }
-    else
-    {
-        // Membership change: only remove/add what's needed
-        // ... diff matching elements, remove missing, add new
-    }
-}
-```
+A view cache layer enables `ReferenceEquals` bailout: if the same `LazyMemo` reference
+is returned across renders (because its key hasn't changed), diffing is skipped entirely.
+
+### Fast Paths
+
+- **Clear** (`newLength == 0`): O(1) `ClearChildren` patch
+- **Append-only** (`oldLength == 0`): Direct `AddChild` without key maps
+- **Same reference** (`ReferenceEquals(old, new)`): Skip immediately
 
 ## Rendering to HTML
 
@@ -396,3 +383,5 @@ Where:
 - [API: DOM Types](../api/dom-types.md) — DOM type reference
 - [Concepts: Virtual DOM](../concepts/virtual-dom.md) — Conceptual overview
 - [ADR-003: Virtual DOM](../adr/ADR-003-virtual-dom.md) — Design decision
+- [ADR-016: Keyed DOM Diffing](../adr/ADR-016-keyed-dom-diffing.md) — LIS algorithm and keyed reconciliation
+- [Benchmarks](../benchmarks.md) — Performance benchmark results and methodology

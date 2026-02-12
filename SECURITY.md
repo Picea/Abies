@@ -65,7 +65,7 @@ When using Abies in your projects:
 
 1. **Keep Abies Updated**: Always use the latest stable version
 2. **Review Dependencies**: Check the dependencies Abies brings into your project
-3. **Enable NuGet Audit**: Ensure `NuGetAudit` is enabled in your projects (enabled by default in .NET 9+)
+3. **Enable NuGet Audit**: Ensure `NuGetAudit` is enabled in your projects (enabled by default in .NET 10+)
 4. **Follow CSP Guidelines**: Configure appropriate Content Security Policy headers for your apps
 5. **Validate User Input**: Even in client-side applications, validate and sanitize all user input
 

@@ -137,5 +137,8 @@ Design decisions and their rationale.
 | [ADR-015](./adr/ADR-015-tracing-verbosity.md) | Tracing Verbosity |
 | [ADR-016](./adr/ADR-016-keyed-dom-diffing.md) | Keyed DOM Diffing |
 | [ADR-017](./adr/ADR-017-dotnet-new-templates.md) | dotnet new Templates |
+| [ADR-018](./adr/ADR-018-pr-lint-only-changed-files.md) | PR Lint Check Only Changed Files |
+| [ADR-019](./adr/ADR-019-trunk-based-development.md) | Trunk-Based Development |
+| [ADR-020](./adr/ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates |
 
 [View all ADRs →](./adr/README.md)

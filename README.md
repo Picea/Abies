@@ -110,17 +110,23 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 
 ## Project Structure
 
-| Project               | Description                      |
-| --------------------- | -------------------------------- |
-| `Abies`               | Core framework library           |
-| `Abies.Templates`     | `dotnet new` project templates   |
-| `Abies.Conduit`       | RealWorld example app (frontend) |
-| `Abies.Conduit.Api`   | RealWorld example app (backend)  |
-| `Abies.Counter`       | Minimal counter example          |
-| `Abies.SubscriptionsDemo` | Subscriptions demo app       |
-| `Abies.Tests`         | Unit tests                       |
+| Project | Description |
+| --- | --- |
+| `Abies` | Core framework library |
+| `Abies.Templates` | `dotnet new` project templates |
+| `Abies.Conduit` | RealWorld example app (frontend) |
+| `Abies.Conduit.Api` | RealWorld example app (backend API) |
+| `Abies.Conduit.AppHost` | .NET Aspire app host for local development |
+| `Abies.Conduit.ServiceDefaults` | Shared service defaults (OpenTelemetry, health checks) |
+| `Abies.Conduit.E2E` | End-to-end Playwright tests for Conduit |
+| `Abies.Conduit.IntegrationTests` | Integration tests (DOM, API contract, journey) |
+| `Abies.Counter` | Minimal counter example |
+| `Abies.SubscriptionsDemo` | Subscriptions demo (timers, resize, WebSocket) |
+| `Abies.Presentation` | Conference presentation app |
+| `Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
+| `Abies.Tests` | Unit tests |
 
-See `docs/subscriptions-demo.md` for the demo walkthrough (including the mock WebSocket feed).
+See the [Subscriptions tutorial](./docs/tutorials/06-subscriptions.md) for a walkthrough of timers, browser events, and WebSocket subscriptions.
 
 ## Requirements
 
@@ -129,15 +135,19 @@ See `docs/subscriptions-demo.md` for the demo walkthrough (including the mock We
 
 ## Performance
 
-Abies includes comprehensive benchmarks for the Virtual DOM diffing algorithm. Performance is continuously monitored with automated quality gates.
+Abies uses a dual-layer benchmarking strategy: micro-benchmarks (BenchmarkDotNet) for development feedback and E2E benchmarks (js-framework-benchmark) as the source of truth.
 
 📊 **[View Benchmark Results](https://picea.github.io/Abies/dev/bench/)** — Interactive charts with historical trends
 
-| Scenario | Typical Performance |
-|----------|---------------------|
-| Small DOM diff (2-3 elements) | ~235 ns |
-| Medium DOM diff (15-20 elements) | ~310 ns |
-| Large DOM diff (150+ elements) | ~256 ns |
+### E2E Performance (js-framework-benchmark)
+
+| Benchmark | Abies | Blazor WASM | Ratio |
+| --- | --- | --- | --- |
+| Create 1,000 rows | ~89 ms | ~88 ms | **1.01x** ✅ |
+| Swap rows | ~121 ms | ~95 ms | 1.27x |
+| Clear 1,000 rows | ~85 ms | ~46 ms | 1.84x |
+| First Paint | ~74 ms | ~75 ms | **0.99x** ✅ |
+| Bundle size (compressed) | 1,225 KB | 1,377 KB | **0.89x** ✅ |
 
 See [docs/benchmarks.md](./docs/benchmarks.md) for details on running benchmarks locally.
 
