@@ -372,7 +372,6 @@ Timeout patterns are checked first, then assertions.
 ## Related Documentation
 
 - [E2E Testing Guide](../../docs/guides/testing.md#e2e-tests)
-- [CI/CD Workflows](../../docs/guides/ci-cd.md)
 - [Playwright Documentation](https://playwright.dev)
 
 ## Questions?

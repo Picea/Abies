@@ -152,7 +152,7 @@ CodeQL complements your current setup:
 - **How much does it cost?** Free for public repos!
 - **Will it slow CI?** ~5 minutes added
 - **Can I disable it?** Yes, delete workflow file
-- **What about .NET 9/10?** Fully supported!
+- **What about .NET 10?** Fully supported!
 
 ---
 

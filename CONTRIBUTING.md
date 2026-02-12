@@ -269,7 +269,7 @@ A PR is ready to merge when:
 
 ## 📜 License
 
-By contributing, you agree that your contributions will be licensed under the same [MIT License](LICENSE) that covers this project.
+By contributing, you agree that your contributions will be licensed under the same [Apache 2.0 License](LICENSE) that covers this project.
 
 ---
 
