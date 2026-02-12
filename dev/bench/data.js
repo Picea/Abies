@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770911498660,
+  "lastUpdate": 1770911499673,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8038,6 +8038,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 37.958139419555664,
+            "unit": "MB",
+            "extra": "mean: 38.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5aa5fc4e64635303b3adf87d383bfdb6ba6bc98d",
+          "message": "chore(deps): bump actions/upload-artifact from 4 to 6 (#54)\n\nBumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 4 to 6.\n- [Release notes](https://github.com/actions/upload-artifact/releases)\n- [Commits](https://github.com/actions/upload-artifact/compare/v4...v6)\n\n---\nupdated-dependencies:\n- dependency-name: actions/upload-artifact\n  dependency-version: '6'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Maurice CGP Peters <MCGPPeters@users.noreply.github.com>",
+          "timestamp": "2026-02-12T16:40:31+01:00",
+          "tree_id": "1164d2c94c68ef340df82dfcc9e85124cbf57c5d",
+          "url": "https://github.com/Picea/Abies/commit/5aa5fc4e64635303b3adf87d383bfdb6ba6bc98d"
+        },
+        "date": 1770911499438,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.45453453063965,
+            "unit": "MB",
+            "extra": "mean: 34.5MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.95861530303955,
             "unit": "MB",
             "extra": "mean: 38.0MB, samples: 1"
           }
