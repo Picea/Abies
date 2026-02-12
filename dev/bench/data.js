@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770908686414,
+  "lastUpdate": 1770908805528,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -7058,6 +7058,96 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 37.92978763580322,
+            "unit": "ms",
+            "extra": "mean: 37.9ms, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c6e5a29cbc803da582da63d644622960ea52bff",
+          "message": "chore: fix code formatting throughout solution (#74)\n\nApply dotnet format to all non-core Abies project files to fix\npre-existing formatting issues. Add IDE0005 pragma suppression to\nGlobal/Usings.cs for the Unit alias (false positive - Unit IS used\nin the core library).\n\nNote: The core Abies project has known issues with dotnet format\ndue to multi-targeting. Those files are intentionally not modified\nto avoid corruption (see memory.instructions.md).",
+          "timestamp": "2026-02-12T15:54:59+01:00",
+          "tree_id": "4beb6ba39b626a573338a3d083406cab86071c1f",
+          "url": "https://github.com/Picea/Abies/commit/5c6e5a29cbc803da582da63d644622960ea52bff"
+        },
+        "date": 1770908805114,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 252,
+            "unit": "ms",
+            "extra": "mean: 257.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 307.3,
+            "unit": "ms",
+            "extra": "mean: 308.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 359.8,
+            "unit": "ms",
+            "extra": "mean: 362.4ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 316.2,
+            "unit": "ms",
+            "extra": "mean: 316.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 321.1,
+            "unit": "ms",
+            "extra": "mean: 323.4ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 182.3,
+            "unit": "ms",
+            "extra": "mean: 182.9ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2128.1,
+            "unit": "ms",
+            "extra": "mean: 2135.6ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 310.3,
+            "unit": "ms",
+            "extra": "mean: 308.2ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 273.7,
+            "unit": "ms",
+            "extra": "mean: 273.5ms, samples: 15"
+          },
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.44077491760254,
+            "unit": "ms",
+            "extra": "mean: 34.4ms, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.91446495056152,
             "unit": "ms",
             "extra": "mean: 37.9ms, samples: 1"
           }
