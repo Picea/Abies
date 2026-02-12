@@ -336,9 +336,14 @@ jobs:
           cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
           cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
           
-          # Copy Abies library source
-          cp -r $GITHUB_WORKSPACE/Abies ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
+          # Copy Abies library source (excluding bin/obj to avoid stale artifacts)
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
+          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies/
+          
+          # Copy Global folder (referenced by Directory.Build.props)
           cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
+          
+          # Copy build configuration
           cp $GITHUB_WORKSPACE/Directory.Build.props ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
           cp $GITHUB_WORKSPACE/global.json ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
 
@@ -374,6 +379,8 @@ jobs:
           npm ci
           cd webdriver-ts
           npm ci
+          # Compile TypeScript to dist/ folder
+          npm run compile
 
       - name: Start benchmark server
         run: |
