@@ -31,7 +31,7 @@ class BenchmarkResult:
     name: str
     median: float
     mean: float
-    std_dev: float
+    std_dev: float  # Will be 0.0 if not available
     values: list[float]
 
 
@@ -70,39 +70,44 @@ def parse_result_file(file_path: Path) -> Optional[BenchmarkResult]:
         #     "paint": {...}
         #   }
         # }
+        # Memory benchmarks use "DEFAULT" key instead of "total"
         if "values" in data:
             values_obj = data["values"]
+            values = []
+            median = 0.0
+            mean = 0.0
+            std_dev = 0.0
 
             # Handle nested format (CPU benchmarks)
             if isinstance(values_obj, dict):
-                # Use "total" timing as the primary metric
+                # Use "total" timing as the primary metric for CPU benchmarks
                 if "total" in values_obj:
                     total_data = values_obj["total"]
                     # The stats object has pre-computed values
                     if isinstance(total_data, dict):
                         values = total_data.get("values", [])
-                        median = total_data.get("median", statistics.median(values) if values else 0)
-                        mean = total_data.get("mean", statistics.mean(values) if values else 0)
-                        std_dev = total_data.get("stddev", statistics.stdev(values) if len(values) > 1 else 0)
+                        median = total_data.get("median") or (statistics.median(values) if values else 0.0)
+                        mean = total_data.get("mean") or (statistics.mean(values) if values else 0.0)
+                        std_dev = total_data.get("stddev") or (statistics.stdev(values) if len(values) > 1 else 0.0)
                     else:
                         # Legacy format: values is directly an array
                         values = total_data if isinstance(total_data, list) else []
-                        median = statistics.median(values) if values else 0
-                        mean = statistics.mean(values) if values else 0
-                        std_dev = statistics.stdev(values) if len(values) > 1 else 0
+                        median = statistics.median(values) if values else 0.0
+                        mean = statistics.mean(values) if values else 0.0
+                        std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
                 elif "DEFAULT" in values_obj:
                     # Memory/startup benchmarks use DEFAULT key
                     default_data = values_obj["DEFAULT"]
                     if isinstance(default_data, dict):
                         values = default_data.get("values", [])
-                        median = default_data.get("median", statistics.median(values) if values else 0)
-                        mean = default_data.get("mean", statistics.mean(values) if values else 0)
-                        std_dev = default_data.get("stddev", statistics.stdev(values) if len(values) > 1 else 0)
+                        median = default_data.get("median") or (statistics.median(values) if values else 0.0)
+                        mean = default_data.get("mean") or (statistics.mean(values) if values else 0.0)
+                        std_dev = default_data.get("stddev") or (statistics.stdev(values) if len(values) > 1 else 0.0)
                     else:
                         values = default_data if isinstance(default_data, list) else []
-                        median = statistics.median(values) if values else 0
-                        mean = statistics.mean(values) if values else 0
-                        std_dev = statistics.stdev(values) if len(values) > 1 else 0
+                        median = statistics.median(values) if values else 0.0
+                        mean = statistics.mean(values) if values else 0.0
+                        std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
                 else:
                     print(f"Warning: Unknown values format in {file_path}", file=sys.stderr)
                     return None
@@ -113,15 +118,19 @@ def parse_result_file(file_path: Path) -> Optional[BenchmarkResult]:
                 mean = statistics.mean(values)
                 std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
 
+            # Ensure std_dev is never None
+            if std_dev is None:
+                std_dev = 0.0
+
             # Extract benchmark name from filename
             # Format: framework_benchmarkname.json
             name = file_path.stem.split("_", 1)[1] if "_" in file_path.stem else file_path.stem
 
             return BenchmarkResult(
                 name=name,
-                median=median,
-                mean=mean,
-                std_dev=std_dev,
+                median=float(median) if median is not None else 0.0,
+                mean=float(mean) if mean is not None else 0.0,
+                std_dev=float(std_dev) if std_dev is not None else 0.0,
                 values=values if isinstance(values, list) else []
             )
     except (json.JSONDecodeError, KeyError, IndexError) as e:
@@ -287,7 +296,8 @@ def main():
         print("This is expected for the first run - baseline will be created after merge to main")
         print("\nCurrent results (no comparison available):")
         for name, result in sorted(results.items()):
-            print(f"  {name}: {result.median:.1f}ms (±{result.std_dev:.1f}ms)")
+            std_dev = result.std_dev if result.std_dev is not None else 0.0
+            print(f"  {name}: {result.median:.1f}ms (±{std_dev:.1f}ms)")
         # First run without baseline is OK - just report results
         # Baseline will be created when merged to main and stored in gh-pages
         print("\n✅ First run completed - results will be used as baseline after merge")
