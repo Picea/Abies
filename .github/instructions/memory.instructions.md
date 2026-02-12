@@ -22,6 +22,62 @@ The project has benchmark suites in `Abies.Benchmarks/`:
 - `RenderingBenchmarks.cs` - HTML rendering performance
 - `EventHandlerBenchmarks.cs` - Event handler creation performance
 
+### Benchmarking Strategy (2026-02-11)
+
+**See `docs/investigations/benchmarking-strategy.md` for the full analysis.**
+
+**Key Finding**: Micro-benchmark improvements that don't appear in E2E benchmarks are likely false positives.
+
+**Dual-Layer Strategy**:
+
+1. **Primary (Source of Truth)**: js-framework-benchmark - measures what users experience (EventDispatch → Paint)
+2. **Secondary (Development Feedback)**: BenchmarkDotNet - algorithm comparison, allocation tracking
+
+**Critical Rule**: NEVER ship based on micro-benchmark improvements alone. Always validate with js-framework-benchmark.
+
+**Historical Evidence**: The PatchType enum optimization showed 11-20% improvement in BenchmarkDotNet but caused 2-5% REGRESSION in js-framework-benchmark. This proves micro-benchmarks can mislead.
+
+**What Micro-Benchmarks Miss**:
+
+- JS interop overhead (the biggest cost in WASM apps)
+- Browser rendering pipeline
+- GC pressure at scale
+- Memory bandwidth effects
+- Real-world allocation patterns
+
+**When Micro-Benchmarks Are Useful**:
+
+- Comparing algorithm alternatives (A vs B with same interface)
+- Tracking allocation counts (not timings)
+- Rapid iteration during development
+- Isolated component testing (must validate with E2E after)
+
+**Running E2E Benchmarks**:
+
+```bash
+# Build Abies for benchmark
+cd js-framework-benchmark-fork/frameworks/keyed/abies/src
+rm -rf bin obj && dotnet publish -c Release
+cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+
+# Run benchmarks
+cd ../../../../
+npm start &  # Start server on port 8080
+cd webdriver-ts
+npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k
+npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k
+npm run bench -- --headless --framework abies-keyed --benchmark 09_clear1k
+```
+
+**Comparing Results**:
+
+```bash
+python3 scripts/compare-benchmark.py \
+  --results-dir ../js-framework-benchmark-fork/webdriver-ts/results \
+  --baseline benchmark-results/baseline.json \
+  --threshold 5.0
+```
+
 ## Performance Optimizations Applied
 
 The following Toub-inspired optimizations have been applied:
@@ -224,13 +280,13 @@ The following Toub-inspired optimizations have been applied:
 
 ### Setup
 
-The [js-framework-benchmark](https://github.com/nicknash/js-framework-benchmark) is the standard benchmark for comparing frontend framework performance.
+The [js-framework-benchmark](https://github.com/krausest/js-framework-benchmark) is the standard benchmark for comparing frontend framework performance.
 
 **Clone the fork alongside Abies** (same parent directory):
 ```bash
 # From Abies parent directory
 cd ..
-git clone https://github.com/nicknash/js-framework-benchmark.git js-framework-benchmark-fork
+git clone https://github.com/krausest/js-framework-benchmark.git js-framework-benchmark-fork
 ```
 
 Expected structure:
