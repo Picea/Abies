@@ -1,1 +1,1 @@
-﻿global using static Abies.Html.Elements;
+global using static Abies.Html.Elements;

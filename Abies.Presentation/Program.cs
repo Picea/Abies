@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Runtime.Versioning;
 using Abies;
 using Abies.DOM;
@@ -29,19 +28,19 @@ public record Model(
 
 public interface Message : Abies.Message
 {
-    public sealed record NextSlide : Message;
-    public sealed record PrevSlide : Message;
-    public sealed record GoToSlide(int Index) : Message;
-    public sealed record KeyPressed(string Key, bool Repeat) : Message;
-    public sealed record IncrementDemo : Message;
-    public sealed record ResetDemo : Message;
-    public sealed record ToggleDemoTimer : Message;
-    public sealed record Tick(DateTimeOffset Now) : Message;
-    public sealed record ToggleMouse : Message;
-    public sealed record MouseMoved(PointerEventData Data, DateTimeOffset At) : Message;
-    public sealed record ClearLog : Message;
-    public sealed record DemoInputChanged(string Value) : Message;
-    public sealed record NoOp : Message;
+    sealed record NextSlide : Message;
+    sealed record PrevSlide : Message;
+    sealed record GoToSlide(int Index) : Message;
+    sealed record KeyPressed(string Key, bool Repeat) : Message;
+    sealed record IncrementDemo : Message;
+    sealed record ResetDemo : Message;
+    sealed record ToggleDemoTimer : Message;
+    sealed record Tick(DateTimeOffset Now) : Message;
+    sealed record ToggleMouse : Message;
+    sealed record MouseMoved(PointerEventData Data, DateTimeOffset At) : Message;
+    sealed record ClearLog : Message;
+    sealed record DemoInputChanged(string Value) : Message;
+    sealed record NoOp : Message;
 }
 
 public class Presentation : Program<Model, Arguments>
@@ -804,7 +803,7 @@ public class Presentation : Program<Model, Arguments>
         return SubscriptionModule.Batch(subscriptions);
     }
 
-    public static Task HandleCommand(Command command, Func<Abies.Message, System.ValueTuple> dispatch)
+    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
         => Task.CompletedTask;
 
     public static (Model model, Command command) Update(Abies.Message message, Model model)
@@ -904,7 +903,7 @@ public class Presentation : Program<Model, Arguments>
                     ])
                 ]),
                 div([class_("progress"), role("progressbar"), ariaValuemin("0"), ariaValuemax("100"), ariaValuenow($"{progress:0}"), ariaValuetext($"Slide {slideNumber} of {Slides.Length}")],
-                    [div([class_("progress-bar"), Abies.Html.Attributes.style($"width:{progress:0.##}%")], [])]),
+                    [div([class_("progress-bar"), style($"width:{progress:0.##}%")], [])]),
                 main([class_("deck")],
                 [
                     nav([class_("agenda")],
@@ -1024,10 +1023,10 @@ public class Presentation : Program<Model, Arguments>
     }
 
     internal static Element FluentButton(Abies.DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => Abies.Html.Elements.element("fluent-button", attributes, children, id);
+        => element("fluent-button", attributes, children, id);
 
     internal static Element FluentBadge(Abies.DOM.Attribute[] attributes, Node[] children, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => Abies.Html.Elements.element("fluent-badge", attributes, children, id);
+        => element("fluent-badge", attributes, children, id);
 
     private static (Model model, Command command) HandleKeyPress(string key, bool repeat, Model model)
         => repeat
@@ -1075,14 +1074,14 @@ public class Presentation : Program<Model, Arguments>
     {
         var stamp = at?.ToString("HH:mm:ss");
         var formatted = stamp is null ? entry : $"{stamp} {entry}";
-        var next = (string[])[formatted, ..entries];
+        var next = (string[])[formatted, .. entries];
         return next.Length > 8 ? next[..8] : next;
     }
 
     private static Node[] RenderLogItems(IReadOnlyList<string> entries)
         => entries.Count == 0
             ? [li([class_("log-empty")], [text("No events yet. Trigger a message to see updates.")])]
-            : [..entries.Select((entry, idx) => li([attribute("data-key", $"log-{idx}-{entry.GetHashCode()}")], [text(entry)]))];
+            : [.. entries.Select((entry, idx) => li([attribute("data-key", $"log-{idx}-{entry.GetHashCode()}")], [text(entry)]))];
 
     private static Model UpdateMouse(Model model, Message.MouseMoved moved)
     {

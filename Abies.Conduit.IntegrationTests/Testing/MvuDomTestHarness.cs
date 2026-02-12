@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Abies.DOM;
 using Abies.Html;
 
@@ -35,13 +32,13 @@ internal static class MvuDomTestHarness
         el => left(el) && right(el);
 
     public static Node Render<TModel, TMsg>(TModel model, Func<TModel, Node> view)
-        where TMsg : Abies.Message
+        where TMsg : Message
         => view(model);
 
-    public static (TModel model, Abies.Command command) DispatchClick<TModel>(
+    public static (TModel model, Command command) DispatchClick<TModel>(
         TModel model,
         Func<TModel, Node> view,
-        Func<Abies.Message, TModel, (TModel model, Abies.Command command)> update,
+        Func<Message, TModel, (TModel model, Command command)> update,
         Func<Element, bool> elementPredicate)
     {
         var dom = view(model);
@@ -58,10 +55,10 @@ internal static class MvuDomTestHarness
             $"Found click handler on element id={element.Id}, but it requires event data (WithData) which isn't supported by this harness yet.");
     }
 
-    public static (TModel model, Abies.Command command) DispatchInput<TModel>(
+    public static (TModel model, Command command) DispatchInput<TModel>(
         TModel model,
         Func<TModel, Node> view,
-        Func<Abies.Message, TModel, (TModel model, Abies.Command command)> update,
+        Func<Message, TModel, (TModel model, Command command)> update,
         Func<Element, bool> elementPredicate,
         string value)
     {
@@ -69,16 +66,18 @@ internal static class MvuDomTestHarness
         var (element, handler) = FindFirstHandler(dom, "input", elementPredicate);
 
         if (handler.WithData is null)
+        {
             throw new InvalidOperationException($"Expected input handler on element id={element.Id} to have WithData.");
+        }
 
         var msg = handler.WithData(new InputEventData(value));
         return update(msg, model);
     }
 
-    public static (TModel model, Abies.Command command) DispatchChange<TModel>(
+    public static (TModel model, Command command) DispatchChange<TModel>(
         TModel model,
         Func<TModel, Node> view,
-        Func<Abies.Message, TModel, (TModel model, Abies.Command command)> update,
+        Func<Message, TModel, (TModel model, Command command)> update,
         Func<Element, bool> elementPredicate,
         string value)
     {
@@ -86,16 +85,18 @@ internal static class MvuDomTestHarness
         var (element, handler) = FindFirstHandler(dom, "change", elementPredicate);
 
         if (handler.WithData is null)
+        {
             throw new InvalidOperationException($"Expected change handler on element id={element.Id} to have WithData.");
+        }
 
         var msg = handler.WithData(new InputEventData(value));
         return update(msg, model);
     }
 
-    public static (TModel model, Abies.Command command) DispatchSubmit<TModel>(
+    public static (TModel model, Command command) DispatchSubmit<TModel>(
         TModel model,
         Func<TModel, Node> view,
-        Func<Abies.Message, TModel, (TModel model, Abies.Command command)> update,
+        Func<Message, TModel, (TModel model, Command command)> update,
         Func<Element, bool> formPredicate)
     {
         var dom = view(model);
@@ -103,7 +104,9 @@ internal static class MvuDomTestHarness
         var (_, handler) = FindFirstHandler(dom, "submit", formPredicate);
 
         if (handler.Command is null)
+        {
             throw new InvalidOperationException("Submit handler must have a concrete Command message.");
+        }
 
         return update(handler.Command, model);
     }
@@ -122,7 +125,9 @@ internal static class MvuDomTestHarness
             foreach (var child in el.Children)
             {
                 foreach (var descendant in EnumerateElements(child))
+                {
                     yield return descendant;
+                }
             }
         }
     }
@@ -138,7 +143,9 @@ internal static class MvuDomTestHarness
                 foreach (var child in el.Children)
                 {
                     foreach (var desc in EnumerateTextNodes(child))
+                    {
                         yield return desc;
+                    }
                 }
                 yield break;
             default:
@@ -153,7 +160,9 @@ internal static class MvuDomTestHarness
         foreach (var el in EnumerateElements(root))
         {
             if (!elementPredicate(el))
+            {
                 continue;
+            }
 
             // In Abies.DOM, Handler.Name is the raw event name (e.g. "click"),
             // while the rendered HTML attribute name is "data-event-click".
@@ -163,15 +172,17 @@ internal static class MvuDomTestHarness
             // Note: Handler inherits Attribute and stores the real attribute name in Attribute.Name.
             if (handler is null)
             {
-                handler = el.Attributes.OfType<Handler>().FirstOrDefault(h => ((Abies.DOM.Attribute)h).Name == attributeName);
+                handler = el.Attributes.OfType<Handler>().FirstOrDefault(h => h.Name == attributeName);
             }
 
             if (handler is not null)
+            {
                 return (el, handler);
+            }
         }
 
         throw new InvalidOperationException($"No handler found for event '{eventName}'.");
     }
 
-    public static string Html(Node node) => Abies.DOM.Render.Html(node);
+    public static string Html(Node node) => DOM.Render.Html(node);
 }

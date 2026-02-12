@@ -1,23 +1,20 @@
+using System.Globalization;
 using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
 using Abies.DOM;
-using System.Collections.Generic;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
-using Abies.Conduit;
-using System.Globalization;
 
 namespace Abies.Conduit.Page.Profile;
 
 public interface Message : Abies.Message
 {
-    public record ProfileLoaded(Home.Profile Profile) : Message;
-    public record ArticlesLoaded(List<Home.Article> Articles, int ArticlesCount) : Message;
-    public record FavoritedArticlesLoaded(List<Home.Article> Articles, int ArticlesCount) : Message;
-    public record ToggleTab(ProfileTab Tab) : Message;
-    public record ToggleFollow : Message;
-    public record ToggleFavorite(string Slug, bool CurrentState) : Message;
-    public record PageSelected(int Page) : Message;
+    record ProfileLoaded(Home.Profile Profile) : Message;
+    record ArticlesLoaded(List<Home.Article> Articles, int ArticlesCount) : Message;
+    record FavoritedArticlesLoaded(List<Home.Article> Articles, int ArticlesCount) : Message;
+    record ToggleTab(ProfileTab Tab) : Message;
+    record ToggleFollow : Message;
+    record ToggleFavorite(string Slug, bool CurrentState) : Message;
+    record PageSelected(int Page) : Message;
 }
 
 public enum ProfileTab
@@ -42,7 +39,10 @@ public class Page : Element<Model, Message>
     private static string FormatDate(string value)
     {
         if (DateTime.TryParse(value, out var dt))
+        {
             return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        }
+
         return value;
     }
     public static Model Initialize(Message argument)
@@ -59,29 +59,30 @@ public class Page : Element<Model, Message>
         => message switch
         {
             Message.ProfileLoaded profileLoaded => (
-                model with 
-                { 
+                model with
+                {
                     Profile = profileLoaded.Profile,
                     IsLoading = false
                 },
                 Commands.None
             ),
             Message.ArticlesLoaded articlesLoaded => (
-                model with 
-                { 
+                model with
+                {
                     Articles = articlesLoaded.Articles,
                     ArticlesCount = articlesLoaded.ArticlesCount
                 },
                 Commands.None
             ),
             Message.FavoritedArticlesLoaded favoritedArticlesLoaded => (
-                model with 
-                { 
+                model with
+                {
                     Articles = favoritedArticlesLoaded.Articles,
                     ArticlesCount = favoritedArticlesLoaded.ArticlesCount
                 },
                 Commands.None
-            ),            Message.ToggleTab toggleTab => (
+            ),
+            Message.ToggleTab toggleTab => (
                 model with { ActiveTab = toggleTab.Tab, CurrentPage = 0 },
                 toggleTab.Tab == ProfileTab.FavoritedArticles
                     ? new LoadArticlesCommand(null, null, model.UserName.Value, Offset: 0)
@@ -91,7 +92,7 @@ public class Page : Element<Model, Message>
                 model.Profile is not null
                     ? model with { Profile = model.Profile with { Following = !model.Profile.Following } }
                     : model,
-                model.Profile is not null ?  new ToggleFollowCommand(model.UserName.Value, model.Profile.Following)  : Commands.None
+                model.Profile is not null ? new ToggleFollowCommand(model.UserName.Value, model.Profile.Following) : Commands.None
             ),
             Message.ToggleFavorite fav => (
                 model,
@@ -123,36 +124,36 @@ public class Page : Element<Model, Message>
                         isCurrentUser
                             ? a([class_("btn btn-sm btn-outline-secondary action-btn"),
                                 href("/settings")],[
-                                
+
                                     i([class_("ion-gear-a")], []),
                                     text(" Edit Profile Settings")
                                 ])
-                            : button([class_(model.Profile?.Following ?? false 
-                                ? "btn btn-sm btn-secondary action-btn" 
+                            : button([class_(model.Profile?.Following ?? false
+                                ? "btn btn-sm btn-secondary action-btn"
                                 : "btn btn-sm btn-outline-secondary action-btn"),
                                 onclick(new Message.ToggleFollow())],[
-                                
+
                                     i([class_("ion-plus-round")], []),
-                                    text(model.Profile?.Following ?? false 
-                                        ? $" Unfollow {model.UserName.Value}" 
+                                    text(model.Profile?.Following ?? false
+                                        ? $" Unfollow {model.UserName.Value}"
                                         : $" Follow {model.UserName.Value}")
                                 ])
                     ])
                 ])
             ])
-        ]);    private static Node ArticleToggle(Model model) =>
+        ]); private static Node ArticleToggle(Model model) =>
         div([class_("articles-toggle")], [
             ul([class_("nav nav-pills outline-active")], [
                 li([class_("nav-item")], [
-                    a([class_(model.ActiveTab == ProfileTab.MyArticles 
-                        ? "nav-link active" 
+                    a([class_(model.ActiveTab == ProfileTab.MyArticles
+                        ? "nav-link active"
                         : "nav-link"),
                       href($"/profile/{model.UserName.Value}")],
                       [text("My Articles")])
                 ]),
                 li([class_("nav-item")], [
-                    a([class_(model.ActiveTab == ProfileTab.FavoritedArticles 
-                        ? "nav-link active" 
+                    a([class_(model.ActiveTab == ProfileTab.FavoritedArticles
+                        ? "nav-link active"
                         : "nav-link"),
                       href($"/profile/{model.UserName.Value}/favorites")],
                       [text("Favorited Articles")])
@@ -193,12 +194,15 @@ public class Page : Element<Model, Message>
     private static Node ArticleList(Model model) =>
         model.Articles is null || model.Articles.Count == 0
             ? div([class_("article-preview")], [text("No articles are here... yet.")])
-            : div([], [ ..model.Articles.ConvertAll(article => ArticlePreview(article)) ]);
+            : div([], [.. model.Articles.ConvertAll(article => ArticlePreview(article))]);
 
     private static Node Pagination(Model model)
     {
-        int pageCount = (int)System.Math.Ceiling(model.ArticlesCount / 10.0);
-        if (pageCount <= 1) return text("");
+        int pageCount = (int)Math.Ceiling(model.ArticlesCount / 10.0);
+        if (pageCount <= 1)
+        {
+            return text("");
+        }
 
         List<Node> items = [];
         for (int i = 0; i < pageCount; i++)
@@ -210,7 +214,10 @@ public class Page : Element<Model, Message>
                 type("button"),
                 onclick(new Message.PageSelected(i))
             ];
-            if (isActive) attrs.Add(ariaCurrent("page"));
+            if (isActive)
+            {
+                attrs.Add(ariaCurrent("page"));
+            }
 
             items.Add(
                 li([class_(isActive ? "page-item active" : "page-item")], [
@@ -218,9 +225,9 @@ public class Page : Element<Model, Message>
                 ]));
         }
 
-    return nav([], [ ul([
+        return nav([], [ ul([
         class_("pagination"),
-        Abies.Html.Attributes.data("current-page", (model.CurrentPage + 1).ToString())
+        data("current-page", (model.CurrentPage + 1).ToString())
         ], [..items]) ]);
     }
 

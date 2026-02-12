@@ -1,7 +1,7 @@
 using Abies;
 using Abies.DOM;
-using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 using static Abies.Html.Events;
 
 // Start the Abies runtime with the Counter program
@@ -76,7 +76,7 @@ public class Counter : Program<Model, Arguments>
                 [
                     h1([], [text("Counter")]),
                     p([class_("subtitle")], [text("Model-View-Update in action")]),
-                    
+
                     div([class_("counter")],
                     [
                         button(
@@ -125,6 +125,6 @@ public class Counter : Program<Model, Arguments>
     /// <summary>
     /// Handle commands (side effects like HTTP requests).
     /// </summary>
-    public static Task HandleCommand(Command command, Func<Message, System.ValueTuple> dispatch)
+    public static Task HandleCommand(Command command, Func<Message, Unit> dispatch)
         => Task.CompletedTask;
 }

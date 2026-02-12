@@ -1,5 +1,3 @@
-using Microsoft.Playwright;
-
 namespace Abies.Conduit.E2E;
 
 /// <summary>
@@ -31,7 +29,7 @@ public class AuthenticationTests : PlaywrightFixture
         // Should see authenticated nav items
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "New Article" })).ToBeVisibleAsync();
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Settings" })).ToBeVisibleAsync();
-        
+
         // Should see username in nav
         await Expect(Page.GetByRole(AriaRole.Link, new() { Name = username })).ToBeVisibleAsync();
     }
@@ -61,11 +59,11 @@ public class AuthenticationTests : PlaywrightFixture
         // Should show error message or stay on register page (not redirect to home)
         // Give it time to process and show error
         await Page.WaitForTimeoutAsync(2000);
-        
+
         // Either error messages are shown, or we're still on register page (not redirected)
         var hasError = await Page.Locator(".error-messages").CountAsync() > 0;
         var stillOnRegister = Page.Url.Contains("/register");
-        
+
         Assert.True(hasError || stillOnRegister, "Should either show error or stay on register page");
     }
 
@@ -78,7 +76,7 @@ public class AuthenticationTests : PlaywrightFixture
         // Navigate to settings and logout
         await Page.GetByRole(AriaRole.Link, new() { Name = "Settings" }).ClickAsync();
         await Page.WaitForURLAsync("**/settings", new() { Timeout = 10000 });
-        
+
         await Page.GetByRole(AriaRole.Button, new() { Name = "logout", Exact = false }).ClickAsync();
         await Page.WaitForURLAsync("**/", new() { Timeout = 10000 });
 

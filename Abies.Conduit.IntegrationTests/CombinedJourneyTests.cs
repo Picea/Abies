@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Main;
 using Abies.Conduit.Services;
@@ -22,7 +18,7 @@ public class CombinedJourneyTests
 {
     private static void ConfigureFakeApi(FakeHttpMessageHandler handler)
     {
-        var httpClient = new HttpClient(handler) { BaseAddress = new System.Uri("http://fake") };
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://fake") };
         ApiClient.ConfigureHttpClient(httpClient);
         ApiClient.ConfigureBaseUrl("http://fake/api");
         // Configure in-memory storage to avoid browser interop calls
@@ -61,7 +57,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var article = new Abies.Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-slug",
             Title: "Test",
             Description: "Desc",
@@ -71,9 +67,9 @@ public class CombinedJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Abies.Conduit.Page.Home.Profile("bob", "", "", Following: false));
+            Author: new Page.Home.Profile("bob", "", "", Following: false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
+        var model = new Page.Article.Model(
             Slug: new Slug("test-slug"),
             IsLoading: false,
             Article: article,
@@ -83,20 +79,20 @@ public class CombinedJourneyTests
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
         // Find the favorite button
-        var dom = Abies.Conduit.Page.Article.Page.View(model);
+        var dom = Page.Article.Page.View(model);
         var (_, favHandler) = MvuDomTestHarness.FindFirstHandler(
             dom,
             "click",
-            el => el.Tag == "button" && 
+            el => el.Tag == "button" &&
                   el.Children.OfType<Text>().Any(t => t.Value.Contains("Favorite Article")));
 
         Assert.NotNull(favHandler.Command);
-        var toggleMsg = (Abies.Message)favHandler.Command!;
+        var toggleMsg = favHandler.Command!;
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Article.Page.Update,
+            update: Page.Article.Page.Update,
             initialMessage: toggleMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -141,7 +137,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var article = new Abies.Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-slug",
             Title: "Test",
             Description: "Desc",
@@ -151,9 +147,9 @@ public class CombinedJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: true,  // Already favorited
             FavoritesCount: 1,
-            Author: new Abies.Conduit.Page.Home.Profile("bob", "", "", Following: false));
+            Author: new Page.Home.Profile("bob", "", "", Following: false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
+        var model = new Page.Article.Model(
             Slug: new Slug("test-slug"),
             IsLoading: false,
             Article: article,
@@ -163,20 +159,20 @@ public class CombinedJourneyTests
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
         // Find the unfavorite button
-        var dom = Abies.Conduit.Page.Article.Page.View(model);
+        var dom = Page.Article.Page.View(model);
         var (_, favHandler) = MvuDomTestHarness.FindFirstHandler(
             dom,
             "click",
-            el => el.Tag == "button" && 
+            el => el.Tag == "button" &&
                   el.Children.OfType<Text>().Any(t => t.Value.Contains("Unfavorite Article")));
 
         Assert.NotNull(favHandler.Command);
-        var toggleMsg = (Abies.Message)favHandler.Command!;
+        var toggleMsg = favHandler.Command!;
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Article.Page.Update,
+            update: Page.Article.Page.Update,
             initialMessage: toggleMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -207,15 +203,15 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        List<Abies.Conduit.Page.Article.Comment> existingComments =
+        List<Page.Article.Comment> existingComments =
         [
-            new("42", "2020-01-01", "2020-01-01", "First comment", 
-                new Abies.Conduit.Page.Home.Profile("alice", "", "", false)),
-            new("99", "2020-01-02", "2020-01-02", "Second comment", 
-                new Abies.Conduit.Page.Home.Profile("bob", "", "", false))
+            new("42", "2020-01-01", "2020-01-01", "First comment",
+                new Page.Home.Profile("alice", "", "", false)),
+            new("99", "2020-01-02", "2020-01-02", "Second comment",
+                new Page.Home.Profile("bob", "", "", false))
         ];
 
-        var article = new Abies.Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-slug",
             Title: "Test",
             Description: "Desc",
@@ -225,9 +221,9 @@ public class CombinedJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Abies.Conduit.Page.Home.Profile("bob", "", "", false));
+            Author: new Page.Home.Profile("bob", "", "", false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
+        var model = new Page.Article.Model(
             Slug: new Slug("test-slug"),
             IsLoading: false,
             Article: article,
@@ -237,12 +233,12 @@ public class CombinedJourneyTests
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
         // Create delete message directly (UI has trash icon per comment)
-        var deleteMsg = new Abies.Conduit.Page.Article.Message.DeleteComment("42");
+        var deleteMsg = new Page.Article.Message.DeleteComment("42");
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Article.Page.Update,
+            update: Page.Article.Page.Update,
             initialMessage: deleteMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -277,7 +273,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var article = new Abies.Conduit.Page.Home.Article(
+        var article = new Page.Home.Article(
             Slug: "test-slug",
             Title: "Test",
             Description: "Desc",
@@ -287,9 +283,9 @@ public class CombinedJourneyTests
             UpdatedAt: "2020-01-01",
             Favorited: false,
             FavoritesCount: 0,
-            Author: new Abies.Conduit.Page.Home.Profile("bob", "Bio", "", Following: false));
+            Author: new Page.Home.Profile("bob", "Bio", "", Following: false));
 
-        var model = new Abies.Conduit.Page.Article.Model(
+        var model = new Page.Article.Model(
             Slug: new Slug("test-slug"),
             IsLoading: false,
             Article: article,
@@ -299,21 +295,21 @@ public class CombinedJourneyTests
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
         // Find the follow button
-        var dom = Abies.Conduit.Page.Article.Page.View(model);
+        var dom = Page.Article.Page.View(model);
         var (_, followHandler) = MvuDomTestHarness.FindFirstHandler(
             dom,
             "click",
-            el => el.Tag == "button" && 
+            el => el.Tag == "button" &&
                   el.Children.OfType<Text>().Any(t => t.Value.Contains("Follow bob")));
 
         Assert.NotNull(followHandler.Command);
-        var toggleMsg = (Abies.Message)followHandler.Command!;
+        var toggleMsg = followHandler.Command!;
 
         // Act - Note: ToggleFollow dispatches ProfileLoaded which Article.Update doesn't handle
         // So we run with StrictUnhandledMessages=false for this case
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Article.Page.Update,
+            update: Page.Article.Page.Update,
             initialMessage: toggleMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10, StrictUnhandledMessages: false));
 
@@ -362,23 +358,23 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Home.Model(
+        var model = new Page.Home.Model(
             Articles: [],
             ArticlesCount: 0,
             Tags: ["csharp", "fsharp", "dotnet"],
-            ActiveTab: Abies.Conduit.Page.Home.FeedTab.Global,
+            ActiveTab: Page.Home.FeedTab.Global,
             ActiveTag: "",
             IsLoading: false,
             CurrentPage: 1,
             CurrentUser: null);
 
         // Create tag selection message
-        var selectTagMsg = new Abies.Conduit.Page.Home.Message.TagSelected("csharp");
+        var selectTagMsg = new Page.Home.Message.TagSelected("csharp");
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Home.Page.Update,
+            update: Page.Home.Page.Update,
             initialMessage: selectTagMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -428,24 +424,24 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Home.Model(
-            Articles: [new Abies.Conduit.Page.Home.Article("page1", "P1", "D", "B", [], "2020", "2020", false, 0, 
-                new Abies.Conduit.Page.Home.Profile("x", "", "", false))],
+        var model = new Page.Home.Model(
+            Articles: [new Page.Home.Article("page1", "P1", "D", "B", [], "2020", "2020", false, 0,
+                new Page.Home.Profile("x", "", "", false))],
             ArticlesCount: 15,
             Tags: [],
-            ActiveTab: Abies.Conduit.Page.Home.FeedTab.Global,
+            ActiveTab: Page.Home.FeedTab.Global,
             ActiveTag: "",
             IsLoading: false,
             CurrentPage: 0,
             CurrentUser: null);
 
         // Create page navigation message
-        var goToPage2Msg = new Abies.Conduit.Page.Home.Message.PageSelected(1); // 0-indexed
+        var goToPage2Msg = new Page.Home.Message.PageSelected(1); // 0-indexed
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Home.Page.Update,
+            update: Page.Home.Page.Update,
             initialMessage: goToPage2Msg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -486,7 +482,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Login.Model(
+        var model = new Page.Login.Model(
             Email: "alice@example.com",
             Password: "secret123",
             IsSubmitting: false,
@@ -494,12 +490,12 @@ public class CombinedJourneyTests
             CurrentUser: null);
 
         // Submit login
-        var loginMsg = new Abies.Conduit.Page.Login.Message.LoginSubmitted();
+        var loginMsg = new Page.Login.Message.LoginSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Login.Page.Update,
+            update: Page.Login.Page.Update,
             initialMessage: loginMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -528,19 +524,19 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Login.Model(
+        var model = new Page.Login.Model(
             Email: "wrong@example.com",
             Password: "badpass",
             IsSubmitting: false,
             Errors: null,
             CurrentUser: null);
 
-        var loginMsg = new Abies.Conduit.Page.Login.Message.LoginSubmitted();
+        var loginMsg = new Page.Login.Message.LoginSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Login.Page.Update,
+            update: Page.Login.Page.Update,
             initialMessage: loginMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -585,7 +581,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Editor.Model(
+        var model = new Page.Editor.Model(
             Title: "My New Article",
             Description: "About something",
             Body: "Content here",
@@ -597,12 +593,12 @@ public class CombinedJourneyTests
             Errors: null,
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
-        var submitMsg = new Abies.Conduit.Page.Editor.Message.ArticleSubmitted();
+        var submitMsg = new Page.Editor.Message.ArticleSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Editor.Page.Update,
+            update: Page.Editor.Page.Update,
             initialMessage: submitMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -644,7 +640,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Editor.Model(
+        var model = new Page.Editor.Model(
             Title: "Updated Title",
             Description: "Updated desc",
             Body: "Updated body",
@@ -656,12 +652,12 @@ public class CombinedJourneyTests
             Errors: null,
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
-        var submitMsg = new Abies.Conduit.Page.Editor.Message.ArticleSubmitted();
+        var submitMsg = new Page.Editor.Message.ArticleSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Editor.Page.Update,
+            update: Page.Editor.Page.Update,
             initialMessage: submitMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -690,7 +686,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Editor.Model(
+        var model = new Page.Editor.Model(
             Title: "",
             Description: "",
             Body: "",
@@ -702,12 +698,12 @@ public class CombinedJourneyTests
             Errors: null,
             CurrentUser: new User(new UserName("alice"), new Email("a@x"), new Token("t"), "", ""));
 
-        var submitMsg = new Abies.Conduit.Page.Editor.Message.ArticleSubmitted();
+        var submitMsg = new Page.Editor.Message.ArticleSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Editor.Page.Update,
+            update: Page.Editor.Page.Update,
             initialMessage: submitMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -748,7 +744,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Register.Model(
+        var model = new Page.Register.Model(
             Username: "newuser",
             Email: "newuser@example.com",
             Password: "password123",
@@ -756,12 +752,12 @@ public class CombinedJourneyTests
             Errors: null,
             CurrentUser: null);
 
-        var registerMsg = new Abies.Conduit.Page.Register.Message.RegisterSubmitted();
+        var registerMsg = new Page.Register.Message.RegisterSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Register.Page.Update,
+            update: Page.Register.Page.Update,
             initialMessage: registerMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 
@@ -794,7 +790,7 @@ public class CombinedJourneyTests
 
         ConfigureFakeApi(handler);
 
-        var model = new Abies.Conduit.Page.Register.Model(
+        var model = new Page.Register.Model(
             Username: "existinguser",
             Email: "existing@example.com",
             Password: "password123",
@@ -802,12 +798,12 @@ public class CombinedJourneyTests
             Errors: null,
             CurrentUser: null);
 
-        var registerMsg = new Abies.Conduit.Page.Register.Message.RegisterSubmitted();
+        var registerMsg = new Page.Register.Message.RegisterSubmitted();
 
         // Act
         var result = await MvuLoopRuntime.RunUntilQuiescentAsync(
             initialModel: model,
-            update: Abies.Conduit.Page.Register.Page.Update,
+            update: Page.Register.Page.Update,
             initialMessage: registerMsg,
             options: new MvuLoopRuntime.Options(MaxIterations: 10));
 

@@ -1,28 +1,24 @@
+using System.Globalization;
 using Abies.Conduit.Main;
-using Abies.Conduit.Routing;
 using Abies.DOM;
-using System.Collections.Generic;
-using Abies.Conduit;
-using Markdig;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
-using System.Globalization;
 
 namespace Abies.Conduit.Page.Article;
 
 public interface Message : Abies.Message
 {
-    public record ArticleLoaded(Conduit.Page.Home.Article? Article) : Message;
-    public record CommentsLoaded(List<Comment> Comments) : Message;
-    public record CommentInputChanged(string Value) : Message;
-    public record SubmitComment : Message;
-    public record CommentSubmitted(Comment Comment) : Message;
-    public record DeleteComment(string Id) : Message;
-    public record CommentDeleted(string Id) : Message;
-    public record ToggleFavorite : Message;
-    public record ToggleFollow : Message;
-    public record DeleteArticle : Message;
-    public record ArticleDeleted : Message;
+    record ArticleLoaded(Home.Article? Article) : Message;
+    record CommentsLoaded(List<Comment> Comments) : Message;
+    record CommentInputChanged(string Value) : Message;
+    record SubmitComment : Message;
+    record CommentSubmitted(Comment Comment) : Message;
+    record DeleteComment(string Id) : Message;
+    record CommentDeleted(string Id) : Message;
+    record ToggleFavorite : Message;
+    record ToggleFollow : Message;
+    record DeleteArticle : Message;
+    record ArticleDeleted : Message;
 }
 
 public record Comment(
@@ -30,13 +26,13 @@ public record Comment(
     string CreatedAt,
     string UpdatedAt,
     string Body,
-    Conduit.Page.Home.Profile Author
+    Home.Profile Author
 );
 
 public record Model(
     Slug Slug,
     bool IsLoading = true,
-    Conduit.Page.Home.Article? Article = null,
+    Home.Article? Article = null,
     List<Comment>? Comments = null,
     string CommentInput = "",
     bool SubmittingComment = false,
@@ -48,7 +44,10 @@ public class Page : Element<Model, Message>
     private static string FormatDate(string value)
     {
         if (DateTime.TryParse(value, out var dt))
+        {
             return dt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        }
+
         return value;
     }
     public static Model Initialize(Message argument)
@@ -60,7 +59,7 @@ public class Page : Element<Model, Message>
     {
         return SubscriptionModule.None;
     }
-    
+
     public static (Model model, IEnumerable<Command> commands) Init(Slug slug)
     {
         return (
@@ -73,7 +72,7 @@ public class Page : Element<Model, Message>
         => message switch
         {
             Message.ArticleLoaded articleLoaded => (
-                model with 
+                model with
                 {
                     Article = articleLoaded.Article,
                     IsLoading = false
@@ -93,10 +92,10 @@ public class Page : Element<Model, Message>
                 new SubmitCommentCommand(model.Slug.Value, model.CommentInput)
             ),
             Message.CommentSubmitted commentSubmitted => (
-                model with 
-                { 
-                    Comments = model.Comments is not null 
-                        ? [..model.Comments, commentSubmitted.Comment]
+                model with
+                {
+                    Comments = model.Comments is not null
+                        ? [.. model.Comments, commentSubmitted.Comment]
                         : [commentSubmitted.Comment],
                     CommentInput = "",
                     SubmittingComment = false
@@ -122,7 +121,7 @@ public class Page : Element<Model, Message>
                         {
                             Favorited = !model.Article.Favorited,
                             FavoritesCount = model.Article.Favorited
-                                ? System.Math.Max(0, model.Article.FavoritesCount - 1)
+                                ? Math.Max(0, model.Article.FavoritesCount - 1)
                                 : model.Article.FavoritesCount + 1
                         }
                     }
@@ -146,7 +145,7 @@ public class Page : Element<Model, Message>
             _ => (model, Commands.None)
         };
 
-    private static Node ArticleMeta(Conduit.Page.Home.Article article, bool showEditDelete = false) =>
+    private static Node ArticleMeta(Home.Article article, bool showEditDelete = false) =>
         div([class_("article-meta")], [            a([href($"/profile/{article.Author.Username}")], [
                 img([src(article.Author.Image)])
             ]),            div([class_("info")], [
@@ -156,8 +155,8 @@ public class Page : Element<Model, Message>
                 span([class_("date")], [text(FormatDate(article.CreatedAt))])
             ]),
             showEditDelete
-                ? div([], [                    a([class_("btn btn-outline-secondary btn-sm"), 
-                      href($"/editor/{article.Slug}")], 
+                ? div([], [                    a([class_("btn btn-outline-secondary btn-sm"),
+                      href($"/editor/{article.Slug}")],
                       [
                           i([class_("ion-edit")], []),
                           text(" Edit Article")
@@ -168,30 +167,30 @@ public class Page : Element<Model, Message>
                             text(" Delete Article")
                         ])
                   ])
-                : div([], [                    button([class_(article.Author.Following 
-                        ? "btn btn-sm btn-secondary action-btn" 
+                : div([], [                    button([class_(article.Author.Following
+                        ? "btn btn-sm btn-secondary action-btn"
                         : "btn btn-sm btn-outline-secondary action-btn"),
                         onclick(new Message.ToggleFollow())],
                         [
                             i([class_("ion-plus-round")], []),
-                            text(article.Author.Following 
-                                ? $" Unfollow {article.Author.Username}" 
+                            text(article.Author.Following
+                                ? $" Unfollow {article.Author.Username}"
                                 : $" Follow {article.Author.Username}")
                         ]),
-                    text(" "),                    button([class_(article.Favorited 
-                        ? "btn btn-sm btn-primary action-btn" 
+                    text(" "),                    button([class_(article.Favorited
+                        ? "btn btn-sm btn-primary action-btn"
                         : "btn btn-sm btn-outline-primary action-btn"),
                         onclick(new Message.ToggleFavorite())],
                         [
                             i([class_("ion-heart")], []),
-                            text(article.Favorited 
-                                ? $" Unfavorite Article ({article.FavoritesCount})" 
+                            text(article.Favorited
+                                ? $" Unfavorite Article ({article.FavoritesCount})"
                                 : $" Favorite Article ({article.FavoritesCount})")
                         ])
                   ])
         ]);
 
-    private static Node ArticleBanner(Conduit.Page.Home.Article article, bool isAuthor) =>
+    private static Node ArticleBanner(Home.Article article, bool isAuthor) =>
         div([class_("banner")], [
             div([class_("container")], [
                 h1([], [text(article.Title)]),
@@ -199,11 +198,11 @@ public class Page : Element<Model, Message>
             ])
         ]);
 
-    private static Node ArticleContent(Conduit.Page.Home.Article article)
+    private static Node ArticleContent(Home.Article article)
     {
         var html = Markdig.Markdown.ToHtml(article.Body);
-    return div([class_("row article-content"), Abies.Html.Attributes.data("testid", "article-content")], [
-            div([class_("col-md-12")], [
+        return div([class_("row article-content"), data("testid", "article-content")], [
+                div([class_("col-md-12")], [
                 raw(html),
                 ul([class_("tag-list")],
                     article.TagList.ConvertAll(tag =>
@@ -211,7 +210,7 @@ public class Page : Element<Model, Message>
                     ).ToArray()
                 )
             ])
-        ]);
+            ]);
     }
 
     private static Node CommentForm(Model model) =>
@@ -246,9 +245,9 @@ public class Page : Element<Model, Message>
                 ])
               ]);
 
-private static Node CommentCard(Model model, Comment comment) =>
-        div([class_("card")], [
-            div([class_("card-block")], [
+    private static Node CommentCard(Model model, Comment comment) =>
+            div([class_("card")], [
+                div([class_("card-block")], [
                 p([class_("card-text")], [text(comment.Body)])
             ]),
             div([class_("card-footer")], [                a([class_("comment-author"), href($"/profile/{comment.Author.Username}")], [
@@ -260,12 +259,12 @@ private static Node CommentCard(Model model, Comment comment) =>
                 ]),
                 span([class_("date-posted")], [text(FormatDate(comment.CreatedAt))]),
                 comment.Author.Username == (model.CurrentUser?.Username.Value ?? "")
-                    ? span([class_("mod-options")], [                        i([class_("ion-trash-a"), 
+                    ? span([class_("mod-options")], [                        i([class_("ion-trash-a"),
                           onclick(new Message.DeleteComment(comment.Id))], [])
                       ])
                     : text("")
             ])
-        ], id: $"comment-{comment.Id}");
+            ], id: $"comment-{comment.Id}");
 
     private static Node CommentSection(Model model) =>
         div([class_("row")], [
@@ -278,7 +277,7 @@ private static Node CommentCard(Model model, Comment comment) =>
 
     public static Node View(Model model) =>
         model.IsLoading || model.Article is null
-            ? div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
+            ? div([class_("article-page"), data("testid", "article-page")], [
                 div([class_("container")], [
                     div([class_("row")], [
                         div([class_("col-md-10 offset-md-1")], [
@@ -287,7 +286,7 @@ private static Node CommentCard(Model model, Comment comment) =>
                     ])
                 ])
               ])
-            : div([class_("article-page"), Abies.Html.Attributes.data("testid", "article-page")], [
+            : div([class_("article-page"), data("testid", "article-page")], [
                 ArticleBanner(model.Article, model.CurrentUser is User u && u.Username.Value == model.Article.Author.Username),                div([class_("container page")], [                    div([], [ArticleContent(model.Article)]),
                     hr([class_("hr")]),
                     div([class_("article-actions")], [

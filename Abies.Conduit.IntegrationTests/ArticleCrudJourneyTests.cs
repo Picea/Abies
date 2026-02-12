@@ -1,9 +1,5 @@
-using System;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Abies.Conduit.IntegrationTests.Testing;
 using Abies.Conduit.Services;
 using Xunit;
@@ -84,12 +80,12 @@ public class ArticleCrudJourneyTests
         Assert.Equal("Created", created.Title);
         Assert.Equal("Updated", updated.Title);
 
-    // Assert (bodies)
-    AssertJsonContains(createReq.Body, "article", "title", "Created");
-    AssertJsonContainsArray(createReq.Body, "article", "tagList");
+        // Assert (bodies)
+        AssertJsonContains(createReq.Body, "article", "title", "Created");
+        AssertJsonContainsArray(createReq.Body, "article", "tagList");
 
-    AssertJsonContains(updateReq.Body, "article", "title", "Updated");
-    AssertJsonContains(updateReq.Body, "article", "body", "Body2");
+        AssertJsonContains(updateReq.Body, "article", "title", "Updated");
+        AssertJsonContains(updateReq.Body, "article", "body", "Body2");
     }
 
     private static void AssertJsonContains(string? json, params string[] path)
@@ -114,7 +110,7 @@ public class ArticleCrudJourneyTests
         Assert.False(string.IsNullOrWhiteSpace(json), "Expected request body JSON to be present.");
 
         using var doc = JsonDocument.Parse(json!);
-    Assert.Equal(JsonValueKind.Object, doc.RootElement.ValueKind);
+        Assert.Equal(JsonValueKind.Object, doc.RootElement.ValueKind);
         Assert.True(doc.RootElement.TryGetProperty(p1, out var e1), $"Expected JSON to contain property '{p1}'. JSON: {json}");
         Assert.Equal(JsonValueKind.Object, e1.ValueKind);
         Assert.True(e1.TryGetProperty(p2, out var e2), $"Expected JSON to contain property '{p1}.{p2}'. JSON: {json}");
