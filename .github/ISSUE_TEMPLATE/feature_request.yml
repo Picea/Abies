@@ -1,0 +1,77 @@
+name: "✨ Feature Request"
+description: "Suggest a new feature or capability for the Abies framework"
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a feature! Please fill out the sections below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem Statement"
+      description: "What problem does this feature solve? What is the current limitation?"
+      placeholder: "Currently, Abies does not support..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe the feature and how it would work in the Abies MVU architecture."
+      placeholder: "Add a new module that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: api-design
+    attributes:
+      label: "API Design"
+      description: "Show what the API would look like from a developer's perspective."
+      placeholder: |
+        ```csharp
+        // Example usage
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "What other approaches were considered and why were they rejected?"
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: "Acceptance Criteria"
+      description: "What must be true for this feature to be considered complete?"
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "🔴 High - Core functionality gap"
+        - "🟡 Medium - Important but workaroundable"
+        - "🟢 Low - Nice to have"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context"
+      description: "Any references, links to other frameworks, or related issues."
+    validations:
+      required: false
