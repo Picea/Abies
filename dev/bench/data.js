@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771334830552,
+  "lastUpdate": 1771334831708,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -7748,6 +7748,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 94.0000, Gen1: 7.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bb364eb0aab4620c6505b5163f1f9b00ab6e170",
+          "message": "chore(deps): bump actions/upload-artifact from 4 to 6 (#88)\n\nBumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 4 to 6.\n- [Release notes](https://github.com/actions/upload-artifact/releases)\n- [Commits](https://github.com/actions/upload-artifact/compare/v4...v6)\n\n---\nupdated-dependencies:\n- dependency-name: actions/upload-artifact\n  dependency-version: '6'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Maurice CGP Peters <MCGPPeters@users.noreply.github.com>",
+          "timestamp": "2026-02-17T14:17:14+01:00",
+          "tree_id": "e4aad6eaa0aa6301ff3d6e4dd5b3e8a1ac7bb33a",
+          "url": "https://github.com/Picea/Abies/commit/8bb364eb0aab4620c6505b5163f1f9b00ab6e170"
+        },
+        "date": 1771334831360,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 728,
+            "unit": "bytes",
+            "extra": "Gen0: 91.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121424,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4304,
+            "unit": "bytes",
+            "extra": "Gen0: 67.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 207.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 188.0000, Gen1: 14.0000"
           }
         ]
       }
