@@ -440,7 +440,7 @@ jobs:
           cp ./e2e-benchmark-memory.json ./e2e-results/ 2>/dev/null || true
 
       - name: Upload E2E benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: e2e-benchmark-results
