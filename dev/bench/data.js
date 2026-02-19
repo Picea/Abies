@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771533643991,
+  "lastUpdate": 1771533645890,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8444,6 +8444,180 @@ window.BENCHMARK_DATA = {
             "value": 24344,
             "unit": "bytes",
             "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05b42d834b1f51dcc0581fd1228f18d8107d84b8",
+          "message": "perf: HTML-spec-aware rendering with SetChildrenHtml batch optimization (#91)\n\n* perf: HTML-spec-aware rendering with SetChildrenHtml batch optimization\n\nImplements six rendering optimizations (O1–O6) that reduce js-framework-benchmark\ncreate-1000-rows from 90ms to 71.7ms (20% faster, now 19% faster than Blazor).\n\nO1: Void element rendering skip (HTML Living Standard §13.1.2)\n  - Skip children loop and closing tag for void elements (<img>, <input>, etc.)\n  - Uses FrozenSet<string> for O(1) tag lookup\n\nO2: Void element diff skip\n  - Skip DiffChildren entirely for void elements during diffing\n  - Avoids ArrayPool rents, key sequence building, function call overhead\n\nO3: Boolean attribute bare rendering\n  - Render boolean attributes as bare names per HTML spec (<input disabled>)\n  - Uses FrozenSet<string> for O(1) attribute name lookup\n\nO4: SetChildrenHtml batch innerHTML patch (HIGH IMPACT)\n  - New BinaryPatchType.SetChildrenHtml (enum value 12)\n  - When going from 0→N children, emits ONE SetChildrenHtml patch instead of\n    N individual AddChild patches\n  - JS handler: single parent.innerHTML = html instead of N parseHtmlFragment +\n    appendChild calls\n  - Inspired by ivi's _hN template pattern and blockdom's batch innerHTML\n\nO5: Skip addEventListeners TreeWalker scan\n  - All common events are pre-registered at document level via COMMON_EVENT_TYPES\n  - Removed expensive TreeWalker scan from AddChild and ReplaceChild binary batch\n    handlers (was 8000+ element visits, 16000+ attribute scans, all no-ops)\n\nO6: Complete replacement fast path\n  - When all old keys differ from all new keys (replace benchmark), emit\n    ClearChildren + SetChildrenHtml instead of N RemoveChild + N AddChild\n  - Reduces 2000 individual DOM operations to 2 bulk operations\n\nBug fix: RegisterHandlers/UnregisterHandlers for Memo/LazyMemo nodes\n  - Fixed critical bug where event handlers were silently skipped for\n    Memo/LazyMemo-wrapped nodes in SetChildrenHtml patches\n  - Added ILazyMemoNode and IMemoNode switch cases to both methods\n\nBenchmark results (3-run average, 15 samples each):\n  01_run1k:      90ms → 71.7ms total (-20%), 60ms → 40.4ms script (-33%)\n  02_replace1k: 103ms → 95.5ms total (-7%),  68ms → 56.6ms script (-17%)\n  05_swap1k:    ~neutral (107.8ms)\n  09_clear1k:   ~neutral (92.2ms)\n\nTest results: 126 unit tests pass, 21 new tests added (7 SetChildrenHtml, 14 HTML spec)\n\n* docs: update docs for HTML-spec-aware rendering optimizations\n\n- virtual-dom-algorithm.md: add SetChildrenHtml patch type, update fast\n  paths (Add-All via SetChildrenHtml, Complete Replacement), add HTML\n  spec-aware rendering section (void elements, boolean attributes)\n- runtime-internals.md: fix Dictionary (not ConcurrentDictionary),\n  UnregisterHandlers with ILazyMemoNode/IMemoNode, Stack pooling\n- js-interop.md: add SetChildrenHtml DOM operation\n- benchmarks.md: update E2E results (72ms create, 96ms replace,\n  108ms swap, 92ms clear), fix corrupted interleaved content\n\n* fix: materialize LazyMemo children in SetChildrenHtml to prevent CommandId divergence\n\nRoot cause: SetChildrenHtml stored raw LazyMemo nodes. RegisterHandlers and\nRender.HtmlChildren each called LazyMemo.Evaluate() independently, producing\nfresh nodes with different CommandIds. The handler map registered CommandId X\nwhile the HTML rendered CommandId Y — clicks were silently dropped.\n\nFix:\n- Add MaterializeChildren() helper that pre-evaluates LazyMemo/Memo children\n  into concrete nodes, ensuring both RegisterHandlers and HtmlChildren see the\n  same node instances with the same CommandIds.\n- Backfill CachedNode on original LazyMemo wrappers so UnregisterHandlers can\n  traverse the cached content to clean up handlers (prevents handler leaks).\n- Call MaterializeChildren at both SetChildrenHtml creation sites (Add-All fast\n  path and Complete Replacement fast path).\n- Add ensureSubtreeEventListeners() JS helper for non-COMMON_EVENT_TYPES event\n  registration safety net after innerHTML/appendChild/replaceChild.\n- Add regression test verifying materialization, idempotent rendering, and\n  CachedNode backfill.\n\nFixes js-framework-benchmark 04_select1k failure.\nAddresses review comments on PR #91.",
+          "timestamp": "2026-02-19T21:30:39+01:00",
+          "tree_id": "a5cb6127676164fbc95293c00ac6b9454c147e3e",
+          "url": "https://github.com/Picea/Abies/commit/05b42d834b1f51dcc0581fd1228f18d8107d84b8"
+        },
+        "date": 1771533645429,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 712,
+            "unit": "bytes",
+            "extra": "Gen0: 89.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121184,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4136,
+            "unit": "bytes",
+            "extra": "Gen0: 64.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24104,
+            "unit": "bytes",
+            "extra": "Gen0: 188.0000, Gen1: 14.0000"
           }
         ]
       }
