@@ -65,6 +65,9 @@ public static partial class Interop
     [JSImport("moveChild", "abies.js")]
     public static partial Task MoveChild(string parentId, string childId, string? beforeId);
 
+    [JSImport("setChildrenHtml", "abies.js")]
+    public static partial Task SetChildrenHtml(string parentId, string html);
+
     [JSImport("updateTextContent", "abies.js")]
     public static partial Task UpdateTextContent(string nodeId, string newText);
 
