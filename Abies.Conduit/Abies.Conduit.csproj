@@ -21,6 +21,11 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Abies\Abies.csproj" />
+    <!-- HTML analyzer (automatic for NuGet consumers; explicit for ProjectReference) -->
+    <ProjectReference Include="..\Abies.Analyzers\Abies.Analyzers.csproj"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer"
+                      PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.45.0" />
@@ -32,12 +37,12 @@
     <!-- Dotnet watch: restart when the canonical file changes -->
     <Watch Include="..\Abies\wwwroot\abies.js" />
   </ItemGroup>
-  
+
   <!-- Copy the canonical abies.js before build/publish -->
   <Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish" Inputs="..\Abies\wwwroot\abies.js" Outputs="wwwroot\abies.js">
     <Copy SourceFiles="..\Abies\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
   </Target>
-  
+
   <!-- Remove the Abies project's copy from publish to avoid NETSDK1152 duplicate -->
   <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
