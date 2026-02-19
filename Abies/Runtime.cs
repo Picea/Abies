@@ -408,7 +408,9 @@ public static partial class Runtime
                 break;
 
             // Unwrap memo nodes to reach inner Element trees.
-            // Required for SetChildrenHtml which stores raw children (may be LazyMemo/Memo).
+            // SetChildrenHtml pre-materializes children via MaterializeChildren(), so this
+            // path is a safety net for other patches that may contain nested LazyMemo/Memo
+            // (e.g., an Element with LazyMemo children used in AddChild/ReplaceChild).
             case ILazyMemoNode lazyMemo:
                 RegisterHandlers(lazyMemo.CachedNode ?? lazyMemo.Evaluate());
                 break;

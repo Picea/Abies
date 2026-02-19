@@ -1307,6 +1307,70 @@ public static class Operations
         };
     }
 
+    /// <summary>
+    /// Pre-evaluates any lazy memo or memo wrapper nodes in a children array,
+    /// returning a new array with all nodes materialized to their concrete forms.
+    /// <para>
+    /// This is critical for <see cref="SetChildrenHtml"/>: both <c>RegisterHandlers</c>
+    /// (which registers command IDs in the handler map) and <c>Render.HtmlChildren</c>
+    /// (which renders data-event-* attributes into HTML) must see the <strong>same</strong>
+    /// concrete nodes with the <strong>same</strong> CommandIds. Without materialization,
+    /// each call to <c>LazyMemo.Evaluate()</c> produces a fresh node with a new CommandId,
+    /// causing the handler map and rendered HTML to diverge — clicks are silently dropped.
+    /// </para>
+    /// <para>
+    /// As a side effect, this method backfills <c>CachedNode</c> on LazyMemo entries in the
+    /// <strong>original</strong> array. This ensures the stored virtual DOM tree has populated
+    /// caches so that <c>UnregisterHandlers</c> can later traverse them to clean up handlers,
+    /// and <c>PreserveIds</c> can carry cached content forward across render cycles.
+    /// </para>
+    /// </summary>
+    private static Node[] MaterializeChildren(Node[] children)
+    {
+        // Fast path: check if any children need materialization
+        bool needsMaterialization = false;
+        for (int i = 0; i < children.Length; i++)
+        {
+            if (children[i] is ILazyMemoNode or IMemoNode)
+            {
+                needsMaterialization = true;
+                break;
+            }
+        }
+
+        if (!needsMaterialization)
+        {
+            return children;
+        }
+
+        // Materialize: evaluate lazy/memo nodes so the concrete result is shared
+        // by both RegisterHandlers (handler map) and Render.HtmlChildren (HTML output).
+        var materialized = new Node[children.Length];
+        for (int i = 0; i < children.Length; i++)
+        {
+            var child = children[i];
+            if (child is ILazyMemoNode lazyMemo)
+            {
+                var evaluated = lazyMemo.CachedNode ?? lazyMemo.Evaluate();
+                materialized[i] = evaluated;
+                // Backfill CachedNode on the original LazyMemo wrapper in the source array.
+                // The source array is Element.Children of the aligned virtual DOM tree that
+                // will be stored as `dom` for the next render cycle. Populating CachedNode
+                // ensures: (1) UnregisterHandlers can traverse it to clean up handlers,
+                // (2) PreserveIds carries the cached content forward when keys match.
+                if (lazyMemo.CachedNode is null)
+                {
+                    children[i] = lazyMemo.WithCachedNode(evaluated);
+                }
+            }
+            else
+            {
+                materialized[i] = UnwrapMemoNode(child);
+            }
+        }
+        return materialized;
+    }
+
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
     {
         // Quick bailout: if both nodes are the exact same reference, nothing to diff
@@ -1761,7 +1825,7 @@ public static class Operations
         // =============================================================================
         if (oldLength == 0 && newLength > 0)
         {
-            patches.Add(new SetChildrenHtml(newParent, newChildren));
+            patches.Add(new SetChildrenHtml(newParent, MaterializeChildren(newChildren)));
             return;
         }
 
@@ -2075,7 +2139,7 @@ public static class Operations
                     {
                         // All old children removed, all new children added — bulk replace
                         patches.Add(new ClearChildren(oldParent, oldChildren));
-                        patches.Add(new SetChildrenHtml(newParent, newChildren));
+                        patches.Add(new SetChildrenHtml(newParent, MaterializeChildren(newChildren)));
                         return;
                     }
 

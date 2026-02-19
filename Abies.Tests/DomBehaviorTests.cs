@@ -772,6 +772,61 @@ public class DomBehaviorTests
         Assert.DoesNotContain(patches, p => p is SetChildrenHtml);
     }
 
+    [Fact]
+    public void SetChildrenHtml_LazyMemoWithHandler_MaterializesChildren()
+    {
+        // Regression test: SetChildrenHtml must materialize LazyMemo children so that
+        // RegisterHandlers and Render.HtmlChildren see the SAME concrete nodes with
+        // the SAME CommandIds. Without materialization, each LazyMemo.Evaluate() call
+        // produces fresh nodes with new CommandIds, causing handler map / HTML divergence.
+        var emptyTbody = new Element("tbody-1", "tbody", []);
+
+        // Create LazyMemo children with click handlers (simulates benchmark rows)
+        var lazy1 = new LazyMemo<int>("l-1", 1, () =>
+            new Element("row-1", "tr",
+                [new Handler("click", "cmd-1-" + Guid.NewGuid().ToString("N")[..8], null!, "h-1")],
+                new Text("t-1", "Row 1")));
+        var lazy2 = new LazyMemo<int>("l-2", 2, () =>
+            new Element("row-2", "tr",
+                [new Handler("click", "cmd-2-" + Guid.NewGuid().ToString("N")[..8], null!, "h-2")],
+                new Text("t-2", "Row 2")));
+
+        var filledTbody = new Element("tbody-1", "tbody", [], lazy1, lazy2);
+
+        var patches = Operations.Diff(emptyTbody, filledTbody);
+
+        // Should emit a single SetChildrenHtml patch
+        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
+        Assert.Single(setChildrenPatches);
+        var patch = setChildrenPatches[0];
+
+        // Children should be materialized (concrete Elements, not LazyMemo wrappers)
+        Assert.Equal(2, patch.Children.Length);
+        Assert.All(patch.Children, child => Assert.IsType<Element>(child));
+
+        // Verify that rendering the same children twice produces identical HTML
+        // (proves materialization: no double-evaluation with divergent CommandIds)
+        var html1 = Render.HtmlChildren(patch.Children);
+        var html2 = Render.HtmlChildren(patch.Children);
+        Assert.Equal(html1, html2);
+
+        // Verify event attributes are present in the rendered HTML
+        Assert.Contains("data-event-click", html1);
+
+        // Verify CachedNode backfill: the original LazyMemo wrappers in the parent's
+        // children array should now have CachedNode populated. This is essential for
+        // UnregisterHandlers to traverse the cached content when cleaning up handlers.
+        var parentChildren = filledTbody.Children;
+        for (int i = 0; i < parentChildren.Length; i++)
+        {
+            var child = parentChildren[i];
+            Assert.IsAssignableFrom<ILazyMemoNode>(child);
+            var lazyChild = (ILazyMemoNode)child;
+            Assert.NotNull(lazyChild.CachedNode);
+            Assert.IsType<Element>(lazyChild.CachedNode);
+        }
+    }
+
     #endregion
 
     #region Lazy Memo Node Tests

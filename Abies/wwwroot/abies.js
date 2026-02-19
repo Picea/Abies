@@ -888,7 +888,45 @@ function addEventListeners(root) {
         }
         el = walker.nextNode();
     }
-}/**
+}
+
+/**
+ * Lightweight scan for non-common event listeners in a DOM subtree.
+ * COMMON_EVENT_TYPES covers all standard DOM events and are pre-registered at
+ * document level, so this only does real work when custom/non-standard events
+ * (e.g., CustomEvent types) are used. For typical apps this is a no-op scan.
+ * @param {Element} root - The root element to scan.
+ */
+function ensureSubtreeEventListeners(root) {
+    if (!root || root.nodeType !== 1) return;
+    // Check the root element itself
+    const attrs = root.attributes;
+    if (attrs) {
+        for (let i = 0; i < attrs.length; i++) {
+            const name = attrs[i].name;
+            if (name.length > 11 && name.startsWith('data-event-')) {
+                ensureEventListener(name.substring(11));
+            }
+        }
+    }
+    // Walk descendants using TreeWalker (memory-efficient for large subtrees)
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    let el = walker.nextNode();
+    while (el) {
+        const elAttrs = el.attributes;
+        if (elAttrs) {
+            for (let i = 0; i < elAttrs.length; i++) {
+                const name = elAttrs[i].name;
+                if (name.length > 11 && name.startsWith('data-event-')) {
+                    ensureEventListener(name.substring(11));
+                }
+            }
+        }
+        el = walker.nextNode();
+    }
+}
+
+/**
  * Event handler for click events on elements with data-event-* attributes.
  * @param {Event} event - The DOM event.
  */
@@ -1050,10 +1088,9 @@ function applyBinaryBatchImpl(batchData) {
                     const childElement = parseHtmlFragment(html);
                     if (childElement) {
                         parent.appendChild(childElement);
-                        // Events are pre-registered at document level via COMMON_EVENT_TYPES,
-                        // so the expensive TreeWalker scan in addEventListeners is unnecessary.
-                        // Custom events (if any) are handled by the AddAttribute/UpdateAttribute
-                        // binary patch handlers which call ensureEventListener directly.
+                        // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                        // Scan for non-common/custom event types that need dynamic registration.
+                        ensureSubtreeEventListeners(childElement);
                     }
                 }
                 break;
@@ -1082,7 +1119,9 @@ function applyBinaryBatchImpl(batchData) {
                     const newNode = parseHtmlFragment(html);
                     if (newNode) {
                         oldNode.parentNode.replaceChild(newNode, oldNode);
-                        // Events are pre-registered at document level via COMMON_EVENT_TYPES.
+                        // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                        // Scan for non-common/custom event types that need dynamic registration.
+                        ensureSubtreeEventListeners(newNode);
                     }
                 }
                 break;
@@ -1199,8 +1238,9 @@ function applyBinaryBatchImpl(batchData) {
                 const parent = document.getElementById(parentId);
                 if (parent) {
                     parent.innerHTML = html;
-                    // Events are already pre-registered at document level via COMMON_EVENT_TYPES,
-                    // so no addEventListeners scan is needed.
+                    // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                    // Scan for non-common/custom event types that need dynamic registration.
+                    ensureSubtreeEventListeners(parent);
                 }
                 break;
             }
@@ -1361,8 +1401,9 @@ setModuleImports('abies.js', {
         const parent = document.getElementById(parentId);
         if (parent) {
             parent.innerHTML = html;
-            // Events are already pre-registered at document level via COMMON_EVENT_TYPES,
-            // so no addEventListeners scan is needed.
+            // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+            // Scan for non-common/custom event types that need dynamic registration.
+            ensureSubtreeEventListeners(parent);
         } else {
             console.error(`Parent element with ID ${parentId} not found for setChildrenHtml.`);
         }
