@@ -28,6 +28,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-018](./ADR-018-pr-lint-only-changed-files.md) | PR Lint Check Only Changed Files | Accepted | Lint only PR-changed files, not entire solution |
 | [ADR-019](./ADR-019-trunk-based-development.md) | Trunk-Based Development | Accepted | Protected main branch with PR workflow |
 | [ADR-020](./ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates | Accepted | Automated quality gates for performance benchmarks |
+| [ADR-021](./ADR-021-html-validation-analyzers-over-typed-dsl.md) | HTML Validation via Roslyn Analyzers | Accepted | Analyzers over type-safe DSL for HTML correctness |
 
 > **Note:** There are two files numbered ADR-005: [ADR-005-webassembly-runtime.md](./ADR-005-webassembly-runtime.md) (indexed above) and [ADR-005-security-scanning-sast-dast-sca.md](./ADR-005-security-scanning-sast-dast-sca.md) (security scanning). The security scanning ADR was created separately and retains its number for historical reasons.
 

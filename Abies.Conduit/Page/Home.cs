@@ -194,7 +194,7 @@ public class Page : Element<Model, Message>
         div([class_("article-preview")], [
             div([class_("article-meta")], [
                 a([href($"/profile/{article.Author.Username}")], [
-                    img([src(article.Author.Image)])
+                    img([src(article.Author.Image), alt($"{article.Author.Username} profile image")])
                 ]),
                 div([class_("info")], [
                     a([class_("author"), href($"/profile/{article.Author.Username}")], [

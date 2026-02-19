@@ -118,7 +118,7 @@ public class Page : Element<Model, Message>
             div([class_("container")], [
                 div([class_("row")], [
                     div([class_("col-xs-12 col-md-10 offset-md-1")], [
-                        img([class_("user-img"), src(model.Profile?.Image ?? "")]),
+                        img([class_("user-img"), src(model.Profile?.Image ?? ""), alt($"{model.UserName.Value} profile image")]),
                         h4([], [text(model.UserName.Value)]),
                         p([], [text(model.Profile?.Bio ?? "")]),
                         isCurrentUser
@@ -165,7 +165,7 @@ public class Page : Element<Model, Message>
         div([class_("article-preview")], [
             div([class_("article-meta")], [
                 a([href($"/profile/{article.Author.Username}")], [
-                    img([src(article.Author.Image)])
+                    img([src(article.Author.Image), alt($"{article.Author.Username} profile image")])
                 ]),
                 div([class_("info")], [
                     a([class_("author"), href($"/profile/{article.Author.Username}")], [
