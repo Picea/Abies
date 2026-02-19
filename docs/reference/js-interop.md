@@ -182,6 +182,9 @@ public static partial Task RemoveChild(string parentId, string childId);
 
 [JSImport("replaceChildHtml", "abies.js")]
 public static partial Task ReplaceChildHtml(string oldNodeId, string newHtml);
+
+[JSImport("setChildrenHtml", "abies.js")]
+public static partial Task SetChildrenHtml(string parentId, string html);
 ```
 
 JavaScript:
@@ -204,7 +207,17 @@ export function replaceChildHtml(oldId, newHtml) {
         old.remove();
     }
 }
+
+export function setChildrenHtml(parentId, html) {
+    const parent = document.getElementById(parentId);
+    if (parent) parent.innerHTML = html;
+}
 ```
+
+`setChildrenHtml` is a batch operation that replaces all children of a parent element
+with a single `innerHTML` assignment. It is used by the `SetChildrenHtml` fast path
+when going from 0→N children (Add-All) or when all keys differ (Complete Replacement),
+avoiding N individual DOM insertions.
 
 ## Event Delegation
 

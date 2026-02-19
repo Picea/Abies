@@ -184,6 +184,7 @@ private static void DiffChildren(Element oldParent, Element newParent, List<Patc
 | `RemoveRaw(parent, raw)` | Remove raw HTML |
 | `ReplaceRaw(old, new)` | Replace raw HTML |
 | `UpdateRaw(node, html, newId)` | Update raw HTML content |
+| `SetChildrenHtml(parent, html)` | Set all children via single innerHTML (batch fast path) |
 
 ## Patch Application
 
@@ -323,7 +324,8 @@ is returned across renders (because its key hasn't changed), diffing is skipped 
 ### Fast Paths
 
 - **Clear** (`newLength == 0`): O(1) `ClearChildren` patch
-- **Append-only** (`oldLength == 0`): Direct `AddChild` without key maps
+- **Add-All** (`oldLength == 0`): Single `SetChildrenHtml` patch — concatenates all children HTML and applies via `parent.innerHTML` instead of N individual `AddChild` patches
+- **Complete Replacement** (all old keys differ from all new keys): `ClearChildren` + `SetChildrenHtml` — detected when `keysToDiff.Count == 0` after head/tail skip, reduces 2N individual DOM operations to 2 bulk operations
 - **Same reference** (`ReferenceEquals(old, new)`): Skip immediately
 
 ## Rendering to HTML
@@ -362,6 +364,29 @@ private static void RenderNode(Node node, StringBuilder sb)
     }
 }
 ```
+
+### HTML Spec-Aware Rendering
+
+The renderer is aware of the HTML specification for two categories of elements:
+
+**Void elements** (`area`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`,
+`source`, `track`, `wbr`) — These elements cannot have children and must not have a closing
+tag. The renderer omits the closing tag and skips child diffing for void elements.
+
+**Boolean attributes** (`checked`, `disabled`, `hidden`, `readonly`, `required`, `selected`,
+`autofocus`, `autoplay`, `controls`, `loop`, `muted`, `multiple`, `open`, `novalidate`,
+`formnovalidate`, `defer`, `async`, `allowfullscreen`) — These attributes are rendered as
+bare attributes (e.g., `<input disabled>`) instead of `disabled="true"` when their value is
+`"true"`, following the HTML specification.
+
+These optimizations are implemented via `HtmlSpec.VoidElements` and `HtmlSpec.BooleanAttributes`
+(both `FrozenSet<string>` for O(1) lookup).
+
+### Batch Children Rendering
+
+The `Render.HtmlChildren` function concatenates the HTML of all children into a single
+string. This is used by the `SetChildrenHtml` fast path to emit one bulk innerHTML
+operation instead of N individual `AddChild` patches.
 
 ## Complexity Analysis
 
