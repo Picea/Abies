@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771510030121,
+  "lastUpdate": 1771510110536,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8776,6 +8776,84 @@ window.BENCHMARK_DATA = {
             "value": 282.7,
             "unit": "ms",
             "extra": "mean: 283.4ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "566e64be531e5f4b911486dc187abdafda91f5ab",
+          "message": "feat: add Roslyn analyzers for HTML validation (ABIES001-005) (#90)\n\nReplace the abandoned type-safe HTML DSL approach with lightweight\nRoslyn analyzers that validate HTML correctness at compile time while\nkeeping the existing stringly-typed DSL unchanged.\n\nAnalyzers:\n- ABIES001: img() missing alt attribute (Warning)\n- ABIES002: Flow content inside phrasing-only parents (Warning)\n- ABIES003: a() missing href attribute (Info)\n- ABIES004: button() missing type attribute (Info)\n- ABIES005: input() missing type attribute (Info)\n\nDistribution:\n- Bundled in Abies NuGet package (analyzers/dotnet/cs/)\n- Automatic for all PackageReference consumers\n- Explicit ProjectReference needed for solution consumers\n\nIncludes:\n- Abies.Analyzers project (netstandard2.0, Roslyn 4.8.0)\n- Abies.Analyzers.Tests project (17 tests)\n- ADR-021 documenting the decision\n\nResolves #86",
+          "timestamp": "2026-02-19T14:57:08+01:00",
+          "tree_id": "c7b410994d301d702ad999ab443536f4435c924d",
+          "url": "https://github.com/Picea/Abies/commit/566e64be531e5f4b911486dc187abdafda91f5ab"
+        },
+        "date": 1771510109930,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 255.3,
+            "unit": "ms",
+            "extra": "mean: 257.0ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 298.6,
+            "unit": "ms",
+            "extra": "mean: 298.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 359.5,
+            "unit": "ms",
+            "extra": "mean: 363.9ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 321.4,
+            "unit": "ms",
+            "extra": "mean: 323.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 342.2,
+            "unit": "ms",
+            "extra": "mean: 342.4ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 181.6,
+            "unit": "ms",
+            "extra": "mean: 181.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2149,
+            "unit": "ms",
+            "extra": "mean: 2146.1ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 312.2,
+            "unit": "ms",
+            "extra": "mean: 312.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 284.6,
+            "unit": "ms",
+            "extra": "mean: 283.1ms, samples: 15"
           }
         ]
       }
