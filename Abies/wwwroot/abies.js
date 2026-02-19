@@ -926,6 +926,7 @@ const BinaryPatchType = {
     UpdateText: 9,
     UpdateTextWithId: 10,
     MoveChild: 11,
+    SetChildrenHtml: 12,
 };
 
 /**
@@ -1049,7 +1050,10 @@ function applyBinaryBatchImpl(batchData) {
                     const childElement = parseHtmlFragment(html);
                     if (childElement) {
                         parent.appendChild(childElement);
-                        addEventListeners(childElement);
+                        // Events are pre-registered at document level via COMMON_EVENT_TYPES,
+                        // so the expensive TreeWalker scan in addEventListeners is unnecessary.
+                        // Custom events (if any) are handled by the AddAttribute/UpdateAttribute
+                        // binary patch handlers which call ensureEventListener directly.
                     }
                 }
                 break;
@@ -1078,7 +1082,7 @@ function applyBinaryBatchImpl(batchData) {
                     const newNode = parseHtmlFragment(html);
                     if (newNode) {
                         oldNode.parentNode.replaceChild(newNode, oldNode);
-                        addEventListeners(newNode);
+                        // Events are pre-registered at document level via COMMON_EVENT_TYPES.
                     }
                 }
                 break;
@@ -1183,6 +1187,20 @@ function applyBinaryBatchImpl(batchData) {
                 if (parent && child) {
                     const before = beforeId ? document.getElementById(beforeId) : null;
                     parent.insertBefore(child, before);
+                }
+                break;
+            }
+            case BinaryPatchType.SetChildrenHtml: {
+                // Bulk set all children via a single innerHTML assignment.
+                // This replaces N individual parseHtmlFragment + appendChild + addEventListeners calls
+                // with ONE DOM operation. Inspired by ivi's _hN template pattern and blockdom.
+                const parentId = readString(field1);
+                const html = readString(field2);
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    parent.innerHTML = html;
+                    // Events are already pre-registered at document level via COMMON_EVENT_TYPES,
+                    // so no addEventListeners scan is needed.
                 }
                 break;
             }
@@ -1330,6 +1348,24 @@ setModuleImports('abies.js', {
         }
         // insertBefore with null as second argument appends to end
         parent.insertBefore(child, before);
+    }),
+
+    /**
+     * Sets all children of a parent element via a single innerHTML assignment.
+     * This is dramatically faster than N individual addChildHtml calls because
+     * it eliminates per-child parseHtmlFragment + appendChild + addEventListeners overhead.
+     * @param {string} parentId - The ID of the parent element.
+     * @param {string} html - The concatenated HTML for all children.
+     */
+    setChildrenHtml: withSpan('setChildrenHtml', async (parentId, html) => {
+        const parent = document.getElementById(parentId);
+        if (parent) {
+            parent.innerHTML = html;
+            // Events are already pre-registered at document level via COMMON_EVENT_TYPES,
+            // so no addEventListeners scan is needed.
+        } else {
+            console.error(`Parent element with ID ${parentId} not found for setChildrenHtml.`);
+        }
     }),
 
     /**

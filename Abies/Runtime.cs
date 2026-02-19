@@ -382,29 +382,39 @@ public static partial class Runtime
     /// <exception cref="InvalidOperationException"></exception>
     internal static void RegisterHandlers(Node node)
     {
-
-        if (node is Element element)
+        switch (node)
         {
-            // Register handlers in the current element
-            foreach (var attribute in element.Attributes)
-            {
-                if (attribute is Handler handler)
+            case Element element:
+                // Register handlers in the current element
+                foreach (var attribute in element.Attributes)
                 {
-                    if (handler.Command is not null && !_handlers.TryAdd(handler.CommandId, handler.Command))
+                    if (attribute is Handler handler)
                     {
-                        throw new InvalidOperationException("Command already exists");
-                    }
-                    if (handler.WithData is not null)
-                    {
-                        _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
+                        if (handler.Command is not null && !_handlers.TryAdd(handler.CommandId, handler.Command))
+                        {
+                            throw new InvalidOperationException("Command already exists");
+                        }
+                        if (handler.WithData is not null)
+                        {
+                            _dataHandlers[handler.CommandId] = (handler.WithData, handler.DataType ?? typeof(object));
+                        }
                     }
                 }
-            }
-            // Recursively register handlers in child nodes
-            foreach (var child in element.Children)
-            {
-                RegisterHandlers(child);
-            }
+                // Recursively register handlers in child nodes
+                foreach (var child in element.Children)
+                {
+                    RegisterHandlers(child);
+                }
+                break;
+
+            // Unwrap memo nodes to reach inner Element trees.
+            // Required for SetChildrenHtml which stores raw children (may be LazyMemo/Memo).
+            case ILazyMemoNode lazyMemo:
+                RegisterHandlers(lazyMemo.CachedNode ?? lazyMemo.Evaluate());
+                break;
+            case IMemoNode memo:
+                RegisterHandlers(memo.CachedNode);
+                break;
         }
     }
 
@@ -434,27 +444,40 @@ public static partial class Runtime
 
     internal static void UnregisterHandlers(Node node)
     {
-        if (node is Element element)
+        switch (node)
         {
-            foreach (var attribute in element.Attributes)
-            {
-                if (attribute is Handler handler)
+            case Element element:
+                foreach (var attribute in element.Attributes)
                 {
-                    if (handler.Command is not null)
+                    if (attribute is Handler handler)
                     {
-                        _handlers.Remove(handler.CommandId);
-                    }
-                    if (handler.WithData is not null)
-                    {
-                        _dataHandlers.Remove(handler.CommandId);
+                        if (handler.Command is not null)
+                        {
+                            _handlers.Remove(handler.CommandId);
+                        }
+                        if (handler.WithData is not null)
+                        {
+                            _dataHandlers.Remove(handler.CommandId);
+                        }
                     }
                 }
-            }
 
-            foreach (var child in element.Children)
-            {
-                UnregisterHandlers(child);
-            }
+                foreach (var child in element.Children)
+                {
+                    UnregisterHandlers(child);
+                }
+                break;
+
+            // Unwrap memo nodes symmetrically with RegisterHandlers.
+            case ILazyMemoNode lazyMemo:
+                if (lazyMemo.CachedNode is not null)
+                {
+                    UnregisterHandlers(lazyMemo.CachedNode);
+                }
+                break;
+            case IMemoNode memo:
+                UnregisterHandlers(memo.CachedNode);
+                break;
         }
     }
 

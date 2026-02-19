@@ -32,6 +32,60 @@ using System.Text;
 
 namespace Abies.DOM;
 
+// =============================================================================
+// HTML Specification Knowledge
+// =============================================================================
+// Encodes knowledge from the HTML Living Standard (https://html.spec.whatwg.org/)
+// to enable spec-aware optimizations in rendering and diffing.
+//
+// Void elements cannot have children and have no closing tag.
+// Skipping both the children loop and closing tag emission during rendering
+// eliminates unnecessary work. Skipping DiffChildren during diffing avoids
+// ArrayPool rents, key building, and function call overhead.
+//
+// Boolean attributes are rendered as bare attribute names per the HTML spec
+// (e.g., <input disabled> instead of <input disabled="true">).
+//
+// Inspired by Inferno's voidElements Set (packages/inferno-server/src/utils.ts).
+// =============================================================================
+
+/// <summary>
+/// HTML specification knowledge used to optimize rendering and diffing.
+/// </summary>
+internal static class HtmlSpec
+{
+    /// <summary>
+    /// HTML void elements per the HTML Living Standard §13.1.2.
+    /// Void elements cannot have content and must not have a closing tag.
+    /// </summary>
+    /// <remarks>
+    /// Source: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+    /// Using FrozenSet for O(1) lookup with minimal overhead at runtime.
+    /// </remarks>
+    internal static readonly FrozenSet<string> VoidElements = new[]
+    {
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr"
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// HTML boolean attributes per the HTML Living Standard.
+    /// Boolean attributes are rendered as bare attribute names when their value
+    /// is "true" or empty string (e.g., <![CDATA[<input disabled>]]> instead of <![CDATA[<input disabled="true">]]>).
+    /// </summary>
+    /// <remarks>
+    /// Source: https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#boolean-attributes
+    /// </remarks>
+    internal static readonly FrozenSet<string> BooleanAttributes = new[]
+    {
+        "allowfullscreen", "async", "autofocus", "autoplay", "checked",
+        "controls", "default", "defer", "disabled", "formnovalidate",
+        "hidden", "inert", "ismap", "itemscope", "loop", "multiple",
+        "muted", "nomodule", "novalidate", "open", "playsinline",
+        "readonly", "required", "reversed", "selected"
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+}
+
 /// <summary>
 /// Represents a document in the Abies DOM.
 /// </summary>
@@ -439,6 +493,26 @@ public readonly struct ClearChildren(Element parent, Node[] oldChildren) : Patch
 }
 
 /// <summary>
+/// Represents a patch operation to set all children of an element at once using innerHTML.
+/// This is dramatically faster than individual AddChild patches because it eliminates:
+/// - N separate parseHtmlFragment calls (each creating a temp container + innerHTML + extraction)
+/// - N separate appendChild calls
+/// - N separate addEventListeners TreeWalker scans
+/// Instead, a single innerHTML assignment handles all children in one DOM operation.
+/// </summary>
+/// <remarks>
+/// Inspired by ivi's _hN template pattern (innerHTML once, cloneNode for instances)
+/// and blockdom's batch innerHTML approach. Used when going from 0→N children.
+/// </remarks>
+/// <param name="parent">The parent element to populate.</param>
+/// <param name="children">The children nodes to render and set.</param>
+public readonly struct SetChildrenHtml(Element parent, Node[] children) : Patch
+{
+    public readonly Element Parent = parent;
+    public readonly Node[] Children = children;
+}
+
+/// <summary>
 /// Represents a patch operation to update an attribute in the Abies DOM.
 /// </summary>
 /// <param name="element">The element to update.</param>
@@ -681,6 +755,30 @@ public static class Render
         }
     }
 
+    /// <summary>
+    /// Renders a collection of child nodes to a single concatenated HTML string.
+    /// Used by <see cref="SetChildrenHtml"/> to produce one innerHTML assignment
+    /// instead of N individual AddChild patches.
+    /// </summary>
+    /// <param name="children">The child nodes to render (may include Memo/LazyMemo wrappers).</param>
+    /// <returns>Concatenated HTML for all children.</returns>
+    public static string HtmlChildren(Node[] children)
+    {
+        var sb = RentStringBuilder();
+        try
+        {
+            foreach (var child in children)
+            {
+                RenderNode(child, sb);
+            }
+            return sb.ToString();
+        }
+        finally
+        {
+            ReturnStringBuilder(sb);
+        }
+    }
+
     private static void RenderNode(Node node, StringBuilder sb)
     {
         switch (node)
@@ -689,11 +787,38 @@ public static class Render
                 sb.Append('<').Append(element.Tag).Append(" id=\"").Append(element.Id).Append('"');
                 foreach (var attr in element.Attributes)
                 {
-                    // For handlers, only render the data-event-* attribute; do not render a raw event name attribute
+                    // =============================================================
+                    // Boolean Attribute Optimization (HTML Living Standard)
+                    // =============================================================
+                    // Boolean attributes are rendered as bare attribute names per
+                    // the HTML spec: <input disabled> not <input disabled="true">.
+                    // This produces spec-compliant HTML and saves bytes.
+                    // =============================================================
+                    if (HtmlSpec.BooleanAttributes.Contains(attr.Name) &&
+                        (attr.Value is "true" or ""))
+                    {
+                        sb.Append(' ').Append(attr.Name);
+                        continue;
+                    }
+
                     sb.Append(' ').Append(attr.Name).Append("=\"");
                     AppendHtmlEncoded(sb, attr.Value);
                     sb.Append('"');
                 }
+
+                // =============================================================
+                // Void Element Optimization (HTML Living Standard §13.1.2)
+                // =============================================================
+                // Void elements cannot have content and must not have a closing
+                // tag. Skip the children loop and closing tag emission entirely.
+                // Inspired by Inferno's voidElements Set in SSR rendering.
+                // =============================================================
+                if (HtmlSpec.VoidElements.Contains(element.Tag))
+                {
+                    sb.Append('>');
+                    break;
+                }
+
                 sb.Append('>');
                 foreach (var child in element.Children)
                 {
@@ -938,6 +1063,10 @@ public static class Operations
             case MoveChild moveChild:
                 await Interop.MoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
                 break;
+            case SetChildrenHtml setChildren:
+                // Bulk set all children via innerHTML — faster than N individual AddChildHtml calls
+                await Interop.SetChildrenHtml(setChildren.Parent.Id, Render.HtmlChildren(setChildren.Children));
+                break;
             default:
                 throw new InvalidOperationException("Unknown patch type");
         }
@@ -970,6 +1099,12 @@ public static class Operations
                     break;
                 case AddChild addChild:
                     Runtime.RegisterHandlers(addChild.Child);
+                    break;
+                case SetChildrenHtml setChildren:
+                    foreach (var child in setChildren.Children)
+                    {
+                        Runtime.RegisterHandlers(child);
+                    }
                     break;
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
@@ -1103,6 +1238,10 @@ public static class Operations
 
             case MoveChild moveChild:
                 writer.WriteMoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
+                break;
+
+            case SetChildrenHtml setChildren:
+                writer.WriteSetChildrenHtml(setChildren.Parent.Id, Render.HtmlChildren(setChildren.Children));
                 break;
 
             default:
@@ -1272,7 +1411,20 @@ public static class Operations
             }
 
             DiffAttributes(oldElement, newElement, patches);
-            DiffChildren(oldElement, newElement, patches);
+
+            // =============================================================
+            // Void Element Diff Skip (HTML Living Standard §13.1.2)
+            // =============================================================
+            // Void elements cannot have children, so skip the DiffChildren
+            // call entirely. This avoids ArrayPool rents, key sequence
+            // building, and function call overhead for elements like
+            // <img>, <input>, <br>, <hr>, <meta>, <source>, etc.
+            // =============================================================
+            if (!HtmlSpec.VoidElements.Contains(oldElement.Tag))
+            {
+                DiffChildren(oldElement, newElement, patches);
+            }
+
             return;
         }
 
@@ -1602,24 +1754,14 @@ public static class Operations
         // When adding all new children (oldLength == 0, newLength > 0), skip dict building
         // and directly add all children. This is common when initializing a list.
         // =============================================================================
+        // Optimization: Emit a single SetChildrenHtml patch that concatenates all children
+        // into one innerHTML assignment. This eliminates N parseHtmlFragment + appendChild +
+        // addEventListeners calls on the JS side. Inspired by ivi's _hN template pattern
+        // and blockdom's batch innerHTML approach.
+        // =============================================================================
         if (oldLength == 0 && newLength > 0)
         {
-            foreach (var child in newChildren)
-            {
-                var effectiveNode = UnwrapMemoNode(child);
-                if (effectiveNode is Element newChild)
-                {
-                    patches.Add(new AddChild(newParent, newChild));
-                }
-                else if (effectiveNode is RawHtml newRaw)
-                {
-                    patches.Add(new AddRaw(newParent, newRaw));
-                }
-                else if (effectiveNode is Text newText)
-                {
-                    patches.Add(new AddText(newParent, newText));
-                }
-            }
+            patches.Add(new SetChildrenHtml(newParent, newChildren));
             return;
         }
 
@@ -1914,6 +2056,27 @@ public static class Operations
                         {
                             keysToAdd.Add(i);
                         }
+                    }
+
+                    // =========================================================================
+                    // Complete Replacement Fast Path
+                    // =========================================================================
+                    // When NO keys overlap (keysToDiff empty), ALL old middle children are
+                    // removed and ALL new middle children are added. Instead of emitting
+                    // N RemoveChild + N AddChild patches (each requiring a separate JS call),
+                    // emit ClearChildren + SetChildrenHtml for 2 bulk operations.
+                    //
+                    // This is triggered by the "replace all rows" benchmark (02_replace1k)
+                    // where every click creates rows with entirely new IDs.
+                    //
+                    // Conditions: no head/tail matches AND no key overlap in middle.
+                    // =========================================================================
+                    if (keysToDiff.Count == 0 && headSkip == 0 && tailSkip == 0)
+                    {
+                        // All old children removed, all new children added — bulk replace
+                        patches.Add(new ClearChildren(oldParent, oldChildren));
+                        patches.Add(new SetChildrenHtml(newParent, newChildren));
+                        return;
                     }
 
                     // Remove old children that don't exist in new (iterate backwards to maintain order)

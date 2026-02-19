@@ -604,6 +604,7 @@ public class DomBehaviorTests
         // This simulates the benchmark scenario:
         // 1. Initial render: tbody with no children
         // 2. After "Create 1000 rows": tbody with 1000 memo-wrapped children
+        // Optimization: emits a single SetChildrenHtml patch instead of N AddChild patches
         var emptyTbody = new Element("tbody-1", "tbody", []);
 
         var row1 = new Element("row-1", "tr", [], new Text("t-1", "Row 1"));
@@ -614,16 +615,15 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyTbody, filledTbody);
 
-        // Should have AddChild patches for the new rows
+        // Should have a single SetChildrenHtml patch (bulk innerHTML)
         Assert.NotEmpty(patches);
-        // The rows should be inserted as children
-        Assert.Contains(patches, p => p is AddChild);
+        Assert.Contains(patches, p => p is SetChildrenHtml);
     }
 
     [Fact]
     public void MemoNode_InsertChildPatch_ShouldContainCachedContent()
     {
-        // Verify that AddChild patches contain the actual element, not the memo wrapper
+        // Verify that SetChildrenHtml patches contain all the children
         var emptyTbody = new Element("tbody-1", "tbody", []);
 
         var row = new Element("row-1", "tr", [], new Text("t-1", "Hello"));
@@ -632,13 +632,144 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyTbody, filledTbody);
 
-        // Find the AddChild patch
-        var addPatches = patches.OfType<AddChild>().ToList();
-        Assert.Single(addPatches);
-        var addPatch = addPatches[0];
+        // Find the SetChildrenHtml patch
+        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
+        Assert.Single(setChildrenPatches);
+        var patch = setChildrenPatches[0];
 
-        // The added child should be the actual element (row), not the memo
-        Assert.Equal("row-1", addPatch.Child.Id);
+        // The parent should be the tbody
+        Assert.Equal("tbody-1", patch.Parent.Id);
+        // The children should include the memo-wrapped row
+        Assert.Single(patch.Children);
+    }
+
+    #endregion
+
+    #region SetChildrenHtml Batch Optimization Tests
+
+    [Fact]
+    public void SetChildrenHtml_EmptyToMultipleChildren_EmitsSinglePatch()
+    {
+        // Verify that going from 0→N children emits ONE SetChildrenHtml patch
+        // instead of N individual AddChild patches.
+        var emptyParent = new Element("list-1", "ul", []);
+
+        var children = Enumerable.Range(1, 100).Select(i =>
+            (Node)new Element($"item-{i}", "li", [], new Text($"t-{i}", $"Item {i}"))
+        ).ToArray();
+        var filledParent = new Element("list-1", "ul", [], children);
+
+        var patches = Operations.Diff(emptyParent, filledParent);
+
+        // Should emit exactly ONE SetChildrenHtml patch, not 100 AddChild patches
+        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
+        Assert.Single(setChildrenPatches);
+        Assert.Equal(100, setChildrenPatches[0].Children.Length);
+        Assert.Equal("list-1", setChildrenPatches[0].Parent.Id);
+    }
+
+    [Fact]
+    public void SetChildrenHtml_HtmlChildrenRendersAllChildren()
+    {
+        // Verify that HtmlChildren concatenates all children HTML correctly
+        var child1 = new Element("c-1", "div", [], new Text("t-1", "Hello"));
+        var child2 = new Element("c-2", "span", [], new Text("t-2", "World"));
+        Node[] children = [child1, child2];
+
+        var html = Render.HtmlChildren(children);
+
+        Assert.Contains("<div id=\"c-1\"", html);
+        Assert.Contains("<span id=\"c-2\"", html);
+        Assert.Contains("Hello", html);
+        Assert.Contains("World", html);
+    }
+
+    [Fact]
+    public void SetChildrenHtml_HtmlChildrenHandlesMemoNodes()
+    {
+        // Verify that HtmlChildren correctly unwraps and renders memo-wrapped nodes
+        var inner = new Element("inner-1", "p", [], new Text("t-1", "Content"));
+        var memo = new Memo<int>("m-1", 42, inner);
+        Node[] children = [memo];
+
+        var html = Render.HtmlChildren(children);
+
+        // Should render the inner element, not the memo wrapper
+        Assert.Contains("<p id=\"inner-1\"", html);
+        Assert.Contains("Content", html);
+    }
+
+    [Fact]
+    public void SetChildrenHtml_EmptyToSingleChild_EmitsSinglePatch()
+    {
+        // Even a single new child should use SetChildrenHtml (consistent path)
+        var emptyParent = new Element("p-1", "div", []);
+        var child = new Element("c-1", "span", [], new Text("t-1", "Only"));
+        var filledParent = new Element("p-1", "div", [], child);
+
+        var patches = Operations.Diff(emptyParent, filledParent);
+
+        Assert.Single(patches.OfType<SetChildrenHtml>());
+    }
+
+    [Fact]
+    public void SetChildrenHtml_NotUsedForIncrementalAdd()
+    {
+        // When adding to a non-empty parent (e.g., appending), AddChild should
+        // still be used, NOT SetChildrenHtml.
+        var child1 = new Element("c-1", "div", [], new Text("t-1", "First"));
+        var child2 = new Element("c-2", "div", [], new Text("t-2", "Second"));
+        var originalParent = new Element("p-1", "div", [], child1);
+        var updatedParent = new Element("p-1", "div", [], child1, child2);
+
+        var patches = Operations.Diff(originalParent, updatedParent);
+
+        // Should NOT use SetChildrenHtml for incremental adds
+        Assert.DoesNotContain(patches, p => p is SetChildrenHtml);
+    }
+
+    [Fact]
+    public void SetChildrenHtml_CompleteReplacement_EmitsClearAndSetChildren()
+    {
+        // Simulates the replace benchmark: all old keys are different from all new keys.
+        // Should emit ClearChildren + SetChildrenHtml instead of N RemoveChild + N AddChild.
+        // Uses >8 children to exceed SmallChildCountThreshold.
+        var oldChildren = Enumerable.Range(1, 20).Select(i =>
+            (Node)new Element($"old-{i}", "tr", [])
+        ).ToArray();
+        var oldParent = new Element("list-1", "tbody", [], oldChildren);
+
+        var newChildren = Enumerable.Range(1, 20).Select(i =>
+            (Node)new Element($"new-{i}", "tr", [])
+        ).ToArray();
+        var newParent = new Element("list-1", "tbody", [], newChildren);
+
+        var patches = Operations.Diff(oldParent, newParent);
+
+        // Should have ClearChildren + SetChildrenHtml (bulk replace)
+        Assert.Contains(patches, p => p is ClearChildren);
+        Assert.Contains(patches, p => p is SetChildrenHtml);
+
+        // Should NOT have individual RemoveChild or AddChild patches
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+    }
+
+    [Fact]
+    public void SetChildrenHtml_PartialReplacement_DoesNotUseBulkReplace()
+    {
+        // When some keys overlap, should NOT use the complete replacement fast path.
+        var shared = new Element("s-1", "tr", []);
+        var oldChild = new Element("old-1", "tr", []);
+        var oldParent = new Element("list-1", "tbody", [], shared, oldChild);
+
+        var newChild = new Element("new-1", "tr", []);
+        var newParent = new Element("list-1", "tbody", [], shared, newChild);
+
+        var patches = Operations.Diff(oldParent, newParent);
+
+        // Should NOT use SetChildrenHtml since key "s-1" is shared
+        Assert.DoesNotContain(patches, p => p is SetChildrenHtml);
     }
 
     #endregion
@@ -1012,6 +1143,235 @@ public class DomBehaviorTests
         Assert.IsType<Element>(result);
         var resultElement = (Element)result;
         Assert.Empty(resultElement.Children);
+    }
+
+    #endregion
+
+    #region HTML Spec-Aware Optimization Tests
+
+    [Fact]
+    public void VoidElement_Render_ShouldNotEmitClosingTag()
+    {
+        var img = new Element("img1", "img",
+            [new DOMAttribute("s1", "src", "/photo.jpg")]);
+
+        var html = Render.Html(img);
+
+        Assert.Contains("<img", html);
+        Assert.Contains("src=\"/photo.jpg\"", html);
+        Assert.DoesNotContain("</img>", html);
+    }
+
+    [Fact]
+    public void VoidElement_Br_ShouldNotEmitClosingTag()
+    {
+        var br = new Element("br1", "br", []);
+
+        var html = Render.Html(br);
+
+        Assert.StartsWith("<br", html);
+        Assert.DoesNotContain("</br>", html);
+    }
+
+    [Fact]
+    public void VoidElement_Input_ShouldNotEmitClosingTag()
+    {
+        var input = new Element("in1", "input",
+            [new DOMAttribute("t1", "type", "text"), new DOMAttribute("n1", "name", "email")]);
+
+        var html = Render.Html(input);
+
+        Assert.Contains("type=\"text\"", html);
+        Assert.Contains("name=\"email\"", html);
+        Assert.DoesNotContain("</input>", html);
+    }
+
+    [Fact]
+    public void VoidElement_Hr_Meta_Source_ShouldNotEmitClosingTag()
+    {
+        var hr = new Element("hr1", "hr", []);
+        var meta = new Element("m1", "meta",
+            [new DOMAttribute("c1", "charset", "utf-8")]);
+        var source = new Element("s1", "source",
+            [new DOMAttribute("s1", "src", "video.mp4")]);
+
+        Assert.DoesNotContain("</hr>", Render.Html(hr));
+        Assert.DoesNotContain("</meta>", Render.Html(meta));
+        Assert.DoesNotContain("</source>", Render.Html(source));
+    }
+
+    [Fact]
+    public void NonVoidElement_ShouldStillEmitClosingTag()
+    {
+        var div = new Element("d1", "div", [], new Text("t1", "Hello"));
+
+        var html = Render.Html(div);
+
+        Assert.Contains("<div", html);
+        Assert.Contains("</div>", html);
+        Assert.Contains("Hello", html);
+    }
+
+    [Fact]
+    public void VoidElement_ChildrenIgnored_InRender()
+    {
+        // Even if a void element somehow has children (shouldn't happen with the DSL,
+        // but could happen with manual construction), they should not be rendered.
+        var img = new Element("img1", "img",
+            [new DOMAttribute("s1", "src", "/photo.jpg")],
+            new Text("t1", "This should not appear"));
+
+        var html = Render.Html(img);
+
+        Assert.DoesNotContain("This should not appear", html);
+        Assert.DoesNotContain("</img>", html);
+    }
+
+    [Fact]
+    public void VoidElement_Diff_ShouldSkipDiffChildren()
+    {
+        // When diffing two void elements, DiffChildren should not be called.
+        // We verify this indirectly: if children are different but both elements
+        // are void, there should be no AddChild/RemoveChild patches.
+        var oldImg = new Element("img1", "img",
+            [new DOMAttribute("s1", "src", "/old.jpg")]);
+
+        var newImg = new Element("img1", "img",
+            [new DOMAttribute("s1", "src", "/new.jpg")]);
+
+        var parent = new Element("div1", "div", [], oldImg);
+        var newParent = new Element("div1", "div", [], newImg);
+
+        var patches = Operations.Diff(parent, newParent);
+
+        // Should only have an UpdateAttribute patch for src, no child operations
+        Assert.Contains(patches, p => p is UpdateAttribute);
+        Assert.DoesNotContain(patches, p => p is AddChild);
+        Assert.DoesNotContain(patches, p => p is RemoveChild);
+        Assert.DoesNotContain(patches, p => p is ClearChildren);
+    }
+
+    [Fact]
+    public void BooleanAttribute_True_ShouldRenderBare()
+    {
+        var input = new Element("in1", "input",
+            [new DOMAttribute("d1", "disabled", "true"),
+             new DOMAttribute("t1", "type", "text")]);
+
+        var html = Render.Html(input);
+
+        // Should render as bare attribute: <input ... disabled ...>
+        // Not as: <input ... disabled="true" ...>
+        Assert.Contains(" disabled", html);
+        Assert.DoesNotContain("disabled=\"true\"", html);
+        Assert.Contains("type=\"text\"", html);
+    }
+
+    [Fact]
+    public void BooleanAttribute_EmptyString_ShouldRenderBare()
+    {
+        var input = new Element("in1", "input",
+            [new DOMAttribute("c1", "checked", ""),
+             new DOMAttribute("t1", "type", "checkbox")]);
+
+        var html = Render.Html(input);
+
+        Assert.Contains(" checked", html);
+        Assert.DoesNotContain("checked=\"\"", html);
+    }
+
+    [Fact]
+    public void BooleanAttribute_WithNonBooleanValue_ShouldRenderNormally()
+    {
+        // A boolean attribute with a non-true/empty value should render normally
+        var input = new Element("in1", "input",
+            [new DOMAttribute("h1", "hidden", "until-found")]);
+
+        var html = Render.Html(input);
+
+        Assert.Contains("hidden=\"until-found\"", html);
+    }
+
+    [Fact]
+    public void NonBooleanAttribute_True_ShouldRenderNormally()
+    {
+        // Non-boolean attributes should always render with value even if "true"
+        var div = new Element("d1", "div",
+            [new DOMAttribute("c1", "class", "true")]);
+
+        var html = Render.Html(div);
+
+        Assert.Contains("class=\"true\"", html);
+    }
+
+    [Fact]
+    public void MultipleBooleanAttributes_ShouldAllRenderBare()
+    {
+        var input = new Element("in1", "input",
+            [new DOMAttribute("d1", "disabled", "true"),
+             new DOMAttribute("r1", "required", "true"),
+             new DOMAttribute("ro1", "readonly", "true"),
+             new DOMAttribute("t1", "type", "text")]);
+
+        var html = Render.Html(input);
+
+        Assert.Contains(" disabled", html);
+        Assert.Contains(" required", html);
+        Assert.Contains(" readonly", html);
+        Assert.DoesNotContain("disabled=\"true\"", html);
+        Assert.DoesNotContain("required=\"true\"", html);
+        Assert.DoesNotContain("readonly=\"true\"", html);
+        Assert.Contains("type=\"text\"", html);
+    }
+
+    [Fact]
+    public void VoidElement_AllVoidTags_ShouldNotEmitClosingTag()
+    {
+        // Verify all 14 standard void elements
+        string[] voidTags = ["area", "base", "br", "col", "embed", "hr", "img",
+                             "input", "link", "meta", "param", "source", "track", "wbr"];
+
+        foreach (var tag in voidTags)
+        {
+            var element = new Element($"{tag}-1", tag, []);
+            var html = Render.Html(element);
+            Assert.DoesNotContain($"</{tag}>", html);
+        }
+    }
+
+    [Fact]
+    public void VoidElement_InComplexTree_ShouldRenderCorrectly()
+    {
+        // A complex tree with void elements nested inside normal elements
+        var form = new Element("f1", "form", [],
+            new Element("d1", "div", [],
+                new Element("l1", "label", [], new Text("lt1", "Email:")),
+                new Element("i1", "input",
+                    [new DOMAttribute("t1", "type", "email"),
+                     new DOMAttribute("r1", "required", "true")])),
+            new Element("d2", "div", [],
+                new Element("l2", "label", [], new Text("lt2", "Photo:")),
+                new Element("i2", "img",
+                    [new DOMAttribute("s1", "src", "/photo.jpg")])),
+            new Element("hr1", "hr", []));
+
+        var html = Render.Html(form);
+
+        // Verify structure
+        Assert.Contains("<form", html);
+        Assert.Contains("</form>", html);
+        Assert.Contains("<label", html);
+        Assert.Contains("</label>", html);
+        Assert.Contains("Email:", html);
+
+        // Void elements should not have closing tags
+        Assert.DoesNotContain("</input>", html);
+        Assert.DoesNotContain("</img>", html);
+        Assert.DoesNotContain("</hr>", html);
+
+        // Boolean attribute rendered bare
+        Assert.Contains(" required", html);
+        Assert.DoesNotContain("required=\"true\"", html);
     }
 
     #endregion

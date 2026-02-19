@@ -54,6 +54,9 @@ public enum BinaryPatchType : int
 
     /// <summary>Move child to new position (parentId in Field1, childId in Field2, beforeId in Field3, -1 = append)</summary>
     MoveChild = 11,
+
+    /// <summary>Set all children via innerHTML (parentId in Field1, html in Field2). Eliminates N parseHtmlFragment + appendChild + addEventListeners calls.</summary>
+    SetChildrenHtml = 12,
 }
 
 /// <summary>
@@ -316,6 +319,17 @@ public sealed class RenderBatchWriter : IDisposable
         var childIndex = WriteString(childId);
         var beforeIndex = WriteString(beforeId); // -1 if null (append)
         _patches.Add(new PatchEntry(BinaryPatchType.MoveChild, parentIndex, childIndex, beforeIndex));
+    }
+
+    /// <summary>
+    /// Adds a SetChildrenHtml patch — sets all children of a parent element via a single innerHTML assignment.
+    /// This replaces N individual AddChild patches with one bulk operation.
+    /// </summary>
+    public void WriteSetChildrenHtml(string parentId, string html)
+    {
+        var parentIndex = WriteString(parentId);
+        var htmlIndex = WriteString(html);
+        _patches.Add(new PatchEntry(BinaryPatchType.SetChildrenHtml, parentIndex, htmlIndex, -1));
     }
 
     /// <summary>
