@@ -147,7 +147,7 @@ public class Page : Element<Model, Message>
 
     private static Node ArticleMeta(Home.Article article, bool showEditDelete = false) =>
         div([class_("article-meta")], [            a([href($"/profile/{article.Author.Username}")], [
-                img([src(article.Author.Image)])
+                img([src(article.Author.Image), alt($"{article.Author.Username} profile image")])
             ]),            div([class_("info")], [
                 a([href($"/profile/{article.Author.Username}")], [
                     text(article.Author.Username)
@@ -235,7 +235,7 @@ public class Page : Element<Model, Message>
                     ], [text(model.CommentInput)])
                 ]),
                 div([class_("card-footer")], [
-                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? "")]),
+                    img([class_("comment-author-img"), src(model.CurrentUser?.Image ?? ""), alt($"{model.CurrentUser?.Username.Value ?? "User"} profile image")]),
                     button([
                         class_("btn btn-sm btn-primary"),
                         type("submit"),
@@ -251,7 +251,7 @@ public class Page : Element<Model, Message>
                 p([class_("card-text")], [text(comment.Body)])
             ]),
             div([class_("card-footer")], [                a([class_("comment-author"), href($"/profile/{comment.Author.Username}")], [
-                    img([class_("comment-author-img"), src(comment.Author.Image)])
+                    img([class_("comment-author-img"), src(comment.Author.Image), alt($"{comment.Author.Username} profile image")])
                 ]),
                 text(" "),
                 a([class_("comment-author"), href($"/profile/{comment.Author.Username}")], [

@@ -48,4 +48,20 @@
     <PackageReference Include="Praefixum" Version="1.2.1-tags-v1-2-0.1" />
   </ItemGroup>
 
+  <!-- Run the HTML analyzer on the Abies library itself -->
+  <ItemGroup>
+    <ProjectReference Include="..\Abies.Analyzers\Abies.Analyzers.csproj"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Pack the analyzer DLL into the NuGet package so PackageReference consumers get it automatically -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\Abies.Analyzers\bin\$(Configuration)\netstandard2.0\Abies.Analyzers.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false" />
+  </ItemGroup>
+
 </Project>

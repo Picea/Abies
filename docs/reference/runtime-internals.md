@@ -62,17 +62,17 @@ Messages enter the channel from:
 
 ## Handler Registries
 
-Event handlers are stored in concurrent dictionaries:
+Event handlers are stored in dictionaries (non-concurrent, since WASM is single-threaded):
 
 ```csharp
 // Simple handlers (message only)
-private static readonly ConcurrentDictionary<string, Message> _handlers = new();
+private static readonly Dictionary<string, Message> _handlers = new();
 
 // Handlers with data (e.g., input value)
-private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
+private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
 
 // Subscription handlers
-private static readonly ConcurrentDictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
+private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
 ```
 
 ### Handler Lifecycle
@@ -403,25 +403,27 @@ The runtime ignores these cases rather than throwing.
 
 ## Thread Safety
 
-The runtime uses thread-safe collections:
+Since WASM is single-threaded, the runtime uses non-concurrent collections for
+handler registries and object pools. This avoids the overhead of thread-safe
+abstractions that provide no benefit in a single-threaded environment:
 
-- `Channel<T>` — Thread-safe message queue
-- `ConcurrentDictionary<K,V>` — Thread-safe handler registries
-
-All operations are designed to be safe from multiple threads, though typically only the UI thread dispatches messages.
+- `Channel<T>` — Thread-safe message queue (retained for its async enumeration API)
+- `Dictionary<K,V>` — Handler registries (replaced `ConcurrentDictionary`)
+- `Stack<T>` — Object pools (replaced `ConcurrentQueue`, LIFO is more cache-friendly)
 
 ## Memory Management
 
 ### Object Pooling
 
-Frequently allocated objects are pooled:
+Frequently allocated objects are pooled using `Stack<T>` (LIFO pattern for cache
+locality). Since WASM is single-threaded, no concurrent collections are needed:
 
 ```csharp
-private static readonly ConcurrentQueue<List<Patch>> _patchListPool = new();
+private static readonly Stack<List<Patch>> _patchListPool = new();
 
 private static List<Patch> RentPatchList()
 {
-    if (_patchListPool.TryDequeue(out var list))
+    if (_patchListPool.TryPop(out var list))
     {
         list.Clear();
         return list;
@@ -431,8 +433,8 @@ private static List<Patch> RentPatchList()
 
 private static void ReturnPatchList(List<Patch> list)
 {
-    if (list.Count < 1000)  // Limit pool size
-        _patchListPool.Enqueue(list);
+    if (list.Count < 1000)  // Prevent memory bloat
+        _patchListPool.Push(list);
 }
 ```
 
@@ -443,22 +445,34 @@ Handlers are cleaned up when elements are removed:
 ```csharp
 internal static void UnregisterHandlers(Node node)
 {
-    if (node is Element element)
+    switch (node)
     {
-        foreach (var attr in element.Attributes)
-        {
-            if (attr is Handler handler)
+        case Element element:
+            foreach (var attr in element.Attributes)
             {
-                _handlers.TryRemove(handler.CommandId, out _);
-                _dataHandlers.TryRemove(handler.CommandId, out _);
+                if (attr is Handler handler)
+                {
+                    _handlers.Remove(handler.CommandId);
+                    _dataHandlers.Remove(handler.CommandId);
+                }
             }
-        }
+            foreach (var child in element.Children)
+                UnregisterHandlers(child);
+            break;
         
-        foreach (var child in element.Children)
-            UnregisterHandlers(child);
+        case ILazyMemoNode lazyMemo:
+            UnregisterHandlers(lazyMemo.RenderedNode);
+            break;
+        
+        case IMemoNode memo:
+            UnregisterHandlers(memo.RenderedNode);
+            break;
     }
 }
 ```
+
+The `ILazyMemoNode` and `IMemoNode` cases ensure that handlers inside memoized
+subtrees are properly cleaned up when those subtrees are removed from the DOM.
 
 ## See Also
 
