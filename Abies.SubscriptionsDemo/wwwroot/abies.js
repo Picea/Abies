@@ -111,7 +111,7 @@ const isOtelDisabled = (() => {
 function initLocalOtelShim() {
   if (isOtelDisabled) return; // Respect global disable switches
   if (window.__otel) return; // Already initialized
-  
+
   const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
   const nowNs = () => {
     const t = performance.timeOrigin + performance.now();
@@ -284,7 +284,7 @@ function initLocalOtelShim() {
 // CDN-based OTel upgrade (deferred to after first paint)
 async function upgradeToFullOtel() {
   if (isOtelDisabled) return;
-  
+
   // Check if CDN is enabled
   const useCdn = (() => {
     try {
@@ -410,13 +410,13 @@ async function upgradeToFullOtel() {
 // Schedule deferred OTel upgrade using requestIdleCallback or fallback
 function scheduleDeferredOtelUpgrade() {
   if (isOtelDisabled) return;
-  
+
   const doUpgrade = () => {
     // Cap OTel init time to avoid blocking for too long
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('OTel timeout')), 5000));
     Promise.race([upgradeToFullOtel(), timeout]).catch(() => {});
   };
-  
+
   // Use requestIdleCallback if available, otherwise setTimeout with 0ms delay
   // This ensures OTel loading happens during browser idle time, after first paint
   if (typeof requestIdleCallback === 'function') {
@@ -853,7 +853,7 @@ function unsubscribe(key) {
  * Discovers and registers event listeners for any custom (non-common) event types
  * in the given DOM subtree. Common event types are pre-registered at startup,
  * so this function primarily handles rare/custom event handlers.
- * 
+ *
  * Uses TreeWalker instead of querySelectorAll for better memory efficiency.
  */
 function addEventListeners(root) {
@@ -861,10 +861,10 @@ function addEventListeners(root) {
     // Since common events are pre-registered, this is mostly a no-op for typical apps,
     // but we still need to scan for custom event types in newly added HTML.
     const scope = root || document;
-    
+
     // Use TreeWalker for memory-efficient iteration
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
-    
+
     // Include the root element itself if it's an element
     if (scope.nodeType === 1 /* ELEMENT_NODE */ && scope.attributes) {
         for (const attr of scope.attributes) {
@@ -874,7 +874,7 @@ function addEventListeners(root) {
             }
         }
     }
-    
+
     // Walk descendants
     let el = walker.nextNode();
     while (el) {
@@ -888,7 +888,45 @@ function addEventListeners(root) {
         }
         el = walker.nextNode();
     }
-}/**
+}
+
+/**
+ * Lightweight scan for non-common event listeners in a DOM subtree.
+ * COMMON_EVENT_TYPES covers all standard DOM events and are pre-registered at
+ * document level, so this only does real work when custom/non-standard events
+ * (e.g., CustomEvent types) are used. For typical apps this is a no-op scan.
+ * @param {Element} root - The root element to scan.
+ */
+function ensureSubtreeEventListeners(root) {
+    if (!root || root.nodeType !== 1) return;
+    // Check the root element itself
+    const attrs = root.attributes;
+    if (attrs) {
+        for (let i = 0; i < attrs.length; i++) {
+            const name = attrs[i].name;
+            if (name.length > 11 && name.startsWith('data-event-')) {
+                ensureEventListener(name.substring(11));
+            }
+        }
+    }
+    // Walk descendants using TreeWalker (memory-efficient for large subtrees)
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    let el = walker.nextNode();
+    while (el) {
+        const elAttrs = el.attributes;
+        if (elAttrs) {
+            for (let i = 0; i < elAttrs.length; i++) {
+                const name = elAttrs[i].name;
+                if (name.length > 11 && name.startsWith('data-event-')) {
+                    ensureEventListener(name.substring(11));
+                }
+            }
+        }
+        el = walker.nextNode();
+    }
+}
+
+/**
  * Event handler for click events on elements with data-event-* attributes.
  * @param {Event} event - The DOM event.
  */
@@ -903,13 +941,13 @@ function addEventListeners(root) {
 //   Header (8 bytes):
 //     - PatchCount: int32 (4 bytes)
 //     - StringTableOffset: int32 (4 bytes)
-//   
+//
 //   Patch Entries (16 bytes each):
 //     - Type: int32 (4 bytes) - BinaryPatchType enum value
 //     - Field1: int32 (4 bytes) - string table index (-1 = null)
 //     - Field2: int32 (4 bytes) - string table index (-1 = null)
 //     - Field3: int32 (4 bytes) - string table index (-1 = null)
-//   
+//
 //   String Table:
 //     - Strings stored as LEB128 length prefix + UTF8 bytes
 // =============================================================================
@@ -926,6 +964,7 @@ const BinaryPatchType = {
     UpdateText: 9,
     UpdateTextWithId: 10,
     MoveChild: 11,
+    SetChildrenHtml: 12,
 };
 
 /**
@@ -966,20 +1005,20 @@ function readLEB128(data, offset) {
  */
 function createStringReader(data, stringTableOffset) {
     const decoder = new TextDecoder('utf-8');
-    
+
     return function readString(index) {
         if (index === -1) return null;
-        
+
         // Index points to the byte offset within the string table
         const absoluteOffset = stringTableOffset + index;
-        
+
         // Read LEB128 length prefix
         const { value: length, bytesRead } = readLEB128(data, absoluteOffset);
-        
+
         // Read UTF-8 bytes
         const stringStart = absoluteOffset + bytesRead;
         const stringBytes = data.subarray(stringStart, stringStart + length);
-        
+
         return decoder.decode(stringBytes);
     };
 }
@@ -1009,30 +1048,30 @@ function applyBinaryBatchImpl(batchData) {
         console.error('[Binary Batch] Unknown batchData type:', typeof batchData, batchData);
         return;
     }
-    
+
     // Read header
     const patchCount = readInt32LE(data, 0);
     const stringTableOffset = readInt32LE(data, 4);
-    
+
     if (getVerbosity() >= 2) { // debug level
         console.debug(`[Binary Batch] patchCount=${patchCount}, stringTableOffset=${stringTableOffset}, dataLength=${data.length}`);
     }
-    
+
     // Create string reader
     const readString = createStringReader(data, stringTableOffset);
-    
+
     // Process each patch (16 bytes each, starting after 8-byte header)
     const HEADER_SIZE = 8;
     const PATCH_SIZE = 16;
-    
+
     for (let i = 0; i < patchCount; i++) {
         const patchOffset = HEADER_SIZE + (i * PATCH_SIZE);
-        
+
         const type = readInt32LE(data, patchOffset);
         const field1 = readInt32LE(data, patchOffset + 4);
         const field2 = readInt32LE(data, patchOffset + 8);
         const field3 = readInt32LE(data, patchOffset + 12);
-        
+
         switch (type) {
             case BinaryPatchType.SetAppContent: {
                 const html = readString(field1);
@@ -1049,7 +1088,9 @@ function applyBinaryBatchImpl(batchData) {
                     const childElement = parseHtmlFragment(html);
                     if (childElement) {
                         parent.appendChild(childElement);
-                        addEventListeners(childElement);
+                        // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                        // Scan for non-common/custom event types that need dynamic registration.
+                        ensureSubtreeEventListeners(childElement);
                     }
                 }
                 break;
@@ -1078,7 +1119,9 @@ function applyBinaryBatchImpl(batchData) {
                     const newNode = parseHtmlFragment(html);
                     if (newNode) {
                         oldNode.parentNode.replaceChild(newNode, oldNode);
-                        addEventListeners(newNode);
+                        // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                        // Scan for non-common/custom event types that need dynamic registration.
+                        ensureSubtreeEventListeners(newNode);
                     }
                 }
                 break;
@@ -1183,6 +1226,21 @@ function applyBinaryBatchImpl(batchData) {
                 if (parent && child) {
                     const before = beforeId ? document.getElementById(beforeId) : null;
                     parent.insertBefore(child, before);
+                }
+                break;
+            }
+            case BinaryPatchType.SetChildrenHtml: {
+                // Bulk set all children via a single innerHTML assignment.
+                // This replaces N individual parseHtmlFragment + appendChild + addEventListeners calls
+                // with ONE DOM operation. Inspired by ivi's _hN template pattern and blockdom.
+                const parentId = readString(field1);
+                const html = readString(field2);
+                const parent = document.getElementById(parentId);
+                if (parent) {
+                    parent.innerHTML = html;
+                    // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+                    // Scan for non-common/custom event types that need dynamic registration.
+                    ensureSubtreeEventListeners(parent);
                 }
                 break;
             }
@@ -1330,6 +1388,25 @@ setModuleImports('abies.js', {
         }
         // insertBefore with null as second argument appends to end
         parent.insertBefore(child, before);
+    }),
+
+    /**
+     * Sets all children of a parent element via a single innerHTML assignment.
+     * This is dramatically faster than N individual addChildHtml calls because
+     * it eliminates per-child parseHtmlFragment + appendChild + addEventListeners overhead.
+     * @param {string} parentId - The ID of the parent element.
+     * @param {string} html - The concatenated HTML for all children.
+     */
+    setChildrenHtml: withSpan('setChildrenHtml', async (parentId, html) => {
+        const parent = document.getElementById(parentId);
+        if (parent) {
+            parent.innerHTML = html;
+            // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
+            // Scan for non-common/custom event types that need dynamic registration.
+            ensureSubtreeEventListeners(parent);
+        } else {
+            console.error(`Parent element with ID ${parentId} not found for setChildrenHtml.`);
+        }
     }),
 
     /**

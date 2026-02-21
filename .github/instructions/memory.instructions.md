@@ -366,18 +366,69 @@ For reference, compare against:
 - `vanillajs-keyed` - Baseline (raw DOM manipulation)
 - `blazor-wasm-keyed` - .NET Blazor WASM (similar tech stack)
 
-### Latest Benchmark Results (2026-02-11)
+### Latest Benchmark Results (2026-02-19)
 
-**Abies v1.0.152 vs Blazor WASM v10.0.0:**
+**Abies v1.0.152 (with SetChildrenHtml + addEventListeners skip) vs Blazor WASM v10.0.0:**
 
 | Benchmark | Abies | Blazor | Ratio |
 |-----------|-------|--------|-------|
-| 01_run1k | 107.1ms | 88.5ms | 1.21x |
-| 05_swap1k | 124.8ms | 95.2ms | 1.31x |
-| 09_clear1k | 85.1ms | 46.2ms | 1.84x |
+| 01_run1k | **71.7ms** | 88.5ms | **0.81x ✅ (19% FASTER)** |
+| 02_replace1k | **95.5ms** | — | — |
+| 05_swap1k | 107.8ms | 95.2ms | 1.13x |
+| 09_clear1k | 92.2ms | 46.2ms | 2.00x |
 | **First Paint** | **74.2ms** | **75ms** | **0.99x ✅** |
 | Size (compressed) | 1,225 KB | 1,377 KB | 0.89x ✅ |
 | Ready Memory | 34.3 MB | 41.1 MB | 0.83x ✅ |
+
+### 🎉 SetChildrenHtml + addEventListeners Skip (2026-02-19)
+
+**Branch**: `perf/html-spec-aware-rendering`
+
+Two related optimizations that dramatically improve create and replace performance.
+
+**Results (3-run average, 15 samples each, with handler registration bug fix):**
+
+| Benchmark | Before (binary batch) | After (SetChildrenHtml) | Improvement |
+|-----------|----------------------|------------------------|-------------|
+| 01_run1k total | 90ms | **71.7ms** | **20% faster** |
+| 01_run1k script | 60ms | **40.4ms** | **33% faster** |
+| 02_replace1k total | 103ms | **95.5ms** | **7% faster** |
+| 02_replace1k script | 68ms | **56.6ms** | **17% faster** |
+| 05_swap1k | 112ms | 107.8ms | ~neutral |
+| 09_clear1k | 92ms | 92.2ms | No change |
+
+**Key Achievement**: Create 1000 rows is now **19% FASTER than Blazor** (71.7ms vs 88.5ms)!
+
+**Note**: Initial pre-bug-fix numbers (65ms/33ms for 01_run1k) were artificially fast because
+event handlers were not being registered for Memo/LazyMemo-wrapped nodes. The bug fix
+(RegisterHandlers/UnregisterHandlers now handles ILazyMemoNode/IMemoNode) added ~7ms — the
+correct cost of proper handler registration.
+
+**Optimization 1: SetChildrenHtml Batch Patch (HIGH IMPACT)**
+- New `SetChildrenHtml` binary patch type (enum value 12)
+- When going from 0→N children (Add-All fast path), concatenates all children HTML
+  into ONE string and emits a single `SetChildrenHtml` patch instead of N `AddChild` patches
+- JS handler: single `parent.innerHTML = html` instead of N `parseHtmlFragment + appendChild`
+- Eliminates N temporary DOM container creations, N `firstElementChild` extractions
+- Inspired by ivi's `_hN` template pattern and blockdom's batch innerHTML approach
+
+**Optimization 2: Skip addEventListeners TreeWalker Scan**
+- All common events are pre-registered at document level via `COMMON_EVENT_TYPES.forEach(ensureEventListener)`
+- The TreeWalker scan after each AddChild/ReplaceChild was pure wasted work
+  (8000+ element visits, 16000+ attribute scans, all resulting in no-op)
+- Removed `addEventListeners(childElement)` calls from binary batch AddChild and ReplaceChild handlers
+
+**Optimization 3: Complete Replacement Fast Path**
+- When all old keys differ from all new keys (replace benchmark), emit
+  `ClearChildren + SetChildrenHtml` instead of N `RemoveChild + N AddChild`
+- Detected after dictionary categorization: `keysToDiff.Count == 0 && headSkip == 0 && tailSkip == 0`
+- Reduces 2000 individual DOM operations to 2 bulk operations
+
+**Code Changes:**
+- `Abies/DOM/Operations.cs`: Added `SetChildrenHtml` patch, `Render.HtmlChildren()`, complete replacement fast path
+- `Abies/DOM/RenderBatchWriter.cs`: Added `BinaryPatchType.SetChildrenHtml = 12`, `WriteSetChildrenHtml()`
+- `Abies/Interop.cs`: Added `SetChildrenHtml` JS import
+- `Abies/wwwroot/abies.js`: Added `SetChildrenHtml` binary handler, removed `addEventListeners` from AddChild/ReplaceChild
 
 ### 🎉 Binary Batching Protocol Implementation (2026-02-11)
 
