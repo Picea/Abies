@@ -1,3 +1,5 @@
+#pragma warning disable CA1416 // Platform compatibility — tests target browser-only virtualization APIs
+
 using Abies.Virtualization;
 
 namespace Abies.Tests;
