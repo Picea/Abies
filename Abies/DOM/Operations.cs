@@ -984,13 +984,6 @@ public static class Operations
     /// <param name="patch">The patch to apply.</param>
     public static async Task Apply(Patch patch)
     {
-        // Bulk HTML path — handled separately to keep the hot-path switch lean
-        if (patch is SetChildrenHtml setChildrenPatch)
-        {
-            await Interop.SetChildrenHtml(setChildrenPatch.Parent.Id, Render.HtmlChildren(setChildrenPatch.Children));
-            return;
-        }
-
         switch (patch)
         {
             case AddRoot addRoot:
@@ -1070,6 +1063,10 @@ public static class Operations
             case MoveChild moveChild:
                 await Interop.MoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
                 break;
+            case SetChildrenHtml setChildren:
+                // Bulk set all children via innerHTML — faster than N individual AddChildHtml calls
+                await Interop.SetChildrenHtml(setChildren.Parent.Id, Render.HtmlChildren(setChildren.Children));
+                break;
             default:
                 throw new InvalidOperationException("Unknown patch type");
         }
@@ -1092,16 +1089,6 @@ public static class Operations
         // This includes handlers in newly added subtrees (AddChild, ReplaceChild, AddRoot)
         foreach (var patch in patches)
         {
-            // Bulk HTML path — handle outside switch to keep hot-path dispatch lean
-            if (patch is SetChildrenHtml setChildrenPatch)
-            {
-                foreach (var child in setChildrenPatch.Children)
-                {
-                    Runtime.RegisterHandlers(child);
-                }
-                continue;
-            }
-
             switch (patch)
             {
                 case AddRoot addRoot:
@@ -1112,6 +1099,12 @@ public static class Operations
                     break;
                 case AddChild addChild:
                     Runtime.RegisterHandlers(addChild.Child);
+                    break;
+                case SetChildrenHtml setChildren:
+                    foreach (var child in setChildren.Children)
+                    {
+                        Runtime.RegisterHandlers(child);
+                    }
                     break;
                 case AddHandler addHandler:
                     Runtime.RegisterHandler(addHandler.Handler);
@@ -1164,20 +1157,9 @@ public static class Operations
 
     /// <summary>
     /// Write a single patch to the binary batch writer.
-    /// SetChildrenHtml is handled separately before the switch to keep the hot-path
-    /// switch lean — each extra case adds an isinst check per dispatch, which multiplies
-    /// across N patches (e.g., 1000× for create-1k).
     /// </summary>
     private static void WritePatchToBinary(RenderBatchWriter writer, Patch patch)
     {
-        // Bulk HTML path — rare (only complete-replace), handled outside the hot switch
-        // to avoid adding an isinst check to every single patch dispatch.
-        if (patch is SetChildrenHtml setChildren)
-        {
-            writer.WriteSetChildrenHtml(setChildren.Parent.Id, Render.HtmlChildren(setChildren.Children));
-            return;
-        }
-
         switch (patch)
         {
             case AddRoot addRoot:
@@ -1256,6 +1238,10 @@ public static class Operations
 
             case MoveChild moveChild:
                 writer.WriteMoveChild(moveChild.Parent.Id, moveChild.Child.Id, moveChild.BeforeId);
+                break;
+
+            case SetChildrenHtml setChildren:
+                writer.WriteSetChildrenHtml(setChildren.Parent.Id, Render.HtmlChildren(setChildren.Children));
                 break;
 
             default:
@@ -1385,18 +1371,6 @@ public static class Operations
         return materialized;
     }
 
-    // =============================================================================
-    // DiffInternal — Hot Path Optimized via Method Splitting
-    // =============================================================================
-    // In benchmarks like 06_remove-one-1k, DiffInternal is called ~999 times per
-    // render cycle. 998 of those calls hit the ILazyMemoNode key-match path and
-    // return immediately. By keeping DiffInternal's body small and extracting the
-    // cold paths (element diffing, type mismatch) into separate NoInlining methods,
-    // the WASM JIT can produce tighter code for the hot memo-hit path.
-    //
-    // See: https://github.com/Picea/Abies/issues/92
-    // =============================================================================
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
     {
         // Quick bailout: if both nodes are the exact same reference, nothing to diff
@@ -1445,18 +1419,6 @@ public static class Operations
             return;
         }
 
-        // Cold path: concrete node diffing (Text, RawHtml, Element, type mismatch)
-        // Extracted to keep DiffInternal's method body small for JIT optimization.
-        DiffConcreteNodes(oldNode, newNode, parent, patches);
-    }
-
-    /// <summary>
-    /// Diffs concrete (non-memo) nodes: Text, RawHtml, Element, and type-mismatch cases.
-    /// Extracted from DiffInternal to reduce method body size for the hot memo-hit path.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void DiffConcreteNodes(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
-    {
         // Unwrap any type of memo node (lazy or regular)
         var effectiveOld = UnwrapMemoNode(oldNode);
         var effectiveNew = UnwrapMemoNode(newNode);
@@ -1492,98 +1454,77 @@ public static class Operations
         // Elements may need to be replaced when the tag differs or the node type changed
         if (oldNode is Element oldElement && newNode is Element newElement)
         {
-            DiffElements(oldElement, newElement, parent, patches);
+            // Early exit for reference equality only for elements with same tag
+            if (ReferenceEquals(oldElement, newElement))
+            {
+                return;
+            }
+
+            if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
+            {
+                if (parent is null)
+                {
+                    patches.Add(new AddRoot(newElement));
+                }
+                else
+                {
+                    patches.Add(new ReplaceChild(oldElement, newElement));
+                }
+
+                return;
+            }
+
+            DiffAttributes(oldElement, newElement, patches);
+
+            // =============================================================
+            // Void Element Diff Skip (HTML Living Standard §13.1.2)
+            // =============================================================
+            // Void elements cannot have children, so skip the DiffChildren
+            // call entirely. This avoids ArrayPool rents, key sequence
+            // building, and function call overhead for elements like
+            // <img>, <input>, <br>, <hr>, <meta>, <source>, etc.
+            // =============================================================
+            if (!HtmlSpec.VoidElements.Contains(oldElement.Tag))
+            {
+                DiffChildren(oldElement, newElement, patches);
+            }
+
             return;
         }
 
         // Fallback for node type mismatch
-        DiffTypeMismatch(oldNode, newNode, parent, patches);
-    }
-
-    /// <summary>
-    /// Diffs two Element nodes: compares tags, attributes, and children.
-    /// Extracted from DiffInternal to reduce hot-path method body size.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void DiffElements(Element oldElement, Element newElement, Element? parent, List<Patch> patches)
-    {
-        // Early exit for reference equality
-        if (ReferenceEquals(oldElement, newElement))
+        if (parent is not null)
         {
-            return;
-        }
-
-        if (!string.Equals(oldElement.Tag, newElement.Tag, StringComparison.Ordinal))
-        {
-            if (parent is null)
+            if (oldNode is Element oe && newNode is Element ne)
             {
-                patches.Add(new AddRoot(newElement));
+                patches.Add(new ReplaceChild(oe, ne));
             }
-            else
+            else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
             {
-                patches.Add(new ReplaceChild(oldElement, newElement));
+                patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
             }
-
-            return;
-        }
-
-        DiffAttributes(oldElement, newElement, patches);
-
-        // =============================================================
-        // Void Element Diff Skip (HTML Living Standard §13.1.2)
-        // =============================================================
-        // Void elements cannot have children, so skip the DiffChildren
-        // call entirely. This avoids ArrayPool rents, key sequence
-        // building, and function call overhead for elements like
-        // <img>, <input>, <br>, <hr>, <meta>, <source>, etc.
-        // =============================================================
-        if (!HtmlSpec.VoidElements.Contains(oldElement.Tag))
-        {
-            DiffChildren(oldElement, newElement, patches);
-        }
-    }
-
-    /// <summary>
-    /// Handles node type mismatch cases (e.g., Text→Element, RawHtml→Element).
-    /// Extracted from DiffInternal to reduce hot-path method body size.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void DiffTypeMismatch(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
-    {
-        if (parent is null)
-        {
-            return;
-        }
-
-        if (oldNode is Element oe && newNode is Element ne)
-        {
-            patches.Add(new ReplaceChild(oe, ne));
-        }
-        else if (oldNode is RawHtml oldRaw2 && newNode is RawHtml newRaw2)
-        {
-            patches.Add(new ReplaceRaw(oldRaw2, newRaw2));
-        }
-        else if (oldNode is RawHtml r && newNode is Element ne2)
-        {
-            patches.Add(new ReplaceRaw(r, new RawHtml(ne2.Id, Render.Html(ne2))));
-        }
-        else if (oldNode is Element oe2 && newNode is RawHtml r2)
-        {
-            patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
-        }
-        else if (oldNode is Text ot && newNode is Text nt)
-        {
-            patches.Add(new UpdateText(parent, ot, nt.Value, nt.Id));
-        }
-        else if (oldNode is Text ot2 && newNode is Element ne3)
-        {
-            // Replace text with element via raw representation
-            patches.Add(new ReplaceRaw(new RawHtml(ot2.Id, Render.Html(ot2)), new RawHtml(ne3.Id, Render.Html(ne3))));
-        }
-        else if (oldNode is Element oe3 && newNode is Text nt2)
-        {
-            // Replace element with text via raw representation
-            patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
+            else if (oldNode is RawHtml r && newNode is Element ne2)
+            {
+                patches.Add(new ReplaceRaw(r, new RawHtml(ne2.Id, Render.Html(ne2))));
+            }
+            else if (oldNode is Element oe2 && newNode is RawHtml r2)
+            {
+                patches.Add(new ReplaceRaw(new RawHtml(oe2.Id, Render.Html(oe2)), r2));
+            }
+            else if (oldNode is Text ot && newNode is Text nt)
+            {
+                patches.Add(new UpdateText(parent!, ot, nt.Value, nt.Id));
+            }
+            else if (oldNode is Text ot2 && newNode is Element ne3)
+            {
+                // Replace text with element via raw representation
+                patches.Add(new ReplaceRaw(new RawHtml(ot2.Id, Render.Html(ot2)), new RawHtml(ne3.Id, Render.Html(ne3))));
+            }
+            else if (oldNode is Element oe3 && newNode is Text nt2)
+            {
+                // Replace element with text via raw representation
+                patches.Add(new ReplaceRaw(new RawHtml(oe3.Id, Render.Html(oe3)), new RawHtml(nt2.Id, Render.Html(nt2))));
+            }
         }
     }
 
@@ -1877,24 +1818,14 @@ public static class Operations
         // When adding all new children (oldLength == 0, newLength > 0), skip dict building
         // and directly add all children. This is common when initializing a list.
         // =============================================================================
+        // Optimization: Emit a single SetChildrenHtml patch that concatenates all children
+        // into one innerHTML assignment. This eliminates N parseHtmlFragment + appendChild +
+        // addEventListeners calls on the JS side. Inspired by ivi's _hN template pattern
+        // and blockdom's batch innerHTML approach.
+        // =============================================================================
         if (oldLength == 0 && newLength > 0)
         {
-            foreach (var child in newChildren)
-            {
-                var effectiveNode = UnwrapMemoNode(child);
-                if (effectiveNode is Element newChild)
-                {
-                    patches.Add(new AddChild(newParent, newChild));
-                }
-                else if (effectiveNode is RawHtml newRaw)
-                {
-                    patches.Add(new AddRaw(newParent, newRaw));
-                }
-                else if (effectiveNode is Text newText)
-                {
-                    patches.Add(new AddText(newParent, newText));
-                }
-            }
+            patches.Add(new SetChildrenHtml(newParent, MaterializeChildren(newChildren)));
             return;
         }
 
