@@ -122,7 +122,6 @@ public static class VirtualRangeCalculator
         var totalHeight = 0.0;
         var firstVisible = -1;
         var lastVisible = -1;  // exclusive
-        var firstVisibleTop = 0.0;
 
         var runningTop = 0.0;
         var viewportEnd = clampedScroll + viewportHeight;
@@ -135,7 +134,6 @@ public static class VirtualRangeCalculator
             if (firstVisible < 0 && bottom > clampedScroll)
             {
                 firstVisible = i;
-                firstVisibleTop = runningTop;
             }
 
             if (lastVisible < 0 && bottom >= viewportEnd)
@@ -153,7 +151,6 @@ public static class VirtualRangeCalculator
         {
             // Scrolled past all items — show last items
             firstVisible = Math.Max(0, itemCount - 1);
-            firstVisibleTop = totalHeight;
         }
 
         if (lastVisible < 0)

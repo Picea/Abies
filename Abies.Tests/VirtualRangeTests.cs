@@ -193,7 +193,7 @@ public class VirtualRangeTests
         var range = VirtualRangeCalculator.Calculate(
             itemCount: 42, itemHeight: 73, viewportHeight: 500, scrollOffset: 0);
 
-        Assert.Equal(42 * 73, range.TotalHeight);
+        Assert.Equal(42.0 * 73, range.TotalHeight);
     }
 
     [Fact]

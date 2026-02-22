@@ -1,7 +1,7 @@
 // =============================================================================
 // Subscriptions
 // =============================================================================
-// Subscriptions represent external event sources (timers, browser events, 
+// Subscriptions represent external event sources (timers, browser events,
 // WebSockets) that feed messages into the MVU loop. They are declarative:
 // you describe what you want to subscribe to, and the runtime manages the
 // lifecycle (starting/stopping) automatically based on state changes.
@@ -43,7 +43,7 @@ public readonly record struct SubscriptionKey(string Value);
 /// <remarks>
 /// Subscriptions are the Elm-style way to handle external events. Unlike Commands
 /// (which fire once), Subscriptions produce a stream of messages over time.
-/// 
+///
 /// See ADR-007: Subscriptions for External Events
 /// </remarks>
 public abstract record Subscription
