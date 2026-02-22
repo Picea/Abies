@@ -15,6 +15,41 @@ Key reminders:
 - Follow the PR template at `.github/pull_request_template.md`
 - Use Conventional Commits format for PR titles
 
+## ⚠️ Benchmark Environment: Power State Awareness (M4 Pro MacBook)
+
+**CRITICAL**: Always ask "Is your MacBook plugged in or on battery?" before running benchmarks.
+
+macOS aggressively throttles CPU on battery, causing **up to 30% variance** in benchmark results.
+Comparing results across different power states will produce misleading conclusions.
+
+### Rules
+1. **Never compare benchmarks from different power states** — results are not comparable
+2. **Always record power state** when logging benchmark results
+3. **Run A/B comparisons in the same session** — same power state, same thermal conditions
+4. **If in doubt, re-run on main** to get a same-session baseline before drawing conclusions
+
+### Reference Values (Abies main, same codebase, 2026-02-19)
+
+| Benchmark | Plugged In | Battery | Δ |
+|-----------|-----------|---------|---|
+| 01_run1k | 86.8ms | 70.7ms | -19% |
+| 02_replace1k | 87.0ms | 79.9ms | -8% |
+| 04_select1k | 98.7ms | 121.9ms | +24% |
+| 06_remove-one-1k | 63.6ms | 84.7ms | +33% |
+| 07_create10k | 1174.7ms | 819.0ms | -30% |
+| 09_clear1k | 98.8ms | 92.3ms | -7% |
+
+**Note**: The inconsistent direction (some faster, some slower) suggests power state interacts
+with thermal throttling, browser heuristics, and GC timing in complex ways. The magnitude of
+change (up to 33%) makes cross-session comparison unreliable regardless of direction.
+
+### Lesson Learned (2026-02-19)
+
+The shared-memory protocol (issue #93) initially appeared to show both massive improvements AND
+regressions. A/B testing against main on the same machine (same session, same power state) revealed
+**zero measurable difference**. All apparent changes were from comparing a plugged-in session
+against a battery session.
+
 ## Benchmark Suite
 
 The project has benchmark suites in `Abies.Benchmarks/`:
@@ -1091,3 +1126,41 @@ Further optimization beyond Phase 1 requires **architectural decisions** about t
 - **Hybrid approach with Blazor-like performance**
 
 Both are valid choices with different trade-offs.
+
+### ❌ REJECTED: Shared-Memory Binary Protocol (Issue #93, 2026-02-19)
+
+**Branch**: `perf/shared-memory-protocol`
+
+**Hypothesis**: The `batchData.slice()` copy in JavaScript (from `JSType.MemoryView` → `Uint8Array`)
+is a significant overhead. Eliminating it via Blazor-style shared WASM memory would improve performance.
+
+**Implementation**:
+1. Changed `ApplyBinaryBatch` from `[JSMarshalAs<JSType.MemoryView>] Span<byte>` to `(int address, int length)`
+2. C# side: `unsafe fixed (byte* ptr = memory.Span)` pins the buffer, passes raw address to JS
+3. JS side: `getWasmHeapU8()` accesses WASM linear memory via `globalThis.getDotnetRuntime(0).localHeapViewU8()`
+4. Creates zero-copy `new Uint8Array(heap.buffer, address, length)` view — no `slice()` copy
+5. Added heap view caching with detached-buffer detection (`byteLength > 0` check)
+
+**A/B Benchmark Results (same session, battery, 2026-02-19):**
+
+| Benchmark | Main (MemoryView) | Shared Memory | Δ |
+|-----------|-------------------|---------------|---|
+| 01_run1k | 70.7ms | 71.7ms | +1.4% (noise) |
+| 02_replace1k | 79.9ms | 80.0ms | +0.1% (noise) |
+| 04_select1k | 121.9ms | 122.3ms | +0.3% (noise) |
+| 06_remove-one-1k | 84.7ms | 77.1ms | -9.0% (noise) |
+| 07_create10k | 819.0ms | 815.5ms | -0.4% (noise) |
+| 09_clear1k | 92.3ms | 92.4ms | +0.1% (noise) |
+
+**Result**: **ZERO measurable improvement.** All differences are within noise margin.
+
+**Why It Didn't Help**:
+- The `slice()` copy cost for a ~16KB buffer (1000 rows) is **negligible** (~microseconds)
+- The real costs are VDOM diffing (~40ms) and DOM operations (~20ms)
+- Eliminating a microsecond-level copy cannot produce measurable E2E improvement
+- Blazor's speed advantage comes from its **component architecture** (skipping subtrees), NOT from its binary protocol details
+
+**Conclusion**:
+- The shared-memory protocol is architecturally cleaner (no MemoryView dependency, standard WASM pattern)
+- But it provides **zero performance benefit** — do NOT pursue further interop protocol optimizations
+- The remaining Blazor gap is in VDOM rebuild cost, not JS interop overhead
