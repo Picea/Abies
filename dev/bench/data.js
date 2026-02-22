@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771765952328,
+  "lastUpdate": 1771765954344,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10350,6 +10350,42 @@ window.BENCHMARK_DATA = {
             "value": 38.38154602050781,
             "unit": "MB",
             "extra": "mean: 38.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "81548bae5e13548b3169efff67b5d2e98ccbd85b",
+          "message": "fix: revert add-all path from SetChildrenHtml to individual AddChild patches\n\nFixes #92. The SetChildrenHtml (innerHTML) optimization for the add-all\nfast path (0→N children) caused a 44% regression on 06_remove-one-1k\nbecause innerHTML-created DOM nodes behave differently for subsequent\nremoveChild operations.\n\nChanges:\n- Revert DiffChildrenCore add-all path to individual AddChild/AddRaw/AddText\n- Extract SetChildrenHtml from Apply/ApplyBatch/WritePatchToBinary switches\n  to if pre-checks (avoids Mono isinst overhead on hot dispatch paths)\n- Update 5 unit tests to match new add-all behavior\n- SetChildrenHtml retained for complete-replacement fast path (02_replace1k)\n\nBenchmark results (fresh, same session):\n  06_remove-one-1k: 52.6ms → 36.6ms (matches main baseline 36.5ms)\n  01_run1k: 52.0ms (main baseline: 50.7ms — no regression)\n  02_replace1k: 47.6ms (SetChildrenHtml still used for complete replace)",
+          "timestamp": "2026-02-22T14:01:04+01:00",
+          "tree_id": "f3de3441b2b28041add5398ec676d6b0d69675d5",
+          "url": "https://github.com/Picea/Abies/commit/81548bae5e13548b3169efff67b5d2e98ccbd85b"
+        },
+        "date": 1771765953731,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.472097396850586,
+            "unit": "MB",
+            "extra": "mean: 34.5MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.87411689758301,
+            "unit": "MB",
+            "extra": "mean: 37.9MB, samples: 1"
           }
         ]
       }
