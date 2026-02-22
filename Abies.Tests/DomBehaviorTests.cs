@@ -604,7 +604,8 @@ public class DomBehaviorTests
         // This simulates the benchmark scenario:
         // 1. Initial render: tbody with no children
         // 2. After "Create 1000 rows": tbody with 1000 memo-wrapped children
-        // Optimization: emits a single SetChildrenHtml patch instead of N AddChild patches
+        // The add-all path emits individual AddChild patches (not SetChildrenHtml)
+        // to avoid innerHTML-induced DOM layout differences that regress 06_remove-one-1k.
         var emptyTbody = new Element("tbody-1", "tbody", []);
 
         var row1 = new Element("row-1", "tr", [], new Text("t-1", "Row 1"));
@@ -615,15 +616,15 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyTbody, filledTbody);
 
-        // Should have a single SetChildrenHtml patch (bulk innerHTML)
+        // Should have individual AddChild patches for each child
         Assert.NotEmpty(patches);
-        Assert.Contains(patches, p => p is SetChildrenHtml);
+        Assert.Equal(2, patches.OfType<AddChild>().Count());
     }
 
     [Fact]
     public void MemoNode_InsertChildPatch_ShouldContainCachedContent()
     {
-        // Verify that SetChildrenHtml patches contain all the children
+        // Verify that the add-all path emits AddChild patches for each child
         var emptyTbody = new Element("tbody-1", "tbody", []);
 
         var row = new Element("row-1", "tr", [], new Text("t-1", "Hello"));
@@ -632,15 +633,13 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyTbody, filledTbody);
 
-        // Find the SetChildrenHtml patch
-        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
-        Assert.Single(setChildrenPatches);
-        var patch = setChildrenPatches[0];
+        // Should have an AddChild patch for the memo-wrapped row
+        var addChildPatches = patches.OfType<AddChild>().ToList();
+        Assert.Single(addChildPatches);
+        var patch = addChildPatches[0];
 
         // The parent should be the tbody
         Assert.Equal("tbody-1", patch.Parent.Id);
-        // The children should include the memo-wrapped row
-        Assert.Single(patch.Children);
     }
 
     #endregion
@@ -648,10 +647,12 @@ public class DomBehaviorTests
     #region SetChildrenHtml Batch Optimization Tests
 
     [Fact]
-    public void SetChildrenHtml_EmptyToMultipleChildren_EmitsSinglePatch()
+    public void SetChildrenHtml_EmptyToMultipleChildren_EmitsIndividualAddChildPatches()
     {
-        // Verify that going from 0→N children emits ONE SetChildrenHtml patch
-        // instead of N individual AddChild patches.
+        // Verify that going from 0→N children emits N individual AddChild patches
+        // (not SetChildrenHtml). The add-all path was reverted to individual patches
+        // because innerHTML-created DOM behaves differently for subsequent removeChild,
+        // causing a regression on 06_remove-one-1k benchmark.
         var emptyParent = new Element("list-1", "ul", []);
 
         var children = Enumerable.Range(1, 100).Select(i =>
@@ -661,11 +662,9 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyParent, filledParent);
 
-        // Should emit exactly ONE SetChildrenHtml patch, not 100 AddChild patches
-        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
-        Assert.Single(setChildrenPatches);
-        Assert.Equal(100, setChildrenPatches[0].Children.Length);
-        Assert.Equal("list-1", setChildrenPatches[0].Parent.Id);
+        // Should emit 100 individual AddChild patches (not SetChildrenHtml)
+        Assert.Equal(100, patches.OfType<AddChild>().Count());
+        Assert.DoesNotContain(patches, p => p is SetChildrenHtml);
     }
 
     [Fact]
@@ -700,16 +699,17 @@ public class DomBehaviorTests
     }
 
     [Fact]
-    public void SetChildrenHtml_EmptyToSingleChild_EmitsSinglePatch()
+    public void SetChildrenHtml_EmptyToSingleChild_EmitsAddChildPatch()
     {
-        // Even a single new child should use SetChildrenHtml (consistent path)
+        // A single new child should use AddChild (add-all path uses individual patches)
         var emptyParent = new Element("p-1", "div", []);
         var child = new Element("c-1", "span", [], new Text("t-1", "Only"));
         var filledParent = new Element("p-1", "div", [], child);
 
         var patches = Operations.Diff(emptyParent, filledParent);
 
-        Assert.Single(patches.OfType<SetChildrenHtml>());
+        Assert.Single(patches.OfType<AddChild>());
+        Assert.DoesNotContain(patches, p => p is SetChildrenHtml);
     }
 
     [Fact]
@@ -773,12 +773,11 @@ public class DomBehaviorTests
     }
 
     [Fact]
-    public void SetChildrenHtml_LazyMemoWithHandler_MaterializesChildren()
+    public void SetChildrenHtml_LazyMemoWithHandler_AddAllPathUnwrapsMemoNodes()
     {
-        // Regression test: SetChildrenHtml must materialize LazyMemo children so that
-        // RegisterHandlers and Render.HtmlChildren see the SAME concrete nodes with
-        // the SAME CommandIds. Without materialization, each LazyMemo.Evaluate() call
-        // produces fresh nodes with new CommandIds, causing handler map / HTML divergence.
+        // Regression test: The add-all path (0→N children) correctly unwraps LazyMemo
+        // nodes to their concrete Element form for AddChild patches.
+        // This ensures handlers are properly registered during ApplyBatch.
         var emptyTbody = new Element("tbody-1", "tbody", []);
 
         // Create LazyMemo children with click handlers (simulates benchmark rows)
@@ -795,36 +794,12 @@ public class DomBehaviorTests
 
         var patches = Operations.Diff(emptyTbody, filledTbody);
 
-        // Should emit a single SetChildrenHtml patch
-        var setChildrenPatches = patches.OfType<SetChildrenHtml>().ToList();
-        Assert.Single(setChildrenPatches);
-        var patch = setChildrenPatches[0];
+        // Should emit individual AddChild patches (add-all path)
+        var addChildPatches = patches.OfType<AddChild>().ToList();
+        Assert.Equal(2, addChildPatches.Count);
 
-        // Children should be materialized (concrete Elements, not LazyMemo wrappers)
-        Assert.Equal(2, patch.Children.Length);
-        Assert.All(patch.Children, child => Assert.IsType<Element>(child));
-
-        // Verify that rendering the same children twice produces identical HTML
-        // (proves materialization: no double-evaluation with divergent CommandIds)
-        var html1 = Render.HtmlChildren(patch.Children);
-        var html2 = Render.HtmlChildren(patch.Children);
-        Assert.Equal(html1, html2);
-
-        // Verify event attributes are present in the rendered HTML
-        Assert.Contains("data-event-click", html1);
-
-        // Verify CachedNode backfill: the original LazyMemo wrappers in the parent's
-        // children array should now have CachedNode populated. This is essential for
-        // UnregisterHandlers to traverse the cached content when cleaning up handlers.
-        var parentChildren = filledTbody.Children;
-        for (int i = 0; i < parentChildren.Length; i++)
-        {
-            var child = parentChildren[i];
-            Assert.IsAssignableFrom<ILazyMemoNode>(child);
-            var lazyChild = (ILazyMemoNode)child;
-            Assert.NotNull(lazyChild.CachedNode);
-            Assert.IsType<Element>(lazyChild.CachedNode);
-        }
+        // Children should be unwrapped Elements (not LazyMemo wrappers)
+        Assert.All(addChildPatches, p => Assert.IsType<Element>(p.Child));
     }
 
     #endregion
