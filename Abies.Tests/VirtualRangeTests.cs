@@ -67,7 +67,7 @@ public class VirtualRangeTests
         Assert.True(range.EndIndex >= 62);
         Assert.True(range.EndIndex <= 68);
         Assert.Equal(5000, range.TotalHeight);
-        Assert.Equal(47 * 50, range.OffsetY);
+        Assert.Equal(47 * 50.0, range.OffsetY);
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class VirtualRangeTests
         var range = VirtualRangeCalculator.Calculate(
             itemCount: 100, itemHeight: 50, viewportHeight: 600, scrollOffset: 1000, overscan: 3);
 
-        Assert.Equal(range.StartIndex * 50, range.OffsetY);
+        Assert.Equal(range.StartIndex * 50.0, range.OffsetY);
     }
 
     [Fact]
