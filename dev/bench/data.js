@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771765142478,
+  "lastUpdate": 1771765144048,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -9538,6 +9538,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 38.37855911254883,
+            "unit": "MB",
+            "extra": "mean: 38.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b101818ddb34a907419a123516cd9979f0d7650e",
+          "message": "fix: Resolve remaining CodeQL integer precision warnings\n\nPromote int literal operands to double in two more test assertions\nwhere int × int results are compared to double OffsetY property:\n- Line 70: 47 * 50 → 47 * 50.0\n- Line 207: range.StartIndex * 50 → range.StartIndex * 50.0",
+          "timestamp": "2026-02-22T13:48:29+01:00",
+          "tree_id": "6e5940c03f1176167cb13bdae6af6dfff596edc9",
+          "url": "https://github.com/Picea/Abies/commit/b101818ddb34a907419a123516cd9979f0d7650e"
+        },
+        "date": 1771765143391,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.45503044128418,
+            "unit": "MB",
+            "extra": "mean: 34.5MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 38.38154602050781,
             "unit": "MB",
             "extra": "mean: 38.4MB, samples: 1"
           }
