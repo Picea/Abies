@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771767689742,
+  "lastUpdate": 1771767732622,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10480,6 +10480,84 @@ window.BENCHMARK_DATA = {
             "value": 235.6,
             "unit": "ms",
             "extra": "mean: 234.8ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "e9f60f0655634ec9c24b685c712e69faa9be5ae9",
+          "message": "Revert \"fix: revert add-all path from SetChildrenHtml to individual AddChild patches\"\n\nThis reverts commit 81548bae5e13548b3169efff67b5d2e98ccbd85b.",
+          "timestamp": "2026-02-22T14:31:31+01:00",
+          "tree_id": "6e5940c03f1176167cb13bdae6af6dfff596edc9",
+          "url": "https://github.com/Picea/Abies/commit/e9f60f0655634ec9c24b685c712e69faa9be5ae9"
+        },
+        "date": 1771767732235,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 197.5,
+            "unit": "ms",
+            "extra": "mean: 198.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 204.4,
+            "unit": "ms",
+            "extra": "mean: 205.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 388,
+            "unit": "ms",
+            "extra": "mean: 387.3ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 358.2,
+            "unit": "ms",
+            "extra": "mean: 358.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 315.8,
+            "unit": "ms",
+            "extra": "mean: 312.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 213.1,
+            "unit": "ms",
+            "extra": "mean: 214.5ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1722.1,
+            "unit": "ms",
+            "extra": "mean: 1719.7ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 311.9,
+            "unit": "ms",
+            "extra": "mean: 314.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 95.4,
+            "unit": "ms",
+            "extra": "mean: 96.1ms, samples: 15"
           }
         ]
       }
