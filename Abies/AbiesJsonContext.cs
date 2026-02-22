@@ -22,6 +22,8 @@ namespace Abies;
 [JsonSerializable(typeof(KeyEventData))]
 [JsonSerializable(typeof(PointerEventData))]
 [JsonSerializable(typeof(GenericEventData))]
+[JsonSerializable(typeof(ScrollEventData))]
+[JsonSerializable(typeof(ScrollSubscriptionOptions))]
 [JsonSerializable(typeof(AnimationFrameData))]
 [JsonSerializable(typeof(AnimationFrameDeltaData))]
 [JsonSerializable(typeof(ViewportSize))]
