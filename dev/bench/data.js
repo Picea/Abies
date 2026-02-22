@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771533716376,
+  "lastUpdate": 1771765142478,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -9280,6 +9280,84 @@ window.BENCHMARK_DATA = {
             "value": 101.1,
             "unit": "ms",
             "extra": "mean: 104.3ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b101818ddb34a907419a123516cd9979f0d7650e",
+          "message": "fix: Resolve remaining CodeQL integer precision warnings\n\nPromote int literal operands to double in two more test assertions\nwhere int × int results are compared to double OffsetY property:\n- Line 70: 47 * 50 → 47 * 50.0\n- Line 207: range.StartIndex * 50 → range.StartIndex * 50.0",
+          "timestamp": "2026-02-22T13:48:29+01:00",
+          "tree_id": "6e5940c03f1176167cb13bdae6af6dfff596edc9",
+          "url": "https://github.com/Picea/Abies/commit/b101818ddb34a907419a123516cd9979f0d7650e"
+        },
+        "date": 1771765141557,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 184,
+            "unit": "ms",
+            "extra": "mean: 181.0ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 197.6,
+            "unit": "ms",
+            "extra": "mean: 199.8ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 377.5,
+            "unit": "ms",
+            "extra": "mean: 374.0ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 343.5,
+            "unit": "ms",
+            "extra": "mean: 346.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 298.5,
+            "unit": "ms",
+            "extra": "mean: 300.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 211,
+            "unit": "ms",
+            "extra": "mean: 210.6ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1734.3,
+            "unit": "ms",
+            "extra": "mean: 1731.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 316.2,
+            "unit": "ms",
+            "extra": "mean: 317.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 97.3,
+            "unit": "ms",
+            "extra": "mean: 96.1ms, samples: 15"
           }
         ]
       }
