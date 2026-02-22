@@ -166,13 +166,6 @@ public static class Virtualize
             visibleItems[i] = render(item, itemIndex);
         }
 
-        // Calculate bottom spacer height
-        var bottomSpacerHeight = range.TotalHeight - range.OffsetY
-            - (range.VisibleCount > 0
-                ? range.TotalHeight / items.Count * range.VisibleCount
-                : 0);
-        if (bottomSpacerHeight < 0) bottomSpacerHeight = 0;
-
         // Content div with total height for proper scrollbar
         var contentChildren = new Node[visibleItems.Length + 1];
 
