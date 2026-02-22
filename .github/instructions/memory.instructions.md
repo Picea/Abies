@@ -421,18 +421,6 @@ For reference, compare against:
 
 Two related optimizations that dramatically improve create and replace performance.
 
-**⚠️ IMPORTANT: Add-All Path Reverted (Issue #92 Fix, 2026-02-21)**
-
-The add-all fast path (0→N children) was reverted from `SetChildrenHtml` back to individual
-`AddChild` patches because innerHTML-created DOM nodes behave differently for subsequent
-`removeChild` operations, causing a **44% regression** on `06_remove-one-1k` benchmark
-(36.5ms → 52.6ms). See the "Issue #92 Fix" section below for full details.
-
-**SetChildrenHtml is still used for**:
-- Complete replacement fast path (02_replace1k) — all old keys differ from all new keys
-- It is **extracted from type-switch dispatch** chains using `if` pre-checks to avoid
-  adding `isinst` overhead to every patch dispatch (1000× for create-1k).
-
 **Results (3-run average, 15 samples each, with handler registration bug fix):**
 
 | Benchmark | Before (binary batch) | After (SetChildrenHtml) | Improvement |
@@ -476,51 +464,6 @@ correct cost of proper handler registration.
 - `Abies/DOM/RenderBatchWriter.cs`: Added `BinaryPatchType.SetChildrenHtml = 12`, `WriteSetChildrenHtml()`
 - `Abies/Interop.cs`: Added `SetChildrenHtml` JS import
 - `Abies/wwwroot/abies.js`: Added `SetChildrenHtml` binary handler, removed `addEventListeners` from AddChild/ReplaceChild
-
-### ✅ FIXED: Issue #92 — 06_remove-one-1k Regression (2026-02-21)
-
-**Branch**: `perf/fix-06-remove-regression`
-**Issue**: https://github.com/Picea/Abies/issues/92
-
-**Problem**: `06_remove-one-1k` benchmark regressed from 36.5ms to 52.6ms (44% slower)
-between v1.0.151 and v1.0.152.
-
-**Root Cause**: The `DiffChildrenCore` add-all fast path (0→N children) was changed to emit
-a single `SetChildrenHtml` patch (innerHTML) instead of N individual `AddChild` patches.
-While innerHTML is faster for initial creation, the DOM nodes it creates behave differently
-for subsequent `removeChild` operations — causing the 06_remove-one-1k regression.
-
-**Fix** (Operations.cs only):
-1. **Reverted add-all path** from `SetChildrenHtml` back to individual `AddChild`/`AddRaw`/`AddText` patches
-2. **Extracted SetChildrenHtml from type-switch dispatch** in `Apply`, `ApplyBatch`, and
-   `WritePatchToBinary` using `if` pre-checks before the `switch` statement. This avoids
-   adding an `isinst` check to every patch dispatch (×1000 for create-1k).
-
-**Key Discovery — Mono Interpreter isinst Overhead**:
-In Mono WASM interpreter, C# type-pattern-match switches (`case Type var:`) compile to linear
-`isinst` IL check chains. Adding cases to hot switches that execute N times (like per-patch
-dispatch) has O(N × cases) cost. Extract rare cases to `if` pre-checks or `[NoInlining]` methods.
-
-**Benchmark Results (fresh, same session)**:
-
-| Configuration | 06_remove-one-1k | 01_run1k |
-|---|---|---|
-| main (v1.0.151) | 36.5ms | 50.7ms |
-| HEAD (v1.0.152, regressed) | 52.6ms | — |
-| **Fix applied** | **36.6ms** ✅ | **52.0ms** ✅ |
-
-**SetChildrenHtml is still used** for the complete-replacement fast path (02_replace1k)
-where all old keys differ from all new keys — verified at 47.6ms.
-
-**Tests updated**: 5 unit tests in `DomBehaviorTests.cs` updated to expect individual
-`AddChild` patches from the add-all path instead of `SetChildrenHtml`.
-
-**What was ruled out** during investigation:
-- JavaScript changes (addEventListeners → ensureSubtreeEventListeners)
-- JITERP (regression is purely Mono interpreter)
-- FrozenSet (HtmlSpec.VoidElements)
-- VoidElements check in DiffElements
-- Individual switch cases in isolation (WritePatchToBinary alone, ApplyBatch alone)
 
 ### 🎉 Binary Batching Protocol Implementation (2026-02-11)
 
