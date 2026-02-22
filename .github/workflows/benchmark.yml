@@ -272,7 +272,7 @@ jobs:
 
       # Cache npm dependencies (key based on static version since files are outside workspace)
       - name: Cache npm dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.npm
           key: npm-js-framework-benchmark-${{ runner.os }}-v1
@@ -281,7 +281,7 @@ jobs:
 
       # Cache Chrome browser for Selenium
       - name: Cache Chrome for Testing
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/selenium
           key: selenium-chrome-${{ runner.os }}-v1
