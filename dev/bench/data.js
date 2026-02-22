@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771765885735,
+  "lastUpdate": 1771765887194,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -9140,6 +9140,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 188.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "81548bae5e13548b3169efff67b5d2e98ccbd85b",
+          "message": "fix: revert add-all path from SetChildrenHtml to individual AddChild patches\n\nFixes #92. The SetChildrenHtml (innerHTML) optimization for the add-all\nfast path (0→N children) caused a 44% regression on 06_remove-one-1k\nbecause innerHTML-created DOM nodes behave differently for subsequent\nremoveChild operations.\n\nChanges:\n- Revert DiffChildrenCore add-all path to individual AddChild/AddRaw/AddText\n- Extract SetChildrenHtml from Apply/ApplyBatch/WritePatchToBinary switches\n  to if pre-checks (avoids Mono isinst overhead on hot dispatch paths)\n- Update 5 unit tests to match new add-all behavior\n- SetChildrenHtml retained for complete-replacement fast path (02_replace1k)\n\nBenchmark results (fresh, same session):\n  06_remove-one-1k: 52.6ms → 36.6ms (matches main baseline 36.5ms)\n  01_run1k: 52.0ms (main baseline: 50.7ms — no regression)\n  02_replace1k: 47.6ms (SetChildrenHtml still used for complete replace)",
+          "timestamp": "2026-02-22T14:01:04+01:00",
+          "tree_id": "f3de3441b2b28041add5398ec676d6b0d69675d5",
+          "url": "https://github.com/Picea/Abies/commit/81548bae5e13548b3169efff67b5d2e98ccbd85b"
+        },
+        "date": 1771765886957,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 712,
+            "unit": "bytes",
+            "extra": "Gen0: 89.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121184,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4136,
+            "unit": "bytes",
+            "extra": "Gen0: 64.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
           }
         ]
       }
