@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771767732622,
+  "lastUpdate": 1771767733925,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10812,6 +10812,42 @@ window.BENCHMARK_DATA = {
             "value": 37.87411689758301,
             "unit": "MB",
             "extra": "mean: 37.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "e9f60f0655634ec9c24b685c712e69faa9be5ae9",
+          "message": "Revert \"fix: revert add-all path from SetChildrenHtml to individual AddChild patches\"\n\nThis reverts commit 81548bae5e13548b3169efff67b5d2e98ccbd85b.",
+          "timestamp": "2026-02-22T14:31:31+01:00",
+          "tree_id": "6e5940c03f1176167cb13bdae6af6dfff596edc9",
+          "url": "https://github.com/Picea/Abies/commit/e9f60f0655634ec9c24b685c712e69faa9be5ae9"
+        },
+        "date": 1771767733690,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.47199058532715,
+            "unit": "MB",
+            "extra": "mean: 34.5MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 38.37835693359375,
+            "unit": "MB",
+            "extra": "mean: 38.4MB, samples: 1"
           }
         ]
       }
