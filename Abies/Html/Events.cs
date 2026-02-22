@@ -488,6 +488,21 @@ public static class Events
     public static Handler onscroll(Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("scroll", command, id);
 
+    /// <summary>
+    /// Attaches a scroll handler that receives scroll position data.
+    /// </summary>
+    /// <remarks>
+    /// Use this overload to receive <see cref="ScrollEventData"/> with scrollTop, scrollLeft,
+    /// scrollHeight, scrollWidth, clientHeight, and clientWidth. Essential for virtualization.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// div([style("overflow-y:auto;height:600px"), onscroll(data => new ScrollChanged(data?.ScrollTop ?? 0))], [...])
+    /// </code>
+    /// </example>
+    public static Handler onscroll(Func<ScrollEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => on("scroll", factory, id);
+
     public static Handler onscroll(Func<GenericEventData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => on("scroll", factory, id);
 

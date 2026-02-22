@@ -633,6 +633,15 @@ function buildEventData(event, target) {
         data.clientY = event.clientY;
         data.button = event.button;
     }
+    // Scroll position data — populated for scroll events from the target element
+    if (event.type === 'scroll' && target) {
+        data.scrollTop = target.scrollTop || 0;
+        data.scrollLeft = target.scrollLeft || 0;
+        data.scrollHeight = target.scrollHeight || 0;
+        data.scrollWidth = target.scrollWidth || 0;
+        data.clientHeight = target.clientHeight || 0;
+        data.clientWidth = target.clientWidth || 0;
+    }
     return data;
 }
 
@@ -830,6 +839,71 @@ function subscribe(key, kind, data) {
                     ws.close(1000, 'subscription disposed');
                 } catch { }
             };
+            break;
+        }
+        case 'scroll': {
+            // Element-level scroll subscription — targets a specific DOM element by ID.
+            // Uses requestAnimationFrame throttling to prevent flooding the MVU loop.
+            const options = data ? JSON.parse(data) : null;
+            const elementId = options?.elementId;
+            let pending = null;
+            let rafId = null;
+            const handler = (event) => {
+                const el = event.target;
+                pending = {
+                    scrollTop: el.scrollTop || 0,
+                    scrollLeft: el.scrollLeft || 0,
+                    scrollHeight: el.scrollHeight || 0,
+                    scrollWidth: el.scrollWidth || 0,
+                    clientHeight: el.clientHeight || 0,
+                    clientWidth: el.clientWidth || 0
+                };
+                if (rafId === null) {
+                    rafId = requestAnimationFrame(() => {
+                        if (pending) {
+                            dispatchSubscription(key, pending);
+                            pending = null;
+                        }
+                        rafId = null;
+                    });
+                }
+            };
+            if (elementId) {
+                // Target a specific element
+                const el = document.getElementById(elementId);
+                if (el) {
+                    el.addEventListener('scroll', handler, { passive: true });
+                    dispose = () => {
+                        el.removeEventListener('scroll', handler);
+                        if (rafId !== null) cancelAnimationFrame(rafId);
+                    };
+                } else {
+                    // Element not yet in DOM — use MutationObserver to wait for it
+                    let resolved = false;
+                    const observer = new MutationObserver(() => {
+                        const el = document.getElementById(elementId);
+                        if (el && !resolved) {
+                            resolved = true;
+                            observer.disconnect();
+                            el.addEventListener('scroll', handler, { passive: true });
+                        }
+                    });
+                    observer.observe(document.body, { childList: true, subtree: true });
+                    dispose = () => {
+                        observer.disconnect();
+                        const el = document.getElementById(elementId);
+                        if (el) el.removeEventListener('scroll', handler);
+                        if (rafId !== null) cancelAnimationFrame(rafId);
+                    };
+                }
+            } else {
+                // Window-level scroll
+                window.addEventListener('scroll', handler, { passive: true });
+                dispose = () => {
+                    window.removeEventListener('scroll', handler);
+                    if (rafId !== null) cancelAnimationFrame(rafId);
+                };
+            }
             break;
         }
         default:

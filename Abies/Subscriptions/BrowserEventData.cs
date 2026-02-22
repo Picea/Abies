@@ -36,3 +36,9 @@ public enum VisibilityState
 /// </summary>
 public readonly record struct VisibilityEventData(
     [property: JsonPropertyName("state")] VisibilityState State);
+
+/// <summary>
+/// Options for the scroll subscription specifying which element to observe.
+/// </summary>
+public readonly record struct ScrollSubscriptionOptions(
+    [property: JsonPropertyName("elementId")] string? ElementId);

@@ -282,6 +282,51 @@ public static class SubscriptionModule
         => CreateBrowserSubscription(key, "click", toMessage);
 
     /// <summary>
+    /// Emits a message when the window is scrolled.
+    /// </summary>
+    /// <remarks>
+    /// Tracks window-level scroll events, throttled to one event per animation frame.
+    /// For element-level scroll tracking (e.g., a scrollable container), use the
+    /// overload that accepts an element ID.
+    /// </remarks>
+    public static Subscription OnScroll(Func<ScrollEventData, Message> toMessage)
+        => OnScroll($"{BrowserKeyPrefix}scroll", toMessage);
+
+    /// <summary>
+    /// Emits a message when the window is scrolled using a custom key.
+    /// </summary>
+    public static Subscription OnScroll(string key, Func<ScrollEventData, Message> toMessage)
+        => CreateBrowserSubscription(key, "scroll", toMessage);
+
+    /// <summary>
+    /// Emits a message when a specific element is scrolled.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Tracks scroll events on a specific DOM element identified by its <c>id</c> attribute.
+    /// This is the preferred way to track scroll position for virtualized lists.
+    /// Events are throttled to one per animation frame to avoid flooding the MVU loop.
+    /// </para>
+    /// <para>
+    /// If the target element is not yet in the DOM when the subscription starts,
+    /// a MutationObserver waits for it to appear before attaching the listener.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// SubscriptionModule.OnScroll("feed-scroll", "article-feed-container", data =>
+    ///     new Message.ScrollChanged(data.ScrollTop, data.ClientHeight))
+    /// </code>
+    /// </example>
+    public static Subscription OnScroll(string key, string elementId, Func<ScrollEventData, Message> toMessage)
+    {
+        var payload = System.Text.Json.JsonSerializer.Serialize(
+            new ScrollSubscriptionOptions(elementId),
+            AbiesJsonContext.Default.ScrollSubscriptionOptions);
+        return CreateBrowserSubscription(key, "scroll", payload, toMessage);
+    }
+
+    /// <summary>
     /// Connects to a WebSocket and emits messages for open/close/error/message events.
     /// </summary>
     public static Subscription WebSocket(WebSocketOptions options, Func<WebSocketEvent, Message> toMessage)

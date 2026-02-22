@@ -3,6 +3,7 @@
   <PropertyGroup>
   <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
   </PropertyGroup>
 
   <ItemGroup>
