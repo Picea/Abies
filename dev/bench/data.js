@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771871786957,
+  "lastUpdate": 1771871787952,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10924,6 +10924,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 38.37835693359375,
+            "unit": "MB",
+            "extra": "mean: 38.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "4aab2f8ad072fcb810837a8b0273de34c4194a5b",
+          "message": "feat: decouple side-effect implementations from command handling logic\n\nImplement capability-based command handlers replacing the monolithic\nHandleCommand switch statement with small, focused, testable handler\nfunctions composed at the application boundary.\n\nKey changes:\n- Add Commanding.Handler delegate and Commanding.Pipeline composition\n  (namespace Abies.Commanding, DDD bounded-context naming)\n- Add Result<TSuccess, TError> type with ROP combinators (Map, Bind, LINQ)\n- Add Option extensions (DefaultValue, DefaultWith, ToResult)\n- Remove .Match() extension methods in favor of native C# switch/is patterns\n- Define 18+ capability delegates returning Result/Option types\n- Implement 19 focused handler functions using Railway-Oriented Programming\n- Add anti-corruption layer adapters converting exceptions to Result\n- Runtime.Run now accepts params Commanding.Handler[] for composition\n- Remove HandleCommand from Program interface\n\nTesting:\n- 80 integration tests for all handlers + pipeline infrastructure\n- 164 unit tests passing\n- 17 analyzer tests passing\n\nCloses #85",
+          "timestamp": "2026-02-23T19:25:34+01:00",
+          "tree_id": "d49927e838e308fb37e76939e77ef6940656a5a4",
+          "url": "https://github.com/Picea/Abies/commit/4aab2f8ad072fcb810837a8b0273de34c4194a5b"
+        },
+        "date": 1771871787698,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.47127342224121,
+            "unit": "MB",
+            "extra": "mean: 34.5MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 38.3792610168457,
             "unit": "MB",
             "extra": "mean: 38.4MB, samples: 1"
           }
