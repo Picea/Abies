@@ -171,12 +171,6 @@ public class SubscriptionsDemo : Program<Model, Arguments>
     }
 
     /// <summary>
-    /// Executes commands; this demo has none.
-    /// </summary>
-    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch)
-        => Task.CompletedTask;
-
-    /// <summary>
     /// Updates the model state from messages.
     /// </summary>
     public static (Model model, Command command) Update(Abies.Message message, Model model)

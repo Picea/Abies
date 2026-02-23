@@ -141,8 +141,6 @@ public class Presentation : Program<Model, Arguments>
         return Batch(subs);
     }
 
-    public static Task HandleCommand(Command command, Func<Abies.Message, Unit> dispatch) => Task.CompletedTask;
-
     // ── View ──
 
     public static Document View(Model model) => model.Mode switch
