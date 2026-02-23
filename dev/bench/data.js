@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771871789420,
+  "lastUpdate": 1771871791738,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -9836,6 +9836,180 @@ window.BENCHMARK_DATA = {
             "value": 24104,
             "unit": "bytes",
             "extra": "Gen0: 188.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "4aab2f8ad072fcb810837a8b0273de34c4194a5b",
+          "message": "feat: decouple side-effect implementations from command handling logic\n\nImplement capability-based command handlers replacing the monolithic\nHandleCommand switch statement with small, focused, testable handler\nfunctions composed at the application boundary.\n\nKey changes:\n- Add Commanding.Handler delegate and Commanding.Pipeline composition\n  (namespace Abies.Commanding, DDD bounded-context naming)\n- Add Result<TSuccess, TError> type with ROP combinators (Map, Bind, LINQ)\n- Add Option extensions (DefaultValue, DefaultWith, ToResult)\n- Remove .Match() extension methods in favor of native C# switch/is patterns\n- Define 18+ capability delegates returning Result/Option types\n- Implement 19 focused handler functions using Railway-Oriented Programming\n- Add anti-corruption layer adapters converting exceptions to Result\n- Runtime.Run now accepts params Commanding.Handler[] for composition\n- Remove HandleCommand from Program interface\n\nTesting:\n- 80 integration tests for all handlers + pipeline infrastructure\n- 164 unit tests passing\n- 17 analyzer tests passing\n\nCloses #85",
+          "timestamp": "2026-02-23T19:25:34+01:00",
+          "tree_id": "d49927e838e308fb37e76939e77ef6940656a5a4",
+          "url": "https://github.com/Picea/Abies/commit/4aab2f8ad072fcb810837a8b0273de34c4194a5b"
+        },
+        "date": 1771871791091,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 712,
+            "unit": "bytes",
+            "extra": "Gen0: 89.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121184,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4136,
+            "unit": "bytes",
+            "extra": "Gen0: 64.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000, Gen1: 9.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24240,
+            "unit": "bytes",
+            "extra": "Gen0: 189.0000, Gen1: 14.0000"
           }
         ]
       }
