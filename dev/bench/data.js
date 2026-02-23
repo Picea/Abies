@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771767733925,
+  "lastUpdate": 1771871786957,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10558,6 +10558,84 @@ window.BENCHMARK_DATA = {
             "value": 95.4,
             "unit": "ms",
             "extra": "mean: 96.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "4aab2f8ad072fcb810837a8b0273de34c4194a5b",
+          "message": "feat: decouple side-effect implementations from command handling logic\n\nImplement capability-based command handlers replacing the monolithic\nHandleCommand switch statement with small, focused, testable handler\nfunctions composed at the application boundary.\n\nKey changes:\n- Add Commanding.Handler delegate and Commanding.Pipeline composition\n  (namespace Abies.Commanding, DDD bounded-context naming)\n- Add Result<TSuccess, TError> type with ROP combinators (Map, Bind, LINQ)\n- Add Option extensions (DefaultValue, DefaultWith, ToResult)\n- Remove .Match() extension methods in favor of native C# switch/is patterns\n- Define 18+ capability delegates returning Result/Option types\n- Implement 19 focused handler functions using Railway-Oriented Programming\n- Add anti-corruption layer adapters converting exceptions to Result\n- Runtime.Run now accepts params Commanding.Handler[] for composition\n- Remove HandleCommand from Program interface\n\nTesting:\n- 80 integration tests for all handlers + pipeline infrastructure\n- 164 unit tests passing\n- 17 analyzer tests passing\n\nCloses #85",
+          "timestamp": "2026-02-23T19:25:34+01:00",
+          "tree_id": "d49927e838e308fb37e76939e77ef6940656a5a4",
+          "url": "https://github.com/Picea/Abies/commit/4aab2f8ad072fcb810837a8b0273de34c4194a5b"
+        },
+        "date": 1771871786542,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 186.3,
+            "unit": "ms",
+            "extra": "mean: 183.9ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 199.4,
+            "unit": "ms",
+            "extra": "mean: 200.7ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 364.2,
+            "unit": "ms",
+            "extra": "mean: 364.8ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 337.5,
+            "unit": "ms",
+            "extra": "mean: 340.4ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 302.2,
+            "unit": "ms",
+            "extra": "mean: 302.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 210.1,
+            "unit": "ms",
+            "extra": "mean: 208.5ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1717.1,
+            "unit": "ms",
+            "extra": "mean: 1726.4ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 315.6,
+            "unit": "ms",
+            "extra": "mean: 317.3ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 98.2,
+            "unit": "ms",
+            "extra": "mean: 100.2ms, samples: 15"
           }
         ]
       }
