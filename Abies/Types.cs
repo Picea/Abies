@@ -37,7 +37,8 @@ namespace Abies
     /// - Update: Pure function handling messages and producing new state
     /// - View: Pure function rendering model to virtual DOM
     /// - Subscriptions: Declarative external event sources
-    /// - HandleCommand: Side effect execution
+    /// - Command handling is now decoupled via <see cref="Commanding.Handler"/> delegates
+    ///   composed at the application boundary and passed to <see cref="Runtime.Run"/>
     ///
     /// See ADR-001: Model-View-Update Architecture
     /// See ADR-006: Command Pattern for Side Effects
@@ -51,7 +52,6 @@ namespace Abies
         static abstract Message OnUrlChanged(Url url);
         static abstract Message OnLinkClicked(UrlRequest urlRequest);
         static abstract Subscription Subscriptions(TModel model);
-        static abstract Task HandleCommand(Command command, Func<Message, Unit> dispatch);
     }
 
     /// <summary>
