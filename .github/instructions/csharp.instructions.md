@@ -11,6 +11,7 @@ applyTo: '**/*.cs'
 - Always replace deprecated APIs with their recommended alternatives.
 - Always replace old language features with their new counterparts.
 - Write clear and concise comments for each function.
+- Prefer pattern matching over traditional control flow statements.
 
 ## General Instructions
 - Make only high confidence suggestions when reviewing code changes.
@@ -19,7 +20,7 @@ applyTo: '**/*.cs'
 - For libraries or external dependencies, mention their usage and purpose in comments.
 
 ## Pure functional programming
-- Using pure functional programming practices. 
+- Using pure functional programming practices.
 - Do NOT use object orientation!
 - Ignore these guidelines for code in performance critical (hot) paths. Then use what you need to optimize performance. Comment why you made these choices.
 
@@ -27,6 +28,8 @@ applyTo: '**/*.cs'
 
 - Never prefix interface names with "I" (e.g., IUserService).
 - Never use the naming convention for async code using the Async suffix
+- Treat and use namespaces like bounded context in DDD. Prefer something like "Abies.Commanding.Handler" over "Abies.CommandHandler" and "Abies.Commanding.Pipeline" over "Abies.CommandPipeline".
+- Treat project names as namespaces. For example, "Abies" should be the root namespace for all code in the project. Prefer "Abies.Demos.Subscriptions" over "Abies.SubscriptionDemo" and "Abies.Conduit.Testing.E2E" over "Abies.Conduit.E2E".
 
 ## Formatting
 
@@ -44,11 +47,9 @@ applyTo: '**/*.cs'
 - Always use `is null` or `is not null` instead of `== null` or `!= null`.
 - Trust the C# null annotations and don't add null checks when the type system says a value cannot be null.
 
-## Validation and Error Handling
-
 ## Logging and Monitoring
 
-- Always instrument the code base using OTEL using best practices 
+- Always instrument the code base using OTEL using best practices
 
 ## Testing
 

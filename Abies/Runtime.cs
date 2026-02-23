@@ -59,9 +59,11 @@ public static partial class Runtime
     /// See ADR-001: Model-View-Update Architecture
     /// See ADR-013: OpenTelemetry Instrumentation
     /// </remarks>
-    public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
+    public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments, params Commanding.Handler[] handlers)
         where TProgram : Program<TModel, TArguments>
     {
+        var handleCommand = Commanding.Pipeline.Compose(handlers);
+
         // ADR-013: Trace the entire runtime lifecycle
         using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
 
@@ -90,10 +92,7 @@ public static partial class Runtime
         var subscriptionState = SubscriptionManager.Start(TProgram.Subscriptions(model), Dispatch);
 
         // ADR-006: Commands are executed outside the pure Update function
-        using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
-        {
-            await TProgram.HandleCommand(initialCommand, Dispatch);
-        }
+        await ExecuteCommand<TProgram, TArguments, TModel>(initialCommand, handleCommand);
 
         await foreach (var message in _messageChannel.Reader.ReadAllAsync())
         {
@@ -122,55 +121,50 @@ public static partial class Runtime
             subscriptionState = SubscriptionManager.Update(subscriptionState, TProgram.Subscriptions(model), Dispatch);
 
             // Handle the command
-            switch (command)
-            {
-                case Navigation.Command.PushState pushState:
-                    await Interop.PushState(pushState.Url.ToString());
-                    var pushedMsg = TProgram.OnUrlChanged(pushState.Url);
-                    Dispatch(pushedMsg);
-                    break;
-                case Navigation.Command.Load load:
-                    await Interop.Load(load.Url.ToString());
-                    break;
-                case Navigation.Command.ReplaceState replaceState:
-                    await Interop.ReplaceState(replaceState.Url.ToString());
-                    var replacedMsg = TProgram.OnUrlChanged(replaceState.Url);
-                    Dispatch(replacedMsg);
-                    break;
-                case Command.Batch batch:
-                    foreach (var cmd in batch.Commands)
+            await ExecuteCommand<TProgram, TArguments, TModel>(command, handleCommand);
+        }
+    }
+
+    /// <summary>
+    /// Executes a command by handling framework-level commands (None, Batch, Navigation)
+    /// and delegating application-level commands to the handler pipeline.
+    /// Dispatches any returned message into the MVU loop.
+    /// </summary>
+    private static async Task ExecuteCommand<TProgram, TArguments, TModel>(
+        Command command, Commanding.Handler handleCommand)
+        where TProgram : Program<TModel, TArguments>
+    {
+        switch (command)
+        {
+            case Command.None:
+                return;
+            case Navigation.Command.PushState pushState:
+                await Interop.PushState(pushState.Url.ToString());
+                Dispatch(TProgram.OnUrlChanged(pushState.Url));
+                return;
+            case Navigation.Command.Load load:
+                await Interop.Load(load.Url.ToString());
+                return;
+            case Navigation.Command.ReplaceState replaceState:
+                await Interop.ReplaceState(replaceState.Url.ToString());
+                Dispatch(TProgram.OnUrlChanged(replaceState.Url));
+                return;
+            case Command.Batch batch:
+                foreach (var cmd in batch.Commands)
+                {
+                    await ExecuteCommand<TProgram, TArguments, TModel>(cmd, handleCommand);
+                }
+                return;
+            default:
+                using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
+                {
+                    var result = await handleCommand(command);
+                    if (result is Some<Message>(var msg))
                     {
-                        switch (cmd)
-                        {
-                            case Navigation.Command.PushState ps:
-                                await Interop.PushState(ps.Url.ToString());
-                                var msg = TProgram.OnUrlChanged(ps.Url);
-                                Dispatch(msg);
-                                break;
-                            case Navigation.Command.Load ld:
-                                await Interop.Load(ld.Url.ToString());
-                                break;
-                            case Navigation.Command.ReplaceState rs:
-                                await Interop.ReplaceState(rs.Url.ToString());
-                                var rmsg = TProgram.OnUrlChanged(rs.Url);
-                                Dispatch(rmsg);
-                                break;
-                            default:
-                                using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
-                                {
-                                    await TProgram.HandleCommand(cmd, Dispatch);
-                                }
-                                break;
-                        }
+                        Dispatch(msg);
                     }
-                    break;
-                default:
-                    using (Instrumentation.ActivitySource.StartActivity("HandleCommand"))
-                    {
-                        await TProgram.HandleCommand(command, Dispatch);
-                    }
-                    break;
-            }
+                }
+                return;
         }
     }
 

@@ -121,10 +121,4 @@ public class Counter : Program<Model, Arguments>
     /// </summary>
     public static Subscription Subscriptions(Model model)
         => SubscriptionModule.None;
-
-    /// <summary>
-    /// Handle commands (side effects like HTTP requests).
-    /// </summary>
-    public static Task HandleCommand(Command command, Func<Message, Unit> dispatch)
-        => Task.CompletedTask;
 }

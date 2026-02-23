@@ -5,9 +5,27 @@ All notable changes to Abies will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0-rc.2] - 2026-02-23
 
 ### Added
+
+- **Capability-Based Command Handlers** (Issue #85)
+  - `Commanding.Handler` delegate: `Task<Option<Message>> Handler(Command)` — return-based, no imperative dispatch
+  - `Commanding.Pipeline.Compose(params Handler[])` (namespace `Abies.Commanding`) — compose multiple handlers into one
+  - `Pipeline.For<TCommand>()` — type-safe handler factory with pattern matching
+  - `Pipeline.Empty` — no-op handler for programs without side effects
+  - `Runtime.Run` now accepts `params Commanding.Handler[]` — zero handlers for pure apps, multiple for complex ones
+
+- **Result and Option Types** (DDD alignment)
+  - `Result<TSuccess, TError>` type with `Ok` and `Error` cases
+  - `Result.Extensions`: `Map`, `MapError`, `Bind`, LINQ `Select`/`SelectMany`, async overloads
+  - `Option.Extensions`: `DefaultValue`, `DefaultWith`, `ToResult`, async overloads
+
+- **Conduit Capability Architecture**
+  - `ConduitError` hierarchy: `ValidationError`, `Unauthorized`, `UnexpectedError`
+  - 18+ capability delegates returning `Result<T, ConduitError>` or `Option<T>`
+  - 19 focused handler functions using Railway-Oriented Programming
+  - Anti-corruption layer (ACL) adapters converting exceptions to Result at the boundary
 
 - **Benchmark Suite**
   - RenderingBenchmarks with 9 comprehensive HTML rendering benchmarks
@@ -69,6 +87,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LIS Algorithm Bug**: Fixed critical bug where `ComputeLISInto` computed LIS of length 1 instead of 998 for swap benchmark — swap is now **2.7x faster** (326ms → 121ms)
 - **First Paint**: Added loading placeholder for 65x faster first contentful paint (4,843ms → 74ms), now matching Blazor
 
+### Breaking Changes
+
+- **`Program<TModel, TArgument>` interface**: Removed `HandleCommand` method. Command handling is now decoupled from the program interface — handlers are composed at the application boundary and passed to `Runtime.Run`.
+- **`Runtime.Run` signature**: Changed from `Run<T,A,M>(args)` (no command handling) to `Run<T,A,M>(args, params Commanding.Handler[])`. Existing code calling `Run` with just arguments still compiles (the `params` array is empty).
+- **Command handler pattern**: The old imperative `Task HandleCommand(Command, Dispatch)` pattern is replaced by the return-based `Task<Option<Message>> Handler(Command)` delegate (in `Abies.Commanding`). Handlers return `Some(message)` or `None` instead of calling dispatch directly.
+- **Removed `Match` extension methods**: `Result.Extensions.Match` and `Option.Extensions.Match` have been removed. Use native C# `switch` expressions and `is` pattern matching instead — these are canonical C# and provide the same exhaustive matching with better IDE support.
+
+### Migration Guide (rc.1 → rc.2)
+
+1. **Remove `HandleCommand` from your Program class** — it's no longer part of the interface.
+2. **Create handler functions** using `Pipeline.For<TCommand>(async cmd => ...)` for each command type.
+3. **Return `Option<Message>`** instead of calling `dispatch()`:
+   - `return new Some<Message>(new MyResult(...))` — when the command produces a result
+   - `return new None<Message>()` — when the command was handled but produced no message
+4. **Compose handlers** and pass to `Runtime.Run`:
+   ```csharp
+   var handler = Pipeline.Compose(loginHandler, loadArticlesHandler);
+   await Runtime.Run<MyApp, Args, Model>(args, handler);
+   // Or pass handlers directly:
+   await Runtime.Run<MyApp, Args, Model>(args, loginHandler, loadArticlesHandler);
+   ```
+5. **Programs without side effects** — just remove the handler argument:
+   ```csharp
+   await Runtime.Run<Counter, Args, Model>(new Args());
+   ```
+6. **Replace `.Match()` calls** with native C# pattern matching:
+   ```csharp
+   // Before:
+   result.Match(ok => HandleSuccess(ok), err => HandleError(err));
+
+   // After:
+   var message = result switch
+   {
+       Ok<User, Error>(var user) => HandleSuccess(user),
+       Error<User, Error>(var err) => HandleError(err),
+       _ => throw new UnreachableException()
+   };
+   ```
+
 ## [1.0.0-rc.1] - 2026-02-03
 
 ### Added
@@ -113,5 +170,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenTelemetry tracing support (browser and .NET)
 - Apache 2.0 license
 
+[1.0.0-rc.2]: https://github.com/Picea/Abies/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Picea/Abies/releases/tag/v1.0.0-rc.1
-[Unreleased]: https://github.com/Picea/Abies/compare/v1.0.0-rc.1...HEAD

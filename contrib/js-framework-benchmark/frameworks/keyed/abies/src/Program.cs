@@ -261,10 +261,4 @@ public class Benchmark : Program<Model, Arguments>
     /// </summary>
     public static Subscription Subscriptions(Model model)
         => SubscriptionModule.None;
-
-    /// <summary>
-    /// Handle commands (not used in benchmark).
-    /// </summary>
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
 }

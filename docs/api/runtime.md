@@ -6,6 +6,7 @@ The `Runtime` module manages the MVU message loop and application lifecycle.
 
 ```csharp
 using Abies;
+using Abies.Commanding;
 ```
 
 ## Overview
@@ -24,7 +25,9 @@ The runtime is the engine that drives Abies applications. It:
 Starts the MVU message loop:
 
 ```csharp
-public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
+public static async Task Run<TProgram, TArguments, TModel>(
+    TArguments arguments, 
+    params Commanding.Handler[] handlers)
     where TProgram : Program<TModel, TArguments>
 ```
 
@@ -41,6 +44,7 @@ public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
 | `arguments` | `TArguments` | Arguments passed to `Initialize` |
+| `handlers` | `params Commanding.Handler[]` | Zero or more command handlers composed into a pipeline |
 
 **Returns:** `Task` that runs for the application lifetime.
 
@@ -50,6 +54,7 @@ public static async Task Run<TProgram, TArguments, TModel>(TArguments arguments)
 
 ```csharp
 using Abies;
+using Abies.Commanding;
 using System.Runtime.Versioning;
 
 [assembly: SupportedOSPlatform("browser")]
@@ -140,19 +145,18 @@ button(onClick(new Increment()), text("+"))
 
 ### From Commands
 
-Commands can dispatch messages via the `Dispatch` function:
+Command handlers return an `Option<Message>`:
 
 ```csharp
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
+var loginHandler = Pipeline.For<LoginCommand>(async cmd =>
 {
-    switch (command)
+    var result = await login(cmd.Email, cmd.Password);
+    return Some<Message>(result switch
     {
-        case LoadDataCommand:
-            var data = await FetchData();
-            dispatch(new DataLoaded(data));
-            break;
-    }
-}
+        Ok<User, LoginError>(var user) => new LoginSuccess(user),
+        _ => new LoginError("Invalid credentials")
+    });
+});
 ```
 
 ### From Subscriptions
@@ -234,11 +238,15 @@ case Command.Batch batch:
 
 ### Custom Commands
 
-Passed to `HandleCommand`:
+Routed to the command handler pipeline:
 
 ```csharp
 default:
-    await TProgram.HandleCommand(command, Dispatch);
+    var result = await handleCommand(command);
+    if (result is Some<Message> some)
+    {
+        Dispatch(some.Value);
+    }
     break;
 ```
 
@@ -352,24 +360,17 @@ case LongCommand:
     break;
 ```
 
-### 2. Don't Store Dispatch
+### 2. Return Messages from Handlers
 
-The dispatch function is stable but shouldn't be stored:
+Command handlers return `Option<Message>` instead of dispatching imperatively:
 
 ```csharp
-// ❌ Avoid
-static Func<Message, ValueTuple>? _savedDispatch;
-
-public static async Task HandleCommand(Command cmd, Func<Message, ValueTuple> dispatch)
+// ✅ Return a message
+var handler = Pipeline.For<LoadDataCommand>(async cmd =>
 {
-    _savedDispatch = dispatch;  // Don't do this
-}
-
-// ✅ Use immediately
-public static async Task HandleCommand(Command cmd, Func<Message, ValueTuple> dispatch)
-{
-    dispatch(new SomeMessage());  // Use directly
-}
+    var data = await fetchData(cmd.Id);
+    return new Some<Message>(new DataLoaded(data));
+});
 ```
 
 ### 3. Batch Related Commands
