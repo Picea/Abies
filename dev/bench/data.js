@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771949231877,
+  "lastUpdate": 1771949233659,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11386,6 +11386,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 38.3792610168457,
+            "unit": "MB",
+            "extra": "mean: 38.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "ed078518115cc745a6cd48eaa31d16df4e33ccb3",
+          "message": "feat: add declarative head management with unified binary batch protocol\n\nAdd Head.cs with HeadContent sum type, HeadDiff diffing, and Head\nfactory functions for managing <head> elements (meta, OG, Twitter\nCards, canonical, stylesheets, JSON-LD, base href) declaratively\nfrom View functions.\n\nHead patches (AddHeadElement, UpdateHeadElement, RemoveHeadElement)\nare serialized as BinaryPatchType entries 13-15 in the same binary\nrender batch as body DOM patches, eliminating separate JS interop\ncalls for a single transfer per render cycle.\n\n- Add HeadContent interface with Meta, MetaProperty, Link, Script, Base variants\n- Add HeadDiff with key-based diffing (Add/Update/Remove patches)\n- Add Head factory functions (meta, og, twitter, canonical, stylesheet, jsonLd, etc.)\n- Extend BinaryPatchType enum with AddHeadElement=13, UpdateHeadElement=14, RemoveHeadElement=15\n- Extend RenderBatchWriter with WriteAddHeadElement, WriteUpdateHeadElement, WriteRemoveHeadElement\n- Extend Operations.ApplyBatch to accept optional head patches in same batch\n- Add JS binary batch handlers for head element add/update/remove\n- Remove standalone head JS interop functions (addHeadElement, updateHeadElement, removeHeadElement)\n- Remove head JSImport declarations from Interop.cs\n- Add Conduit head content (SEO meta, OG tags, Twitter Cards, canonical URLs, JSON-LD)\n- Add 198 unit tests including HeadContent key generation, HTML rendering, diffing\n- Add head management documentation guide",
+          "timestamp": "2026-02-24T16:56:35+01:00",
+          "tree_id": "260ac3c66722dac107d44269612948db24d94c96",
+          "url": "https://github.com/Picea/Abies/commit/ed078518115cc745a6cd48eaa31d16df4e33ccb3"
+        },
+        "date": 1771949233395,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.42709922790527,
+            "unit": "MB",
+            "extra": "mean: 34.4MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 38.398399353027344,
             "unit": "MB",
             "extra": "mean: 38.4MB, samples: 1"
           }
