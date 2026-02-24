@@ -57,6 +57,15 @@ public enum BinaryPatchType : int
 
     /// <summary>Set all children via innerHTML (parentId in Field1, html in Field2). Eliminates N parseHtmlFragment + appendChild + addEventListeners calls.</summary>
     SetChildrenHtml = 12,
+
+    /// <summary>Add a new element to the document head (key in Field1, html in Field2)</summary>
+    AddHeadElement = 13,
+
+    /// <summary>Update an existing managed element in the document head (key in Field1, html in Field2)</summary>
+    UpdateHeadElement = 14,
+
+    /// <summary>Remove a managed element from the document head (key in Field1)</summary>
+    RemoveHeadElement = 15,
 }
 
 /// <summary>
@@ -330,6 +339,40 @@ public sealed class RenderBatchWriter : IDisposable
         var parentIndex = WriteString(parentId);
         var htmlIndex = WriteString(html);
         _patches.Add(new PatchEntry(BinaryPatchType.SetChildrenHtml, parentIndex, htmlIndex, -1));
+    }
+
+    /// <summary>
+    /// Adds an AddHeadElement patch — inserts a new element into the document <c>&lt;head&gt;</c>.
+    /// </summary>
+    /// <param name="key">The stable identity key (stored in <c>data-abies-head</c>).</param>
+    /// <param name="html">The full HTML string of the element to add.</param>
+    public void WriteAddHeadElement(string key, string html)
+    {
+        var keyIndex = WriteString(key);
+        var htmlIndex = WriteString(html);
+        _patches.Add(new PatchEntry(BinaryPatchType.AddHeadElement, keyIndex, htmlIndex, -1));
+    }
+
+    /// <summary>
+    /// Adds an UpdateHeadElement patch — replaces an existing managed element in the document <c>&lt;head&gt;</c>.
+    /// </summary>
+    /// <param name="key">The stable identity key (<c>data-abies-head</c> attribute value).</param>
+    /// <param name="html">The full HTML string of the replacement element.</param>
+    public void WriteUpdateHeadElement(string key, string html)
+    {
+        var keyIndex = WriteString(key);
+        var htmlIndex = WriteString(html);
+        _patches.Add(new PatchEntry(BinaryPatchType.UpdateHeadElement, keyIndex, htmlIndex, -1));
+    }
+
+    /// <summary>
+    /// Adds a RemoveHeadElement patch — removes a managed element from the document <c>&lt;head&gt;</c>.
+    /// </summary>
+    /// <param name="key">The stable identity key (<c>data-abies-head</c> attribute value).</param>
+    public void WriteRemoveHeadElement(string key)
+    {
+        var keyIndex = WriteString(key);
+        _patches.Add(new PatchEntry(BinaryPatchType.RemoveHeadElement, keyIndex, -1, -1));
     }
 
     /// <summary>

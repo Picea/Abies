@@ -183,7 +183,7 @@ public class DomBehaviorTests
         // Per ADR-016: Element Id is used for keyed diffing, not data-key attribute.
         // When children have different IDs in different order, the algorithm detects reordering.
         // With LIS optimization, reordering uses MoveChild instead of Remove+Add.
-        // 
+        //
         // IMPORTANT: In a pure reorder, the NEW virtual DOM should have the SAME IDs as the old DOM.
         // This is because Abies identifies elements by their ID, and a reorder doesn't change IDs.
         // The MoveChild operation moves elements by their existing IDs, not creating new ones.
@@ -820,8 +820,8 @@ public class DomBehaviorTests
         for (int i = 0; i < parentChildren.Length; i++)
         {
             var child = parentChildren[i];
-            Assert.IsAssignableFrom<ILazyMemoNode>(child);
-            var lazyChild = (ILazyMemoNode)child;
+            Assert.IsAssignableFrom<LazyMemoNode>(child);
+            var lazyChild = (LazyMemoNode)child;
             Assert.NotNull(lazyChild.CachedNode);
             Assert.IsType<Element>(lazyChild.CachedNode);
         }

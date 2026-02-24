@@ -19,7 +19,7 @@ namespace Abies;
 /// <remarks>
 /// All browser interactions go through this class via JSImport.
 /// The corresponding JavaScript implementation is in abies.js.
-/// 
+///
 /// See ADR-011: JavaScript Interop Strategy
 /// </remarks>
 public static partial class Interop
