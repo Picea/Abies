@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771871791738,
+  "lastUpdate": 1771949231877,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10984,6 +10984,84 @@ window.BENCHMARK_DATA = {
             "value": 98.2,
             "unit": "ms",
             "extra": "mean: 100.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "ed078518115cc745a6cd48eaa31d16df4e33ccb3",
+          "message": "feat: add declarative head management with unified binary batch protocol\n\nAdd Head.cs with HeadContent sum type, HeadDiff diffing, and Head\nfactory functions for managing <head> elements (meta, OG, Twitter\nCards, canonical, stylesheets, JSON-LD, base href) declaratively\nfrom View functions.\n\nHead patches (AddHeadElement, UpdateHeadElement, RemoveHeadElement)\nare serialized as BinaryPatchType entries 13-15 in the same binary\nrender batch as body DOM patches, eliminating separate JS interop\ncalls for a single transfer per render cycle.\n\n- Add HeadContent interface with Meta, MetaProperty, Link, Script, Base variants\n- Add HeadDiff with key-based diffing (Add/Update/Remove patches)\n- Add Head factory functions (meta, og, twitter, canonical, stylesheet, jsonLd, etc.)\n- Extend BinaryPatchType enum with AddHeadElement=13, UpdateHeadElement=14, RemoveHeadElement=15\n- Extend RenderBatchWriter with WriteAddHeadElement, WriteUpdateHeadElement, WriteRemoveHeadElement\n- Extend Operations.ApplyBatch to accept optional head patches in same batch\n- Add JS binary batch handlers for head element add/update/remove\n- Remove standalone head JS interop functions (addHeadElement, updateHeadElement, removeHeadElement)\n- Remove head JSImport declarations from Interop.cs\n- Add Conduit head content (SEO meta, OG tags, Twitter Cards, canonical URLs, JSON-LD)\n- Add 198 unit tests including HeadContent key generation, HTML rendering, diffing\n- Add head management documentation guide",
+          "timestamp": "2026-02-24T16:56:35+01:00",
+          "tree_id": "260ac3c66722dac107d44269612948db24d94c96",
+          "url": "https://github.com/Picea/Abies/commit/ed078518115cc745a6cd48eaa31d16df4e33ccb3"
+        },
+        "date": 1771949231429,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 188.4,
+            "unit": "ms",
+            "extra": "mean: 187.8ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 201.9,
+            "unit": "ms",
+            "extra": "mean: 202.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 356.7,
+            "unit": "ms",
+            "extra": "mean: 363.9ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 344.8,
+            "unit": "ms",
+            "extra": "mean: 344.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 312.8,
+            "unit": "ms",
+            "extra": "mean: 307.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 210.6,
+            "unit": "ms",
+            "extra": "mean: 208.7ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1734.9,
+            "unit": "ms",
+            "extra": "mean: 1744.7ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 323.9,
+            "unit": "ms",
+            "extra": "mean: 321.2ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 109.2,
+            "unit": "ms",
+            "extra": "mean: 108.1ms, samples: 15"
           }
         ]
       }
