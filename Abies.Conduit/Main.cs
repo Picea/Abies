@@ -372,18 +372,89 @@ public class Program : Program<Model, Arguments>
     public static Document View(Model model)
         => model.Page switch
         {
-            Page.Redirect => new Document(string.Format(Title, "Redirect"), WithLayout(h1([], [text("Redirecting...")]), model)),
-            Page.NotFound => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model)),
-            Page.Home home => new Document(string.Format(Title, nameof(Conduit.Page.Home)), WithLayout(Conduit.Page.Home.Page.View(home.Model), model)),
-            Page.Settings settings => new Document(string.Format(Title, nameof(Conduit.Page.Settings)), WithLayout(Conduit.Page.Settings.Page.View(settings.Model), model)),
-            Page.Login loginDoc => new Document(string.Format(Title, nameof(Conduit.Page.Login)), WithLayout(Conduit.Page.Login.Page.View(loginDoc.Model), model)),
-            Page.Register register => new Document(string.Format(Title, nameof(Conduit.Page.Register)), WithLayout(Conduit.Page.Register.Page.View(register.Model), model)),
-            Page.Profile profile => new Document(string.Format(Title, nameof(Conduit.Page.Profile)), WithLayout(Conduit.Page.Profile.Page.View(profile.Model), model)),
-            Page.ProfileFavorites profileFavorites => new Document(string.Format(Title, "Profile Favorites"), WithLayout(Conduit.Page.Profile.Page.View(profileFavorites.Model), model)),
-            Page.Article article => new Document(string.Format(Title, nameof(Conduit.Page.Article)), WithLayout(Conduit.Page.Article.Page.View(article.Model), model)),
-            Page.NewArticle newArticle => new Document(string.Format(Title, model.CurrentRoute is Routing.Route.EditArticle ? "Edit Article" : "New Article"), WithLayout(Conduit.Page.Editor.Page.View(newArticle.Model), model)),
-            _ => new Document(string.Format(Title, "Not Found"), WithLayout(h1([], [text("Not Found")]), model))
+            Page.Redirect => new Document(
+                string.Format(Title, "Redirect"),
+                WithLayout(h1([], [text("Redirecting...")]), model),
+                Head.meta("robots", "noindex")),
+
+            Page.NotFound => new Document(
+                string.Format(Title, "Not Found"),
+                WithLayout(h1([], [text("Not Found")]), model),
+                Head.meta("robots", "noindex"),
+                Head.meta("description", "Page not found")),
+
+            Page.Home home => new Document(
+                string.Format(Title, nameof(Conduit.Page.Home)),
+                WithLayout(Conduit.Page.Home.Page.View(home.Model), model),
+                Head.meta("description", "Conduit - A place to share your knowledge."),
+                Head.og("title", "Conduit"),
+                Head.og("type", "website"),
+                Head.og("description", "A place to share your knowledge.")),
+
+            Page.Settings settings => new Document(
+                string.Format(Title, nameof(Conduit.Page.Settings)),
+                WithLayout(Conduit.Page.Settings.Page.View(settings.Model), model),
+                Head.meta("robots", "noindex")),
+
+            Page.Login loginDoc => new Document(
+                string.Format(Title, nameof(Conduit.Page.Login)),
+                WithLayout(Conduit.Page.Login.Page.View(loginDoc.Model), model),
+                Head.meta("description", "Sign in to Conduit")),
+
+            Page.Register register => new Document(
+                string.Format(Title, nameof(Conduit.Page.Register)),
+                WithLayout(Conduit.Page.Register.Page.View(register.Model), model),
+                Head.meta("description", "Sign up for Conduit")),
+
+            Page.Profile profile => new Document(
+                string.Format(Title, nameof(Conduit.Page.Profile)),
+                WithLayout(Conduit.Page.Profile.Page.View(profile.Model), model),
+                Head.meta("description", $"Profile of {profile.Model.UserName.Value}"),
+                Head.og("title", $"{profile.Model.UserName.Value} - Conduit"),
+                Head.og("type", "profile")),
+
+            Page.ProfileFavorites profileFavorites => new Document(
+                string.Format(Title, "Profile Favorites"),
+                WithLayout(Conduit.Page.Profile.Page.View(profileFavorites.Model), model),
+                Head.meta("description", $"Favorite articles of {profileFavorites.Model.UserName.Value}"),
+                Head.og("title", $"{profileFavorites.Model.UserName.Value}'s Favorites - Conduit"),
+                Head.og("type", "profile")),
+
+            Page.Article article => ViewArticle(article, model),
+
+            Page.NewArticle newArticle => new Document(
+                string.Format(Title, model.CurrentRoute is Routing.Route.EditArticle ? "Edit Article" : "New Article"),
+                WithLayout(Conduit.Page.Editor.Page.View(newArticle.Model), model),
+                Head.meta("robots", "noindex")),
+
+            _ => new Document(
+                string.Format(Title, "Not Found"),
+                WithLayout(h1([], [text("Not Found")]), model),
+                Head.meta("robots", "noindex"))
         };
+
+    /// <summary>
+    /// Creates the Document for an article page, including Open Graph and structured data
+    /// when article data is available.
+    /// </summary>
+    private static Document ViewArticle(Page.Article article, Model model)
+    {
+        var body = WithLayout(Conduit.Page.Article.Page.View(article.Model), model);
+        var title = string.Format(Title, nameof(Conduit.Page.Article));
+
+        // When article data hasn't loaded yet, return minimal head
+        if (article.Model.Article is not { } art)
+            return new Document(title, body,
+                Head.meta("description", "Loading article..."));
+
+        return new Document(title, body,
+            Head.meta("description", art.Description),
+            Head.og("title", art.Title),
+            Head.og("type", "article"),
+            Head.og("description", art.Description),
+            Head.property("article:published_time", art.CreatedAt),
+            Head.property("article:author", art.Author.Username));
+    }
 
 
 

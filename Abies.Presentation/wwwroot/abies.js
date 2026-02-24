@@ -1039,6 +1039,9 @@ const BinaryPatchType = {
     UpdateTextWithId: 10,
     MoveChild: 11,
     SetChildrenHtml: 12,
+    AddHeadElement: 13,
+    UpdateHeadElement: 14,
+    RemoveHeadElement: 15,
 };
 
 /**
@@ -1315,6 +1318,50 @@ function applyBinaryBatchImpl(batchData) {
                     // Common events are pre-registered at document level via COMMON_EVENT_TYPES.
                     // Scan for non-common/custom event types that need dynamic registration.
                     ensureSubtreeEventListeners(parent);
+                }
+                break;
+            }
+            case BinaryPatchType.AddHeadElement: {
+                // Add a new managed element to the document <head>.
+                const key = readString(field1);
+                const html = readString(field2);
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                const el = temp.firstElementChild;
+                if (el) {
+                    document.head.appendChild(el);
+                }
+                break;
+            }
+            case BinaryPatchType.UpdateHeadElement: {
+                // Replace an existing managed element in <head> identified by data-abies-head.
+                const key = readString(field1);
+                const html = readString(field2);
+                const existing = document.head.querySelector(`[data-abies-head="${CSS.escape(key)}"]`);
+                if (existing) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html;
+                    const el = temp.firstElementChild;
+                    if (el) {
+                        existing.replaceWith(el);
+                    }
+                } else {
+                    // Fallback: if not found, add it
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html;
+                    const el = temp.firstElementChild;
+                    if (el) {
+                        document.head.appendChild(el);
+                    }
+                }
+                break;
+            }
+            case BinaryPatchType.RemoveHeadElement: {
+                // Remove a managed element from <head> identified by data-abies-head.
+                const key = readString(field1);
+                const existing = document.head.querySelector(`[data-abies-head="${CSS.escape(key)}"]`);
+                if (existing) {
+                    existing.remove();
                 }
                 break;
             }

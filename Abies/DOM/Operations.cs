@@ -91,7 +91,12 @@ internal static class HtmlSpec
 /// </summary>
 /// <param name="Title">The title of the document.</param>
 /// <param name="Body">The body content of the document.</param>
-public record Document(string Title, Node Body);
+/// <param name="Head">Optional managed <c>&lt;head&gt;</c> elements (meta tags, OG, links, JSON-LD).</param>
+/// <remarks>
+/// The <paramref name="Head"/> parameter is optional for backward compatibility:
+/// <c>new Document("title", body)</c> continues to work unchanged.
+/// </remarks>
+public record Document(string Title, Node Body, params HeadContent[] Head);
 
 /// <summary>
 /// Represents a node in the Abies DOM.
@@ -130,7 +135,7 @@ public record Element(string Id, string Tag, Attribute[] Attributes, params Node
 /// <summary>
 /// Interface for memoized nodes to avoid reflection in trimmed WASM.
 /// </summary>
-public interface IMemoNode
+public interface MemoNode
 {
     /// <summary>The memo key used to determine if the node should be re-rendered.</summary>
     object MemoKey { get; }
@@ -142,7 +147,7 @@ public interface IMemoNode
     /// Compares memo keys without boxing overhead.
     /// Uses generic EqualityComparer for value types to avoid allocation.
     /// </summary>
-    bool MemoKeyEquals(IMemoNode other);
+    bool MemoKeyEquals(MemoNode other);
 }
 
 /// <summary>
@@ -160,10 +165,10 @@ public interface IMemoNode
 /// where re-rendering can be skipped when the underlying data hasn't changed.
 /// Example: memo(row, TableRow(row, isSelected)) where row is the key.
 /// </remarks>
-public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemoNode where TKey : notnull
+public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), MemoNode where TKey : notnull
 {
     /// <summary>Gets the memo key as object for interface implementation.</summary>
-    object IMemoNode.MemoKey => Key;
+    object MemoNode.MemoKey => Key;
 
     /// <summary>Creates a new memo with the same key but different cached content.</summary>
     public Node WithCachedNode(Node newCachedNode) => this with { CachedNode = newCachedNode };
@@ -171,7 +176,7 @@ public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemo
     /// <summary>
     /// Compares memo keys without boxing overhead using generic EqualityComparer.
     /// </summary>
-    public bool MemoKeyEquals(IMemoNode other) =>
+    public bool MemoKeyEquals(MemoNode other) =>
         other is Memo<TKey> otherMemo && EqualityComparer<TKey>.Default.Equals(Key, otherMemo.Key);
 }
 
@@ -179,7 +184,7 @@ public record Memo<TKey>(string Id, TKey Key, Node CachedNode) : Node(Id), IMemo
 /// Interface for lazy memoized nodes that defer evaluation until needed.
 /// This is the key performance optimization - the function is only called if the key differs.
 /// </summary>
-public interface ILazyMemoNode
+public interface LazyMemoNode
 {
     /// <summary>The memo key used to determine if the node should be re-rendered.</summary>
     object MemoKey { get; }
@@ -193,7 +198,7 @@ public interface ILazyMemoNode
     /// Compares memo keys without boxing overhead.
     /// Uses generic EqualityComparer for value types to avoid allocation.
     /// </summary>
-    bool MemoKeyEquals(ILazyMemoNode other);
+    bool MemoKeyEquals(LazyMemoNode other);
 }
 
 /// <summary>
@@ -206,13 +211,13 @@ public interface ILazyMemoNode
 /// <param name="Key">The memo key used to determine if the node should be re-rendered.</param>
 /// <param name="Factory">The function that produces the node content (only called if key differs).</param>
 /// <param name="CachedNode">The cached node content after evaluation (null initially).</param>
-public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? CachedNode = null) : Node(Id), ILazyMemoNode where TKey : notnull
+public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? CachedNode = null) : Node(Id), LazyMemoNode where TKey : notnull
 {
     /// <summary>Gets the memo key as object for interface implementation.</summary>
-    object ILazyMemoNode.MemoKey => Key;
+    object LazyMemoNode.MemoKey => Key;
 
     /// <summary>Gets the cached node content.</summary>
-    Node? ILazyMemoNode.CachedNode => CachedNode;
+    Node? LazyMemoNode.CachedNode => CachedNode;
 
     /// <summary>Evaluates the lazy function to produce the node content.</summary>
     public Node Evaluate() => Factory();
@@ -223,7 +228,7 @@ public record LazyMemo<TKey>(string Id, TKey Key, Func<Node> Factory, Node? Cach
     /// <summary>
     /// Compares memo keys without boxing overhead using generic EqualityComparer.
     /// </summary>
-    public bool MemoKeyEquals(ILazyMemoNode other) =>
+    public bool MemoKeyEquals(LazyMemoNode other) =>
         other is LazyMemo<TKey> otherLazy && EqualityComparer<TKey>.Default.Equals(Key, otherLazy.Key);
 }
 
@@ -838,11 +843,11 @@ public static class Render
                   .Append(raw.Html).Append("</span>");
                 break;
             // Handle LazyMemo<T> nodes by evaluating and rendering their content
-            case ILazyMemoNode lazyMemo:
+            case LazyMemoNode lazyMemo:
                 RenderNode(lazyMemo.CachedNode ?? lazyMemo.Evaluate(), sb);
                 break;
             // Handle Memo<T> nodes by rendering their cached content
-            case IMemoNode memo:
+            case MemoNode memo:
                 RenderNode(memo.CachedNode, sb);
                 break;
         }
@@ -1078,9 +1083,9 @@ public static class Operations
     /// that JavaScript can read directly from WASM memory.
     /// </summary>
     /// <param name="patches">The list of patches to apply.</param>
-    public static async ValueTask ApplyBatch(List<Patch> patches)
+    public static async ValueTask ApplyBatch(List<Patch> patches, List<HeadDiff.HeadPatch>? headPatches = null)
     {
-        if (patches.Count == 0)
+        if (patches.Count == 0 && (headPatches is null || headPatches.Count == 0))
         {
             return;
         }
@@ -1115,13 +1120,19 @@ public static class Operations
             }
         }
 
-        // Step 2: Build binary batch
+        // Step 2: Build binary batch (body + head patches in a single batch)
         var writer = RenderBatchWriterPool.Rent();
         try
         {
             foreach (var patch in patches)
             {
                 WritePatchToBinary(writer, patch);
+            }
+
+            // Append head patches to the same batch for unified JS interop
+            if (headPatches is { Count: > 0 })
+            {
+                HeadDiff.WriteTo(headPatches, writer);
             }
 
             // Step 3: Apply the binary batch via zero-copy memory transfer
@@ -1301,8 +1312,8 @@ public static class Operations
     {
         return node switch
         {
-            ILazyMemoNode lazy => lazy.CachedNode ?? lazy.Evaluate(),
-            IMemoNode memo => memo.CachedNode,
+            LazyMemoNode lazy => lazy.CachedNode ?? lazy.Evaluate(),
+            MemoNode memo => memo.CachedNode,
             _ => node
         };
     }
@@ -1331,7 +1342,7 @@ public static class Operations
         bool needsMaterialization = false;
         for (int i = 0; i < children.Length; i++)
         {
-            if (children[i] is ILazyMemoNode or IMemoNode)
+            if (children[i] is LazyMemoNode or MemoNode)
             {
                 needsMaterialization = true;
                 break;
@@ -1349,7 +1360,7 @@ public static class Operations
         for (int i = 0; i < children.Length; i++)
         {
             var child = children[i];
-            if (child is ILazyMemoNode lazyMemo)
+            if (child is LazyMemoNode lazyMemo)
             {
                 var evaluated = lazyMemo.CachedNode ?? lazyMemo.Evaluate();
                 materialized[i] = evaluated;
@@ -1383,7 +1394,7 @@ public static class Operations
         // Lazy memo nodes: defer evaluation until keys differ
         // This provides the true performance benefit - we don't even construct the node if unchanged
         // Uses MemoKeyEquals to avoid boxing overhead for value type keys
-        if (oldNode is ILazyMemoNode oldLazy && newNode is ILazyMemoNode newLazy)
+        if (oldNode is LazyMemoNode oldLazy && newNode is LazyMemoNode newLazy)
         {
             if (oldLazy.MemoKeyEquals(newLazy))
             {
@@ -1404,7 +1415,7 @@ public static class Operations
         // Regular memo nodes: skip diffing subtree if keys are equal
         // This is similar to Elm's lazy function - major performance win for list items
         // Uses MemoKeyEquals to avoid boxing overhead for value type keys
-        if (oldNode is IMemoNode oldMemo && newNode is IMemoNode newMemo)
+        if (oldNode is MemoNode oldMemo && newNode is MemoNode newMemo)
         {
             if (oldMemo.MemoKeyEquals(newMemo))
             {
@@ -2735,13 +2746,13 @@ public static class Operations
         }
 
         // Slow path: Memo nodes (rare in practice)
-        if (node is ILazyMemoNode)
+        if (node is LazyMemoNode)
         {
             // Use the lazy node's ID as the key - don't evaluate just for key lookup
             return node.Id;
         }
 
-        if (node is IMemoNode memo)
+        if (node is MemoNode memo)
         {
             // Recurse into the cached content
             return GetKey(memo.CachedNode);
