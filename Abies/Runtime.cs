@@ -31,7 +31,7 @@ namespace Abies;
 /// - Command execution (side effects)
 /// - Subscription lifecycle management
 /// - JavaScript interop for browser APIs
-/// 
+///
 /// See ADR-001: Model-View-Update Architecture
 /// See ADR-005: WebAssembly Runtime
 /// </remarks>
@@ -55,7 +55,7 @@ public static partial class Runtime
     /// 2. Renders initial virtual DOM
     /// 3. Starts subscriptions
     /// 4. Processes messages: Update → View → Diff → Patch → Commands
-    /// 
+    ///
     /// See ADR-001: Model-View-Update Architecture
     /// See ADR-013: OpenTelemetry Instrumentation
     /// </remarks>
@@ -86,6 +86,11 @@ public static partial class Runtime
 
         var model = initialModel;
         var dom = document.Body;
+        var headContent = document.Head;
+
+        // Apply initial head content via binary batch protocol
+        var initialHeadPatches = HeadDiff.Diff(ReadOnlySpan<HeadContent>.Empty, headContent);
+        HeadDiff.Apply(initialHeadPatches);
 
         // Start subscriptions immediately after initialization (Elm-style).
         // See ADR-007: Subscriptions are state-driven
@@ -111,11 +116,15 @@ public static partial class Runtime
             // Compute the patches
             var patches = Operations.Diff(dom, alignedBody);
 
-            // Apply patches in batch using binary protocol for zero-copy transfer
-            await Operations.ApplyBatch(patches);
+            // Diff head content changes (meta, OG, link, script, base)
+            var headPatches = HeadDiff.Diff(headContent, newDom.Head);
+
+            // Apply body + head patches in a single binary batch
+            await Operations.ApplyBatch(patches, headPatches);
 
             dom = alignedBody;
             await Interop.SetTitle(newDom.Title);
+            headContent = newDom.Head;
 
             // Update subscriptions after the model changes.
             subscriptionState = SubscriptionManager.Update(subscriptionState, TProgram.Subscriptions(model), Dispatch);
@@ -171,11 +180,11 @@ public static partial class Runtime
     private static Node PreserveIds(Node? oldNode, Node newNode)
     {
         // Handle LazyMemo nodes - preserve the lazy structure but don't evaluate
-        if (newNode is ILazyMemoNode newLazyMemo)
+        if (newNode is LazyMemoNode newLazyMemo)
         {
             // If the old node was a lazy memo with the same key, we can skip evaluation
             // Uses MemoKeyEquals to avoid boxing overhead for value type keys
-            if (oldNode is ILazyMemoNode oldLazyMemo && oldLazyMemo.MemoKeyEquals(newLazyMemo))
+            if (oldNode is LazyMemoNode oldLazyMemo && oldLazyMemo.MemoKeyEquals(newLazyMemo))
             {
                 // Keys match - return the new lazy with old's cached content preserved
                 return oldLazyMemo.CachedNode != null
@@ -187,10 +196,10 @@ public static partial class Runtime
         }
 
         // Handle Memo nodes by recursing into their cached content
-        if (newNode is IMemoNode newMemo)
+        if (newNode is MemoNode newMemo)
         {
             // Find the matching old memo or old content
-            var oldCached = oldNode is IMemoNode oldMemo ? oldMemo.CachedNode : oldNode;
+            var oldCached = oldNode is MemoNode oldMemo ? oldMemo.CachedNode : oldNode;
             var preservedCached = PreserveIds(oldCached, newMemo.CachedNode);
 
             // Return a new memo with the preserved cached content
@@ -231,11 +240,11 @@ public static partial class Runtime
             {
                 // Unwrap memo nodes to get the actual element ID
                 Node effectiveChild;
-                if (child is ILazyMemoNode lazyMemo)
+                if (child is LazyMemoNode lazyMemo)
                 {
                     effectiveChild = lazyMemo.CachedNode ?? lazyMemo.Evaluate();
                 }
-                else if (child is IMemoNode memo)
+                else if (child is MemoNode memo)
                 {
                     effectiveChild = memo.CachedNode;
                 }
@@ -262,12 +271,12 @@ public static partial class Runtime
 
                 // Unwrap memo nodes to get the actual element ID for matching
                 Node effectiveNewChild;
-                if (newChild is ILazyMemoNode newLazyChild)
+                if (newChild is LazyMemoNode newLazyChild)
                 {
                     // For lazy memo, use its own ID rather than evaluating
                     effectiveNewChild = newChild;
                 }
-                else if (newChild is IMemoNode newMemoChild)
+                else if (newChild is MemoNode newMemoChild)
                 {
                     effectiveNewChild = newMemoChild.CachedNode;
                 }
@@ -285,7 +294,7 @@ public static partial class Runtime
                 {
                     matchingOldChild = oldTextMatch;
                 }
-                else if (effectiveNewChild is ILazyMemoNode lazyChild && oldChildrenById.TryGetValue(lazyChild.MemoKey?.ToString() ?? newChild.Id, out var oldLazyMatch))
+                else if (effectiveNewChild is LazyMemoNode lazyChild && oldChildrenById.TryGetValue(lazyChild.MemoKey?.ToString() ?? newChild.Id, out var oldLazyMatch))
                 {
                     // Try to match lazy nodes by their ID
                     matchingOldChild = oldLazyMatch;
@@ -405,10 +414,10 @@ public static partial class Runtime
             // SetChildrenHtml pre-materializes children via MaterializeChildren(), so this
             // path is a safety net for other patches that may contain nested LazyMemo/Memo
             // (e.g., an Element with LazyMemo children used in AddChild/ReplaceChild).
-            case ILazyMemoNode lazyMemo:
+            case LazyMemoNode lazyMemo:
                 RegisterHandlers(lazyMemo.CachedNode ?? lazyMemo.Evaluate());
                 break;
-            case IMemoNode memo:
+            case MemoNode memo:
                 RegisterHandlers(memo.CachedNode);
                 break;
         }
@@ -465,13 +474,13 @@ public static partial class Runtime
                 break;
 
             // Unwrap memo nodes symmetrically with RegisterHandlers.
-            case ILazyMemoNode lazyMemo:
+            case LazyMemoNode lazyMemo:
                 if (lazyMemo.CachedNode is not null)
                 {
                     UnregisterHandlers(lazyMemo.CachedNode);
                 }
                 break;
-            case IMemoNode memo:
+            case MemoNode memo:
                 UnregisterHandlers(memo.CachedNode);
                 break;
         }
