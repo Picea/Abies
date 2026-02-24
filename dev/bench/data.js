@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771949233659,
+  "lastUpdate": 1771949242181,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -7920,6 +7920,180 @@ window.BENCHMARK_DATA = {
             "value": 7270.831708272298,
             "unit": "ns",
             "range": "± 96.12191982183808"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "ed078518115cc745a6cd48eaa31d16df4e33ccb3",
+          "message": "feat: add declarative head management with unified binary batch protocol\n\nAdd Head.cs with HeadContent sum type, HeadDiff diffing, and Head\nfactory functions for managing <head> elements (meta, OG, Twitter\nCards, canonical, stylesheets, JSON-LD, base href) declaratively\nfrom View functions.\n\nHead patches (AddHeadElement, UpdateHeadElement, RemoveHeadElement)\nare serialized as BinaryPatchType entries 13-15 in the same binary\nrender batch as body DOM patches, eliminating separate JS interop\ncalls for a single transfer per render cycle.\n\n- Add HeadContent interface with Meta, MetaProperty, Link, Script, Base variants\n- Add HeadDiff with key-based diffing (Add/Update/Remove patches)\n- Add Head factory functions (meta, og, twitter, canonical, stylesheet, jsonLd, etc.)\n- Extend BinaryPatchType enum with AddHeadElement=13, UpdateHeadElement=14, RemoveHeadElement=15\n- Extend RenderBatchWriter with WriteAddHeadElement, WriteUpdateHeadElement, WriteRemoveHeadElement\n- Extend Operations.ApplyBatch to accept optional head patches in same batch\n- Add JS binary batch handlers for head element add/update/remove\n- Remove standalone head JS interop functions (addHeadElement, updateHeadElement, removeHeadElement)\n- Remove head JSImport declarations from Interop.cs\n- Add Conduit head content (SEO meta, OG tags, Twitter Cards, canonical URLs, JSON-LD)\n- Add 198 unit tests including HeadContent key generation, HTML rendering, diffing\n- Add head management documentation guide",
+          "timestamp": "2026-02-24T16:56:35+01:00",
+          "tree_id": "260ac3c66722dac107d44269612948db24d94c96",
+          "url": "https://github.com/Picea/Abies/commit/ed078518115cc745a6cd48eaa31d16df4e33ccb3"
+        },
+        "date": 1771949240987,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 331.403918999892,
+            "unit": "ns",
+            "range": "± 1.062414313093815"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2014.0090009249175,
+            "unit": "ns",
+            "range": "± 13.393827395822324"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 425.0418745790209,
+            "unit": "ns",
+            "range": "± 0.39194042620627023"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 579.5052129427592,
+            "unit": "ns",
+            "range": "± 1.6485479255438655"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 439.7995822429657,
+            "unit": "ns",
+            "range": "± 1.5452232564795494"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 433.21751222610476,
+            "unit": "ns",
+            "range": "± 3.386217769542603"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 440.46940301014826,
+            "unit": "ns",
+            "range": "± 1.0052078111143263"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 192.7138687690099,
+            "unit": "ns",
+            "range": "± 1.3255752709689412"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 743.8222886494228,
+            "unit": "ns",
+            "range": "± 9.565966634461471"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 438.80913605008806,
+            "unit": "ns",
+            "range": "± 5.415121412476946"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 648.3176687876384,
+            "unit": "ns",
+            "range": "± 8.825598441843077"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5459.981145731608,
+            "unit": "ns",
+            "range": "± 58.59825630598757"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 38680.206270658055,
+            "unit": "ns",
+            "range": "± 381.89668645935456"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 803.4961376923782,
+            "unit": "ns",
+            "range": "± 5.218806830006312"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5114.668038504465,
+            "unit": "ns",
+            "range": "± 22.84079051529907"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2645.862271822416,
+            "unit": "ns",
+            "range": "± 15.75434623188882"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 39.80761335577284,
+            "unit": "ns",
+            "range": "± 0.4359556126306006"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 53.91815151373545,
+            "unit": "ns",
+            "range": "± 0.8134020550013404"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 506.55885553359985,
+            "unit": "ns",
+            "range": "± 9.431342724605477"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2492.625032552083,
+            "unit": "ns",
+            "range": "± 41.837071787277466"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4214.523609924317,
+            "unit": "ns",
+            "range": "± 59.293216359270595"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 101.10886855017056,
+            "unit": "ns",
+            "range": "± 3.893951729990358"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 269.8579727240971,
+            "unit": "ns",
+            "range": "± 3.935920149931638"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 636.8405556678772,
+            "unit": "ns",
+            "range": "± 8.68444211876567"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7543.337033589681,
+            "unit": "ns",
+            "range": "± 174.38182090851942"
           }
         ]
       }
