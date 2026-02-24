@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771949242181,
+  "lastUpdate": 1771949245067,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10184,6 +10184,180 @@ window.BENCHMARK_DATA = {
             "value": 24240,
             "unit": "bytes",
             "extra": "Gen0: 189.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "ed078518115cc745a6cd48eaa31d16df4e33ccb3",
+          "message": "feat: add declarative head management with unified binary batch protocol\n\nAdd Head.cs with HeadContent sum type, HeadDiff diffing, and Head\nfactory functions for managing <head> elements (meta, OG, Twitter\nCards, canonical, stylesheets, JSON-LD, base href) declaratively\nfrom View functions.\n\nHead patches (AddHeadElement, UpdateHeadElement, RemoveHeadElement)\nare serialized as BinaryPatchType entries 13-15 in the same binary\nrender batch as body DOM patches, eliminating separate JS interop\ncalls for a single transfer per render cycle.\n\n- Add HeadContent interface with Meta, MetaProperty, Link, Script, Base variants\n- Add HeadDiff with key-based diffing (Add/Update/Remove patches)\n- Add Head factory functions (meta, og, twitter, canonical, stylesheet, jsonLd, etc.)\n- Extend BinaryPatchType enum with AddHeadElement=13, UpdateHeadElement=14, RemoveHeadElement=15\n- Extend RenderBatchWriter with WriteAddHeadElement, WriteUpdateHeadElement, WriteRemoveHeadElement\n- Extend Operations.ApplyBatch to accept optional head patches in same batch\n- Add JS binary batch handlers for head element add/update/remove\n- Remove standalone head JS interop functions (addHeadElement, updateHeadElement, removeHeadElement)\n- Remove head JSImport declarations from Interop.cs\n- Add Conduit head content (SEO meta, OG tags, Twitter Cards, canonical URLs, JSON-LD)\n- Add 198 unit tests including HeadContent key generation, HTML rendering, diffing\n- Add head management documentation guide",
+          "timestamp": "2026-02-24T16:56:35+01:00",
+          "tree_id": "260ac3c66722dac107d44269612948db24d94c96",
+          "url": "https://github.com/Picea/Abies/commit/ed078518115cc745a6cd48eaa31d16df4e33ccb3"
+        },
+        "date": 1771949244310,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 712,
+            "unit": "bytes",
+            "extra": "Gen0: 89.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121184,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4136,
+            "unit": "bytes",
+            "extra": "Gen0: 64.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 122.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24344,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 14.0000"
           }
         ]
       }
