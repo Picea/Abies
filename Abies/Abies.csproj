@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -45,7 +45,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Praefixum" Version="1.2.1-tags-v1-2-0.1" />
+    <PackageReference Include="Praefixum" Version="2.0.1" />
   </ItemGroup>
 
   <!-- Run the HTML analyzer on the Abies library itself -->
