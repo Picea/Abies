@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.33.5" />
+    <PackageReference Include="Google.Protobuf" Version="3.34.0" />
     <PackageReference Include="IF.APM.OpenTelemetry.Proto" Version="6.5.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
   </ItemGroup>
