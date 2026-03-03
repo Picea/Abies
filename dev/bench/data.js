@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772555080982,
+  "lastUpdate": 1772555107427,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11758,6 +11758,84 @@ window.BENCHMARK_DATA = {
             "value": 109.2,
             "unit": "ms",
             "extra": "mean: 108.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "a10583397a72435015938b3afbea404e0cb5050f",
+          "message": "refactor: rename templates to abies-browser and abies-browser-empty\n\nPrepare for upcoming server template by making platform explicit in template names.\n\nTemplate changes:\n- Rename abies/ → abies-browser/, abies-empty/ → abies-browser-empty/\n- Update shortName, identity, name, description in template.json\n- Change PackageReference from Abies to Abies.Browser in both csproj\n- Copy canonical abies.js with correct getAssemblyExports(\"Abies.Browser\")\n\nDocs updated:\n- Abies.Templates/README.md, docs/getting-started/templates.md\n- docs/getting-started/installation.md, docs/getting-started/project-structure.md\n- docs/index.md, docs/reference/js-interop.md, docs/adr/ADR-017\n- README.md, Abies.Presentation/Program.cs",
+          "timestamp": "2026-03-03T17:14:05+01:00",
+          "tree_id": "0192de2cc7380e3ce2b46eb7ab3a8083356bd062",
+          "url": "https://github.com/Picea/Abies/commit/a10583397a72435015938b3afbea404e0cb5050f"
+        },
+        "date": 1772555106182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 176.8,
+            "unit": "ms",
+            "extra": "mean: 182.3ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 194.3,
+            "unit": "ms",
+            "extra": "mean: 194.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 282.9,
+            "unit": "ms",
+            "extra": "mean: 284.9ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 261.5,
+            "unit": "ms",
+            "extra": "mean: 262.0ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 237.7,
+            "unit": "ms",
+            "extra": "mean: 238.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 182.1,
+            "unit": "ms",
+            "extra": "mean: 182.2ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1737.5,
+            "unit": "ms",
+            "extra": "mean: 1741.6ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 301,
+            "unit": "ms",
+            "extra": "mean: 302.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 77.4,
+            "unit": "ms",
+            "extra": "mean: 77.8ms, samples: 15"
           }
         ]
       }
