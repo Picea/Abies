@@ -28,7 +28,7 @@ Abies is a pure functional web framework for .NET that brings the **Model-View-U
 dotnet new install Abies.Templates
 
 # Create a new Abies application
-dotnet new abies -n MyApp
+dotnet new abies-browser -n MyApp
 cd MyApp
 dotnet run
 ```

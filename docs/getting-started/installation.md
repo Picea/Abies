@@ -42,10 +42,10 @@ The recommended way to create a new Abies project is using the `dotnet new` temp
 dotnet new install Abies.Templates
 
 # Create a new project with counter example
-dotnet new abies -n MyApp
+dotnet new abies-browser -n MyApp
 
 # Or create an empty project
-dotnet new abies-empty -n MyApp
+dotnet new abies-browser-empty -n MyApp
 
 # Run your new app
 cd MyApp

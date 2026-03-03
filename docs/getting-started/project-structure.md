@@ -28,7 +28,7 @@ The project file configures .NET for WebAssembly:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Abies" Version="*" />
+    <PackageReference Include="Abies.Browser" Version="*" />
   </ItemGroup>
 
 </Project>
