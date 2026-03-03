@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772555079376,
+  "lastUpdate": 1772555080982,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10532,6 +10532,180 @@ window.BENCHMARK_DATA = {
             "value": 24344,
             "unit": "bytes",
             "extra": "Gen0: 190.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "a10583397a72435015938b3afbea404e0cb5050f",
+          "message": "refactor: rename templates to abies-browser and abies-browser-empty\n\nPrepare for upcoming server template by making platform explicit in template names.\n\nTemplate changes:\n- Rename abies/ → abies-browser/, abies-empty/ → abies-browser-empty/\n- Update shortName, identity, name, description in template.json\n- Change PackageReference from Abies to Abies.Browser in both csproj\n- Copy canonical abies.js with correct getAssemblyExports(\"Abies.Browser\")\n\nDocs updated:\n- Abies.Templates/README.md, docs/getting-started/templates.md\n- docs/getting-started/installation.md, docs/getting-started/project-structure.md\n- docs/index.md, docs/reference/js-interop.md, docs/adr/ADR-017\n- README.md, Abies.Presentation/Program.cs",
+          "timestamp": "2026-03-03T17:14:05+01:00",
+          "tree_id": "0192de2cc7380e3ce2b46eb7ab3a8083356bd062",
+          "url": "https://github.com/Picea/Abies/commit/a10583397a72435015938b3afbea404e0cb5050f"
+        },
+        "date": 1772555080354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 224,
+            "unit": "bytes",
+            "extra": "Gen0: 28.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 688,
+            "unit": "bytes",
+            "extra": "Gen0: 10.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 248,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 296,
+            "unit": "bytes",
+            "extra": "Gen0: 37.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 336,
+            "unit": "bytes",
+            "extra": "Gen0: 42.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 264,
+            "unit": "bytes",
+            "extra": "Gen0: 66.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 712,
+            "unit": "bytes",
+            "extra": "Gen0: 89.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 928,
+            "unit": "bytes",
+            "extra": "Gen0: 58.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 8160,
+            "unit": "bytes",
+            "extra": "Gen0: 63.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 121184,
+            "unit": "bytes",
+            "extra": "Gen0: 118.0000, Gen1: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1168,
+            "unit": "bytes",
+            "extra": "Gen0: 73.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 6688,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4136,
+            "unit": "bytes",
+            "extra": "Gen0: 64.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 120,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 208,
+            "unit": "bytes",
+            "extra": "Gen0: 208.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 1656,
+            "unit": "bytes",
+            "extra": "Gen0: 207.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 8184,
+            "unit": "bytes",
+            "extra": "Gen0: 128.0000, Gen1: 3.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 12824,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 400,
+            "unit": "bytes",
+            "extra": "Gen0: 200.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 976,
+            "unit": "bytes",
+            "extra": "Gen0: 244.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2424,
+            "unit": "bytes",
+            "extra": "Gen0: 151.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 24240,
+            "unit": "bytes",
+            "extra": "Gen0: 189.0000, Gen1: 14.0000"
           }
         ]
       }
