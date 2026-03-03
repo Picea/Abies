@@ -14,11 +14,11 @@ using System.Runtime.Versioning;
 using Abies;
 using Abies.DOM;
 using Abies.Html;
+using static Abies.Browser.BrowserSubscriptions;
 using static Abies.Html.Attributes;
 using static Abies.Html.Elements;
 using static Abies.Html.Events;
 using static Abies.SubscriptionModule;
-using static Abies.Browser.BrowserSubscriptions;
 
 [assembly: SupportedOSPlatform("browser")]
 
