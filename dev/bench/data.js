@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772555107427,
+  "lastUpdate": 1772555109253,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12198,6 +12198,42 @@ window.BENCHMARK_DATA = {
             "value": 38.398399353027344,
             "unit": "MB",
             "extra": "mean: 38.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "a10583397a72435015938b3afbea404e0cb5050f",
+          "message": "refactor: rename templates to abies-browser and abies-browser-empty\n\nPrepare for upcoming server template by making platform explicit in template names.\n\nTemplate changes:\n- Rename abies/ → abies-browser/, abies-empty/ → abies-browser-empty/\n- Update shortName, identity, name, description in template.json\n- Change PackageReference from Abies to Abies.Browser in both csproj\n- Copy canonical abies.js with correct getAssemblyExports(\"Abies.Browser\")\n\nDocs updated:\n- Abies.Templates/README.md, docs/getting-started/templates.md\n- docs/getting-started/installation.md, docs/getting-started/project-structure.md\n- docs/index.md, docs/reference/js-interop.md, docs/adr/ADR-017\n- README.md, Abies.Presentation/Program.cs",
+          "timestamp": "2026-03-03T17:14:05+01:00",
+          "tree_id": "0192de2cc7380e3ce2b46eb7ab3a8083356bd062",
+          "url": "https://github.com/Picea/Abies/commit/a10583397a72435015938b3afbea404e0cb5050f"
+        },
+        "date": 1772555108521,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 34.42769527435303,
+            "unit": "MB",
+            "extra": "mean: 34.4MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 38.25711250305176,
+            "unit": "MB",
+            "extra": "mean: 38.3MB, samples: 1"
           }
         ]
       }
