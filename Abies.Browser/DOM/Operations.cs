@@ -2618,7 +2618,7 @@ public static class Operations
         for (int i = 0; i < attrs.Length; i++)
         {
             var name = attrs[i].Name;
-            if (name == "data-key" || name == "key")
+            if (name is "data-key" or "key")
             {
                 return attrs[i].Value;
             }

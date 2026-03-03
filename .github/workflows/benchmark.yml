@@ -263,6 +263,10 @@ jobs:
           mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
           rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies/
 
+          # Copy Abies.Browser library source (excluding bin/obj to avoid stale artifacts)
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies.Browser
+          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies.Browser/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies.Browser/
+
           # Copy Global folder (referenced by Directory.Build.props)
           cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
 
