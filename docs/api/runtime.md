@@ -26,7 +26,7 @@ Starts the MVU message loop:
 
 ```csharp
 public static async Task Run<TProgram, TArguments, TModel>(
-    TArguments arguments, 
+    TArguments arguments,
     params Commanding.Handler[] handlers)
     where TProgram : Program<TModel, TArguments>
 ```
@@ -84,7 +84,7 @@ static async Task Main()
         ApiUrl: "https://api.example.com",
         Debug: true
     );
-    
+
     await Runtime.Run<MyProgram, AppConfig, Model>(config);
 }
 
@@ -130,7 +130,7 @@ Messages are dispatched through an unbounded channel:
 
 ```csharp
 // Internal implementation
-private static readonly Channel<Message> _messageChannel = 
+private static readonly Channel<Message> _messageChannel =
     Channel.CreateUnbounded<Message>();
 ```
 
@@ -211,11 +211,11 @@ case Navigation.Command.PushState pushState:
     var msg = TProgram.OnUrlChanged(pushState.Url);
     Dispatch(msg);
     break;
-    
+
 case Navigation.Command.Load load:
     await Interop.Load(load.Url.ToString());
     break;
-    
+
 case Navigation.Command.ReplaceState replaceState:
     await Interop.ReplaceState(replaceState.Url.ToString());
     var msg = TProgram.OnUrlChanged(replaceState.Url);
@@ -256,8 +256,8 @@ Subscriptions are updated after each model change:
 
 ```csharp
 subscriptionState = SubscriptionManager.Update(
-    subscriptionState, 
-    TProgram.Subscriptions(model), 
+    subscriptionState,
+    TProgram.Subscriptions(model),
     Dispatch
 );
 ```

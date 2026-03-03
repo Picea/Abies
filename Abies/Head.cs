@@ -1,13 +1,12 @@
 // =============================================================================
-// Head Content Management
+// Head Content Types
 // =============================================================================
-// Provides types and helper functions for managing <head> elements in Abies
+// Platform-independent types for managing <head> elements in Abies
 // applications. Supports meta tags, Open Graph, Twitter Cards, link tags,
 // structured data (JSON-LD), and base href.
 //
-// The runtime diffs HeadContent between renders and applies only the changes
-// to the real <head> element via the binary render batch protocol, unified
-// with body DOM patching for a single JS interop call per render cycle.
+// These are pure data types with no browser dependencies. The browser-specific
+// diffing and application logic is in Abies.Browser (HeadDiff class).
 //
 // Architecture Decision Records:
 // - ADR-001: Model-View-Update Architecture (docs/adr/ADR-001-mvu-architecture.md)
@@ -49,12 +48,6 @@ public interface HeadContent
     /// A <c>&lt;meta name="..." content="..."&gt;</c> tag.
     /// Identity is based on the <c>name</c> attribute.
     /// </summary>
-    /// <example>
-    /// <code>
-    /// Head.meta("description", "A social blogging site")
-    /// // renders: &lt;meta name="description" content="A social blogging site" data-abies-head="meta:description"&gt;
-    /// </code>
-    /// </example>
     sealed record Meta(string Name, string Content) : HeadContent
     {
         /// <inheritdoc />
@@ -69,12 +62,6 @@ public interface HeadContent
     /// A <c>&lt;meta property="..." content="..."&gt;</c> tag for Open Graph and similar protocols.
     /// Identity is based on the <c>property</c> attribute.
     /// </summary>
-    /// <example>
-    /// <code>
-    /// Head.og("title", "My Article")
-    /// // renders: &lt;meta property="og:title" content="My Article" data-abies-head="property:og:title"&gt;
-    /// </code>
-    /// </example>
     sealed record MetaProperty(string Property, string Content) : HeadContent
     {
         /// <inheritdoc />
@@ -89,12 +76,6 @@ public interface HeadContent
     /// A <c>&lt;link rel="..." href="..."&gt;</c> tag.
     /// Identity is based on <c>rel</c> + <c>href</c> to allow multiple stylesheets.
     /// </summary>
-    /// <example>
-    /// <code>
-    /// Head.canonical("/article/my-article")
-    /// // renders: &lt;link rel="canonical" href="/article/my-article" data-abies-head="link:canonical:/article/my-article"&gt;
-    /// </code>
-    /// </example>
     sealed record Link(string Rel, string Href, string? Type = null) : HeadContent
     {
         /// <inheritdoc />
@@ -110,12 +91,6 @@ public interface HeadContent
     /// A <c>&lt;script type="..." &gt;...&lt;/script&gt;</c> tag, typically for JSON-LD structured data.
     /// Identity is based on the <c>type</c> attribute.
     /// </summary>
-    /// <example>
-    /// <code>
-    /// Head.jsonLd(new { @context = "https://schema.org", @type = "Article", headline = "My Article" })
-    /// // renders: &lt;script type="application/ld+json" data-abies-head="script:application/ld+json"&gt;{...}&lt;/script&gt;
-    /// </code>
-    /// </example>
     sealed record Script(string Type, string Content) : HeadContent
     {
         /// <inheritdoc />
@@ -153,21 +128,6 @@ public interface HeadContent
 /// Convenience factory functions for creating <see cref="HeadContent"/> values.
 /// Import with <c>using static Abies.Head;</c> for concise usage in View functions.
 /// </summary>
-/// <example>
-/// <code>
-/// using static Abies.Head;
-///
-/// public static Document View(Model model)
-///     => new Document(
-///         "Conduit - Home",
-///         WithLayout(HomePage(model), model),
-///         meta("description", "A social blogging site"),
-///         og("title", "Conduit"),
-///         og("type", "website"),
-///         canonical("/")
-///     );
-/// </code>
-/// </example>
 public static class Head
 {
     /// <summary>Creates a <c>&lt;meta name="..." content="..."&gt;</c> tag.</summary>
@@ -209,124 +169,4 @@ public static class Head
     /// <summary>Creates a <c>&lt;base href="..."&gt;</c> tag.</summary>
     public static HeadContent @base(string href) =>
         new HeadContent.Base(href);
-}
-
-/// <summary>
-/// Diffing and application logic for <see cref="HeadContent"/> elements.
-/// Computes the minimal set of add/update/remove operations needed to
-/// transform the old head state into the new head state.
-/// </summary>
-public static class HeadDiff
-{
-    /// <summary>
-    /// Represents an operation to apply to the document <c>&lt;head&gt;</c>.
-    /// </summary>
-    public interface HeadPatch
-    {
-        /// <summary>Add a new element to <c>&lt;head&gt;</c>.</summary>
-        sealed record Add(HeadContent Content) : HeadPatch;
-
-        /// <summary>Update an existing element in <c>&lt;head&gt;</c>.</summary>
-        sealed record Update(HeadContent Content) : HeadPatch;
-
-        /// <summary>Remove an element from <c>&lt;head&gt;</c> by its key.</summary>
-        sealed record Remove(string Key) : HeadPatch;
-    }
-
-    /// <summary>
-    /// Computes the patches needed to transform <paramref name="oldHead"/> into <paramref name="newHead"/>.
-    /// </summary>
-    /// <param name="oldHead">The previous head content (empty array for first render).</param>
-    /// <param name="newHead">The new head content.</param>
-    /// <returns>A list of patches to apply.</returns>
-    public static List<HeadPatch> Diff(ReadOnlySpan<HeadContent> oldHead, ReadOnlySpan<HeadContent> newHead)
-    {
-        var patches = new List<HeadPatch>();
-
-        // Build dictionary of old head content by key
-        var oldByKey = new Dictionary<string, HeadContent>(oldHead.Length);
-        foreach (var item in oldHead)
-        {
-            oldByKey[item.Key] = item;
-        }
-
-        // Process new head content
-        foreach (var newItem in newHead)
-        {
-            if (oldByKey.TryGetValue(newItem.Key, out var oldItem))
-            {
-                // Key exists in both — update if content changed
-                if (!newItem.Equals(oldItem))
-                {
-                    patches.Add(new HeadPatch.Update(newItem));
-                }
-                oldByKey.Remove(newItem.Key);
-            }
-            else
-            {
-                // Key only in new — add
-                patches.Add(new HeadPatch.Add(newItem));
-            }
-        }
-
-        // Remaining keys in old but not in new — remove
-        foreach (var key in oldByKey.Keys)
-        {
-            patches.Add(new HeadPatch.Remove(key));
-        }
-
-        return patches;
-    }
-
-    /// <summary>
-    /// Writes head patches to a <see cref="DOM.RenderBatchWriter"/> for inclusion
-    /// in a binary render batch. This allows head patches to be sent in the same
-    /// batch as body patches, eliminating separate JS interop calls.
-    /// </summary>
-    /// <param name="patches">The patches to write.</param>
-    /// <param name="writer">The binary batch writer to append patches to.</param>
-    public static void WriteTo(List<HeadPatch> patches, DOM.RenderBatchWriter writer)
-    {
-        foreach (var patch in patches)
-        {
-            switch (patch)
-            {
-                case HeadPatch.Add add:
-                    writer.WriteAddHeadElement(add.Content.Key, add.Content.ToHtml());
-                    break;
-                case HeadPatch.Update update:
-                    writer.WriteUpdateHeadElement(update.Content.Key, update.Content.ToHtml());
-                    break;
-                case HeadPatch.Remove remove:
-                    writer.WriteRemoveHeadElement(remove.Key);
-                    break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Applies head patches via the binary render batch protocol.
-    /// Used for standalone head updates (e.g., initial render).
-    /// For combined body + head updates, use <see cref="WriteTo"/> instead.
-    /// </summary>
-    /// <param name="patches">The patches to apply.</param>
-    public static void Apply(List<HeadPatch> patches)
-    {
-        if (patches.Count == 0)
-        {
-            return;
-        }
-
-        var writer = DOM.RenderBatchWriterPool.Rent();
-        try
-        {
-            WriteTo(patches, writer);
-            var memory = writer.ToMemory();
-            Interop.ApplyBinaryBatch(memory.Span);
-        }
-        finally
-        {
-            DOM.RenderBatchWriterPool.Return(writer);
-        }
-    }
 }

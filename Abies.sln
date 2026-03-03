@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Analyzers", "Abies.An
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Analyzers.Tests", "Abies.Analyzers.Tests\Abies.Analyzers.Tests.csproj", "{AE6210DF-47F7-4AC9-B75C-47F9222B8F6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Browser", "Abies.Browser\Abies.Browser.csproj", "{B956586D-2493-403B-BEBD-9D8F8E974F04}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -223,6 +225,18 @@ Global
 		{AE6210DF-47F7-4AC9-B75C-47F9222B8F6F}.Release|x64.Build.0 = Release|Any CPU
 		{AE6210DF-47F7-4AC9-B75C-47F9222B8F6F}.Release|x86.ActiveCfg = Release|Any CPU
 		{AE6210DF-47F7-4AC9-B75C-47F9222B8F6F}.Release|x86.Build.0 = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|x64.Build.0 = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Debug|x86.Build.0 = Debug|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|x64.ActiveCfg = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|x64.Build.0 = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|x86.ActiveCfg = Release|Any CPU
+		{B956586D-2493-403B-BEBD-9D8F8E974F04}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
