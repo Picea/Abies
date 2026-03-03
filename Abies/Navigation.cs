@@ -28,24 +28,24 @@ public static class Navigation
     public interface Command : Abies.Command
     {
         /// <summary>Navigate back in history.</summary>
-        public record struct Back(int times) : Command;
+        record struct Back(int times) : Command;
 
         /// <summary>Navigate forward in history.</summary>
-        public record struct Forward(int times) : Command;
+        record struct Forward(int times) : Command;
 
         /// <summary>Navigate to a specific history position.</summary>
-        public record struct Go(int steps) : Command;
+        record struct Go(int steps) : Command;
 
         /// <summary>Reload the current page.</summary>
-        public record struct Reload : Command;
+        record struct Reload : Command;
 
         /// <summary>Navigate to a new URL (full page load).</summary>
-        public record struct Load(Url Url) : Command;
+        record struct Load(Url Url) : Command;
 
         /// <summary>Push a new URL onto history (SPA navigation).</summary>
-        public record struct PushState(Url Url) : Command;
+        record struct PushState(Url Url) : Command;
 
         /// <summary>Replace current URL in history (no new entry).</summary>
-        public record struct ReplaceState(Url Url) : Command; 
+        record struct ReplaceState(Url Url) : Command;
     }
 }

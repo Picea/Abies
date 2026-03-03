@@ -11,8 +11,6 @@
 // - ADR-014: Compile-Time Unique IDs (docs/adr/ADR-014-compile-time-ids.md)
 // =============================================================================
 
-using System;
-using System.Runtime.CompilerServices;
 using Praefixum;
 
 namespace Abies.Html;
