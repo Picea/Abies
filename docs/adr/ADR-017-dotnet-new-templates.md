@@ -19,13 +19,13 @@ This manual process is error-prone and creates friction for new adopters. The .N
 
 We will create a NuGet template package (`Abies.Templates`) that provides `dotnet new` templates for creating Abies applications:
 
-1. **`abies`** - A minimal Abies MVU application with a counter example demonstrating:
+1. **`abies-browser`** - A minimal Abies Browser MVU application with a counter example demonstrating:
    - Model-View-Update pattern
    - Message handling
    - Event handling
    - Document rendering
 
-2. **`abies-empty`** - An empty Abies MVU application for developers who want to start from scratch
+2. **`abies-browser-empty`** - An empty Abies Browser MVU application for developers who want to start from scratch
 
 The template package will:
 - Be published to NuGet.org for easy installation
@@ -37,7 +37,7 @@ The template package will:
 
 ### Positive
 
-- **Improved Developer Experience**: New users can start with `dotnet new abies -n MyApp` immediately
+- **Improved Developer Experience**: New users can start with `dotnet new abies-browser -n MyApp` immediately
 - **Reduced Friction**: Eliminates manual setup steps
 - **Consistent Project Structure**: All new projects follow the same conventions
 - **Discoverability**: Templates appear in `dotnet new list` and Visual Studio's new project dialog
@@ -92,7 +92,7 @@ Abies.Templates/
 ├── Abies.Templates.csproj
 ├── README.md
 └── templates/
-    ├── abies/
+    ├── abies-browser/
     │   ├── .template.config/
     │   │   └── template.json
     │   ├── AbiesApp.csproj
@@ -101,7 +101,7 @@ Abies.Templates/
     │   │   └── launchSettings.json
     │   └── wwwroot/
     │       └── index.html
-    └── abies-empty/
+    └── abies-browser-empty/
         ├── .template.config/
         │   └── template.json
         ├── AbiesApp.csproj
@@ -115,8 +115,8 @@ Abies.Templates/
 Installation: `dotnet new install Abies.Templates`
 
 Usage:
-- `dotnet new abies -n MyApp`
-- `dotnet new abies-empty -n MyApp`
+- `dotnet new abies-browser -n MyApp`
+- `dotnet new abies-browser-empty -n MyApp`
 
 ## Related Decisions
 
