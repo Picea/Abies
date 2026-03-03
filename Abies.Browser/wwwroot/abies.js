@@ -1745,7 +1745,7 @@ setModuleImports('abies.js', {
 });
 
 const config = getConfig();
-const exports = await getAssemblyExports("Abies");
+const exports = await getAssemblyExports("Abies.Browser");
 
 await runMain(); // Ensure the .NET runtime is initialized
 
