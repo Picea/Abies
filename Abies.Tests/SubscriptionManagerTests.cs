@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using Abies.Browser;
 
 namespace Abies.Tests;
 
@@ -94,15 +95,15 @@ public sealed class SubscriptionManagerTests
         var subscribed = new ConcurrentBag<(string key, string kind)>();
         var unsubscribed = new ConcurrentBag<string>();
 
-        var originalSubscribe = SubscriptionModule.SubscriptionInterop.Subscribe;
-        var originalUnsubscribe = SubscriptionModule.SubscriptionInterop.Unsubscribe;
+        var originalSubscribe = BrowserSubscriptions.SubscriptionInterop.Subscribe;
+        var originalUnsubscribe = BrowserSubscriptions.SubscriptionInterop.Unsubscribe;
 
-        SubscriptionModule.SubscriptionInterop.Subscribe = (key, kind, _) => subscribed.Add((key, kind));
-        SubscriptionModule.SubscriptionInterop.Unsubscribe = key => unsubscribed.Add(key);
+        BrowserSubscriptions.SubscriptionInterop.Subscribe = (key, kind, _) => subscribed.Add((key, kind));
+        BrowserSubscriptions.SubscriptionInterop.Unsubscribe = key => unsubscribed.Add(key);
 
         try
         {
-            var subscription = SubscriptionModule.OnResize(_ => new TestMessage());
+            var subscription = BrowserSubscriptions.OnResize(_ => new TestMessage());
             var state = SubscriptionManager.Start(subscription, NoopDispatch);
 
             await WaitUntil(() => subscribed.Count == 1, TimeSpan.FromSeconds(2));
@@ -116,8 +117,8 @@ public sealed class SubscriptionManagerTests
         }
         finally
         {
-            SubscriptionModule.SubscriptionInterop.Subscribe = originalSubscribe;
-            SubscriptionModule.SubscriptionInterop.Unsubscribe = originalUnsubscribe;
+            BrowserSubscriptions.SubscriptionInterop.Subscribe = originalSubscribe;
+            BrowserSubscriptions.SubscriptionInterop.Unsubscribe = originalUnsubscribe;
         }
     }
 

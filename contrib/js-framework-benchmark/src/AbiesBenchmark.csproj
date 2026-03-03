@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Abies/Abies.csproj" />
+    <ProjectReference Include="Abies.Browser/Abies.Browser.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Abies;
+using Abies.Browser;
 using Abies.DOM;
 using Abies.Html;
 using static Abies.Html.Attributes;
@@ -138,8 +139,8 @@ public class SubscriptionsDemo : Program<Model, Arguments>
     {
         var subscriptions = new List<Subscription>
         {
-            SubscriptionModule.OnResize(size => new Message.Resized(size, DateTimeOffset.UtcNow)),
-            SubscriptionModule.OnVisibilityChange(evt => new Message.VisibilityChanged(evt.State, DateTimeOffset.UtcNow))
+            BrowserSubscriptions.OnResize(size => new Message.Resized(size, DateTimeOffset.UtcNow)),
+            BrowserSubscriptions.OnVisibilityChange(evt => new Message.VisibilityChanged(evt.State, DateTimeOffset.UtcNow))
         };
 
         if (model.AutoTick)
@@ -149,12 +150,12 @@ public class SubscriptionsDemo : Program<Model, Arguments>
 
         if (model.TrackMouse)
         {
-            subscriptions.Add(SubscriptionModule.OnMouseMove(evt => new Message.MouseMoved(evt, DateTimeOffset.UtcNow)));
+            subscriptions.Add(BrowserSubscriptions.OnMouseMove(evt => new Message.MouseMoved(evt, DateTimeOffset.UtcNow)));
         }
 
         if (model.WebSocketEnabled && !string.IsNullOrWhiteSpace(model.WebSocketUrl))
         {
-            subscriptions.Add(SubscriptionModule.WebSocket(
+            subscriptions.Add(BrowserSubscriptions.WebSocket(
                 new WebSocketOptions(model.WebSocketUrl),
                 evt => new Message.SocketEvent(evt, DateTimeOffset.UtcNow)));
         }

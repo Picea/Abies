@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Abies.Conduit\Abies.Conduit.csproj" />
+    <ProjectReference Include="..\Abies.Browser\Abies.Browser.csproj" />
     <ProjectReference Include="..\Abies\Abies.csproj" />
   </ItemGroup>
 

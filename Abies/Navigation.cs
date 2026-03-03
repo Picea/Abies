@@ -6,7 +6,6 @@
 // Architecture Decision Records:
 // - ADR-006: Command Pattern for Side Effects (docs/adr/ADR-006-command-pattern.md)
 // - ADR-009: Sum Types for State Representation (docs/adr/ADR-009-sum-types.md)
-// - ADR-011: JavaScript Interop Strategy (docs/adr/ADR-011-javascript-interop.md)
 // =============================================================================
 
 namespace Abies;
@@ -48,35 +47,5 @@ public static class Navigation
 
         /// <summary>Replace current URL in history (no new entry).</summary>
         public record struct ReplaceState(Url Url) : Command; 
-    }
-
-    internal static void Navigate(Command command)
-    {
-        switch (command)
-        {
-            case Command.Back back:
-                Interop.Back(back.times);
-                break;
-            case Command.Forward forward:
-                Interop.Forward(forward.times);
-                break;
-            case Command.Go go:
-                Interop.Go(go.steps);
-                break;
-            case Command.Reload reload:
-                Interop.Reload();
-                break;
-            case Command.Load load:
-                Interop.Load(load.Url.ToString());
-                break;
-            case Command.PushState pushState:
-                Interop.PushState(pushState.Url.ToString());
-                break;
-            case Command.ReplaceState replaceState:
-                Interop.ReplaceState(replaceState.Url.ToString());
-                break;
-            default:
-                throw new NotImplementedException();
-        }
     }
 }
