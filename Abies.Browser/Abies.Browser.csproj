@@ -1,28 +1,55 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- needed to support JS interop -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Package metadata -->
     <Authors>Maurice CGP Peters</Authors>
-    <Description>Abies - Platform-independent MVU (Model-View-Update) types and abstractions for .NET</Description>
+    <Description>Abies.Browser - WebAssembly runtime for the Abies MVU framework</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>mvu;model-view-update;elm;dotnet</PackageTags>
-    <!-- support voor sourcelink -->
+    <PackageTags>webassembly;wasm;dotnet;web;browser</PackageTags>
+    <!-- support for sourcelink -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+    <MonoRuntimeDebuggerEnabled>true</MonoRuntimeDebuggerEnabled>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- For README -->
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="" />
+
+    <Content Include="wwwroot\abies.js">
+      <Pack>true</Pack>
+      <PackagePath>contentFiles\any\any\wwwroot</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <BuildAction>Content</BuildAction>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
-  <!-- Run the HTML analyzer on the Abies library itself -->
+  <PropertyGroup>
+    <ContentTargetFolders>contentFiles</ContentTargetFolders>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="build\Abies.Browser.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Abies\Abies.csproj" />
+    <PackageReference Include="Praefixum" Version="1.2.1-tags-v1-2-0.1" />
+  </ItemGroup>
+
+  <!-- Run the HTML analyzer on browser projects -->
   <ItemGroup>
     <ProjectReference Include="..\Abies.Analyzers\Abies.Analyzers.csproj"
                       ReferenceOutputAssembly="false"

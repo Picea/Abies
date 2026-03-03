@@ -76,7 +76,7 @@ public class Counter : Program<Model, Arguments>
                 [
                     h1([], [text("Counter")]),
                     p([class_("subtitle")], [text("Model-View-Update in action")]),
-                    
+
                     div([class_("counter")],
                     [
                         button(
