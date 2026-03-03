@@ -13,7 +13,7 @@ New to Abies? Start here.
 | Guide | Description |
 |-------|-------------|
 | [Installation](./getting-started/installation.md) | Prerequisites, SDK setup, and project creation |
-| [Project Templates](./getting-started/templates.md) | `dotnet new abies` templates for quick scaffolding |
+| [Project Templates](./getting-started/templates.md) | `dotnet new abies-browser` templates for quick scaffolding |
 | [Your First App](./getting-started/your-first-app.md) | Build a counter app step-by-step |
 | [Project Structure](./getting-started/project-structure.md) | Understanding the Abies project layout |
 | [Next Steps](./getting-started/next-steps.md) | Where to go from here |

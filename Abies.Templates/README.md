@@ -12,8 +12,8 @@ dotnet new install Abies.Templates
 
 | Template | Short Name | Description |
 |----------|------------|-------------|
-| Abies Application | `abies` | A minimal Abies MVU application with counter example |
-| Abies Empty | `abies-empty` | An empty Abies MVU application |
+| Abies Browser Application | `abies-browser` | A minimal Abies Browser MVU application with counter example |
+| Abies Browser Empty | `abies-browser-empty` | An empty Abies Browser MVU application |
 
 ## Usage
 
@@ -21,10 +21,10 @@ dotnet new install Abies.Templates
 
 ```bash
 # Create a new Abies app with the counter example
-dotnet new abies -n MyApp
+dotnet new abies-browser -n MyApp
 
 # Create an empty Abies app
-dotnet new abies-empty -n MyApp
+dotnet new abies-browser-empty -n MyApp
 ```
 
 ### Run the application
@@ -38,7 +38,7 @@ Then open your browser to the URL shown in the terminal (typically https://local
 
 ## Template Options
 
-### abies
+### abies-browser
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -47,7 +47,7 @@ Then open your browser to the URL shown in the terminal (typically https://local
 
 ## What's Included
 
-The `abies` template creates a minimal MVU application with:
+The `abies-browser` template creates a minimal MVU application with:
 
 - A counter example demonstrating increment/decrement messages
 - Type-safe state management with records

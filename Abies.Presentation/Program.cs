@@ -720,9 +720,9 @@ public class Presentation : Program<Model, Arguments>
             NextStep: "Getting started from scratch."),
 
         new("templates", "Section 10 - Getting Started", "Project Templates",
-            "dotnet new abies",
+            "dotnet new abies-browser",
             ["dotnet new install Abies.Templates — installs the project template",
-             "dotnet new abies -n MyApp — scaffolds a complete MVU application",
+             "dotnet new abies-browser -n MyApp — scaffolds a complete MVU application",
              "Includes: Program.cs, wwwroot/, .csproj, launchSettings.json",
              "Pre-configured for .NET 10, Praefixum, and the Abies HTML DSL",
              "From dotnet new to running in the browser in under 60 seconds"],
@@ -756,7 +756,7 @@ public class Presentation : Program<Model, Arguments>
              "Slides built with Abies — source in Abies.Presentation",
              "Questions?"],
             Kind: SlideKind.Outro,
-            Takeaway: "Try it: dotnet new install Abies.Templates && dotnet new abies -n MyApp")
+            Takeaway: "Try it: dotnet new install Abies.Templates && dotnet new abies-browser -n MyApp")
     ];
 
     // ═════════════════════════════════════════════════════════════════════════════
@@ -915,11 +915,11 @@ public class Presentation : Program<Model, Arguments>
         new("x-getting-started", "Get Started", "Try Abies Today",
             "From zero to running in 60 seconds",
             ["dotnet new install Abies.Templates",
-             "dotnet new abies -n MyApp",
+             "dotnet new abies-browser -n MyApp",
              "cd MyApp && dotnet run",
              "Open http://localhost:5000 — your first MVU app is running",
              "GitHub: github.com/Picea/Abies - License: Apache 2.0"],
-            Code: "dotnet new install Abies.Templates\ndotnet new abies -n MyApp\ncd MyApp && dotnet run",
+            Code: "dotnet new install Abies.Templates\ndotnet new abies-browser -n MyApp\ncd MyApp && dotnet run",
             Takeaway: "One template install, one command, and you are building with MVU."),
 
         new("x-thanks", "Closing", "Thank You",

@@ -116,7 +116,7 @@ public static partial class Runtime
 ```javascript
 // In abies.js
 const runtime = await dotnet.create();
-const dispatch = runtime.getAssemblyExports("Abies").Abies.Runtime.Dispatch;
+const dispatch = runtime.getAssemblyExports("Abies.Browser").Abies.Runtime.Dispatch;
 
 // Call .NET
 dispatch("handler-id-123");

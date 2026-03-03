@@ -14,15 +14,15 @@ dotnet new install Abies.Templates
 
 | Template | Short Name | Description |
 |----------|------------|-------------|
-| Abies Application | `abies` | A minimal Abies MVU application with counter example |
-| Abies Application (Empty) | `abies-empty` | An empty Abies MVU application |
+| Abies Browser Application | `abies-browser` | A minimal Abies Browser MVU application with counter example |
+| Abies Browser Application (Empty) | `abies-browser-empty` | An empty Abies Browser MVU application |
 
 ## Usage
 
 ### Create a Counter Application
 
 ```bash
-dotnet new abies -n MyApp
+dotnet new abies-browser -n MyApp
 cd MyApp
 dotnet run
 ```
@@ -37,7 +37,7 @@ This creates a project with:
 ### Create an Empty Application
 
 ```bash
-dotnet new abies-empty -n MyApp
+dotnet new abies-browser-empty -n MyApp
 cd MyApp
 ```
 
@@ -62,13 +62,13 @@ Both templates support these options:
 
 ```bash
 # Create project with custom name
-dotnet new abies -n MyCounter
+dotnet new abies-browser -n MyCounter
 
 # Create in specific directory
-dotnet new abies -n MyApp -o ./projects/MyApp
+dotnet new abies-browser -n MyApp -o ./projects/MyApp
 
 # Skip restore (useful for CI)
-dotnet new abies -n MyApp --skipRestore
+dotnet new abies-browser -n MyApp --skipRestore
 ```
 
 ## Project Structure
@@ -105,7 +105,7 @@ dotnet new uninstall Abies.Templates
 
 ### Template not found
 
-If `dotnet new abies` shows "No templates found", ensure the templates are installed:
+If `dotnet new abies-browser` shows "No templates found", ensure the templates are installed:
 
 ```bash
 dotnet new list abies
