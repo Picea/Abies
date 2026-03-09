@@ -1,28 +1,15 @@
 <Project>
-    <PropertyGroup>
-      <!-- Example: Set the C# language version to 9.latest for all projects -->
-      <LangVersion>latest</LangVersion>
-      <EnablePreviewFeatures>true</EnablePreviewFeatures>
-      <EnableInterceptors>true</EnableInterceptors>
-      <ImplicitUsings>enable</ImplicitUsings>
-      <!-- Example: Enable nullable reference types for all projects -->
-      <Nullable>enable</Nullable>
-      
-      <!-- Example: Treat all warnings as errors -->
-      <!-- <WarningsAsErrors>nullable, CS8509, CS8524, CS8846, CS8510 </WarningsAsErrors> -->
-      
-      <!-- NuGet Security Audit Configuration -->
-      <!-- Enabled by default in .NET 9+, but explicitly configured for clarity -->
-      <NuGetAudit>true</NuGetAudit>
-      <NuGetAuditMode>all</NuGetAuditMode>
-      <NuGetAuditLevel>low</NuGetAuditLevel>
-      <!-- Treat high and critical vulnerabilities as warnings (can be changed to errors later) -->
-      <!-- <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors> -->
-      
-    </PropertyGroup>
-    <ItemGroup>
-        <!-- Include the GlobalUsings.cs file in all projects -->
-        <Compile Include="$(MSBuildThisFileDirectory)Global\Usings.cs" />
-        <Compile Include="$(MSBuildThisFileDirectory)Global\Suppressions.cs" />
-    </ItemGroup>
-  </Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.9.50" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
