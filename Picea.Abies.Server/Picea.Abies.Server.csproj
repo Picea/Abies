@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Server</PackageId>
+    <Title>Picea.Abies.Server</Title>
+    <Description>Server-side rendering and interactive session support for the Picea Abies MVU framework. A pure computational library with no server dependencies — supports Static SSR, Interactive Server (WebSocket), Interactive WASM, and Interactive Auto render modes.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;ssr;server;mvu;elm;rendering;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+    <InternalsVisibleTo Include="Picea.Abies.Server.Tests" />
+  </ItemGroup>
+
+</Project>
