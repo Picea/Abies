@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Picea.Abies</PackageId>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Picea" Version="1.0.0-rc.1" />
+    <PackageReference Include="Praefixum" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Picea.Abies.Tests" />
+    <InternalsVisibleTo Include="Picea.Abies.Benchmarks" />
+    <InternalsVisibleTo Include="Picea.Abies.Browser" />
+    <InternalsVisibleTo Include="Picea.Abies.Server" />
+    <InternalsVisibleTo Include="PiceaAbiesBenchmark" />
+  </ItemGroup>
+
+</Project>
