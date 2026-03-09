@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Embed wwwroot as static web assets so consuming apps can serve them -->
+  <ItemGroup>
+    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Server.Kestrel</PackageId>
+    <Title>Picea.Abies.Server.Kestrel</Title>
+    <Description>Kestrel hosting adapter for the Picea Abies MVU framework. Provides MapAbies endpoint routing for serving server-rendered pages and WebSocket-based interactive sessions.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;ssr;server;kestrel;websocket;mvu;elm;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Server\Picea.Abies.Server.csproj" />
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+    <InternalsVisibleTo Include="Picea.Abies.Server.Kestrel.Tests" />
+  </ItemGroup>
+
+</Project>
