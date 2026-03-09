@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Browser</PackageId>
+    <Title>Picea.Abies.Browser</Title>
+    <Description>Browser host for the Picea Abies MVU framework. Provides the JS interop bridge, event delegation, and one-line bootstrap for .NET WASM applications.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;browser;wasm;mvu;elm;interop;blazor;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+  </ItemGroup>
+
+</Project>
