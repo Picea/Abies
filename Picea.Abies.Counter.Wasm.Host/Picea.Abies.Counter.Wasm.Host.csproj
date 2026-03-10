@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Counter\Picea.Abies.Counter.csproj" />
+    <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
+  </ItemGroup>
+
+  <!--
+    Publish the WASM project before build so that its AppBundle is available
+    for UseAbiesWasmFiles() to serve at runtime.
+
+    The WASM project is NOT referenced via <ProjectReference> because it targets
+    the browser-wasm RuntimeIdentifier and cannot be directly referenced from a
+    Web SDK project. Instead, we invoke dotnet publish as an MSBuild target and
+    point UseAbiesWasmFiles() at the output directory.
+  -->
+  <PropertyGroup>
+    <WasmProjectPath>..\Picea.Abies.Counter.Wasm\Picea.Abies.Counter.Wasm.csproj</WasmProjectPath>
+    <WasmAppBundlePath>..\Picea.Abies.Counter.Wasm\bin\$(Configuration)\net10.0\browser-wasm\AppBundle</WasmAppBundlePath>
+  </PropertyGroup>
+
+  <Target Name="PublishWasmProject" BeforeTargets="Build"
+          Inputs="$(WasmProjectPath)"
+          Outputs="$(WasmAppBundlePath)\_framework\dotnet.js">
+    <Exec Command="dotnet publish &quot;$(WasmProjectPath)&quot; -c $(Configuration)"
+          ConsoleToMSBuild="true" />
+  </Target>
+
+</Project>
