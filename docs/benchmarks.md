@@ -102,13 +102,13 @@ Micro-benchmarks provide fast development feedback for algorithm comparison and 
 
 ```bash
 # Run all benchmarks
-dotnet run --project Abies.Benchmarks -c Release
+dotnet run --project Picea.Abies.Benchmarks -c Release
 
 # Run specific benchmark
-dotnet run --project Abies.Benchmarks -c Release -- --filter "*SmallDom*"
+dotnet run --project Picea.Abies.Benchmarks -c Release -- --filter "*SmallDom*"
 
 # Quick run with fewer iterations
-dotnet run --project Abies.Benchmarks -c Release -- --job short
+dotnet run --project Picea.Abies.Benchmarks -c Release -- --job short
 ```
 
 ### Benchmark Results
@@ -141,7 +141,7 @@ Always validate with js-framework-benchmark when:
 
 Benchmarks run automatically on:
 
-- Every push to `main` that modifies `Abies/` or `Abies.Benchmarks/`
+- Every push to `main` that modifies `Picea.Abies/` or `Picea.Abies.Benchmarks/`
 - Every PR targeting `main` with changes to these paths
 
 ### Workflow
@@ -207,13 +207,13 @@ public void YourNewBenchmark()
 ## Architecture
 
 ```text
-Abies.Benchmarks/
+Picea.Abies.Benchmarks/
 ├── DomDiffingBenchmarks.cs    # Virtual DOM diffing benchmarks
 ├── RenderingBenchmarks.cs     # HTML rendering benchmarks
 ├── EventHandlerBenchmarks.cs  # Event handler creation benchmarks
 ├── UrlParsingBenchmarks.cs    # URL parsing benchmarks
 ├── Program.cs                 # Entry point
-└── Abies.Benchmarks.csproj   # Project file
+└── Picea.Abies.Benchmarks.csproj   # Project file
 
 benchmark-results/
 ├── baseline.json              # E2E benchmark baseline

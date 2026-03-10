@@ -86,13 +86,13 @@ dotnet restore
 dotnet build
 
 # Run unit tests
-dotnet test Abies.Tests/Abies.Tests.csproj
+dotnet test Picea.Abies.Tests/Picea.Abies.Tests.csproj
 
 # Run integration tests
-dotnet test Abies.Conduit.IntegrationTests/Abies.Conduit.IntegrationTests.csproj
+dotnet test Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj
 
 # Run E2E tests (requires API server running)
-dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj
+dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj
 ```
 
 ### 5. Push and Create Pull Request

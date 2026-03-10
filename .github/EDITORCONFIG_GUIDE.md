@@ -74,7 +74,7 @@ csharp_style_namespace_declarations = file_scoped:warning
 **Example**:
 ```csharp
 // ✅ Enforced
-namespace Abies.Core;
+namespace Picea.Abies;
 
 public class MyClass { }
 ```
@@ -246,7 +246,7 @@ dotnet format --verify-no-changes --verbosity minimal
 dotnet format
 
 # Check specific project
-dotnet format Abies.Conduit/Abies.Conduit.csproj --verify-no-changes
+dotnet format Picea.Abies.Conduit/Picea.Abies.Conduit.csproj --verify-no-changes
 ```
 
 ### CI Validation
