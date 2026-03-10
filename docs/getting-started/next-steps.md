@@ -1,136 +1,129 @@
 # Next Steps
 
-Congratulations! You've learned the basics of Abies. Here's where to go next based on what you want to learn.
+Now that you've built your first Abies application, here's where to go next.
 
-## Learning Paths
+## Learn the Concepts
 
-### Path 1: Build Real Applications
+Understand the foundations:
 
-Work through the tutorials in order:
+1. **[MVU Architecture](../concepts/mvu-architecture.md)** — The Model-View-Update pattern and how Abies implements it on the Picea kernel
+2. **[Pure Functions](../concepts/pure-functions.md)** — Why purity matters and how Abies enforces it
+3. **[Commands and Effects](../concepts/commands-effects.md)** — Handling side effects with the interpreter pattern
+4. **[Subscriptions](../concepts/subscriptions.md)** — Listening to timers, WebSockets, and other external events
+5. **[Composition](../concepts/components.md)** — Building reusable UI with function composition, memoization, and the Node type hierarchy
+6. **[Virtual DOM](../concepts/virtual-dom.md)** — How diffing, patching, and the binary batch protocol work
 
-1. [Counter App](../tutorials/01-counter-app.md) — Reinforce MVU basics
-2. [Todo List](../tutorials/02-todo-list.md) — Lists, adding/removing items
-3. [API Integration](../tutorials/03-api-integration.md) — HTTP requests, commands
-4. [Routing](../tutorials/04-routing.md) — Multi-page navigation
-5. [Forms](../tutorials/05-forms.md) — Input binding, validation
-6. [Subscriptions](../tutorials/06-subscriptions.md) — Timers, events, WebSockets
-7. [Real-World App](../tutorials/07-real-world-app.md) — Conduit walkthrough
+## Understand Render Modes
 
-### Path 2: Understand the Concepts
+Abies supports four render modes — choose the right one for your use case:
 
-Dive deep into how Abies works:
+| Mode | What it does | Best for |
+| ---- | ------------ | -------- |
+| **Static** | One-shot HTML, zero JavaScript | Landing pages, emails |
+| **InteractiveServer** | Server-side MVU over WebSocket | Dashboards, admin panels |
+| **InteractiveWasm** | Client-side WASM after download | SPAs, offline-first |
+| **InteractiveAuto** | Server-first, then WASM handoff | Best of both worlds |
 
-1. [MVU Architecture](../concepts/mvu-architecture.md) — The pattern in depth
-2. [Pure Functions](../concepts/pure-functions.md) — Why purity matters
-3. [Commands & Effects](../concepts/commands-effects.md) — Side effect model
-4. [Virtual DOM](../concepts/virtual-dom.md) — Rendering internals
+Read the full guide: **[Render Modes](../concepts/render-modes.md)** and **[Choosing a Render Mode](../guides/render-mode-selection.md)**.
 
-### Path 3: Reference While Building
+## Add Real Features
 
-Use the API reference as you build:
+Progress from the counter to real-world patterns:
 
-- [Program Interface](../api/program.md) — All the methods you must implement
-- [HTML Elements](../api/html-elements.md) — Available HTML helpers
-- [Events](../api/html-events.md) — Event handlers and data types
-- [Commands](../api/commands.md) — Built-in command types
-
-## Sample Applications
-
-### Abies.Counter
-
-The minimal example. Study this to understand the absolute basics.
-
-```bash
-dotnet run --project Abies.Counter
-```
-
-### Abies.SubscriptionsDemo
-
-Demonstrates subscriptions: timers, browser events, WebSockets.
-
-```bash
-dotnet run --project Abies.SubscriptionsDemo
-```
-
-### Abies.Conduit
-
-A full RealWorld app implementation. This is the best example of a production-like Abies application.
-
-```bash
-# Start the API server
-dotnet run --project Abies.Conduit.Api
-
-# In another terminal, start the frontend
-dotnet run --project Abies.Conduit
-```
-
-## Common Tasks
-
-### Add a New Page
-
-1. Create a file in `Page/` with a model, messages, and view
-2. Add a route case in `Route.cs`
-3. Handle the route in your main `Update` function
-4. Add navigation commands as needed
-
-See [Routing Tutorial](../tutorials/04-routing.md) for details.
-
-### Make an API Call
-
-1. Define a command: `public record FetchData : Command;`
-2. Return it from `Update`: `(model with { IsLoading = true }, new FetchData())`
-3. Handle it in `HandleCommand`:
+### HTTP Requests
 
 ```csharp
-case FetchData:
-    var data = await httpClient.GetAsync(...);
-    dispatch(new DataLoaded(data));
-    break;
+// Define a command
+public record FetchArticles : Command;
+
+// Return it from Transition
+case LoadPage:
+    return (model with { IsLoading = true }, new FetchArticles());
+
+// Handle it in the interpreter
+case FetchArticles:
+    var articles = await api.GetArticles();
+    return Ok([new ArticlesLoaded(articles)]);
 ```
 
-See [API Integration Tutorial](../tutorials/03-api-integration.md) for details.
+See: [Commands and Effects](../concepts/commands-effects.md)
 
-### Add a Timer or Event Subscription
-
-Return a subscription from `Subscriptions`:
+### Client-Side Routing
 
 ```csharp
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick());
+// Subscribe to URL changes
+public static Subscription Subscriptions(Model model)
+    => Navigation.UrlChanges(url => new UrlChanged(url));
+
+// Handle URL changes in Transition
+case UrlChanged changed:
+    var page = Router.Parse(changed.Url);
+    return (model with { Page = page }, Commands.None);
+
+// Navigate programmatically
+case GoToArticle(var slug):
+    return (model, Navigation.PushUrl(
+        new Url(["article", slug], new(), Option<string>.None)));
 ```
 
-See [Subscriptions Tutorial](../tutorials/06-subscriptions.md) for details.
+### Timers and Subscriptions
 
-## Getting Help
+```csharp
+public static Subscription Subscriptions(Model model)
+    => model.IsRunning
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick())
+        : SubscriptionModule.None;
+```
 
-### Documentation
+See: [Subscriptions](../concepts/subscriptions.md)
 
-- This documentation: comprehensive guides and API reference
-- [ADRs](../adr/README.md): understand design decisions
+### Performance with Memoization
 
-### Code
+```csharp
+// Skip diffing for unchanged items
+lazy((item.Id, item.UpdatedAt), () =>
+    ItemView(item))
+```
 
-- Study the sample applications in the repository
-- Read the framework source code in `Abies/`
+See: [Composition](../concepts/components.md)
 
-### Community
+## Study the Conduit Application
 
-- GitHub Issues: report bugs or request features
-- GitHub Discussions: ask questions
+The **Conduit** application is a full-featured social blogging platform (Medium clone) that showcases all Abies capabilities:
 
-## Architecture Decision Records
+- ✅ Authentication (JWT)
+- ✅ CRUD operations (articles, comments)
+- ✅ Client-side routing
+- ✅ Pagination
+- ✅ Favorites and following
+- ✅ Real-world API integration
+- ✅ E2E tests with Playwright
 
-Want to understand *why* Abies works the way it does? Read the ADRs:
+Browse it: [Picea.Abies.Conduit](https://github.com/picea/abies)
 
-| ADR | Question It Answers |
-| --- | ------------------- |
-| [ADR-001](../adr/ADR-001-mvu-architecture.md) | Why MVU instead of MVVM or MVC? |
-| [ADR-002](../adr/ADR-002-pure-functional-programming.md) | Why functional programming in C#? |
-| [ADR-006](../adr/ADR-006-command-pattern.md) | Why commands instead of direct side effects? |
-| [ADR-007](../adr/ADR-007-subscriptions.md) | How do subscriptions differ from commands? |
+## Run the Benchmarks
 
-## Ready to Build?
+Abies includes a full js-framework-benchmark integration. See how it compares to Blazor and vanilla JavaScript:
 
-Pick a tutorial and start building. The best way to learn Abies is to use it.
+```bash
+# In the js-framework-benchmark directory
+npm run bench -- --headless keyed/abies
+```
 
-→ [Start with the Counter Tutorial](../tutorials/01-counter-app.md)
+Current results (Abies 2.0 vs Blazor 10.0): **1.98× faster** geometric mean across all benchmarks.
+
+## Explore the Ecosystem
+
+| Package | Purpose |
+| ------- | ------- |
+| `Picea.Abies` | Core MVU runtime |
+| `Picea.Abies.Browser` | WASM platform (DOM interop) |
+| `Picea.Abies.Server` | Server-side rendering |
+| `Picea.Abies.Server.Kestrel` | Kestrel integration |
+| `Picea` | The kernel (automaton theory) |
+
+## Get Help
+
+- **[GitHub Issues](https://github.com/picea/abies/issues)** — Report bugs, request features
+- **[GitHub Discussions](https://github.com/picea/abies/discussions)** — Ask questions, share ideas
+- **[Contributing Guide](https://github.com/picea/abies/blob/main/CONTRIBUTING.md)** — Help build Abies
