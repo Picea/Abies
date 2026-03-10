@@ -98,7 +98,7 @@ Benchmarks run on:
 ### Viewing Results
 
 | Location | URL/Path | Content |
-|----------|----------|---------|
+|----------|----------|--------|
 | GitHub Pages | https://picea.github.io/Abies/dev/bench/ | Interactive charts with historical trends |
 | PR Comments | Automatic on regression | Performance comparison vs baseline |
 | Workflow Artifacts | Actions → Run → Artifacts | HTML, CSV, JSON reports |
