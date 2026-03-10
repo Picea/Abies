@@ -1,8 +1,10 @@
 # Abies Documentation
 
-Abies (/ˈa.bi.eːs/) is a WebAssembly library for building MVU-style web applications with .NET. This documentation covers everything from your first application to advanced API usage.
+Abies (/ˈa.bi.eːs/) is a full-stack **Model-View-Update (MVU)** framework for .NET. Write your UI as pure functions and deploy it in four different render modes — static HTML, interactive server, client-side WASM, or auto (server-first with WASM handoff).
 
-> **Target audience**: Intermediate to senior programmers new to Abies. We assume familiarity with C# and basic web development concepts.
+Built on the **[Picea](https://github.com/Picea/Picea)** kernel — a Mealy machine abstraction that powers MVU, Event Sourcing, and Actor runtimes.
+
+> **Target audience**: Intermediate to senior .NET developers. We assume familiarity with C# and basic web development concepts.
 
 ---
 
@@ -11,9 +13,9 @@ Abies (/ˈa.bi.eːs/) is a WebAssembly library for building MVU-style web applic
 New to Abies? Start here.
 
 | Guide | Description |
-|-------|-------------|
-| [Installation](./getting-started/installation.md) | Prerequisites, SDK setup, and project creation |
-| [Project Templates](./getting-started/templates.md) | `dotnet new abies-browser` templates for quick scaffolding |
+| --- | --- |
+| [Installation](./getting-started/installation.md) | Prerequisites, SDK setup, and package installation |
+| [Project Templates](./getting-started/templates.md) | `dotnet new abies-browser` and `dotnet new abies-server` for quick scaffolding |
 | [Your First App](./getting-started/your-first-app.md) | Build a counter app step-by-step |
 | [Project Structure](./getting-started/project-structure.md) | Understanding the Abies project layout |
 | [Next Steps](./getting-started/next-steps.md) | Where to go from here |
@@ -25,15 +27,15 @@ New to Abies? Start here.
 Hands-on, progressive learning paths.
 
 | Tutorial | What You'll Learn |
-|----------|-------------------|
-| [1. Counter App](./tutorials/01-counter-app.md) | Basic MVU: model, messages, update, view |
+| --- | --- |
+| [1. Counter App](./tutorials/01-counter-app.md) | Basic MVU: model, messages, transition, view |
 | [2. Todo List](./tutorials/02-todo-list.md) | List management, adding/removing items |
 | [3. API Integration](./tutorials/03-api-integration.md) | Commands, async operations, HTTP clients |
 | [4. Routing](./tutorials/04-routing.md) | Multi-page navigation, URL parsing |
 | [5. Forms](./tutorials/05-forms.md) | Form handling, input binding, validation |
 | [6. Subscriptions](./tutorials/06-subscriptions.md) | Timers, browser events, WebSockets |
 | [7. Real-World App](./tutorials/07-real-world-app.md) | Conduit sample walkthrough |
-| [8. Tracing](./tutorials/08-tracing.md) | OpenTelemetry integration |
+| [8. Tracing](./tutorials/08-tracing.md) | OpenTelemetry integration (browser + server) |
 
 ---
 
@@ -42,13 +44,15 @@ Hands-on, progressive learning paths.
 Deep dives into core Abies concepts.
 
 | Concept | Description |
-|---------|-------------|
+| --- | --- |
 | [MVU Architecture](./concepts/mvu-architecture.md) | Model-View-Update pattern explained |
+| [Render Modes](./concepts/render-modes.md) | The four render modes: Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
 | [Pure Functions](./concepts/pure-functions.md) | Why purity matters in Abies |
-| [Virtual DOM](./concepts/virtual-dom.md) | How rendering and diffing work |
+| [Virtual DOM](./concepts/virtual-dom.md) | How rendering, diffing, and binary batch patching work |
 | [Commands & Effects](./concepts/commands-effects.md) | Side effect model and async operations |
 | [Subscriptions](./concepts/subscriptions.md) | External event sources |
 | [Components](./concepts/components.md) | The Element pattern for reusable UI |
+| [The Picea Kernel](./concepts/the-kernel.md) | The Mealy machine abstraction underneath Abies |
 
 ---
 
@@ -57,8 +61,9 @@ Deep dives into core Abies concepts.
 Comprehensive documentation for all public types.
 
 ### Core Types
+
 | API | Description |
-|-----|-------------|
+| --- | --- |
 | [Program](./api/program.md) | Main application interface |
 | [Element](./api/element.md) | Reusable component interface |
 | [Runtime](./api/runtime.md) | Application lifecycle and execution |
@@ -66,25 +71,31 @@ Comprehensive documentation for all public types.
 | [Command](./api/command.md) | Side effect descriptors |
 | [Subscription](./api/subscription.md) | External event subscriptions |
 
-### Navigation & Routing
+### Render Modes & Server
+
 | API | Description |
-|-----|-------------|
+| --- | --- |
+| [RenderMode](./api/render-mode.md) | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
+| [Page](./api/page.md) | Static page rendering |
+| [Session](./api/session.md) | Server-side interactive MVU session |
+| [Transport](./api/transport.md) | SendPatches, ReceiveEvent delegates |
+
+### Navigation & Routing
+
+| API | Description |
+| --- | --- |
 | [Url](./api/url.md) | URL representation and parsing |
 | [Navigation](./api/navigation.md) | Navigation commands |
 | [Route](./api/route.md) | Parser combinators and template routing |
 
 ### HTML API
+
 | API | Description |
-|-----|-------------|
+| --- | --- |
 | [Elements](./api/html-elements.md) | HTML element functions |
 | [Attributes](./api/html-attributes.md) | HTML attribute functions |
 | [Events](./api/html-events.md) | Event handlers and data types |
 | [DOM Types](./api/dom-types.md) | Node, Element, Attribute, Handler |
-
-### Utilities
-| API | Description |
-|-----|-------------|
-| [Option](./api/option.md) | Optional value handling |
 
 ---
 
@@ -93,12 +104,14 @@ Comprehensive documentation for all public types.
 Practical how-to guides for specific tasks.
 
 | Guide | Description |
-|-------|-------------|
+| --- | --- |
+| [Choosing a Render Mode](./guides/render-mode-selection.md) | When to use Static, Server, WASM, or Auto |
 | [Testing](./guides/testing.md) | Testing strategies for Abies apps |
 | [Debugging](./guides/debugging.md) | Debugging techniques and tools |
-| [Performance](./guides/performance.md) | Optimization tips |
+| [Performance](./guides/performance.md) | Optimization tips and benchmark methodology |
 | [Error Handling](./guides/error-handling.md) | Error patterns and recovery |
-| [Deployment](./guides/deployment.md) | Building and deploying to production |
+| [Head Management](./guides/head-management.md) | Dynamic `<head>` content (title, meta, stylesheets) |
+| [Deployment](./guides/deployment.md) | Building and deploying to production (WASM + server) |
 
 ---
 
@@ -107,10 +120,11 @@ Practical how-to guides for specific tasks.
 Deep technical documentation.
 
 | Reference | Description |
-|-----------|-------------|
+| --- | --- |
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
-| [Runtime Internals](./reference/runtime-internals.md) | How the runtime works |
-| [JavaScript Interop](./reference/js-interop.md) | The JavaScript bridge |
+| [Binary Batch Protocol](./reference/binary-batch-protocol.md) | How patches are serialized and applied |
+| [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
+| [JavaScript Interop](./reference/js-interop.md) | The JavaScript bridge (`abies.js`) |
 
 ---
 
@@ -119,7 +133,7 @@ Deep technical documentation.
 Design decisions and their rationale.
 
 | ADR | Title |
-|-----|-------|
+| --- | --- |
 | [ADR-001](./adr/ADR-001-mvu-architecture.md) | MVU Architecture |
 | [ADR-002](./adr/ADR-002-pure-functional-programming.md) | Pure Functional Programming |
 | [ADR-003](./adr/ADR-003-virtual-dom.md) | Virtual DOM |
@@ -142,3 +156,13 @@ Design decisions and their rationale.
 | [ADR-020](./adr/ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates |
 
 [View all ADRs →](./adr/README.md)
+
+---
+
+## 📊 Benchmarks
+
+| Resource | Description |
+| --- | --- |
+| [Benchmark Guide](./benchmarks.md) | Running benchmarks locally |
+| [Interactive Charts](https://picea.github.io/Abies/dev/bench/) | Historical trends on GitHub Pages |
+| [Abies vs Blazor](../README.md#performance-abies-browser-vs-blazor-wasm) | Latest comparison in the README |
