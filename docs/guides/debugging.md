@@ -1,4 +1,3 @@
-````markdown
 # Debugging Guide
 
 Strategies for debugging Abies applications.
@@ -9,7 +8,7 @@ Debugging MVU applications follows a predictable pattern:
 
 1. **Identify the symptom** — What's wrong?
 2. **Find the message** — What triggered the issue?
-3. **Trace the Update** — How did the model change?
+3. **Trace the Transition** — How did the model change?
 4. **Check the View** — Is the DOM correct?
 5. **Verify Commands** — Did side effects execute?
 
@@ -21,125 +20,95 @@ Abies includes built-in OpenTelemetry tracing that shows the complete flow from 
 
 1. Open your app with Aspire AppHost running
 2. Go to the Aspire dashboard (Traces tab)
-3. Click through your app - traces appear automatically
+3. Click through your app — traces appear automatically
 4. Click a trace to see the full waterfall
 
 ### Verbosity Levels
 
-Control how much detail is captured:
-
 | Level | What's Traced | How to Enable |
-|-------|---------------|---------------|
+| ----- | ------------- | ------------- |
 | `user` | UI Events + HTTP (default) | Production default |
 | `debug` | Everything (DOM updates, etc.) | `?otel_verbosity=debug` in URL |
 | `off` | Nothing | `<meta name="otel-verbosity" content="off">` |
 
-### Quick Debug URL
-
-Add `?otel_verbosity=debug` to see all spans including DOM mutations:
-
-```
-https://localhost:5209/?otel_verbosity=debug
-```
-
 ### Runtime Toggle
 
-Open browser console and run:
+Open browser console:
 
 ```javascript
-// Enable debug mode
 window.__otel.setVerbosity('debug');
-
-// Check current level
 window.__otel.getVerbosity();
-
-// Force flush pending spans
 await window.__otel.provider.forceFlush();
 ```
 
 For the complete tracing tutorial, see [Tutorial: Distributed Tracing](../tutorials/08-tracing.md).
 
-## Browser DevTools
-
-### Console Logging
+## Console Logging
 
 Add temporary logging to trace message flow:
 
 ```csharp
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
 {
-    Console.WriteLine($"[Update] Message: {msg.GetType().Name}");
-    Console.WriteLine($"[Update] Model before: {model}");
-    
+    Console.WriteLine($"[Transition] Message: {msg.GetType().Name}");
+    Console.WriteLine($"[Transition] Model before: {model}");
+
     var (newModel, command) = msg switch
     {
-        Increment => (model with { Count = model.Count + 1 }, Commands.None),
-        Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+        CounterMessage.Increment => (model with { Count = model.Count + 1 }, Commands.None),
+        CounterMessage.Decrement => (model with { Count = model.Count - 1 }, Commands.None),
         _ => (model, Commands.None)
     };
-    
-    Console.WriteLine($"[Update] Model after: {newModel}");
-    Console.WriteLine($"[Update] Command: {command.GetType().Name}");
-    
+
+    Console.WriteLine($"[Transition] Model after: {newModel}");
+    Console.WriteLine($"[Transition] Command: {command.GetType().Name}");
+
     return (newModel, command);
 }
 ```
 
-View logs in the browser console (F12 → Console).
+In WASM, logs appear in the browser console (F12). On the server, logs go to stdout.
 
-### Network Tab
+## Debugging by Platform
 
-Monitor API calls:
+### Browser (WASM)
 
-1. Open DevTools (F12)
-2. Go to Network tab
-3. Filter by "Fetch/XHR"
-4. Click a request to see:
-   - Request headers and body
-   - Response status and body
-   - Timing information
+1. **Console** (F12) — `Console.WriteLine` output
+2. **Network** — API calls and WebSocket traffic
+3. **Elements** — Inspect `data-event-*` attributes for event handlers
+4. **Sources** — Set breakpoints in C# files (Blazor debugging)
 
-### Elements Tab
+### Server (InteractiveServer)
 
-Inspect the rendered DOM:
+1. **Server logs** — `Console.WriteLine` goes to server stdout
+2. **Browser DevTools** — WebSocket tab shows DOM patches sent to client
+3. **Aspire dashboard** — Full distributed traces
+4. **Debugger** — Attach to the Kestrel process normally
 
-1. Open DevTools (F12)
-2. Go to Elements tab
-3. Look for:
-   - `id` attributes (Abies assigns unique IDs)
-   - `data-event-*` attributes (event handlers)
-   - Missing or incorrect elements
-
-## Debugging Update Logic
+## Debugging Transition
 
 ### Print Model State
 
-Add a debug view component:
+Add a debug panel to your view:
 
 ```csharp
-static Element<Model, Unit> DebugPanel(Model model)
-    => details(
-        attribute("open", ""),
-        summary(text("Debug Info")),
-        pre(
-            style("background: #f0f0f0; padding: 1rem; font-size: 12px;"),
-            text(System.Text.Json.JsonSerializer.Serialize(model, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            }))
-        )
-    );
+static Node DebugPanel(Model model) =>
+    details([], [
+        summary([], [text("Debug Info")]),
+        pre([], [text(System.Text.Json.JsonSerializer.Serialize(model,
+            new JsonSerializerOptions { WriteIndented = true }))])
+    ]);
 
-public static Document View(Model model)
-    => new("App", div(
+public static Document View(Model model) =>
+    new("App", div([], [
         MainContent(model),
-        DebugPanel(model)  // Add during development
-    ));
+        #if DEBUG
+        DebugPanel(model)
+        #endif
+    ]));
 ```
 
 ### Trace Message History
-
-Create a message log:
 
 ```csharp
 public record Model(
@@ -147,202 +116,44 @@ public record Model(
     List<string> MessageLog  // Debug only
 );
 
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
 {
     var logEntry = $"{DateTime.Now:HH:mm:ss.fff} - {msg.GetType().Name}";
     var newLog = model.MessageLog.Append(logEntry).TakeLast(20).ToList();
-    
-    var (newModel, command) = msg switch
-    {
-        // ... normal handling
-    };
-    
+
+    var (newModel, command) = msg switch { /* ... */ };
+
     return (newModel with { MessageLog = newLog }, command);
 }
 ```
 
-### Breakpoint Debugging
-
-Use Blazor's debugging support:
-
-1. Run with `dotnet watch`
-2. Open browser DevTools
-3. Go to Sources tab
-4. Find your C# files under `file://`
-5. Set breakpoints in Update or View
-
-## Debugging View Issues
-
-### Check Element IDs
-
-Every element has a unique ID:
-
-```html
-<div id="abc123">
-  <button id="def456" data-event-click="ghi789">Click</button>
-</div>
-```
-
-If elements aren't updating, IDs may be mismatched during diffing.
-
-### Render to String
-
-Debug virtual DOM structure:
+## Debugging Commands and Interpreters
 
 ```csharp
-var dom = MyPage.View(model);
-var html = Abies.DOM.Render.Html(dom.Body);
-Console.WriteLine(html);
-```
-
-### Check Handler Registration
-
-Verify event handlers are attached:
-
-```csharp
-public static Document View(Model model)
+Interpreter<Command, Message> interpreter = async command =>
 {
-    var dom = div(
-        button(
-            onClick(new Increment()),
-            text("+")
-        )
-    );
-    
-    // Debug: check for handlers
-    var element = dom as Abies.DOM.Element;
-    foreach (var attr in element?.Attributes ?? [])
-    {
-        Console.WriteLine($"Attribute: {attr.Name} = {attr.Value}");
-    }
-    
-    return new("App", dom);
-}
-```
+    Console.WriteLine($"[Interpreter] Executing: {command.GetType().Name}");
 
-## Debugging Commands
-
-### Log Command Execution
-
-```csharp
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-{
-    Console.WriteLine($"[HandleCommand] Executing: {command.GetType().Name}");
-    
     try
     {
         switch (command)
         {
-            case LoadArticlesCommand load:
-                Console.WriteLine($"[HandleCommand] Loading articles...");
+            case LoadArticles:
                 var articles = await api.GetArticles();
-                Console.WriteLine($"[HandleCommand] Loaded {articles.Count} articles");
-                dispatch(new ArticlesLoaded(articles));
-                break;
-            // ...
+                Console.WriteLine($"[Interpreter] Loaded {articles.Length} articles");
+                return Result<Message[], PipelineError>.Ok([new ArticlesLoaded(articles)]);
+
+            default:
+                Console.WriteLine($"[Interpreter] Unhandled command: {command.GetType().Name}");
+                return Result<Message[], PipelineError>.Ok([]);
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[HandleCommand] Error: {ex.Message}");
-        dispatch(new CommandFailed(ex.Message));
+        Console.WriteLine($"[Interpreter] Error: {ex.Message}");
+        return Result<Message[], PipelineError>.Ok([new CommandFailed(ex.Message)]);
     }
-}
-```
-
-### Verify Dispatch
-
-Ensure messages are dispatched after commands:
-
-```csharp
-case FetchDataCommand:
-    var data = await httpClient.GetFromJsonAsync<Data>("/api/data");
-    Console.WriteLine($"[HandleCommand] Fetched data, dispatching DataLoaded");
-    dispatch(new DataLoaded(data));
-    Console.WriteLine($"[HandleCommand] Dispatch complete");
-    break;
-```
-
-## Debugging Subscriptions
-
-### Log Subscription Lifecycle
-
-```csharp
-public static Subscription Subscriptions(Model model)
-{
-    Console.WriteLine($"[Subscriptions] IsRunning={model.IsTimerRunning}");
-    
-    if (model.IsTimerRunning)
-    {
-        Console.WriteLine("[Subscriptions] Starting timer subscription");
-        return Every(TimeSpan.FromSeconds(1), () => new Tick());
-    }
-    
-    Console.WriteLine("[Subscriptions] No subscriptions");
-    return Subscription.None;
-}
-```
-
-### Check Subscription Messages
-
-```csharp
-public static (Model, Command) Update(Message msg, Model model)
-    => msg switch
-    {
-        Tick t =>
-        {
-            Console.WriteLine($"[Update] Tick received at {DateTime.Now:HH:mm:ss}");
-            return (model with { Seconds = model.Seconds + 1 }, Commands.None);
-        },
-        // ...
-    };
-```
-
-## Debugging Navigation
-
-### Log URL Changes
-
-```csharp
-public static Message OnUrlChanged(Url url)
-{
-    Console.WriteLine($"[OnUrlChanged] New URL: {url}");
-    Console.WriteLine($"[OnUrlChanged] Path: {url.Path}");
-    Console.WriteLine($"[OnUrlChanged] Query: {url.Query}");
-    return new UrlChanged(url);
-}
-
-public static Message OnLinkClicked(UrlRequest request)
-{
-    Console.WriteLine($"[OnLinkClicked] Request: {request}");
-    return request switch
-    {
-        UrlRequest.Internal i => new NavigateTo(i.Url),
-        UrlRequest.External e => new ExternalLink(e.Url),
-        _ => new NoOp()
-    };
-}
-```
-
-### Verify Route Matching
-
-```csharp
-Page MatchRoute(string path)
-{
-    Console.WriteLine($"[MatchRoute] Matching path: {path}");
-    
-    if (Router.TryMatch(path, out var page, out var match))
-    {
-        Console.WriteLine($"[MatchRoute] Matched: {page.GetType().Name}");
-        foreach (var (key, value) in match.Values)
-        {
-            Console.WriteLine($"[MatchRoute] Param: {key} = {value}");
-        }
-        return page;
-    }
-    
-    Console.WriteLine("[MatchRoute] No match, returning NotFound");
-    return new Page.NotFound();
-}
+};
 ```
 
 ## Common Issues
@@ -351,33 +162,21 @@ Page MatchRoute(string path)
 
 **Symptoms:** Clicking a button does nothing.
 
-**Causes:**
-1. Handler not attached to element
-2. Element replaced during render (ID mismatch)
-3. Event prevented by parent element
-
-**Debug Steps:**
-1. Check `data-event-click` attribute in Elements tab
-2. Add console log in Update
-3. Check for `onclick` capturing in parent
+**Check:**
+1. Inspect the element — does it have a `data-event-click` attribute?
+2. Add `Console.WriteLine` in Transition — is the message arriving?
+3. Ensure the handler is correctly attached: `onclick(new MyMessage())`
 
 ### Model Not Updating
 
 **Symptoms:** UI doesn't reflect expected state.
 
-**Causes:**
-1. Update not returning new model
-2. Pattern match not covering message type
-3. Using mutation instead of `with`
-
-**Debug Steps:**
-
 ```csharp
-// Wrong: mutation
+// ❌ Mutation (records are immutable, this is a no-op)
 model.Count = model.Count + 1;
 return (model, Commands.None);
 
-// Right: new record
+// ✅ Create new record with `with`
 return (model with { Count = model.Count + 1 }, Commands.None);
 ```
 
@@ -385,101 +184,37 @@ return (model with { Count = model.Count + 1 }, Commands.None);
 
 **Symptoms:** Model is correct but UI is stale.
 
-**Causes:**
-1. View function has side effects
-2. DOM diff not detecting changes
-3. Keyed children with wrong keys
-
-**Debug Steps:**
-1. Log model in View function
-2. Check if View is pure
-3. Verify key attributes on list items
+1. Log the model in View: `Console.WriteLine($"View: {model}")`
+2. Check if View is pure (no `DateTime.Now`, no external state)
+3. For lists, verify that keys/IDs are stable
 
 ### API Calls Failing Silently
 
 **Symptoms:** Data never loads, no errors shown.
 
-**Causes:**
-1. Command not dispatching result message
-2. Exception swallowed in HandleCommand
-3. CORS issues
-
-**Debug Steps:**
-1. Check Network tab for requests
-2. Add try/catch with logging
-3. Check console for CORS errors
+1. Check Network tab for the request
+2. Add try/catch with logging in the interpreter
+3. Check for CORS errors in the console
+4. Ensure the interpreter returns feedback messages
 
 ### Navigation Not Working
 
 **Symptoms:** URL changes but page doesn't update.
 
-**Causes:**
-1. OnUrlChanged not returning correct message
-2. Route not matching
-3. Update not handling navigation message
-
-**Debug Steps:**
-1. Log in OnUrlChanged
-2. Log route matching
-3. Add catch-all in Update
-
-## Performance Debugging
-
-### Slow Renders
-
-If updates feel sluggish:
-
-```csharp
-public static Document View(Model model)
-{
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    
-    var result = new("App", ActualView(model));
-    
-    Console.WriteLine($"[View] Rendered in {sw.ElapsedMilliseconds}ms");
-    return result;
-}
-```
-
-### Large DOM Trees
-
-Check virtual DOM size:
-
-```csharp
-int CountNodes(Node node) => node switch
-{
-    Element e => 1 + e.Children.Sum(CountNodes),
-    _ => 1
-};
-
-var dom = View(model);
-Console.WriteLine($"[View] Node count: {CountNodes(dom.Body)}");
-```
+1. Verify `Navigation.UrlChanges(...)` is in `Subscriptions`
+2. Log in the `UrlChanged` message handler
+3. Check route matching logic
 
 ## Removing Debug Code
 
-Before deploying, remove debug code:
-
 ```csharp
 #if DEBUG
-    Console.WriteLine($"[Update] {msg.GetType().Name}");
+    Console.WriteLine($"[Transition] {msg.GetType().Name}");
 #endif
-```
-
-Or use a feature flag:
-
-```csharp
-public static bool EnableDebugLogging = false;
-
-public static void DebugLog(string message)
-{
-    if (EnableDebugLogging)
-        Console.WriteLine(message);
-}
 ```
 
 ## See Also
 
-- [Concepts: MVU Architecture](../concepts/mvu-architecture.md) — Understanding message flow
-- [Guide: Testing](./testing.md) — Write tests to catch bugs
-- [API: Runtime](../api/runtime.md) — Runtime internals
+- [MVU Architecture](../concepts/mvu-architecture.md) — Understanding message flow
+- [Testing](./testing.md) — Catch bugs before they reach production
+- [Tutorial: Distributed Tracing](../tutorials/08-tracing.md) — Full tracing setup
