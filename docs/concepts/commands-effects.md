@@ -7,8 +7,8 @@ Abies keeps side effects out of pure functions by using Commands. This document 
 Side effects break purity and testability:
 
 ```csharp
-// ❌ Impure Update - can't test without mocking HTTP
-public static (Model, Command) Update(Message msg, Model model)
+// ❌ Impure Transition - can't test without mocking HTTP
+public static (Model, Command) Transition(Model model, Message msg)
 {
     if (msg is FetchData)
     {
@@ -24,8 +24,8 @@ public static (Model, Command) Update(Message msg, Model model)
 Commands describe side effects without performing them:
 
 ```csharp
-// ✅ Pure Update - returns a command describing what to do
-public static (Model, Command) Update(Message msg, Model model)
+// ✅ Pure Transition - returns a command describing what to do
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
         FetchData => (model with { IsLoading = true }, new LoadDataCommand()),
@@ -34,18 +34,41 @@ public static (Model, Command) Update(Message msg, Model model)
     };
 ```
 
-The runtime handles the impure execution:
+The runtime's **interpreter** handles the impure execution:
 
 ```csharp
-public static async Task HandleCommand(Command cmd, Dispatch dispatch)
+Interpreter<Command, Message> interpreter = async command =>
 {
-    if (cmd is LoadDataCommand)
+    switch (command)
     {
-        var data = await httpClient.GetAsync("/api/data");
-        dispatch(new DataLoaded(data));
+        case LoadDataCommand:
+            var data = await httpClient.GetAsync("/api/data");
+            return Result<Message[], PipelineError>.Ok([new DataLoaded(data)]);
+        default:
+            return Result<Message[], PipelineError>.Ok([]);
     }
-}
+};
 ```
+
+## The Picea Kernel: Commands as Effects
+
+In the Picea kernel's type system, Commands map to the `TEffect` parameter of `Automaton`:
+
+```csharp
+// Automaton<TState, TEvent, TEffect, TParameters>
+//    ≡     <Model,  Message, Command, Argument>
+```
+
+The kernel provides built-in handling for structural commands:
+
+| Command | Handled By | Behavior |
+| ------- | ---------- | -------- |
+| `Commands.None` | Runtime | No-op (identity element) |
+| `Commands.Batch([...])` | Runtime | Flatten and interpret each sub-command |
+| `NavigationCommand.*` | Runtime | Built-in URL navigation |
+| All other commands | Your interpreter | Your business logic |
+
+You never need to handle `None`, `Batch`, or navigation commands in your interpreter — the runtime takes care of them.
 
 ## Defining Commands
 
@@ -65,36 +88,34 @@ public record SearchArticles(string Query, int Page, int Limit) : Command;
 ## The Command Flow
 
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│                      Command Flow                              │
-│                                                                │
-│  1. User Action          2. Update                             │
-│     ↓                       ↓                                  │
-│  ┌─────────┐           ┌─────────────────────┐                │
-│  │ Message │ ────────▶ │ Update(msg, model)  │                │
-│  └─────────┘           │ → (model, Command)  │                │
-│                        └─────────────────────┘                │
-│                                  │                             │
-│                                  ▼                             │
-│  4. Result Message        3. Runtime                           │
-│     ↓                       ↓                                  │
-│  ┌─────────┐           ┌─────────────────────┐                │
-│  │ Message │ ◀──────── │ HandleCommand(cmd)  │                │
-│  └─────────┘           │ dispatch(message)   │                │
-│                        └─────────────────────┘                │
-│                                                                │
-│  5. Back to step 2 with result message                        │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      Command Flow                            │
+│                                                              │
+│  1. User Action          2. Transition                       │
+│     ↓                       ↓                                │
+│  ┌─────────┐           ┌─────────────────────────┐        │
+│  │ Message │ ────────▶ │ Transition(model, msg) │        │
+│  └─────────┘           │ → (model, Command)     │        │
+│                        └─────────────────────────┘        │
+│                                  │                           │
+│                                  ▼                           │
+│  4. Feedback Messages      3. Interpreter                    │
+│     ↓                       ↓                                │
+│  ┌───────────┐         ┌─────────────────────────┐        │
+│  │ Message[] │ ◀────── │ interpreter(command)   │        │
+│  └───────────┘         │ → Result<Message[]>    │        │
+│                        └─────────────────────────┘        │
+│                                                              │
+│  5. Feedback messages re-enter the MVU loop at step 2         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## Handling Commands
+## Writing an Interpreter
 
-The `HandleCommand` function executes side effects and dispatches results:
+The `Interpreter<Command, Message>` is a delegate that converts commands into feedback messages:
 
 ```csharp
-public static async Task HandleCommand(
-    Command command, 
-    Func<Message, ValueTuple> dispatch)
+Interpreter<Command, Message> interpreter = async command =>
 {
     switch (command)
     {
@@ -102,31 +123,47 @@ public static async Task HandleCommand(
             try
             {
                 var articles = await api.GetArticles(load.Page);
-                dispatch(new ArticlesLoaded(articles));
+                return Result<Message[], PipelineError>.Ok(
+                    [new ArticlesLoaded(articles)]);
             }
             catch (Exception ex)
             {
-                dispatch(new LoadFailed(ex.Message));
+                return Result<Message[], PipelineError>.Ok(
+                    [new LoadFailed(ex.Message)]);
             }
-            break;
 
         case SaveArticle save:
             try
             {
                 var saved = await api.SaveArticle(save.Draft);
-                dispatch(new ArticleSaved(saved));
+                return Result<Message[], PipelineError>.Ok(
+                    [new ArticleSaved(saved)]);
             }
             catch (Exception ex)
             {
-                dispatch(new SaveFailed(ex.Message));
+                return Result<Message[], PipelineError>.Ok(
+                    [new SaveFailed(ex.Message)]);
             }
-            break;
 
-        case Commands.None:
-            // No effect to perform
-            break;
+        default:
+            return Result<Message[], PipelineError>.Ok([]);
     }
-}
+};
+```
+
+### Browser Usage
+
+```csharp
+await Abies.Browser.Runtime.Run<MyApp, Model, Unit>(
+    interpreter: interpreter);
+```
+
+### Server Usage
+
+```csharp
+app.MapAbies<MyApp, Model, Unit>("/",
+    renderMode: RenderMode.InteractiveServer("/ws"),
+    interpreter: interpreter);
 ```
 
 ## Common Command Types
@@ -137,39 +174,19 @@ public static async Task HandleCommand(
 public record FetchUser(string Username) : Command;
 public record CreatePost(PostDraft Draft) : Command;
 public record DeleteComment(string CommentId) : Command;
-
-// Handling
-case FetchUser fetch:
-    var user = await api.GetUser(fetch.Username);
-    dispatch(new UserLoaded(user));
-    break;
-```
-
-### Local Storage
-
-```csharp
-public record SaveToStorage(string Key, string Value) : Command;
-public record LoadFromStorage(string Key) : Command;
-public record ClearStorage : Command;
-
-// Handling
-case SaveToStorage save:
-    await jsRuntime.InvokeVoidAsync("localStorage.setItem", save.Key, save.Value);
-    dispatch(new StorageSaved());
-    break;
 ```
 
 ### Navigation
 
-Navigation commands are handled specially by the runtime:
+Navigation commands are handled automatically by the runtime:
 
 ```csharp
 // Built-in navigation commands
-new Navigation.Command.PushState(Url.Create("/profile"))
-new Navigation.Command.ReplaceState(Url.Create("/login"))
-new Navigation.Command.Back()
-new Navigation.Command.Forward()
-new Navigation.Command.Reload()
+new NavigationCommand.Push(Url.FromUri(new Uri("/profile", UriKind.Relative)))
+new NavigationCommand.Replace(Url.FromUri(new Uri("/login", UriKind.Relative)))
+new NavigationCommand.GoBack()
+new NavigationCommand.GoForward()
+new NavigationCommand.External("https://example.com")
 ```
 
 ### Timers and Delays
@@ -177,11 +194,10 @@ new Navigation.Command.Reload()
 ```csharp
 public record DelayedAction(TimeSpan Delay, Message After) : Command;
 
-// Handling
+// In interpreter:
 case DelayedAction delay:
     await Task.Delay(delay.Delay);
-    dispatch(delay.After);
-    break;
+    return Result<Message[], PipelineError>.Ok([delay.After]);
 ```
 
 ## Composing Commands
@@ -198,90 +214,87 @@ var command = Commands.Batch([
 ]);
 ```
 
+The runtime flattens and interprets each sub-command, collecting all feedback messages.
+
 ### No Command
 
-When Update has no side effects:
+When Transition has no side effects:
 
 ```csharp
-case Increment:
+case CounterMessage.Increment:
     return (model with { Count = model.Count + 1 }, Commands.None);
 ```
 
 ## Error Handling
 
-Always handle errors in `HandleCommand`:
+Always handle errors in your interpreter:
 
 ```csharp
 case LoadData:
     try
     {
         var data = await api.GetData();
-        dispatch(new DataLoaded(data));
+        return Result<Message[], PipelineError>.Ok([new DataLoaded(data)]);
     }
     catch (HttpRequestException ex)
     {
-        dispatch(new NetworkError(ex.Message));
+        return Result<Message[], PipelineError>.Ok([new NetworkError(ex.Message)]);
     }
     catch (JsonException ex)
     {
-        dispatch(new ParseError(ex.Message));
+        return Result<Message[], PipelineError>.Ok([new ParseError(ex.Message)]);
     }
-    catch (Exception ex)
-    {
-        dispatch(new UnknownError(ex.Message));
-    }
-    break;
 ```
 
-And handle errors in Update:
+And handle error messages in Transition:
 
 ```csharp
 case NetworkError error:
-    return (model with { 
+    return (model with {
         Error = $"Network error: {error.Message}",
-        IsLoading = false 
-    }, Commands.None);
-
-case ParseError error:
-    return (model with { 
-        Error = $"Invalid response: {error.Message}",
-        IsLoading = false 
+        IsLoading = false
     }, Commands.None);
 ```
 
 ## Testing Commands
 
-### Test Update Returns Correct Command
+### Test Transition Returns Correct Command
 
 ```csharp
 [Fact]
 public void FetchData_ReturnsLoadCommand()
 {
     var model = new Model(IsLoading: false);
-    
-    var (newModel, command) = Update(new FetchData(), model);
-    
+
+    var (newModel, command) = Transition(model, new FetchData());
+
     Assert.True(newModel.IsLoading);
     Assert.IsType<LoadDataCommand>(command);
 }
 ```
 
-### Test Command Handling
+### Test Interpreter with Runtime
 
 ```csharp
 [Fact]
-public async Task LoadDataCommand_DispatchesLoadedMessage()
+public async Task Interpreter_DispatchesFeedbackMessage()
 {
-    var messages = new List<Message>();
-    void Dispatch(Message msg) => messages.Add(msg);
-    
-    var fakeApi = new FakeApi(returns: new Data(42));
-    
-    await HandleCommand(new LoadDataCommand(), Dispatch);
-    
-    Assert.Single(messages);
-    Assert.IsType<DataLoaded>(messages[0]);
-    Assert.Equal(42, ((DataLoaded)messages[0]).Data.Value);
+    var patches = new List<IReadOnlyList<Patch>>();
+    var runtime = await Runtime<MyApp, Model, Unit>.Start(
+        apply: p => patches.Add(p),
+        interpreter: async cmd =>
+        {
+            if (cmd is LoadDataCommand)
+                return Result<Message[], PipelineError>.Ok(
+                    [new DataLoaded(testData)]);
+            return Result<Message[], PipelineError>.Ok([]);
+        });
+
+    await runtime.Dispatch(new FetchData());
+
+    // Model updated with loaded data
+    Assert.False(runtime.Model.IsLoading);
+    Assert.NotEmpty(runtime.Model.Data);
 }
 ```
 
@@ -289,23 +302,10 @@ public async Task LoadDataCommand_DispatchesLoadedMessage()
 
 | Aspect | Commands | Subscriptions |
 | ------ | -------- | ------------- |
-| Trigger | Once, from Update | Continuous, based on model |
+| Trigger | Once, from Transition | Continuous, based on model |
 | Lifetime | Fire-and-forget | Active while subscription exists |
 | Use case | API calls, one-time effects | Timers, browser events, sockets |
 | Example | Fetch user data | Listen for window resize |
-
-Use Commands for:
-
-- HTTP requests
-- One-time side effects
-- Imperative actions
-
-Use Subscriptions for:
-
-- Timers
-- Browser events (resize, visibility)
-- WebSocket connections
-- Keyboard shortcuts
 
 ## Best Practices
 
@@ -317,10 +317,8 @@ One command = one side effect:
 // ❌ Command doing too much
 public record LoadEverything : Command;
 
-// ✅ Separate commands
-public record LoadArticles : Command;
-public record LoadUser : Command;
-public record LoadTags : Command;
+// ✅ Separate commands, batched
+return (model, Commands.Batch([new LoadArticles(), new LoadUser(), new LoadTags()]));
 ```
 
 ### 2. Include Necessary Data
@@ -335,21 +333,19 @@ public record Save : Command;
 public record SaveArticle(string Title, string Body, List<string> Tags) : Command;
 ```
 
-### 3. Return Typed Results
+### 3. Return Typed Feedback
 
-Dispatch specific result messages:
+Return specific result messages:
 
 ```csharp
 // ❌ Generic result
-dispatch(new Success());
+return Ok([new Success()]);
 
 // ✅ Specific result
-dispatch(new ArticleSaved(article.Slug));
+return Ok([new ArticleSaved(article.Slug)]);
 ```
 
 ### 4. Handle Loading States
-
-Track loading in the model:
 
 ```csharp
 case FetchArticle fetch:
@@ -364,21 +360,21 @@ case LoadFailed failed:
 
 ## Summary
 
-Commands are the bridge between pure Update functions and impure side effects:
+Commands are the bridge between pure Transition functions and impure side effects:
 
-- **Update** — Returns commands (pure)
-- **HandleCommand** — Executes commands (impure)
-- **Messages** — Communicate results back
+- **Transition** — Returns commands (pure)
+- **Interpreter** — Executes commands and returns feedback messages (impure)
+- **Runtime** — Handles structural commands (None, Batch, Navigation) automatically
 
 This pattern provides:
 
 - ✅ Testable business logic
 - ✅ Explicit side effects
 - ✅ Clear data flow
-- ✅ Error handling in one place
+- ✅ Platform-agnostic (same interpreter works in browser and server)
 
 ## See Also
 
 - [Subscriptions](./subscriptions.md) — Long-lived event sources
 - [MVU Architecture](./mvu-architecture.md) — The overall pattern
-- [Tutorial: API Integration](../tutorials/03-api-integration.md) — Practical examples
+- [Render Modes](./render-modes.md) — How commands execute across platforms
