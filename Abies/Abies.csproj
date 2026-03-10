@@ -1,41 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
 
-    <!-- Package metadata -->
+    <!-- Metapackage forwarding to Picea.Abies for backward compatibility -->
+    <PackageId>Abies</PackageId>
+    <Description>Metapackage that forwards to <c>Picea.Abies</c>. This package is deprecated; please reference <c>Picea.Abies</c> directly.</Description>
     <Authors>Maurice CGP Peters</Authors>
-    <Description>Abies - Platform-independent MVU (Model-View-Update) types and abstractions for .NET</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageTags>mvu;model-view-update;elm;dotnet</PackageTags>
-    <!-- support voor sourcelink -->
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <PackageTags>mvu;model-view-update;elm;dotnet;metapackage</PackageTags>
+    <PackageDeprecationMessage>Please migrate to the <c>Picea.Abies</c> package; the <c>Abies</c> metapackage will be removed in a future major version.</PackageDeprecationMessage>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- For README -->
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="" />
-  </ItemGroup>
-
-  <!-- Run the HTML analyzer on the Abies library itself -->
-  <ItemGroup>
-    <ProjectReference Include="..\Abies.Analyzers\Abies.Analyzers.csproj"
-                      ReferenceOutputAssembly="false"
-                      OutputItemType="Analyzer"
-                      PrivateAssets="all" />
-  </ItemGroup>
-
-  <!-- Pack the analyzer DLL into the NuGet package so PackageReference consumers get it automatically -->
-  <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\Abies.Analyzers\bin\$(Configuration)\netstandard2.0\Abies.Analyzers.dll"
-          Pack="true"
-          PackagePath="analyzers/dotnet/cs"
-          Visible="false" />
+    <PackageReference Include="Picea.Abies" Version="1.0.0-rc.2" />
   </ItemGroup>
 
 </Project>
