@@ -228,7 +228,7 @@ private static Document ViewArticle(Page.Article article, Model model)
 }
 ```
 
-**How it works:** The first render emits a single `meta:description` tag. When the article loads (Update → View cycle), the runtime diffs the old single-element head against the new 6-element head: it **updates** the description and **adds** the 5 new elements.
+**How it works:** The first render emits a single `meta:description` tag. When the article loads (Transition → View cycle), the runtime diffs the old single-element head against the new 6-element head: it **updates** the description and **adds** the 5 new elements.
 
 ## API Reference
 
