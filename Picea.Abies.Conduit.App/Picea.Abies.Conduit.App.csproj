@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Conduit.App</PackageId>
+    <Title>Picea.Abies.Conduit.App</Title>
+    <Description>The Conduit real-world application built with the Abies MVU framework. Contains the pure program definition (model, messages, views, commands, interpreter, routing) with no platform dependencies — shared by both WASM and server hosts.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;conduit;realworld;mvu;elm;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Picea/Abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+    <PackageReference Include="Praefixum" Version="2.0.1" />
+  </ItemGroup>
+
+</Project>
