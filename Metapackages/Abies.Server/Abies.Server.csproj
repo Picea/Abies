@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Abies.Server</PackageId>
+    <Title>Abies.Server (deprecated — use Picea.Abies.Server)</Title>
+    <Description>This package has been renamed to Picea.Abies.Server. Install Picea.Abies.Server instead. This package exists only to redirect existing consumers.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;server;ssr;deprecated</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+    <PackageDeprecationMessage>This package has been renamed to Picea.Abies.Server. Please update your package references.</PackageDeprecationMessage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Picea.Abies.Server\Picea.Abies.Server.csproj" />
+  </ItemGroup>
+
+</Project>
