@@ -1,25 +1,24 @@
 # Project Templates
 
-Abies provides `dotnet new` templates for quickly scaffolding new MVU applications.
+Abies provides `dotnet new` templates for quickly scaffolding new applications. Templates include the Abies design system CSS, a working counter example, and all required configuration.
 
 ## Installation
 
-Install the templates package from NuGet:
-
 ```bash
-dotnet new install Abies.Templates
+dotnet new install Picea.Abies.Templates
 ```
 
 ## Available Templates
 
 | Template | Short Name | Description |
-|----------|------------|-------------|
-| Abies Browser Application | `abies-browser` | A minimal Abies Browser MVU application with counter example |
-| Abies Browser Application (Empty) | `abies-browser-empty` | An empty Abies Browser MVU application |
+| --- | --- | --- |
+| Abies Browser App | `abies-browser` | Client-side WebAssembly application |
+| Abies Server App | `abies-server` | Server-rendered application with interactive modes |
+| Abies Browser (Empty) | `abies-browser-empty` | Minimal WASM app with no example code |
 
-## Usage
+## Abies Browser App (`abies-browser`)
 
-### Create a Counter Application
+Creates a client-side WebAssembly application that runs entirely in the browser.
 
 ```bash
 dotnet new abies-browser -n MyApp
@@ -27,106 +26,106 @@ cd MyApp
 dotnet run
 ```
 
-This creates a project with:
+**What's included:**
+- Counter example with increment/decrement
+- Abies design system CSS (brand tokens, Fluent UI v9 compatible)
+- `wwwroot/index.html` with WASM bootstrap
+- `Program.cs` with runtime initialization
+- `.csproj` targeting `net10.0` with WASM SDK
 
-- A working counter example
-- Model-View-Update pattern demonstration
-- Styled HTML with responsive design
-- Development server configuration
+**Project structure:**
 
-### Create an Empty Application
+```text
+MyApp/
+  Program.cs              ← Entry point, starts the MVU runtime
+  Counter.cs              ← Counter program (Initialize, Transition, View)
+  MyApp.csproj            ← WASM project file
+  wwwroot/
+    index.html            ← HTML shell with WASM bootstrap
+    site.css              ← Abies design system CSS
+```
+
+## Abies Server App (`abies-server`)
+
+Creates a server-rendered application with configurable render mode. The default uses `InteractiveServer` (WebSocket-based interactivity).
+
+```bash
+dotnet new abies-server -n MyApp
+cd MyApp
+dotnet run
+```
+
+**What's included:**
+- Counter example (same MVU code as the browser template)
+- Server-side rendering via `Page.Render<TProgram, TModel, TArgument>()`
+- WebSocket transport for interactive server mode
+- Kestrel integration via `MapAbies<TProgram>()`
+- Abies design system CSS
+- OpenTelemetry configuration
+
+**Project structure:**
+
+```text
+MyApp/
+  Program.cs              ← ASP.NET Core host with MapAbies()
+  Counter.cs              ← Counter program (shared with browser template)
+  MyApp.csproj            ← Server project file (references Picea.Abies.Server.Kestrel)
+  wwwroot/
+    site.css              ← Abies design system CSS
+```
+
+**Switching render modes** in the server template:
+
+```csharp
+// In Program.cs, change the render mode:
+app.MapAbies<Counter, CounterModel, Unit>(
+    mode: new RenderMode.InteractiveServer());  // WebSocket
+    // mode: new RenderMode.Static());          // Static HTML, no JS
+    // mode: new RenderMode.InteractiveWasm()); // Client-side WASM
+    // mode: new RenderMode.InteractiveAuto()); // Server → WASM handoff
+```
+
+## Abies Browser Empty (`abies-browser-empty`)
+
+A minimal starting point with no example code — just the bare WASM project structure.
 
 ```bash
 dotnet new abies-browser-empty -n MyApp
 cd MyApp
+dotnet run
 ```
 
-This creates a minimal project with:
-
-- Empty Model and App class stubs
-- Basic HTML template
-- Placeholder implementations for you to fill in
+**What's included:**
+- Empty `Program.cs` with TODO placeholder
+- Minimal CSS (design system tokens only)
+- `wwwroot/index.html`
+- `.csproj` with required packages
 
 ## Template Options
 
-Both templates support these options:
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-n, --name` | The name for the project | Current directory name |
-| `-o, --output` | Location to place the generated output | Current directory |
-| `--Framework` | Target framework (`net10.0`) | `net10.0` |
-| `--skipRestore` | Skip automatic package restore | `false` |
-
-### Examples
+All templates support standard `dotnet new` options:
 
 ```bash
-# Create project with custom name
-dotnet new abies-browser -n MyCounter
+# Custom output directory
+dotnet new abies-browser -n MyApp -o src/MyApp
 
-# Create in specific directory
-dotnet new abies-browser -n MyApp -o ./projects/MyApp
-
-# Skip restore (useful for CI)
-dotnet new abies-browser -n MyApp --skipRestore
-```
-
-## Project Structure
-
-Projects created from templates have this structure:
-
-```text
-MyApp/
-├── MyApp.csproj          # WebAssembly project file
-├── Program.cs            # Application entry point with MVU setup
-├── Properties/
-│   └── launchSettings.json   # Development server configuration
-└── wwwroot/
-    └── index.html        # HTML host page
+# Dry run (preview without creating)
+dotnet new abies-browser -n MyApp --dry-run
 ```
 
 ## Updating Templates
 
-To update to the latest version:
-
 ```bash
-dotnet new install Abies.Templates
-```
+# Update to latest version
+dotnet new install Picea.Abies.Templates
 
-## Uninstalling Templates
-
-To remove the templates:
-
-```bash
-dotnet new uninstall Abies.Templates
-```
-
-## Troubleshooting
-
-### Template not found
-
-If `dotnet new abies-browser` shows "No templates found", ensure the templates are installed:
-
-```bash
+# Check installed version
 dotnet new list abies
 ```
 
-If nothing shows, reinstall the templates:
+## Next
 
-```bash
-dotnet new install Abies.Templates --force
-```
-
-### Package restore fails
-
-If the Abies package cannot be restored, ensure you have access to NuGet.org or your configured package sources.
-
-### Ports in use
-
-The template generates random ports for development. If you encounter port conflicts, edit `Properties/launchSettings.json` and change the `applicationUrl` values.
-
-## See Also
-
-- [Your First App](./your-first-app.md) - Tutorial building an app step by step
-- [Project Structure](./project-structure.md) - Understanding the project layout
-- [ADR-017: dotnet new Templates](../adr/ADR-017-dotnet-new-templates.md) - Architecture decision record
+- [**Your First App**](your-first-app.md) — Step-by-step counter tutorial
+- [**Project Structure**](project-structure.md) — Understanding the full project layout
+- [**Render Modes**](../concepts/render-modes.md) — Understanding the four render modes
+- [**Choosing a Render Mode**](../guides/render-mode-selection.md) — Which mode is right for your project
