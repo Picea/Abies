@@ -7,9 +7,11 @@ Patterns for handling errors gracefully in Abies applications.
 Error handling in MVU follows a predictable pattern:
 
 1. **Model** stores error state
-2. **Commands** can fail and dispatch error messages
-3. **Update** handles error messages and updates model
+2. **Interpreter** executes commands that can fail
+3. **Transition** handles result messages and updates model
 4. **View** displays errors to users
+
+Since the interpreter returns `Result<Message[], PipelineError>`, errors are always explicit — no hidden exceptions.
 
 ## Error State in Model
 
@@ -19,15 +21,17 @@ Store error information in your model:
 public record Model(
     bool IsLoading,
     IReadOnlyList<Article> Articles,
-    string? Error,                    // Single error message
-    IReadOnlyList<string> Errors      // Multiple errors (e.g., validation)
+    string? Error
 );
+```
 
-// Or use a dedicated error type
+For complex loading states, use a discriminated union:
+
+```csharp
 public interface LoadState<T>
 {
     record Loading : LoadState<T>;
-    record Success(T Data) : LoadState<T>;
+    record Loaded(T Data) : LoadState<T>;
     record Failed(string Error) : LoadState<T>;
 }
 
@@ -38,29 +42,31 @@ public record Model(
 
 ## Error Messages
 
-Define message types for errors:
+Define message types for both success and failure:
 
 ```csharp
-public interface Message { }
+public interface AppMessage : Message
+{
+    // Success messages
+    record struct ArticlesLoaded(IReadOnlyList<Article> Articles) : AppMessage;
+    record struct ArticleCreated(Article Article) : AppMessage;
 
-// Success messages
-public record ArticlesLoaded(IReadOnlyList<Article> Articles) : Message;
-public record ArticleCreated(Article Article) : Message;
+    // Error messages
+    record struct LoadArticlesFailed(string Error) : AppMessage;
+    record struct CreateArticleFailed(IReadOnlyList<string> Errors) : AppMessage;
 
-// Error messages
-public record LoadArticlesFailed(string Error) : Message;
-public record CreateArticleFailed(IReadOnlyList<string> Errors) : Message;
-
-// Generic error
-public record ApiError(string Message, string? Details = null) : Message;
+    // User actions
+    record struct DismissError : AppMessage;
+    record struct RetryLoad : AppMessage;
+}
 ```
 
-## Handling Errors in Commands
+## Handling Errors in the Interpreter
 
-Wrap async operations in try-catch:
+The interpreter returns `Result<Message[], PipelineError>`, making errors explicit:
 
 ```csharp
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
+Interpreter<Command, AppMessage> interpreter = async command =>
 {
     switch (command)
     {
@@ -68,276 +74,225 @@ public static async Task HandleCommand(Command command, Func<Message, ValueTuple
             try
             {
                 var response = await httpClient.GetAsync("/api/articles");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var articles = await response.Content
                         .ReadFromJsonAsync<ArticlesResponse>();
-                    dispatch(new ArticlesLoaded(articles.Articles));
+                    return Ok<AppMessage>([new ArticlesLoaded(articles!.Articles)]);
                 }
-                else
+
+                var error = response.StatusCode switch
                 {
-                    var error = response.StatusCode switch
-                    {
-                        HttpStatusCode.NotFound => "Articles not found",
-                        HttpStatusCode.Unauthorized => "Please log in to view articles",
-                        HttpStatusCode.Forbidden => "You don't have access to these articles",
-                        _ => $"Failed to load articles: {response.StatusCode}"
-                    };
-                    dispatch(new LoadArticlesFailed(error));
-                }
+                    HttpStatusCode.NotFound => "Articles not found",
+                    HttpStatusCode.Unauthorized => "Please log in to view articles",
+                    HttpStatusCode.Forbidden => "Access denied",
+                    _ => $"Failed to load articles: {response.StatusCode}"
+                };
+                return Ok<AppMessage>([new LoadArticlesFailed(error)]);
             }
             catch (HttpRequestException ex)
             {
-                dispatch(new LoadArticlesFailed($"Network error: {ex.Message}"));
+                return Ok<AppMessage>([new LoadArticlesFailed($"Network error: {ex.Message}")]);
             }
-            catch (JsonException ex)
-            {
-                dispatch(new LoadArticlesFailed($"Invalid response: {ex.Message}"));
-            }
-            break;
+
+        default:
+            return Ok<AppMessage>([]);
     }
-}
+};
 ```
 
-## Handling Errors in Update
+**Key insight:** The interpreter catches exceptions and converts them into messages. The runtime never sees raw exceptions — all failure information flows through the message pipeline.
 
-Process error messages and update model:
+## Handling Errors in Transition
+
+Process error messages and update the model:
 
 ```csharp
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
-        // Loading state
-        LoadArticles => 
-            (model with { IsLoading = true, Error = null }, new LoadArticlesCommand()),
-        
+        // Start loading
+        LoadArticles =>
+            (model with { IsLoading = true, Error = null },
+             new LoadArticlesCommand()),
+
         // Success
-        ArticlesLoaded loaded => 
-            (model with { IsLoading = false, Articles = loaded.Articles }, Commands.None),
-        
+        ArticlesLoaded loaded =>
+            (model with { IsLoading = false, Articles = loaded.Articles },
+             Commands.None),
+
         // Error
-        LoadArticlesFailed failed => 
-            (model with { IsLoading = false, Error = failed.Error }, Commands.None),
-        
+        LoadArticlesFailed failed =>
+            (model with { IsLoading = false, Error = failed.Error },
+             Commands.None),
+
         // Dismiss error
-        DismissError => 
+        DismissError =>
             (model with { Error = null }, Commands.None),
-        
+
         // Retry
-        RetryLoad => 
-            (model with { Error = null }, new LoadArticlesCommand()),
-        
+        RetryLoad =>
+            (model with { Error = null, IsLoading = true },
+             new LoadArticlesCommand()),
+
         _ => (model, Commands.None)
     };
 ```
 
 ## Displaying Errors
 
-Show errors in the view:
+Show errors in the view using standard Node composition:
 
 ```csharp
-static Element<Model, Unit> ErrorBanner(string error)
-    => div(
-        @class("error-banner"),
-        role("alert"),
-        ariaLive("polite"),
-        span(text(error)),
-        button(
-            onClick(new DismissError()),
-            ariaLabel("Dismiss error"),
-            text("×")
-        )
-    );
+using static Abies.Html.Elements;
+using static Abies.Html.Attributes;
 
-public static Document View(Model model)
-    => new("App", div(
-        model.Error is not null ? ErrorBanner(model.Error) : empty(),
-        model.IsLoading ? LoadingSpinner() : ArticleList(model.Articles)
-    ));
+static Node ErrorBanner(string error) =>
+    div([class_("error-banner"), role("alert")], [
+        span([], [text(error)]),
+        button([onclick(new DismissError())], [text("×")])
+    ]);
+
+public static Document View(Model model) =>
+    new("App", div([], [
+        model.Error is { } err ? ErrorBanner(err) : Element.Empty,
+        model.IsLoading
+            ? div([class_("loading")], [text("Loading...")])
+            : ArticleList(model.Articles)
+    ]));
 ```
 
 ### Form Validation Errors
 
-Display multiple errors for forms:
+Display multiple validation errors:
 
 ```csharp
-static Element<Model, Unit> ValidationErrors(IReadOnlyList<string> errors)
-    => errors.Count == 0 ? empty() : ul(
-        @class("error-list"),
-        role("alert"),
-        errors.Select(error => 
-            li(@class("error-item"), text(error))
-        ).ToArray()
-    );
-
-static Element<Model, Unit> FormField(
-    string name, 
-    string value, 
-    string? error,
-    Message onInput)
-    => div(
-        @class("form-field"),
-        label(
-            @for(name),
-            text(name)
-        ),
-        input(
-            id(name),
-            Html.Attributes.name(name),
-            Html.Attributes.value(value),
-            ariaInvalid(error is not null ? "true" : "false"),
-            ariaDescribedby(error is not null ? $"{name}-error" : null),
-            onInput(v => onInput)
-        ),
-        error is not null 
-            ? span(id($"{name}-error"), @class("field-error"), text(error)) 
-            : empty()
-    );
-```
-
-## Result Type Pattern
-
-Use a Result type for operations that can fail:
-
-```csharp
-public interface Result<T>
-{
-    record Ok(T Value) : Result<T>;
-    record Error(string Message, IReadOnlyList<string>? Details = null) : Result<T>;
-}
-
-// In command handler
-async Task<Result<Article>> CreateArticle(CreateArticleRequest request)
-{
-    try
-    {
-        var response = await httpClient.PostAsJsonAsync("/api/articles", request);
-        
-        if (response.IsSuccessStatusCode)
-        {
-            var article = await response.Content.ReadFromJsonAsync<Article>();
-            return new Result<Article>.Ok(article);
-        }
-        
-        var errors = await response.Content.ReadFromJsonAsync<ErrorsResponse>();
-        return new Result<Article>.Error(
-            "Failed to create article", 
-            errors?.Errors
-        );
-    }
-    catch (Exception ex)
-    {
-        return new Result<Article>.Error(ex.Message);
-    }
-}
+static Node ValidationErrors(IReadOnlyList<string> errors) =>
+    errors.Count == 0
+        ? Element.Empty
+        : ul([class_("error-list"), role("alert")],
+            errors.Select(error =>
+                li([class_("error-item")], [text(error)])
+            ).ToArray());
 ```
 
 ## Global Error Handling
 
-Catch unhandled exceptions:
+Wrap the interpreter to catch unhandled exceptions:
 
 ```csharp
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-{
-    try
+static Interpreter<Command, AppMessage> WithErrorHandling(
+    Interpreter<Command, AppMessage> inner) =>
+    async command =>
     {
-        await HandleCommandInternal(command, dispatch);
-    }
-    catch (Exception ex)
-    {
-        // Log error
-        Console.WriteLine($"Unhandled error: {ex}");
-        
-        // Notify user
-        dispatch(new ApiError(
-            "An unexpected error occurred",
-            ex.Message
-        ));
-    }
-}
+        try
+        {
+            return await inner(command);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Unhandled error in {command.GetType().Name}: {ex}");
+            return Ok<AppMessage>([new ApiError(
+                "An unexpected error occurred",
+                ex.Message)]);
+        }
+    };
+
+// Usage:
+var safeInterpreter = WithErrorHandling(interpreter);
 ```
 
-## Retry Logic
+This is the **Decorator pattern** applied to the interpreter delegate — it wraps the original interpreter with cross-cutting error handling behavior without modifying the original.
+
+## Retry with Exponential Backoff
 
 Implement retry for transient failures:
 
 ```csharp
 public record Model(
     int RetryCount,
-    int MaxRetries
+    int MaxRetries,
+    string? Error,
+    IReadOnlyList<Article> Articles
 );
 
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
+        // Retry if under limit
         LoadArticlesFailed failed when model.RetryCount < model.MaxRetries =>
-        {
-            // Wait before retrying
-            var delay = TimeSpan.FromSeconds(Math.Pow(2, model.RetryCount));
-            return (
-                model with { RetryCount = model.RetryCount + 1 },
-                new DelayedCommand(delay, new LoadArticlesCommand())
-            );
-        },
-        
+            (model with { RetryCount = model.RetryCount + 1 },
+             new DelayedRetry(
+                 TimeSpan.FromSeconds(Math.Pow(2, model.RetryCount)),
+                 new LoadArticlesCommand())),
+
+        // Give up after max retries
         LoadArticlesFailed failed =>
-            (model with { Error = $"Failed after {model.MaxRetries} retries: {failed.Error}" }, Commands.None),
-        
+            (model with
+             {
+                 Error = $"Failed after {model.MaxRetries} retries: {failed.Error}"
+             },
+             Commands.None),
+
+        // Reset on success
         ArticlesLoaded loaded =>
-            (model with { RetryCount = 0, Articles = loaded.Articles }, Commands.None),
-        
+            (model with { RetryCount = 0, Articles = loaded.Articles },
+             Commands.None),
+
         _ => (model, Commands.None)
     };
 ```
 
 ## Optimistic Updates with Rollback
 
-Show changes immediately and roll back on error:
+Show changes immediately and roll back on failure:
 
 ```csharp
 public record Model(
     IReadOnlyList<Article> Articles,
-    Article? PendingDelete
+    Article? PendingDelete,
+    string? Error
 );
 
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
         // Optimistically remove article
         DeleteArticle delete =>
         {
             var article = model.Articles.First(a => a.Slug == delete.Slug);
-            var remaining = model.Articles.Where(a => a.Slug != delete.Slug).ToList();
+            var remaining = model.Articles
+                .Where(a => a.Slug != delete.Slug).ToList();
             return (
                 model with { Articles = remaining, PendingDelete = article },
-                new DeleteArticleCommand(delete.Slug)
-            );
+                new DeleteArticleCommand(delete.Slug));
         },
-        
+
         // Confirm deletion
         ArticleDeleted =>
             (model with { PendingDelete = null }, Commands.None),
-        
+
         // Rollback on failure
         DeleteArticleFailed failed when model.PendingDelete is not null =>
         {
-            var restored = model.Articles.Append(model.PendingDelete).ToList();
+            var restored = model.Articles
+                .Append(model.PendingDelete).ToList();
             return (
-                model with { 
-                    Articles = restored, 
+                model with
+                {
+                    Articles = restored,
                     PendingDelete = null,
-                    Error = failed.Error 
+                    Error = failed.Error
                 },
-                Commands.None
-            );
+                Commands.None);
         },
-        
+
         _ => (model, Commands.None)
     };
 ```
 
-## HTTP Status Code Handling
+## HTTP Status Code Mapping
 
 Map status codes to user-friendly messages:
 
@@ -359,79 +314,85 @@ static string GetErrorMessage(HttpStatusCode status, string? serverMessage = nul
 
 ## Best Practices
 
-### 1. Be Specific
+### 1. Convert Exceptions to Messages
+
+```csharp
+// ❌ Exception escapes interpreter
+case LoadArticlesCommand:
+    var articles = await httpClient.GetFromJsonAsync<List<Article>>("/api/articles");
+    return Ok([new ArticlesLoaded(articles!)]);
+
+// ✅ Exception caught and converted to message
+case LoadArticlesCommand:
+    try
+    {
+        var articles = await httpClient.GetFromJsonAsync<List<Article>>("/api/articles");
+        return Ok([new ArticlesLoaded(articles!)]);
+    }
+    catch (Exception ex)
+    {
+        return Ok([new LoadArticlesFailed(ex.Message)]);
+    }
+```
+
+### 2. Be Specific with Error Messages
 
 ```csharp
 // ❌ Vague
-dispatch(new Error("Something went wrong"));
+return Ok([new LoadArticlesFailed("Something went wrong")]);
 
 // ✅ Specific
-dispatch(new LoadArticlesFailed("Network timeout after 30 seconds"));
+return Ok([new LoadArticlesFailed("Network timeout after 30 seconds")]);
 ```
 
-### 2. Preserve Context
-
-```csharp
-// ❌ Lost context
-catch (Exception ex)
-{
-    dispatch(new Error(ex.Message));
-}
-
-// ✅ Preserved context
-catch (Exception ex)
-{
-    dispatch(new LoadArticlesFailed(
-        $"Failed to load articles: {ex.Message}"
-    ));
-}
-```
-
-### 3. Allow Recovery
+### 3. Always Allow Recovery
 
 ```csharp
 // ❌ No way to recover
-static Element<Model, Unit> ErrorView(string error)
-    => div(text(error));
+static Node ErrorView(string error) =>
+    div([], [text(error)]);
 
 // ✅ User can retry
-static Element<Model, Unit> ErrorView(string error)
-    => div(
+static Node ErrorView(string error) =>
+    div([], [
         text(error),
-        button(onClick(new RetryLoad()), text("Try Again"))
-    );
+        button([onclick(new RetryLoad())], [text("Try Again")])
+    ]);
 ```
 
-### 4. Log for Debugging
+### 4. Clear Errors on New Actions
 
 ```csharp
-catch (Exception ex)
-{
-    Console.WriteLine($"Error in {command.GetType().Name}: {ex}");
-    dispatch(new ApiError(GetUserMessage(ex)));
-}
-```
-
-### 5. Clear Errors Appropriately
-
-```csharp
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
-        // Clear error on new action
-        LoadArticles => 
-            (model with { Error = null, IsLoading = true }, new LoadArticlesCommand()),
-        
+        // Clear error when user takes new action
+        LoadArticles =>
+            (model with { Error = null, IsLoading = true },
+             new LoadArticlesCommand()),
+
         // Clear error on navigation
-        Navigate _ => 
-            (model with { Error = null }, new Navigation.Command.PushState(/* ... */)),
-        
+        UrlChanged changed =>
+            (model with { Error = null, Page = ParseRoute(changed.Url) },
+             Commands.None),
+
         _ => (model, Commands.None)
     };
 ```
 
+### 5. Log for Debugging
+
+```csharp
+// In the interpreter
+catch (Exception ex)
+{
+    Console.WriteLine($"Error in {command.GetType().Name}: {ex}");
+    return Ok([new LoadArticlesFailed(GetErrorMessage(ex))]);
+}
+```
+
 ## See Also
 
-- [Concepts: Commands & Effects](../concepts/commands-effects.md) — Async operations
-- [Tutorial: API Integration](../tutorials/03-api-integration.md) — Working with APIs
-- [Guide: Debugging](./debugging.md) — Troubleshooting errors
+- [Commands & Effects](../concepts/commands-effects.md) — How interpreters work
+- [Debugging](./debugging.md) — Troubleshooting errors
+- [Testing](./testing.md) — Testing error paths
