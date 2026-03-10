@@ -43,13 +43,13 @@ public static Document View(Model model)
 }
 ```
 
-### Update is Pure
+### Transition is Pure
 
-Update takes a message and model, returns new model and command. It never performs I/O.
+Transition takes a model and message, returning a new model and command. It never performs I/O.
 
 ```csharp
-// ✅ Pure Update
-public static (Model, Command) Update(Message msg, Model model)
+// ✅ Pure Transition
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
         Increment => (model with { Count = model.Count + 1 }, Commands.None),
@@ -57,8 +57,8 @@ public static (Model, Command) Update(Message msg, Model model)
         _ => (model, Commands.None)
     };
 
-// ❌ Impure Update (DON'T DO THIS)
-public static (Model, Command) Update(Message msg, Model model)
+// ❌ Impure Transition (DON'T DO THIS)
+public static (Model, Command) Transition(Model model, Message msg)
 {
     if (msg is Save)
     {
@@ -67,6 +67,8 @@ public static (Model, Command) Update(Message msg, Model model)
     return (model, Commands.None);
 }
 ```
+
+> **Note:** In the Picea kernel, this function is called `Transition`. MVU literature often calls it "Update" — they are the same concept.
 
 ## Why Purity Matters
 
@@ -79,31 +81,21 @@ Pure functions are trivially testable. No mocking, no setup, no teardown.
 public void Increment_IncreasesCount()
 {
     var model = new Model(Count: 5);
-    
-    var (result, _) = Update(new Increment(), model);
-    
-    Assert.Equal(6, result.Count);
-}
 
-[Fact]
-public void View_ShowsCount()
-{
-    var model = new Model(Count: 42);
-    
-    var document = View(model);
-    
-    Assert.Contains("42", RenderToString(document));
+    var (result, _) = Transition(model, new Increment());
+
+    Assert.Equal(6, result.Count);
 }
 ```
 
 ### 2. Predictability
 
-Given the same model, View always produces the same UI. Given the same message and model, Update always produces the same result.
+Given the same model, View always produces the same UI. Given the same message and model, Transition always produces the same result.
 
 ```csharp
 // This is guaranteed to be true:
-var (result1, _) = Update(new Increment(), model);
-var (result2, _) = Update(new Increment(), model);
+var (result1, _) = Transition(model, new Increment());
+var (result2, _) = Transition(model, new Increment());
 Assert.Equal(result1, result2);
 ```
 
@@ -117,56 +109,31 @@ var messages = GetRecordedMessages(); // From logging
 
 var finalModel = messages.Aggregate(
     initialModel,
-    (model, msg) => Update(msg, model).model
+    (model, msg) => Transition(model, msg).model
 );
 ```
 
-### 4. Parallelization
+### 4. Platform Independence
 
-Pure functions can run in parallel without locks or synchronization because they don't share mutable state.
+Pure functions don't depend on the runtime platform. The same View and Transition run identically in the browser (WASM), on the server (Kestrel), and in tests.
 
 ### 5. Caching
 
-Pure function results can be cached (memoized) safely:
-
-```csharp
-var cache = new Dictionary<Model, Document>();
-
-Document GetCachedView(Model model)
-{
-    if (!cache.TryGetValue(model, out var doc))
-    {
-        doc = View(model);
-        cache[model] = doc;
-    }
-    return doc;
-}
-```
+Pure function results can be cached (memoized) safely. Abies uses this with `lazy()` — when the memo key hasn't changed, the view function isn't even called.
 
 ## How Abies Enforces Purity
 
 ### 1. Command Pattern
 
-Side effects aren't performed in Update—they're described as Commands:
+Side effects aren't performed in Transition — they're described as Commands:
 
 ```csharp
-// Update returns a command describing what to do
-public static (Model, Command) Update(Message msg, Model model)
+public static (Model, Command) Transition(Model model, Message msg)
     => msg switch
     {
         FetchData => (model with { IsLoading = true }, new LoadDataCommand()),
         _ => (model, Commands.None)
     };
-
-// Runtime handles the impure part
-public static async Task HandleCommand(Command cmd, Dispatch dispatch)
-{
-    if (cmd is LoadDataCommand)
-    {
-        var data = await httpClient.GetAsync("/api/data"); // Impure, but isolated
-        dispatch(new DataLoaded(data));
-    }
-}
 ```
 
 ### 2. Immutable Models
@@ -182,12 +149,21 @@ var newModel = model with { Count = model.Count + 1 };
 
 ### 3. Virtual DOM
 
-View returns data (virtual DOM), not actual DOM mutations. The runtime handles the impure rendering.
+View returns data (virtual DOM), not actual DOM mutations. The runtime handles the impure rendering through the Apply delegate.
+
+### 4. Interpreter Boundary
+
+The interpreter is the only place where impurity lives:
 
 ```csharp
-// Returns data structure, not side effects
-public static Document View(Model model)
-    => new("Title", div([], [text(model.Name)]));
+// Pure side (your code):
+Transition(model, msg) => (newModel, new FetchDataCommand());
+
+// Impure side (interpreter):
+interpreter = async cmd => {
+    var data = await httpClient.GetAsync(...);  // Impurity isolated here
+    return Ok([new DataLoaded(data)]);
+};
 ```
 
 ## Handling Impurity
@@ -197,31 +173,22 @@ Sometimes you need randomness, timestamps, or other "impure" values. The pattern
 ### Pattern 1: Push Impurity to Initialization
 
 ```csharp
-// Impure: get random ID at startup
-var model = new Model(Id: Guid.NewGuid().ToString());
+public static (Model, Command) Initialize(Unit _)
+    => (new Model(Id: Guid.NewGuid().ToString()), Commands.None);
 
-// From then on, Update uses the ID purely
-public static (Model, Command) Update(Message msg, Model model)
-    => msg switch
-    {
-        // Uses model.Id purely
-        SaveData => (model, new SaveCommand(model.Id, model.Data)),
-        _ => (model, Commands.None)
-    };
+// From then on, Transition uses the ID purely
+case SaveData:
+    return (model, new SaveCommand(model.Id, model.Data));
 ```
 
-### Pattern 2: Include Values in Messages
+### Pattern 2: Include Values in Messages (via Interpreter)
 
 ```csharp
-// Command triggers side effect
-public record GetCurrentTime : Command;
-
-// HandleCommand captures impurity
+// Interpreter captures impurity:
 case GetCurrentTime:
-    dispatch(new TimeReceived(DateTime.UtcNow));
-    break;
+    return Ok([new TimeReceived(DateTime.UtcNow)]);
 
-// Update uses the time purely
+// Transition uses the time purely:
 case TimeReceived t:
     return (model with { LastUpdated = t.Time }, Commands.None);
 ```
@@ -233,26 +200,14 @@ public static Subscription Subscriptions(Model model)
     => Every(TimeSpan.FromSeconds(1), now => new TimerTick(now));
 ```
 
-## Pure vs Impure Reference
-
-| Pure | Impure |
-| ---- | ------ |
-| `a + b` | `Console.WriteLine(x)` |
-| `model with { X = 1 }` | `model.X = 1` |
-| `list.Where(x => x > 0)` | `await httpClient.GetAsync(url)` |
-| `string.Concat(a, b)` | `File.ReadAllText(path)` |
-| Pattern matching | Database queries |
-| Creating records | Random number generation |
-| Virtual DOM construction | DOM manipulation |
-
 ## Common Mistakes
 
-### 1. Calling APIs in Update
+### 1. Calling APIs in Transition
 
 ```csharp
 // ❌ WRONG
 case Refresh:
-    var data = await api.GetData(); // Can't await in Update!
+    var data = await api.GetData(); // Can't await in Transition!
     return (model with { Data = data }, Commands.None);
 
 // ✅ RIGHT
@@ -290,8 +245,8 @@ case AddItem item:
 Pure functions are the foundation of Abies:
 
 - **View** transforms model to virtual DOM (pure)
-- **Update** transforms message + model to new model + command (pure)
-- **HandleCommand** performs actual side effects (impure, isolated)
+- **Transition** transforms model + message to new model + command (pure)
+- **Interpreter** performs actual side effects (impure, isolated at the boundary)
 
 This separation makes your code:
 
@@ -299,8 +254,10 @@ This separation makes your code:
 - ✅ Easy to reason about
 - ✅ Easy to debug
 - ✅ Predictable and reliable
+- ✅ Platform-agnostic (same code runs in browser and server)
 
 ## See Also
 
 - [MVU Architecture](./mvu-architecture.md) — The overall pattern
 - [Commands and Effects](./commands-effects.md) — Handling impurity
+- [Render Modes](./render-modes.md) — How purity enables multi-platform execution
