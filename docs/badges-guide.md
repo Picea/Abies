@@ -116,8 +116,8 @@ If adding new tools:
 
 ### NuGet Package Badge
 ```markdown
-[![NuGet](https://img.shields.io/nuget/v/Abies.svg)](https://www.nuget.org/packages/Abies/)
-[![Downloads](https://img.shields.io/nuget/dt/Abies.svg)](https://www.nuget.org/packages/Abies/)
+[![NuGet](https://img.shields.io/nuget/v/Picea.Abies.svg)](https://www.nuget.org/packages/Picea.Abies/)
+[![Downloads](https://img.shields.io/nuget/dt/Picea.Abies.svg)](https://www.nuget.org/packages/Picea.Abies/)
 ```
 
 ### Code Coverage Badge

@@ -44,7 +44,7 @@ Benchmarks cover seven key scenarios:
 ### Workflow Triggers
 
 Benchmarks run on:
-- Push to `main` affecting `Abies/` or `Abies.Benchmarks/`
+- Push to `main` affecting `Picea.Abies/` or `Picea.Abies.Benchmarks/`
 - PR targeting `main` affecting these paths
 
 ## Consequences
@@ -92,7 +92,7 @@ Benchmarks run on:
 ## Implementation
 
 - Workflow: `.github/workflows/benchmark.yml`
-- Benchmarks: `Abies.Benchmarks/DomDiffingBenchmarks.cs`
+- Benchmarks: `Picea.Abies.Benchmarks/DomDiffingBenchmarks.cs`
 - Documentation: `docs/benchmarks.md`
 
 ### Viewing Results

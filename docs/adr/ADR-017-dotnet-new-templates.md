@@ -17,7 +17,7 @@ This manual process is error-prone and creates friction for new adopters. The .N
 
 ## Decision
 
-We will create a NuGet template package (`Abies.Templates`) that provides `dotnet new` templates for creating Abies applications:
+We will create a NuGet template package (`Picea.Abies.Templates`) that provides `dotnet new` templates for creating Abies applications:
 
 1. **`abies-browser`** - A minimal Abies Browser MVU application with a counter example demonstrating:
    - Model-View-Update pattern
@@ -52,7 +52,7 @@ The template package will:
 ### Neutral
 
 - Templates are packaged separately from the main Abies library
-- Users need to install templates separately with `dotnet new install Abies.Templates`
+- Users need to install templates separately with `dotnet new install Picea.Abies.Templates`
 
 ## Alternatives Considered
 
@@ -88,8 +88,8 @@ Provide only one template without the empty variant.
 The template package structure:
 
 ```
-Abies.Templates/
-├── Abies.Templates.csproj
+Picea.Abies.Templates/
+├── Picea.Abies.Templates.csproj
 ├── README.md
 └── templates/
     ├── abies-browser/
@@ -112,7 +112,7 @@ Abies.Templates/
             └── index.html
 ```
 
-Installation: `dotnet new install Abies.Templates`
+Installation: `dotnet new install Picea.Abies.Templates`
 
 Usage:
 - `dotnet new abies-browser -n MyApp`

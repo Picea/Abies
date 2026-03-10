@@ -11,6 +11,5 @@
 
 # When adding team members, you can specify different owners for different areas:
 # /docs/ @mcgppeters @Picea/docs-team
-# /Abies/ @mcgppeters @Picea/core-team
+# /Picea.Abies/ @mcgppeters @Picea/core-team
 # /.github/workflows/ @mcgppeters @Picea/devops
-

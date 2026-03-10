@@ -100,7 +100,7 @@ Already configured in `.github/workflows/e2e.yml`:
   id: e2e-tests
   continue-on-error: true
   run: |
-    dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
+    dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
       --no-build -c Debug -v minimal -m:1 \
       -l "trx;LogFileName=conduit-e2e.trx"
 
@@ -108,31 +108,31 @@ Already configured in `.github/workflows/e2e.yml`:
   if: always()
   run: |
     python3 scripts/analyze_e2e_results.py \
-      Abies.Conduit.E2E/TestResults/conduit-e2e.trx
+      Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx
 ```
 
 ### Locally (Lenient Mode)
 
 ```bash
 # Run tests
-dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
+dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
   -l "trx;LogFileName=conduit-e2e.trx"
 
 # Analyze results (lenient)
 python3 scripts/analyze_e2e_results.py \
-  Abies.Conduit.E2E/TestResults/conduit-e2e.trx
+  Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx
 ```
 
 ### Locally (Strict Mode)
 
 ```bash
 # Run tests
-dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
+dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
   -l "trx;LogFileName=conduit-e2e.trx"
 
 # Analyze results (strict)
 python3 scripts/analyze_e2e_results.py \
-  Abies.Conduit.E2E/TestResults/conduit-e2e.trx --strict
+  Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx --strict
 ```
 
 ## Example Output
@@ -328,7 +328,7 @@ If your infrastructure becomes more stable, switch to strict mode:
 - name: Analyze test results
   run: |
     python3 scripts/analyze_e2e_results.py \
-      Abies.Conduit.E2E/TestResults/conduit-e2e.trx --strict
+      Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx --strict
 ```
 
 ## Technical Details
@@ -385,4 +385,4 @@ If you encounter issues with test categorization:
 
 ---
 
-*Last Updated: February 5, 2026*
+*Last Updated: March 10, 2026*

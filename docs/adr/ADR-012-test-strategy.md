@@ -55,7 +55,7 @@ public void Route_Profile_ParsesUsername()
 Characteristics:
 - No mocking required
 - Extremely fast (thousands per second)
-- Run in `Abies.Tests` project
+- Run in `Picea.Abies.Tests` project
 - Test the "what" of business logic
 
 ### Level 2: Integration Tests (Component/DOM Tests)
@@ -82,7 +82,7 @@ public async Task HomePage_LoadsArticles()
 Characteristics:
 - Fake HTTP clients inject test data
 - Tests command handling and state transitions
-- Run in `Abies.Conduit.IntegrationTests` project
+- Run in `Picea.Abies.Conduit.Tests` project
 - No browser required
 
 ### Level 3: End-to-End Tests (Browser Tests)
@@ -106,7 +106,7 @@ public async Task User_CanLogin_AndViewProfile()
 Characteristics:
 - Real browser (headless by default)
 - Tests real server + real frontend
-- Run in `Abies.Conduit.E2E` project
+- Run in `Picea.Abies.Conduit.Testing.E2E` project
 - Slowest but highest confidence
 
 ## Test Distribution Pyramid
@@ -190,6 +190,6 @@ Not rejected—can supplement—but not primary strategy.
 - [The Testing Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html)
 - [Playwright for .NET](https://playwright.dev/dotnet/)
 - [FsCheck Property-Based Testing](https://fscheck.github.io/FsCheck/)
-- [`Abies.Tests/`](../../Abies.Tests/) - Unit tests
-- [`Abies.Conduit.IntegrationTests/`](../../Abies.Conduit.IntegrationTests/) - Integration tests
-- [`Abies.Conduit.E2E/`](../../Abies.Conduit.E2E/) - End-to-end tests
+- [`Picea.Abies.Tests/`](../../Picea.Abies.Tests/) - Unit tests
+- [`Picea.Abies.Conduit.Tests/`](../../Picea.Abies.Conduit.Tests/) - Integration tests
+- [`Picea.Abies.Conduit.Testing.E2E/`](../../Picea.Abies.Conduit.Testing.E2E/) - End-to-end tests

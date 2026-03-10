@@ -31,7 +31,7 @@ A full prototype of the type-safe DSL was built (~9,300 lines across 90+ files) 
 
 **Use Roslyn analyzers to validate HTML correctness at compile time, keeping the existing stringly-typed DSL unchanged.**
 
-The analyzer ships bundled inside the Abies NuGet package (`analyzers/dotnet/cs/`) so that all consumers — including template users — get HTML validation automatically with zero configuration.
+The analyzer ships bundled inside the Picea.Abies NuGet package (`analyzers/dotnet/cs/`) so that all consumers — including template users — get HTML validation automatically with zero configuration.
 
 ### Initial diagnostic rules
 
@@ -48,7 +48,7 @@ The analyzer ships bundled inside the Abies NuGet package (`analyzers/dotnet/cs/
 | Consumer                       | Mechanism                                         | Configuration needed |
 | ------------------------------ | ------------------------------------------------- | -------------------- |
 | NuGet / template users         | analyzers/dotnet/cs/ convention in NuGet package  | None — automatic     |
-| ProjectReference (in solution) | Explicit ProjectReference to Abies.Analyzers      | One line per project |
+| ProjectReference (in solution) | Explicit ProjectReference to Picea.Abies.Analyzers      | One line per project |
 
 ## Consequences
 
@@ -66,12 +66,12 @@ The analyzer ships bundled inside the Abies NuGet package (`analyzers/dotnet/cs/
 
 - **Not exhaustive at the type level** — analyzers can only check patterns they recognise; novel misuse patterns may slip through until a rule is added
 - **Heuristic-based** — relies on semantic model analysis of method calls, so indirect or dynamic construction may evade detection
-- **Two projects to maintain** — `Abies.Analyzers` (netstandard2.0) and `Abies.Analyzers.Tests` are separate from the main framework
+- **Two projects to maintain** — `Picea.Abies.Analyzers` (netstandard2.0) and `Picea.Abies.Analyzers.Tests` are separate from the main framework
 - **ProjectReference consumers need an explicit reference** — MSBuild does not propagate `OutputItemType="Analyzer"` transitively through project references
 
 ### Neutral
 
-- Analyzer tests use inline type stubs (`AbiesStubs.cs`) rather than referencing the real `Abies.dll`, avoiding cross-TFM compatibility issues (netstandard2.0 vs net10.0)
+- Analyzer tests use inline type stubs (`AbiesStubs.cs`) rather than referencing the real `Picea.Abies.dll`, avoiding cross-TFM compatibility issues (netstandard2.0 vs net10.0)
 - Diagnostic severity levels are configurable via `.editorconfig`, so teams can promote Info rules to Warning or suppress rules as needed
 
 ## Alternatives Considered
@@ -139,30 +139,30 @@ Validate HTML structure at runtime during rendering or in development mode.
 ### Project structure
 
 ```text
-Abies.Analyzers/                      # netstandard2.0, Roslyn 4.8.0
+Picea.Abies.Analyzers/                      # netstandard2.0, Roslyn 4.8.0
 ├── DiagnosticDescriptors.cs          # ABIES001–ABIES005 definitions
 ├── HtmlSpec.cs                       # HTML content model data
 ├── AnalysisHelpers.cs                # Shared semantic model utilities
 ├── MissingAttributeAnalyzer.cs       # ABIES001, ABIES003–ABIES005
 └── ContentModelAnalyzer.cs           # ABIES002
 
-Abies.Analyzers.Tests/                # net10.0, xUnit
+Picea.Abies.Analyzers.Tests/                # net10.0, xUnit
 ├── AbiesStubs.cs                     # Minimal type stubs for testing
 ├── MissingAttributeAnalyzerTests.cs  # 12 tests
 └── ContentModelAnalyzerTests.cs      # 5 tests
 ```
 
-### NuGet packaging (in `Abies.csproj`)
+### NuGet packaging (in `Picea.Abies.csproj`)
 
 ```xml
 <!-- Run the analyzer on the Abies library itself -->
-<ProjectReference Include="..\Abies.Analyzers\Abies.Analyzers.csproj"
+<ProjectReference Include="..\Picea.Abies.Analyzers\Picea.Abies.Analyzers.csproj"
                   ReferenceOutputAssembly="false"
                   OutputItemType="Analyzer"
                   PrivateAssets="all" />
 
 <!-- Pack the DLL into the NuGet package for consumers -->
-<None Include="...\Abies.Analyzers.dll"
+<None Include="...\Picea.Abies.Analyzers.dll"
       Pack="true"
       PackagePath="analyzers/dotnet/cs" />
 ```
@@ -174,7 +174,7 @@ To add a new diagnostic:
 1. Add a `DiagnosticDescriptor` to `DiagnosticDescriptors.cs`
 2. Create an analyzer class (or extend an existing one)
 3. Add the rule to `AnalyzerReleases.Unshipped.md`
-4. Add tests in `Abies.Analyzers.Tests`
+4. Add tests in `Picea.Abies.Analyzers.Tests`
 
 ## Related Decisions
 
