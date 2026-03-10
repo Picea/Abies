@@ -1,213 +1,320 @@
-# Your First App
+# Your First Abies Application
 
-In this tutorial, you'll build a counter application from scratch. This teaches the fundamental MVU (Model-View-Update) pattern that powers every Abies application.
+This guide walks you through building a counter application in Abies. You'll learn the MVU pattern by implementing all four parts: **Model**, **View**, **Transition**, and **Message**.
 
-## What You'll Build
+## Prerequisites
 
-A simple counter with:
-- A display showing the current count
-- Buttons to increment and decrement
-- The complete MVU loop
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- A code editor (VS Code, Rider, or Visual Studio)
 
-## The MVU Pattern
+## Choose Your Platform
 
-Before coding, understand the three pillars:
+Abies runs on two platforms. Pick one to start (you can add the other later):
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│    ┌─────────┐     ┌────────┐     ┌──────┐                 │
-│    │  Model  │────▶│  View  │────▶│ DOM  │                 │
-│    └─────────┘     └────────┘     └──────┘                 │
-│         ▲                              │                    │
-│         │                              │ User clicks        │
-│         │                              ▼                    │
-│    ┌─────────┐                   ┌─────────┐               │
-│    │ Update  │◀──────────────────│ Message │               │
-│    └─────────┘                   └─────────┘               │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+| Platform | Best for | Startup time |
+| -------- | -------- | ------------ |
+| [Browser (WASM)](#browser-wasm) | SPAs, offline-first apps | Instant after download |
+| [Server (Kestrel)](#server-kestrel) | SEO, thin clients, real-time | Instant (no download) |
 
-1. **Model**: Your application state (immutable record)
-2. **View**: A pure function that renders Model → DOM
-3. **Update**: A pure function that handles Message → (Model, Command)
+---
 
-## Step 1: Create the Project
+## Browser (WASM)
 
-Create a new console project:
+### 1. Create the Project
 
 ```bash
-mkdir MyCounter
+dotnet new console -n MyCounter
 cd MyCounter
-dotnet new console
-dotnet add package Abies
+dotnet add package Picea.Abies.Browser
 ```
 
-## Step 2: Define the Model
+### 2. Define the Model
 
-The model is your application state. For a counter, we need one number:
+The model holds all application state. Use a `record` for immutability:
 
 ```csharp
 public record Model(int Count);
 ```
 
-That's it! The model is an immutable record. When the count changes, we create a new Model rather than mutating this one.
+### 3. Define Messages
 
-## Step 3: Define Messages
-
-Messages describe events that can change state. For a counter:
+Messages describe everything that can happen. Use `record struct` for zero-allocation hot-path messages:
 
 ```csharp
-public record Increment : Message;
-public record Decrement : Message;
+using Abies;
+
+public interface CounterMessage : Message
+{
+    record struct Increment : CounterMessage;
+    record struct Decrement : CounterMessage;
+}
 ```
 
-Messages are also immutable records. They implement `Abies.Message`.
+### 4. Define the Program
 
-## Step 4: Write the Update Function
-
-Update is a pure function: given a message and the current model, return the new model and any commands to execute.
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Increment => (model with { Count = model.Count + 1 }, Commands.None),
-        Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-Notice:
-- We use `model with { ... }` to create a new model with updated values
-- We return `Commands.None` because there are no side effects
-- We use pattern matching to handle different message types
-
-## Step 5: Write the View Function
-
-View is a pure function: given the model, return a virtual DOM tree.
-
-```csharp
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
-
-public static Document View(Model model)
-    => new("Counter",
-        div([], [
-            button([onclick(new Decrement())], [text("-")]),
-            text(model.Count.ToString()),
-            button([onclick(new Increment())], [text("+")])
-        ]));
-```
-
-The view:
-- Returns a `Document` with a title and body
-- Uses helper functions (`div`, `button`, `text`) from `Abies.Html.Elements`
-- Attaches click handlers that dispatch messages
-
-## Step 6: Implement the Program Interface
-
-Now wire everything together by implementing `Program<Model, Arguments>`:
+A Program connects model, messages, and view:
 
 ```csharp
 using Abies;
 using Abies.DOM;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
-// Start the runtime
-await Runtime.Run<Counter, Arguments, Model>(new Arguments());
-
-// Arguments passed to Initialize (none needed for this app)
-public record Arguments;
-
-// Application state
-public record Model(int Count);
-
-// Messages
-public record Increment : Message;
-public record Decrement : Message;
-
-// The application
-public class Counter : Program<Model, Arguments>
+public class Counter : Program<Model, Unit>
 {
-    // Called once when the app starts
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(0), Commands.None);
+    public static (Model, Command) Initialize(Unit _)
+        => (new Model(Count: 0), Commands.None);
 
-    // Called when a message is dispatched
-    public static (Model model, Command command) Update(Message message, Model model)
+    public static (Model, Command) Transition(Model model, Message message)
         => message switch
         {
-            Increment => (model with { Count = model.Count + 1 }, Commands.None),
-            Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            CounterMessage.Increment => (model with { Count = model.Count + 1 }, Commands.None),
+            CounterMessage.Decrement => (model with { Count = model.Count - 1 }, Commands.None),
             _ => (model, Commands.None)
         };
 
-    // Called after every update to render the UI
     public static Document View(Model model)
         => new("Counter",
             div([], [
-                button([onclick(new Decrement())], [text("-")]),
-                text(model.Count.ToString()),
-                button([onclick(new Increment())], [text("+")])
+                button([onclick(new CounterMessage.Decrement())], [text("-")]),
+                text($" {model.Count} "),
+                button([onclick(new CounterMessage.Increment())], [text("+")])
             ]));
 
-    // Required for navigation support (minimal implementation for now)
-    public static Message OnUrlChanged(Url url) => new Increment();
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-    
-    // No subscriptions needed for this app
-    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
-    
-    // No commands to handle in this app
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
+    public static Subscription Subscriptions(Model model)
+        => SubscriptionModule.None;
 }
 ```
 
-## Step 7: Run It
+### 5. Wire Up the Entry Point
+
+The browser runtime is a single line:
+
+```csharp
+await Abies.Browser.Runtime.Run<Counter, Model, Unit>();
+```
+
+That's it. This:
+1. Calls `Initialize` to get the initial model
+2. Calls `View(model)` to render the initial virtual DOM
+3. Diffs and patches the actual DOM
+4. Listens for events and dispatches messages through `Transition`
+
+### 6. Add the HTML Shell
+
+Create `wwwroot/index.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Counter</title>
+</head>
+<body>
+    <div id="main">Loading...</div>
+</body>
+</html>
+```
+
+### 7. Configure the Project
+
+Update your `.csproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Picea.Abies.Browser" Version="1.0.0-*" />
+  </ItemGroup>
+</Project>
+```
+
+### 8. Run It
 
 ```bash
 dotnet run
 ```
 
-Open your browser to `http://localhost:5000`. Click the buttons—the count updates!
+Open the URL shown in the terminal. Click **+** and **−** to see the counter update.
 
-## What Just Happened?
+---
 
-1. `Runtime.Run` called `Initialize` to get the initial model
-2. `View` rendered the model to a virtual DOM
-3. The runtime rendered the virtual DOM to the real DOM
-4. When you clicked a button, the `onclick` handler dispatched a message
-5. `Update` received the message and returned a new model
-6. `View` rendered the new model
-7. The runtime diffed the old and new virtual DOM, applying minimal patches
+## Server (Kestrel)
 
-This loop continues forever. State only changes through messages. The view always reflects the current model.
+### 1. Create the Project
 
-## Key Takeaways
+```bash
+dotnet new web -n MyCounter.Server
+cd MyCounter.Server
+dotnet add package Picea.Abies.Server.Kestrel
+```
 
-| Concept | Purpose |
-| ------- | ------- |
-| **Model** | Single source of truth for application state |
-| **Message** | Describes an event that can change state |
-| **Update** | Pure function: (Message, Model) → (Model, Command) |
-| **View** | Pure function: Model → Document |
-| **Command** | Describes side effects to execute |
-| **Runtime** | Orchestrates the loop and handles side effects |
+### 2. Define Model, Messages, and Program
 
-## Exercises
+The Model, Messages, and Program are **identical** to the browser version:
 
-1. **Add a Reset button** that sets the count back to 0
-2. **Display "Positive" or "Negative"** based on the count
-3. **Add a step size**: increment/decrement by 5 instead of 1
-4. **Prevent negative**: don't allow the count to go below 0
+```csharp
+using Abies;
+using Abies.DOM;
+using Abies.Subscriptions;
+using Automaton;
+using static Abies.Html.Elements;
+using static Abies.Html.Attributes;
+using static Abies.Html.Events;
 
-## Next Steps
+public record Model(int Count);
 
-- [Project Structure](./project-structure.md) — Understand how Abies projects are organized
-- [Tutorial 2: Todo List](../tutorials/02-todo-list.md) — Work with lists and more complex state
+public interface CounterMessage : Message
+{
+    record struct Increment : CounterMessage;
+    record struct Decrement : CounterMessage;
+}
+
+public class Counter : Program<Model, Unit>
+{
+    public static (Model, Command) Initialize(Unit _)
+        => (new Model(Count: 0), Commands.None);
+
+    public static (Model, Command) Transition(Model model, Message message)
+        => message switch
+        {
+            CounterMessage.Increment => (model with { Count = model.Count + 1 }, Commands.None),
+            CounterMessage.Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            _ => (model, Commands.None)
+        };
+
+    public static Document View(Model model)
+        => new("Counter",
+            div([], [
+                button([onclick(new CounterMessage.Decrement())], [text("-")]),
+                text($" {model.Count} "),
+                button([onclick(new CounterMessage.Increment())], [text("+")])
+            ]));
+
+    public static Subscription Subscriptions(Model model)
+        => SubscriptionModule.None;
+}
+```
+
+> **Notice:** The exact same `Counter` class works on both platforms. This is the power of the MVU pattern — your application logic is platform-agnostic.
+
+### 3. Wire Up the Server
+
+```csharp
+using Abies.Server.Kestrel;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapAbies<Counter, Model, Unit>("/",
+    renderMode: RenderMode.InteractiveServer("/ws"));
+
+app.Run();
+```
+
+This:
+1. Server-renders the initial HTML (instant first paint)
+2. Opens a WebSocket connection at `/ws`
+3. Runs the MVU loop on the server
+4. Sends DOM patches over WebSocket in real time
+
+### 4. Run It
+
+```bash
+dotnet run
+```
+
+Open the URL. The counter works immediately — no WASM download required.
+
+---
+
+## Understanding the Code
+
+### The MVU Loop
+
+Every Abies application follows this cycle:
+
+```text
+          Message
+            │
+            ▼
+    ┌─────────────┐
+    │  Transition  │  (Model, Message) → (Model, Command)
+    └─────────────┘
+            │
+     new Model
+            │
+            ▼
+    ┌─────────────┐
+    │     View     │  Model → Document
+    └─────────────┘
+            │
+     Virtual DOM
+            │
+            ▼
+    ┌─────────────┐
+    │  Diff + Patch │  VDom → DOM patches
+    └─────────────┘
+            │
+     user event → Message → (loop)
+```
+
+### Key Types
+
+| Type | Role | Example |
+| ---- | ---- | ------- |
+| `Model` | All application state | `record Model(int Count)` |
+| `Message` | Events that can happen | `record struct Increment : CounterMessage` |
+| `Command` | Side effects to perform | `Commands.None`, `new FetchData()` |
+| `Document` | Page title + virtual DOM | `new("Title", body)` |
+| `Subscription` | External event sources | `SubscriptionModule.Every(...)` |
+
+### Why `record struct` for Messages?
+
+Messages are created on every user interaction. Using `record struct` instead of `record class` keeps them on the stack — zero heap allocation, zero GC pressure. This matters for performance in hot paths like mouse moves and rapid clicks.
+
+### Why `Unit`?
+
+The `Unit` type parameter is the initialization argument. When your app doesn't need startup arguments, use `Unit` (the type with exactly one value). For apps that need flags (e.g., API base URL, initial route), use a custom argument type.
+
+## Adding Side Effects
+
+The counter doesn't perform side effects, so Transition always returns `Commands.None`. Here's how you'd add a save-to-server effect:
+
+```csharp
+// 1. Define the command
+public record SaveCount(int Count) : Command;
+
+// 2. Return it from Transition
+case CounterMessage.Increment:
+    var newCount = model.Count + 1;
+    return (model with { Count = newCount }, new SaveCount(newCount));
+
+// 3. Handle it in the interpreter
+Interpreter<Command, Message> interpreter = async command =>
+{
+    if (command is SaveCount save)
+    {
+        await httpClient.PostAsync($"/api/count/{save.Count}", null);
+    }
+    return Result<Message[], PipelineError>.Ok([]);
+};
+
+// 4. Pass the interpreter to the runtime
+await Abies.Browser.Runtime.Run<Counter, Model, Unit>(
+    interpreter: interpreter);
+```
+
+## What's Next?
+
+- [Project Structure](./project-structure.md) — How Abies projects are organized
+- [Render Modes](../concepts/render-modes.md) — Static, Server, WASM, and Auto rendering
+- [Commands and Effects](../concepts/commands-effects.md) — Handling side effects
+- [Subscriptions](../concepts/subscriptions.md) — Listening to external events
