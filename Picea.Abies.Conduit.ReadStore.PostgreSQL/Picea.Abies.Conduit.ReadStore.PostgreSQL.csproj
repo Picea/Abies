@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Conduit.ReadStore.PostgreSQL</PackageId>
+    <Title>Picea.Abies.Conduit.ReadStore.PostgreSQL</Title>
+    <Description>PostgreSQL read store for the Conduit RealWorld application. Provides CQRS read-side projections and queries using raw Npgsql with denormalized read models.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>conduit;realworld;cqrs;postgresql;read-store;event-sourcing;projection</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Conduit\Picea.Abies.Conduit.csproj" />
+    <PackageReference Include="Picea.Glauca" Version="1.0.0-*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+  </ItemGroup>
+
+</Project>
