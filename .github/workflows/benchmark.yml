@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Abies/**'
-      - 'Abies.Benchmarks/**'
+      - 'Picea.Abies/**'
+      - 'Picea.Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
       - 'scripts/compare-benchmarks.py'
@@ -14,7 +14,7 @@ on:
   pull_request:
     branches: [main]
     # No path filter for PRs - let the job-level conditions decide
-    # E2E runs on perf PRs, micro runs on Abies/** changes
+    # E2E runs on perf PRs, micro runs on Picea.Abies/** changes
   workflow_dispatch:
     inputs:
       run_e2e_benchmark:
@@ -42,7 +42,7 @@ permissions:
 # BenchmarkDotNet micro-benchmarks:
 # - ONLY run on push to main for historical tracking
 # - NOT run on PRs (removed to avoid misleading results)
-# - For local development: dotnet run --project Abies.Benchmarks -c Release
+# - For local development: dotnet run --project Picea.Abies.Benchmarks -c Release
 # - Good for algorithm comparison and allocation tracking locally
 #
 # E2E benchmarks auto-trigger on:
@@ -74,7 +74,7 @@ jobs:
         with:
           filters: |
             e2e-scripts:
-              - 'Abies/**'
+              - 'Picea.Abies/**'
               - '.github/workflows/benchmark.yml'
               - 'scripts/compare-benchmark.py'
               - 'scripts/convert-e2e-results.py'
@@ -99,7 +99,7 @@ jobs:
   # ============================================================================
   # ONLY runs on push to main for historical tracking.
   # NOT run on PRs - micro-benchmarks have historically been misleading.
-  # For local development: dotnet run --project Abies.Benchmarks -c Release
+  # For local development: dotnet run --project Picea.Abies.Benchmarks -c Release
   # ============================================================================
   benchmark:
     name: Micro-Benchmarks (main only)
@@ -117,28 +117,28 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore Abies.Benchmarks/Abies.Benchmarks.csproj
+        run: dotnet restore Picea.Abies.Benchmarks/Picea.Abies.Benchmarks.csproj
 
       - name: Build benchmarks
-        run: dotnet build Abies.Benchmarks/Abies.Benchmarks.csproj -c Release --no-restore
+        run: dotnet build Picea.Abies.Benchmarks/Picea.Abies.Benchmarks.csproj -c Release --no-restore
 
       - name: Run DOM Diffing benchmarks
         run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          dotnet run --project Picea.Abies.Benchmarks -c Release --no-build --
           --filter '*DomDiffingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/diffing
 
       - name: Run Rendering benchmarks
         run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          dotnet run --project Picea.Abies.Benchmarks -c Release --no-build --
           --filter '*RenderingBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/rendering
 
       - name: Run Event Handler benchmarks
         run: >
-          dotnet run --project Abies.Benchmarks -c Release --no-build --
+          dotnet run --project Picea.Abies.Benchmarks -c Release --no-build --
           --filter '*EventHandlerBenchmarks*'
           --exporters json
           --artifacts ./benchmark-results/handlers
@@ -201,23 +201,6 @@ jobs:
   # ============================================================================
   # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
   # ============================================================================
-  # This job measures REAL user-perceived performance including:
-  # - CPU benchmarks (01-09): Rendering latency (EventDispatch → Paint)
-  # - Memory benchmarks (21-25): Heap usage in MB
-  #
-  # What it captures that micro-benchmarks miss:
-  # - JS interop overhead (the biggest cost in WASM)
-  # - Browser rendering pipeline (style → layout → paint)
-  # - GC pressure at scale
-  # - Real memory usage patterns
-  #
-  # Auto-triggers on:
-  # 1. Manual: workflow_dispatch
-  # 2. PR: Title starts with 'perf:' or 'perf('
-  # 3. PR: Has 'performance' label
-  # 4. PR: Modifies benchmark workflow or scripts
-  # 5. Push to main: Baseline tracking
-  # ============================================================================
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
     runs-on: ubuntu-latest
@@ -259,13 +242,13 @@ jobs:
           cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package-lock.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
           cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
 
-          # Copy Abies library source (excluding bin/obj to avoid stale artifacts)
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies
-          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies/
+          # Copy Picea.Abies library source (excluding bin/obj to avoid stale artifacts)
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies
+          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Picea.Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies/
 
-          # Copy Abies.Browser library source (excluding bin/obj to avoid stale artifacts)
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies.Browser
-          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Abies.Browser/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Abies.Browser/
+          # Copy Picea.Abies.Browser library source (excluding bin/obj to avoid stale artifacts)
+          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies.Browser
+          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Picea.Abies.Browser/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies.Browser/
 
           # Copy Global folder (referenced by Directory.Build.props)
           cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
@@ -330,20 +313,6 @@ jobs:
       - name: Run E2E benchmarks (all CPU benchmarks)
         run: |
           cd ../js-framework-benchmark-fork/webdriver-ts
-          # Run ALL js-framework-benchmark CPU benchmarks
-          # Format: keyed/frameworkname per README
-          #
-          # CPU Benchmarks (01-09):
-          # - 01_run1k: Create 1,000 rows
-          # - 02_replace1k: Replace all 1,000 rows (5 warmup iterations)
-          # - 03_update10th1k: Update every 10th row for 10k table (5 warmup)
-          # - 04_select1k: Select/highlight a row (5 warmup)
-          # - 05_swap1k: Swap 2 rows (5 warmup)
-          # - 06_remove-one-1k: Remove one row (5 warmup)
-          # - 07_create10k: Create 10,000 rows
-          # - 08_create1k-after1k_x2: Append 1,000 rows to 1k table
-          # - 09_clear1k: Clear table with 1k rows
-          #
           npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
           npm run bench -- --headless --framework keyed/abies --benchmark 02_replace1k
           npm run bench -- --headless --framework keyed/abies --benchmark 03_update10th1k
@@ -357,10 +326,6 @@ jobs:
       - name: Run Memory benchmarks
         run: |
           cd ../js-framework-benchmark-fork/webdriver-ts
-          # Memory benchmarks measure heap usage in MB
-          # 21_ready-memory: Ready memory (memory after page load)
-          # 22_run-memory: Run memory (after creating 1k rows)
-          # 25_clear-memory: Clear memory (after 5 create/clear cycles)
           npm run bench -- --headless --framework keyed/abies --benchmark 21_ready-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 22_run-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory

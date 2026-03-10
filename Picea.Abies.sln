@@ -65,6 +65,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Browser", "Metapackag
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Server", "Metapackages\Abies.Server\Abies.Server.csproj", "{A1B2C3D4-001F-001F-001F-00000000001F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Presentation", "Picea.Abies.Presentation\Picea.Abies.Presentation.csproj", "{A1B2C3D4-0020-0020-0020-000000000020}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.SubscriptionsDemo", "Picea.Abies.SubscriptionsDemo\Picea.Abies.SubscriptionsDemo.csproj", "{A1B2C3D4-0021-0021-0021-000000000021}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Templates", "Picea.Abies.Templates\Picea.Abies.Templates.csproj", "{A1B2C3D4-0022-0022-0022-000000000022}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -195,5 +201,17 @@ Global
 		{A1B2C3D4-001F-001F-001F-00000000001F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-001F-001F-001F-00000000001F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-001F-001F-001F-00000000001F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0020-0020-0020-000000000020}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0020-0020-0020-000000000020}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0020-0020-0020-000000000020}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0020-0020-0020-000000000020}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0021-0021-0021-000000000021}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0021-0021-0021-000000000021}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0021-0021-0021-000000000021}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0021-0021-0021-000000000021}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0022-0022-0022-000000000022}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0022-0022-0022-000000000022}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0022-0022-0022-000000000022}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0022-0022-0022-000000000022}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
