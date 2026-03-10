@@ -1,204 +1,45 @@
 # Subscriptions
 
-Subscriptions let your application react to external events like timers, browser events, and WebSocket messages. This document explains how subscriptions work and when to use them.
+Subscriptions connect the MVU loop to external event sources: timers, WebSockets, browser events, server-sent events, and any other ongoing stream of data.
 
-## What are Subscriptions?
+## The Problem
 
-Subscriptions are declarative event sources. Unlike commands (one-time effects), subscriptions are active as long as they're returned from your `Subscriptions` function.
+View describes what the UI looks like. Transition describes how the model changes. But how does the application react to events that originate _outside_ user interaction — a clock ticking, a WebSocket message arriving, a window resizing?
+
+## The Solution: Subscriptions
+
+The `Subscriptions` function declares which external event sources the application wants to listen to, based on the current model:
 
 ```csharp
 public static Subscription Subscriptions(Model model)
-    => model.TimerRunning
-        ? Every(TimeSpan.FromSeconds(1), _ => new TimerTick())
+    => model.IsRunning
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick())
         : SubscriptionModule.None;
 ```
 
-## Subscriptions vs Commands
+When the model changes, the runtime calls `Subscriptions(model)` again and **diffs** the result against the previous set. New subscriptions are started, removed subscriptions are stopped, and unchanged subscriptions continue running.
 
-| Aspect | Commands | Subscriptions |
-| ------ | -------- | ------------- |
-| When triggered | Once, from Update | Continuously while active |
-| Controlled by | Update return value | Subscriptions function return |
-| Lifecycle | Fire-and-forget | Start/stop based on model |
-| Use case | HTTP requests | Timers, browser events |
+## The Subscription Type Hierarchy
 
-## The Subscription Function
-
-Every program can define subscriptions based on the current model:
-
-```csharp
-public class MyProgram : Program<Model>
-{
-    public static Subscription Subscriptions(Model model)
-    {
-        var subs = new List<Subscription>();
-        
-        // Always listen for keyboard shortcuts
-        subs.Add(OnKeyDown(key => new KeyPressed(key)));
-        
-        // Timer only when running
-        if (model.IsTimerRunning)
-        {
-            subs.Add(Every(TimeSpan.FromMilliseconds(100), _ => new TimerTick()));
-        }
-        
-        // Resize only on certain pages
-        if (model.CurrentPage is HomePage)
-        {
-            subs.Add(OnResize((w, h) => new WindowResized(w, h)));
-        }
-        
-        return Batch(subs);
-    }
-}
-```
-
-## Built-in Subscriptions
-
-All subscription helpers are available on the `SubscriptionModule` class:
-
-```csharp
-using Abies;
-```
-
-### Timer Subscriptions
-
-```csharp
-// Fire every interval
-SubscriptionModule.Every(TimeSpan.FromSeconds(1), now => new SecondPassed(now))
-```
-
-### Browser Event Subscriptions
-
-```csharp
-// Window resize
-SubscriptionModule.OnResize(size => new WindowResized(size.Width, size.Height))
-
-// Visibility change (tab focus)
-SubscriptionModule.OnVisibilityChange(evt => new VisibilityChanged(evt.State))
-```
-
-### Keyboard Subscriptions
-
-```csharp
-// Key down anywhere
-SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
-
-// Key up anywhere
-SubscriptionModule.OnKeyUp(data => new KeyReleased(data?.Key ?? ""))
-
-// Specific key combinations
-SubscriptionModule.OnKeyDown(data => data?.Key == "Escape" ? new EscapePressed() : null)
-```
-
-### Mouse Subscriptions
-
-```csharp
-// Mouse movement
-SubscriptionModule.OnMouseMove(data => new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0))
-
-// Mouse buttons
-SubscriptionModule.OnMouseDown(data => new MousePressed(data?.Button ?? 0))
-SubscriptionModule.OnMouseUp(data => new MouseReleased(data?.Button ?? 0))
-```
-
-## Creating Custom Subscriptions
-
-For custom event sources, implement the subscription pattern:
-
-```csharp
-public static Subscription OnWebSocketMessage(
-    string url, 
-    Func<string, Message> toMessage)
-{
-    return new WebSocketSubscription(url, toMessage);
-}
-
-public class WebSocketSubscription : Subscription
-{
-    private readonly string _url;
-    private readonly Func<string, Message> _toMessage;
-    private WebSocket? _socket;
-    
-    public WebSocketSubscription(string url, Func<string, Message> toMessage)
-    {
-        _url = url;
-        _toMessage = toMessage;
-    }
-    
-    public override async Task Start(Dispatch dispatch, CancellationToken ct)
-    {
-        _socket = new WebSocket(_url);
-        _socket.OnMessage += msg => dispatch(_toMessage(msg));
-        await _socket.ConnectAsync(ct);
-    }
-    
-    public override async Task Stop()
-    {
-        if (_socket is not null)
-        {
-            await _socket.CloseAsync();
-            _socket = null;
-        }
-    }
-}
-```
-
-## Subscription Lifecycle
-
-Subscriptions are managed by the runtime:
+Subscriptions are an algebraic data type with three variants:
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                  Subscription Lifecycle                      │
-│                                                              │
-│  1. Model changes                                            │
-│     ↓                                                        │
-│  2. Subscriptions(model) called                              │
-│     ↓                                                        │
-│  3. Compare with previous subscriptions                      │
-│     ↓                                                        │
-│  ┌─────────────────┬────────────────┬─────────────────┐     │
-│  │ New sub found   │ Sub removed    │ Sub unchanged   │     │
-│  │ → Start it      │ → Stop it      │ → Keep running  │     │
-│  └─────────────────┴────────────────┴─────────────────┘     │
-│     ↓                                                        │
-│  4. Events dispatch messages → Update → repeat              │
-└──────────────────────────────────────────────────────────────┘
+Subscription
+├── None                              — no subscriptions (identity element)
+├── Batch(IReadOnlyList<Subscription>) — multiple subscriptions (binary operation)
+└── Source(SubscriptionKey, Start)     — a single subscription source
 ```
 
-## Composing Subscriptions
+This forms a **monoid**:
 
-### Batch Multiple Subscriptions
+| Property | Value |
+| -------- | ----- |
+| Identity | `Subscription.None` |
+| Binary operation | `Subscription.Batch([...])` |
 
-```csharp
-public static Subscription Subscriptions(Model model)
-    => Batch([
-        Every(TimeSpan.FromSeconds(1), _ => new Tick()),
-        OnResize((w, h) => new Resized(w, h)),
-        OnKeyDown(k => new KeyDown(k))
-    ]);
-```
+The monoid structure means subscriptions compose cleanly — you can combine any number of subscriptions without special-casing.
 
-### Conditional Subscriptions
-
-```csharp
-public static Subscription Subscriptions(Model model)
-{
-    var subs = new List<Subscription>();
-    
-    if (model.IsPlaying)
-        subs.Add(Every(TimeSpan.FromMilliseconds(16), _ => new Frame()));
-    
-    if (model.ListenForKeys)
-        subs.Add(OnKeyDown(k => new KeyPressed(k)));
-    
-    if (model.TrackMouse)
-        subs.Add(OnMouseMove((x, y) => new MouseAt(x, y)));
-    
-    return subs.Count > 0 ? Batch(subs) : SubscriptionModule.None;
-}
-```
+## Creating Subscriptions
 
 ### No Subscriptions
 
@@ -207,197 +48,265 @@ public static Subscription Subscriptions(Model model)
     => SubscriptionModule.None;
 ```
 
-## Common Patterns
+### Periodic Timer
 
-### Auto-Save
-
-Save draft content periodically:
+The built-in `Every` factory creates a timer subscription using `PeriodicTimer` for efficient, low-allocation periodic scheduling:
 
 ```csharp
-public static Subscription Subscriptions(Model model)
-    => model.HasUnsavedChanges
-        ? Every(TimeSpan.FromSeconds(30), _ => new AutoSave())
-        : SubscriptionModule.None;
+// Tick every second
+SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick())
+
+// With custom key (for multiple timers at the same interval)
+SubscriptionModule.Every("animation-timer", TimeSpan.FromMilliseconds(16), () => new AnimationFrame())
 ```
 
-### Polling
+The key is auto-generated as `"every:{interval.TotalMilliseconds}"` for the simple overload. Use the keyed overload when you have multiple timers with the same interval.
 
-Refresh data periodically:
+### Custom Subscription
 
-```csharp
-public static Subscription Subscriptions(Model model)
-    => model.CurrentPage is DashboardPage
-        ? Every(TimeSpan.FromMinutes(1), _ => new RefreshDashboard())
-        : SubscriptionModule.None;
-```
-
-### Activity Tracking
-
-Track user activity:
+For anything beyond timers, use `Create` with a custom start function:
 
 ```csharp
-public static Subscription Subscriptions(Model model)
-    => Batch([
-        OnMouseMove((_, _) => new UserActive()),
-        OnKeyDown(_ => new UserActive()),
-        Every(TimeSpan.FromMinutes(5), _ => new CheckInactivity())
-    ]);
-```
+SubscriptionModule.Create("websocket", async (dispatch, cancellationToken) =>
+{
+    using var ws = new ClientWebSocket();
+    await ws.ConnectAsync(uri, cancellationToken);
 
-### Keyboard Shortcuts
-
-Global hotkeys:
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => OnKeyDown(key => key switch
+    var buffer = new byte[4096];
+    while (!cancellationToken.IsCancellationRequested)
     {
-        "Escape" => new CloseModal(),
-        "s" when model.CtrlPressed => new Save(),
-        "z" when model.CtrlPressed => new Undo(),
-        _ => null  // Ignore other keys
-    });
+        var result = await ws.ReceiveAsync(buffer, cancellationToken);
+        var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+        dispatch(new WebSocketMessage(json));
+    }
+});
 ```
 
-### Real-Time Updates
+The `StartSubscription` delegate signature:
 
-WebSocket for live data:
+```csharp
+public delegate Task StartSubscription(Dispatch dispatch, CancellationToken cancellationToken);
+```
+
+- **`dispatch`** — Call this to feed messages into the MVU loop
+- **`cancellationToken`** — Cancelled when the subscription should stop (the runtime handles this)
+
+### Batching Subscriptions
+
+Combine multiple subscriptions:
 
 ```csharp
 public static Subscription Subscriptions(Model model)
-    => model.IsConnected
-        ? OnWebSocketMessage(
-            "wss://api.example.com/live",
-            msg => new LiveUpdate(msg))
-        : SubscriptionModule.None;
+    => SubscriptionModule.Batch(
+        SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick()),
+        SubscriptionModule.Create("resize", ListenForResize),
+        model.IsConnected
+            ? SubscriptionModule.Create("ws", ConnectWebSocket)
+            : SubscriptionModule.None
+    );
 ```
+
+The `Batch` factory is smart:
+
+| Input | Returns |
+| ----- | ------- |
+| 0 subscriptions | `None` |
+| 1 subscription | That subscription directly (no wrapper) |
+| N subscriptions | `Batch(subscriptions)` |
+
+## Subscription Keys and Lifecycle
+
+Every subscription source has a `SubscriptionKey` that uniquely identifies it. The runtime's **SubscriptionManager** uses these keys to diff subscriptions:
+
+```text
+Previous subscriptions: { "every:1000", "ws" }
+New subscriptions:      { "every:1000", "resize" }
+
+Result:
+  Keep: "every:1000"    (same key → running task continues)
+  Stop: "ws"            (removed → cancellation token triggered)
+  Start: "resize"       (new → start function called)
+```
+
+This means:
+
+- **Same key, same render** → Subscription keeps running uninterrupted
+- **Key disappears** → Subscription is cancelled via `CancellationToken`
+- **New key appears** → Subscription is started
+
+### Key Design
+
+Choose keys that reflect the subscription's identity:
+
+```csharp
+// Good: descriptive, stable keys
+SubscriptionModule.Create("chat-room:123", ConnectToRoom(123))
+SubscriptionModule.Create("notifications", ListenForNotifications)
+
+// Bad: keys that change every render (causes stop/restart)
+SubscriptionModule.Create(Guid.NewGuid().ToString(), ...)  // ❌ New key each time!
+```
+
+## Conditional Subscriptions
+
+Since `Subscriptions` is a pure function of the model, subscriptions naturally start and stop based on model state:
+
+```csharp
+public static Subscription Subscriptions(Model model)
+    => model.CurrentPage switch
+    {
+        Page.Dashboard => SubscriptionModule.Batch(
+            SubscriptionModule.Every(TimeSpan.FromSeconds(30), () => new RefreshData()),
+            SubscriptionModule.Create("alerts", ListenForAlerts)),
+
+        Page.Chat room => SubscriptionModule.Create(
+            $"chat:{room.Id}",
+            (dispatch, ct) => ConnectToChat(room.Id, dispatch, ct)),
+
+        _ => SubscriptionModule.None
+    };
+```
+
+When the user navigates from Dashboard to Chat:
+1. `RefreshData` timer is stopped (key removed)
+2. `alerts` listener is stopped (key removed)
+3. `chat:{room.Id}` connection is started (new key)
+
+## Platform Independence
+
+Subscriptions work identically across all render modes:
+
+| Render Mode | Subscription Host |
+| ----------- | ----------------- |
+| `InteractiveWasm` | Runs in browser WASM runtime |
+| `InteractiveServer` | Runs on server, messages sent over WebSocket |
+| `InteractiveAuto` | Server initially, then browser after WASM loads |
+| `Static` | Not applicable (no interactivity) |
+
+The same `Subscriptions` function works everywhere because it's pure — it only depends on the model.
 
 ## Testing Subscriptions
 
-### Test Subscription Logic
+### Test Subscription Selection
 
 ```csharp
 [Fact]
-public void Subscriptions_WhenTimerRunning_ReturnsTimerSubscription()
+public void RunningModel_HasTimerSubscription()
 {
-    var model = new Model(IsTimerRunning: true);
-    
-    var sub = Program.Subscriptions(model);
-    
-    Assert.IsType<TimerSubscription>(sub);
+    var model = new Model(IsRunning: true);
+
+    var sub = MyApp.Subscriptions(model);
+
+    Assert.IsType<Subscription.Source>(sub);
+    Assert.Equal("every:1000", ((Subscription.Source)sub).Key.Value);
 }
 
 [Fact]
-public void Subscriptions_WhenTimerStopped_ReturnsNone()
+public void StoppedModel_HasNoSubscriptions()
 {
-    var model = new Model(IsTimerRunning: false);
-    
-    var sub = Program.Subscriptions(model);
-    
-    Assert.Equal(SubscriptionModule.None, sub);
+    var model = new Model(IsRunning: false);
+
+    var sub = MyApp.Subscriptions(model);
+
+    Assert.IsType<Subscription.None>(sub);
 }
 ```
 
-### Test Subscription Messages
+### Test with Runtime
 
 ```csharp
 [Fact]
-public void TimerTick_UpdatesElapsedTime()
+public async Task Timer_DispatchesTickMessages()
 {
-    var model = new Model(Elapsed: TimeSpan.Zero);
-    
-    var (newModel, _) = Update(new TimerTick(), model);
-    
-    Assert.Equal(TimeSpan.FromSeconds(1), newModel.Elapsed);
+    var patches = new List<IReadOnlyList<Patch>>();
+    var runtime = await Runtime<ClockApp, Model, Unit>.Start(
+        apply: p => patches.Add(p));
+
+    // Start the timer by dispatching a Start message
+    await runtime.Dispatch(new Start());
+
+    // Wait for a few ticks
+    await Task.Delay(3500);
+
+    // Model should have received tick messages
+    Assert.True(runtime.Model.TickCount >= 3);
 }
 ```
+
+## Commands vs Subscriptions
+
+| Aspect | Commands | Subscriptions |
+| ------ | -------- | ------------- |
+| Trigger | Once, from Transition | Continuous, based on model |
+| Lifetime | Fire-and-forget | Active while key present |
+| Lifecycle | Created → Interpreted → Done | Started → Running → Stopped |
+| Use case | API calls, navigation | Timers, events, sockets |
+| Pure side | Transition returns command | Subscriptions returns set |
+| Impure side | Interpreter executes | Start function runs |
 
 ## Best Practices
 
-### 1. Keep Subscriptions Declarative
-
-Return subscriptions based on model state:
+### 1. Use Stable Keys
 
 ```csharp
-// ✅ Declarative
-public static Subscription Subscriptions(Model model)
-    => model.WantsUpdates ? TimerSub() : None;
+// ✅ Stable key based on data identity
+SubscriptionModule.Create($"chat:{room.Id}", ...)
 
-// ❌ Imperative (don't do this)
-public static Subscription Subscriptions(Model model)
-{
-    if (model.WantsUpdates)
-        StartTimer();  // Side effect!
-    return None;
-}
+// ❌ Unstable key causes constant restart
+SubscriptionModule.Create($"chat:{DateTime.Now}", ...)
 ```
 
-### 2. Use Appropriate Intervals
-
-Don't poll too frequently:
+### 2. Handle Cancellation Gracefully
 
 ```csharp
-// ❌ Too fast for most use cases
-Every(TimeSpan.FromMilliseconds(1), _ => new Update())
-
-// ✅ Appropriate intervals
-Every(TimeSpan.FromSeconds(1), _ => new Tick())           // UI updates
-Every(TimeSpan.FromMilliseconds(16), _ => new Frame())    // Animation (60fps)
-Every(TimeSpan.FromMinutes(1), _ => new Refresh())        // Data refresh
-```
-
-### 3. Clean Up Resources
-
-Subscriptions automatically stop when removed, but ensure custom subscriptions clean up properly:
-
-```csharp
-public override async Task Stop()
-{
-    _timer?.Dispose();
-    await _socket?.CloseAsync();
-    _eventSource?.Close();
-}
-```
-
-### 4. Handle Subscription Errors
-
-Gracefully handle subscription failures:
-
-```csharp
-public override async Task Start(Dispatch dispatch, CancellationToken ct)
+SubscriptionModule.Create("stream", async (dispatch, ct) =>
 {
     try
     {
-        await _socket.ConnectAsync(ct);
-        _socket.OnMessage += msg => dispatch(new MessageReceived(msg));
+        await foreach (var item in stream.ReadAllAsync(ct))
+        {
+            dispatch(new ItemReceived(item));
+        }
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        dispatch(new ConnectionFailed(ex.Message));
+        // Normal shutdown — subscription was removed from the model
     }
+});
+```
+
+### 3. Keep Subscription Logic Simple
+
+Subscriptions should dispatch messages, not make decisions:
+
+```csharp
+// ✅ Simple: dispatch raw events
+(dispatch, ct) => {
+    ws.OnMessage += msg => dispatch(new WsMessage(msg));
+}
+
+// ❌ Complex: making decisions in the subscription
+(dispatch, ct) => {
+    ws.OnMessage += msg => {
+        if (msg.Type == "error") dispatch(new ShowError(msg));
+        else if (msg.Type == "data") dispatch(new UpdateData(msg));
+    };
 }
 ```
 
+Let Transition handle the decision logic — that's where it's testable.
+
 ## Summary
 
-Subscriptions enable reactive applications:
+Subscriptions are the MVU answer to external event sources:
 
-- **Declarative** — Define what events to listen for based on model
-- **Lifecycle managed** — Runtime starts/stops subscriptions automatically
-- **Composable** — Combine multiple subscriptions with `Batch`
-- **Testable** — Logic is pure, effects are isolated
-
-Common use cases:
-
-- ⏱️ Timers and intervals
-- 🖥️ Window resize/visibility
-- ⌨️ Keyboard shortcuts
-- 🖱️ Mouse tracking
-- 🔌 WebSocket connections
-- 📡 Server-sent events
+- **Declared as a function of the model** (pure)
+- **Diffed by key** — automatic start/stop lifecycle
+- **Platform-agnostic** — same code for browser and server
+- **Composable** — monoid structure (None + Batch)
 
 ## See Also
 
 - [Commands and Effects](./commands-effects.md) — One-time side effects
-- [Tutorial: Subscriptions](../tutorials/06-subscriptions.md) — Hands-on examples
-- [API: Subscription Module](../api/subscription.md) — Full API reference
+- [MVU Architecture](./mvu-architecture.md) — The overall pattern
+- [Pure Functions](./pure-functions.md) — Why Subscriptions is a pure function
