@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Abies.Browser</PackageId>
+    <Title>Abies.Browser (deprecated — use Picea.Abies.Browser)</Title>
+    <Description>This package has been renamed to Picea.Abies.Browser. Install Picea.Abies.Browser instead. This package exists only to redirect existing consumers.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;browser;wasm;deprecated</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+    <PackageDeprecationMessage>This package has been renamed to Picea.Abies.Browser. Please update your package references.</PackageDeprecationMessage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Picea.Abies.Browser\Picea.Abies.Browser.csproj" />
+  </ItemGroup>
+
+</Project>

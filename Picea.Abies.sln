@@ -1,3 +1,4 @@
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -47,6 +48,22 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests", "Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests\Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests.csproj", "{A1B2C3D4-0016-0016-0016-000000000016}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Testing.E2E", "Picea.Abies.Conduit.Testing.E2E\Picea.Abies.Conduit.Testing.E2E.csproj", "{A1B2C3D4-0017-0017-0017-000000000017}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Analyzers", "Picea.Abies.Analyzers\Picea.Abies.Analyzers.csproj", "{A1B2C3D4-0018-0018-0018-000000000018}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Analyzers.Tests", "Picea.Abies.Analyzers.Tests\Picea.Abies.Analyzers.Tests.csproj", "{A1B2C3D4-0019-0019-0019-000000000019}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Benchmarks", "Picea.Abies.Benchmarks\Picea.Abies.Benchmarks.csproj", "{A1B2C3D4-001A-001A-001A-00000000001A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.AppHost", "Picea.Abies.Conduit.AppHost\Picea.Abies.Conduit.AppHost.csproj", "{A1B2C3D4-001B-001B-001B-00000000001B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.ServiceDefaults", "Picea.Abies.Conduit.ServiceDefaults\Picea.Abies.Conduit.ServiceDefaults.csproj", "{A1B2C3D4-001C-001C-001C-00000000001C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies", "Metapackages\Abies\Abies.csproj", "{A1B2C3D4-001D-001D-001D-00000000001D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Browser", "Metapackages\Abies.Browser\Abies.Browser.csproj", "{A1B2C3D4-001E-001E-001E-00000000001E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Server", "Metapackages\Abies.Server\Abies.Server.csproj", "{A1B2C3D4-001F-001F-001F-00000000001F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -146,5 +163,37 @@ Global
 		{A1B2C3D4-0017-0017-0017-000000000017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-0017-0017-0017-000000000017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-0017-0017-0017-000000000017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0018-0018-0018-000000000018}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0018-0018-0018-000000000018}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0018-0018-0018-000000000018}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0018-0018-0018-000000000018}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0019-0019-0019-000000000019}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0019-0019-0019-000000000019}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0019-0019-0019-000000000019}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0019-0019-0019-000000000019}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001A-001A-001A-00000000001A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001A-001A-001A-00000000001A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001A-001A-001A-00000000001A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001A-001A-001A-00000000001A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001B-001B-001B-00000000001B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001B-001B-001B-00000000001B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001B-001B-001B-00000000001B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001B-001B-001B-00000000001B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001C-001C-001C-00000000001C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001C-001C-001C-00000000001C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001C-001C-001C-00000000001C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001C-001C-001C-00000000001C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001D-001D-001D-00000000001D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001D-001D-001D-00000000001D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001D-001D-001D-00000000001D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001D-001D-001D-00000000001D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001E-001E-001E-00000000001E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001E-001E-001E-00000000001E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001E-001E-001E-00000000001E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001E-001E-001E-00000000001E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-001F-001F-001F-00000000001F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-001F-001F-001F-00000000001F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-001F-001F-001F-00000000001F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-001F-001F-001F-00000000001F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
