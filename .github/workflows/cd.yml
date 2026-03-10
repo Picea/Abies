@@ -19,10 +19,6 @@ jobs:
     - uses: actions/checkout@v6
       with:
           fetch-depth: 0
-    - name: Setup .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
 
     - name: Setup .NET 10
       uses: actions/setup-dotnet@v4
@@ -55,13 +51,28 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test Abies.Tests/Abies.Tests.csproj --no-build --verbosity normal
-    - name: Pack Abies
+      run: dotnet test Picea.Abies.Tests/Picea.Abies.Tests.csproj --no-build --verbosity normal
+    - name: Pack Picea.Abies
       if: github.event_name != 'pull_request'
-      run: dotnet pack ./Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Abies.Templates
+      run: dotnet pack ./Picea.Abies/Picea.Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Picea.Abies.Browser
       if: github.event_name != 'pull_request'
-      run: dotnet pack ./Abies.Templates/Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+      run: dotnet pack ./Picea.Abies.Browser/Picea.Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Picea.Abies.Server
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Picea.Abies.Server/Picea.Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Picea.Abies.Templates
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Abies (redirect metapackage)
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Metapackages/Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Abies.Browser (redirect metapackage)
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Metapackages/Abies.Browser/Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Abies.Server (redirect metapackage)
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Metapackages/Abies.Server/Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
     - name: Publish to NuGet
       if: github.event_name != 'pull_request'
       run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

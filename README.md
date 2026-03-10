@@ -25,7 +25,7 @@ Abies is a pure functional web framework for .NET that brings the **Model-View-U
 
 ```bash
 # Install the Abies templates (one-time)
-dotnet new install Abies.Templates
+dotnet new install Picea.Abies.Templates
 
 # Create a new Abies application
 dotnet new abies-browser -n MyApp
@@ -36,10 +36,10 @@ dotnet run
 ### Counter Example
 
 ```csharp
-using Abies;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using Picea.Abies;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 await Runtime.Run<Counter, Arguments, Model>(new Arguments());
 
@@ -112,19 +112,25 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 
 | Project | Description |
 | --- | --- |
-| `Abies` | Core framework library |
-| `Abies.Templates` | `dotnet new` project templates |
-| `Abies.Conduit` | RealWorld example app (frontend) |
-| `Abies.Conduit.Api` | RealWorld example app (backend API) |
-| `Abies.Conduit.AppHost` | .NET Aspire app host for local development |
-| `Abies.Conduit.ServiceDefaults` | Shared service defaults (OpenTelemetry, health checks) |
-| `Abies.Conduit.E2E` | End-to-end Playwright tests for Conduit |
-| `Abies.Conduit.IntegrationTests` | Integration tests (DOM, API contract, journey) |
-| `Abies.Counter` | Minimal counter example |
-| `Abies.SubscriptionsDemo` | Subscriptions demo (timers, resize, WebSocket) |
-| `Abies.Presentation` | Conference presentation app |
-| `Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
-| `Abies.Tests` | Unit tests |
+| `Picea.Abies` | Core framework library |
+| `Picea.Abies.Browser` | Browser runtime (WASM host) |
+| `Picea.Abies.Server` | Server-side runtime |
+| `Picea.Abies.Server.Kestrel` | Kestrel integration for server-side rendering |
+| `Picea.Abies.Templates` | `dotnet new` project templates |
+| `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time checks |
+| `Picea.Abies.Counter` | Minimal counter example |
+| `Picea.Abies.SubscriptionsDemo` | Subscriptions demo (timers, resize, WebSocket) |
+| `Picea.Abies.Presentation` | Conference presentation app |
+| `Picea.Abies.Conduit` | RealWorld example app (domain) |
+| `Picea.Abies.Conduit.App` | RealWorld example app (frontend) |
+| `Picea.Abies.Conduit.Api` | RealWorld example app (backend API) |
+| `Picea.Abies.Conduit.Wasm` | Conduit WASM host |
+| `Picea.Abies.Conduit.Server` | Conduit server-side host |
+| `Picea.Abies.Conduit.AppHost` | .NET Aspire app host for local development |
+| `Picea.Abies.Conduit.ServiceDefaults` | Shared service defaults (OpenTelemetry, health checks) |
+| `Picea.Abies.Conduit.Testing.E2E` | End-to-end Playwright tests for Conduit |
+| `Picea.Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
+| `Picea.Abies.Tests` | Unit tests |
 
 See the [Subscriptions tutorial](./docs/tutorials/06-subscriptions.md) for a walkthrough of timers, browser events, and WebSocket subscriptions.
 
@@ -161,10 +167,10 @@ dotnet build
 
 ```bash
 # Start the API server
-dotnet run --project Abies.Conduit.Api
+dotnet run --project Picea.Abies.Conduit.Api
 
 # In another terminal, start the frontend
-dotnet run --project Abies.Conduit
+dotnet run --project Picea.Abies.Conduit.Wasm
 ```
 
 ## Documentation

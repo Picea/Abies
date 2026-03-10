@@ -43,13 +43,13 @@ jobs:
       # See: https://playwright.dev/dotnet/docs/ci-intro
       - name: Install Playwright browsers
         run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
-        working-directory: Abies.Conduit.E2E
+        working-directory: Picea.Abies.Conduit.Testing.E2E
 
       - name: Run E2E tests (sequential)
         id: e2e-tests
         continue-on-error: true
         run: |
-          dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj \
+          dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
             --no-build -c Debug -v minimal -m:1 \
             --filter "Category!=Performance" \
             -l "trx;LogFileName=conduit-e2e.trx" \
@@ -61,7 +61,7 @@ jobs:
         id: analyze-results
         run: |
           python3 scripts/analyze_e2e_results.py \
-            Abies.Conduit.E2E/TestResults/conduit-e2e.trx
+            Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx
 
       - name: Upload test results
         if: always()
@@ -70,4 +70,4 @@ jobs:
           name: e2e-test-results
           path: |
             **/TestResults/*.trx
-            Abies.Conduit.E2E/bin/**/.playwright/**
+            Picea.Abies.Conduit.Testing.E2E/bin/**/.playwright/**
