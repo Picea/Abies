@@ -4,7 +4,8 @@
 // This module adds OpenTelemetry distributed tracing to Abies browser apps.
 // It is loaded dynamically by abies.js when OTel is configured via:
 //
-//   <meta name="abies-otel-verbosity" content="user">
+//   <meta name="otel-verbosity" content="user">
+//   (or legacy: <meta name="abies-otel-verbosity" content="user">)
 //
 // Verbosity levels:
 //   "off"   — No tracing (module not loaded)
@@ -181,6 +182,47 @@ export function traceBatch(patchCount) {
 }
 
 // =============================================================================
+// Immediate Span Processor
+// =============================================================================
+// A simple span processor that exports each span immediately when it ends.
+// This avoids relying on sdk.BatchSpanProcessor or sdk.Resource, which may
+// not be re-exported by @opentelemetry/sdk-trace-web from the CDN build.
+// =============================================================================
+
+class ImmediateSpanProcessor {
+    /**
+     * @param {import('@opentelemetry/sdk-trace-base').SpanExporter | any} exporterInstance
+     */
+    constructor(exporterInstance) {
+        this._exporter = exporterInstance;
+    }
+
+    // Called when a span is started; no-op.
+    onStart(_span, _parentContext) {
+        // no-op
+    }
+
+    // Called when a span ends; export it immediately.
+    onEnd(span) {
+        try {
+            this._exporter.export([span], () => {
+                // ignore export result; failures are logged by the exporter
+            });
+        } catch {
+            // Swallow exporter errors to avoid breaking the app.
+        }
+    }
+
+    shutdown() {
+        return Promise.resolve();
+    }
+
+    forceFlush() {
+        return Promise.resolve();
+    }
+}
+
+// =============================================================================
 // Initialization
 // =============================================================================
 
@@ -212,21 +254,12 @@ export async function initialize(level = "user") {
             url: otlpEndpoint,
         });
 
-        // Create the tracer provider with batch processor
-        const provider = new sdk.WebTracerProvider({
-            resource: new sdk.Resource({
-                "service.name": "abies-browser",
-                "service.version": document.querySelector('meta[name="abies-version"]')?.content || "unknown",
-            }),
-        });
-
-        provider.addSpanProcessor(
-            new sdk.BatchSpanProcessor(traceExporter, {
-                maxExportBatchSize: 20,
-                scheduledDelayMillis: 5000,
-            })
-        );
-
+        // Create the tracer provider and attach the immediate span processor.
+        // We use ImmediateSpanProcessor instead of sdk.BatchSpanProcessor
+        // because BatchSpanProcessor and Resource may not be re-exported
+        // by the CDN build of @opentelemetry/sdk-trace-web.
+        const provider = new sdk.WebTracerProvider();
+        provider.addSpanProcessor(new ImmediateSpanProcessor(traceExporter));
         provider.register();
 
         // Get a tracer
