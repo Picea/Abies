@@ -1,577 +1,147 @@
-# HTML Events API Reference
+# HTML Events API
 
-The `Abies.Html.Events` static class provides functions for creating event handlers.
+The `Abies.Html.Events` static class provides functions for attaching event handlers to virtual DOM elements.
 
 ## Usage
 
 ```csharp
-using Abies.Html;
 using static Abies.Html.Events;
 ```
 
-## Event Handler Patterns
+## Event Handler Pattern
 
-### Simple Message
+Every event function has **two overloads**:
 
-Dispatch a message when the event fires:
+1. **Simple message** — dispatches a fixed message when the event fires:
+   ```csharp
+   onclick(new Increment())
+   ```
 
-```csharp
-button([onclick(new ButtonClicked())], [text("Click me")])
-```
+2. **Data-carrying** — receives event data and produces a message:
+   ```csharp
+   oninput(e => new TextChanged(e?.Value ?? ""))
+   ```
 
-### Message with Event Data
-
-Access event data using a factory function:
-
-```csharp
-input([
-    oninput(e => new TextChanged(e?.Value ?? ""))
-])
-```
-
-## Mouse Events
-
-### onclick
-
-Click event:
-
-```csharp
-// Simple
-onclick(new ItemClicked())
-
-// With data
-onclick(e => new ClickedAt(e?.ClientX ?? 0, e?.ClientY ?? 0))
-```
-
-### ondblclick
-
-Double-click event:
-
-```csharp
-ondblclick(new DoubleClicked())
-```
-
-### onmousedown / onmouseup
-
-Mouse button events:
-
-```csharp
-onmousedown(new MousePressed())
-onmouseup(new MouseReleased())
-
-// With button info
-onmousedown(e => new MouseDown(e?.Button ?? 0))
-```
-
-### onmouseenter / onmouseleave
-
-Mouse enter/leave (no bubbling):
-
-```csharp
-onmouseenter(new MouseEntered())
-onmouseleave(new MouseLeft())
-```
-
-### onmouseover / onmouseout
-
-Mouse over/out (bubbles):
-
-```csharp
-onmouseover(new MouseOver())
-onmouseout(new MouseOut())
-```
-
-### onmousemove
-
-Mouse movement:
-
-```csharp
-onmousemove(e => new MouseMoved(e?.ClientX ?? 0, e?.ClientY ?? 0))
-```
-
-### onwheel
-
-Mouse wheel:
-
-```csharp
-onwheel(e => new Scrolled(e?.DeltaY ?? 0))
-```
-
-### oncontextmenu
-
-Right-click menu:
-
-```csharp
-oncontextmenu(new RightClicked())
-```
-
-## Keyboard Events
-
-### onkeydown
-
-Key pressed:
-
-```csharp
-// Simple
-onkeydown(new KeyPressed())
-
-// With key data
-onkeydown(e => new KeyDown(e?.Key ?? ""))
-```
-
-### onkeyup
-
-Key released:
-
-```csharp
-onkeyup(e => new KeyUp(e?.Key ?? ""))
-```
-
-### onkeypress
-
-Key pressed (deprecated, use onkeydown):
-
-```csharp
-onkeypress(e => new KeyTyped(e?.Key ?? ""))
-```
-
-## Form Events
-
-### oninput
-
-Input value changed (fires on each keystroke):
-
-```csharp
-input([
-    type("text"),
-    oninput(e => new TextChanged(e?.Value ?? ""))
-])
-```
-
-### onchange
-
-Value changed (fires on blur for text, immediately for select/checkbox):
-
-```csharp
-select([
-    onchange(e => new SelectionChanged(e?.Value ?? ""))
-], [...])
-
-input([
-    type("checkbox"),
-    onchange(new CheckboxToggled())
-])
-```
-
-### onsubmit
-
-Form submission:
-
-```csharp
-form([onsubmit(new FormSubmitted())], [
-    // form fields
-    button([type("submit")], [text("Submit")])
-])
-```
-
-### onreset
-
-Form reset:
-
-```csharp
-form([onreset(new FormReset())], [...])
-```
-
-### onfocus
-
-Element focused:
-
-```csharp
-onfocus(new InputFocused())
-```
-
-### onblur
-
-Element lost focus:
-
-```csharp
-onblur(new InputBlurred())
-onblur(new ValidateField())
-```
-
-### oninvalid
-
-Invalid form field:
-
-```csharp
-oninvalid(e => new FieldInvalid(e?.Message ?? ""))
-```
-
-## Touch Events
-
-### ontouchstart
-
-Touch began:
-
-```csharp
-ontouchstart(new TouchStarted())
-ontouchstart(e => new TouchStart(e?.ClientX ?? 0, e?.ClientY ?? 0))
-```
-
-### ontouchend
-
-Touch ended:
-
-```csharp
-ontouchend(new TouchEnded())
-```
-
-### ontouchmove
-
-Touch moved:
-
-```csharp
-ontouchmove(e => new TouchMove(e?.ClientX ?? 0, e?.ClientY ?? 0))
-```
-
-### ontouchcancel
-
-Touch cancelled:
-
-```csharp
-ontouchcancel(new TouchCancelled())
-```
-
-## Pointer Events
-
-Unified mouse/touch/pen events:
-
-```csharp
-onpointerdown(new PointerDown())
-onpointerup(new PointerUp())
-onpointermove(e => new PointerMove(e?.ClientX ?? 0, e?.ClientY ?? 0))
-onpointerenter(new PointerEntered())
-onpointerleave(new PointerLeft())
-onpointerover(new PointerOver())
-onpointerout(new PointerOut())
-onpointercancel(new PointerCancelled())
-```
-
-## Drag and Drop Events
-
-### ondrag
-
-Dragging:
-
-```csharp
-ondrag(new Dragging())
-```
-
-### ondragstart
-
-Drag started:
-
-```csharp
-ondragstart(new DragStarted())
-```
-
-### ondragend
-
-Drag ended:
-
-```csharp
-ondragend(new DragEnded())
-```
-
-### ondragenter / ondragleave
-
-Drag enter/leave target:
-
-```csharp
-ondragenter(new DragEntered())
-ondragleave(new DragLeft())
-```
-
-### ondragover
-
-Dragging over target:
-
-```csharp
-ondragover(new DragOver())
-```
-
-### ondrop
-
-Dropped:
-
-```csharp
-ondrop(new Dropped())
-```
-
-## Scroll Events
-
-### onscroll
-
-Element scrolled:
-
-```csharp
-onscroll(new Scrolled())
-```
-
-## Media Events
-
-### onplay / onpause
-
-Media play/pause:
-
-```csharp
-onplay(new MediaPlaying())
-onpause(new MediaPaused())
-```
-
-### onended
-
-Media ended:
-
-```csharp
-onended(new MediaEnded())
-```
-
-### ontimeupdate
-
-Playback position changed:
-
-```csharp
-ontimeupdate(e => new TimeUpdated(e?.CurrentTime ?? 0))
-```
-
-### onvolumechange
-
-Volume changed:
-
-```csharp
-onvolumechange(new VolumeChanged())
-```
-
-### onloadeddata / onloadedmetadata
-
-Media loaded:
-
-```csharp
-onloadeddata(new MediaDataLoaded())
-onloadedmetadata(new MediaMetadataLoaded())
-```
-
-### oncanplay / oncanplaythrough
-
-Media ready:
-
-```csharp
-oncanplay(new CanPlay())
-oncanplaythrough(new CanPlayThrough())
-```
-
-### onseeking / onseeked
-
-Seeking:
-
-```csharp
-onseeking(new Seeking())
-onseeked(new Seeked())
-```
-
-### onwaiting
-
-Waiting for data:
-
-```csharp
-onwaiting(new MediaWaiting())
-```
-
-## Animation Events
-
-### onanimationstart / onanimationend / onanimationiteration
-
-CSS animation events:
-
-```csharp
-onanimationstart(new AnimationStarted())
-onanimationend(new AnimationEnded())
-onanimationiteration(new AnimationIteration())
-```
-
-### ontransitionstart / ontransitionend
-
-CSS transition events:
-
-```csharp
-ontransitionstart(new TransitionStarted())
-ontransitionend(new TransitionEnded())
-```
-
-## Loading Events
-
-### onload
-
-Resource loaded:
-
-```csharp
-onload(new ImageLoaded())
-```
-
-### onerror
-
-Load error:
-
-```csharp
-onerror(new LoadFailed())
-```
-
-## Clipboard Events
-
-### oncopy / oncut / onpaste
-
-Clipboard operations:
-
-```csharp
-oncopy(new Copied())
-oncut(new Cut())
-onpaste(new Pasted())
-```
-
-## Page Lifecycle Events
-
-### onbeforeunload
-
-Before page unload:
-
-```csharp
-onbeforeunload(new BeforeUnload())
-```
-
-### onvisibilitychange
-
-Page visibility:
-
-```csharp
-onvisibilitychange(new VisibilityChanged())
-```
-
-## Dialog Events
-
-### onclose
-
-Dialog closed:
-
-```csharp
-onclose(new DialogClosed())
-```
-
-### oncancel
-
-Dialog cancelled (Escape key):
-
-```csharp
-oncancel(new DialogCancelled())
-```
-
-### ontoggle
-
-Details/dialog toggled:
-
-```csharp
-ontoggle(new Toggled())
-```
-
-## Network Events
-
-### ononline / onoffline
-
-Network status:
-
-```csharp
-ononline(new BackOnline())
-onoffline(new WentOffline())
-```
-
-## Custom Events
-
-### on
-
-Create any event handler:
-
-```csharp
-// Simple
-on("customevent", new CustomEventReceived())
-
-// With data
-on<CustomEventData>("customevent", e => new CustomEvent(e?.Detail))
-```
+Both overloads accept an optional `id` parameter (auto-generated by the Praefixum source generator if omitted).
 
 ## Event Data Types
 
+Each event category uses a specific data type:
+
 ### PointerEventData
 
-For mouse/pointer events:
+Used by mouse and pointer events:
 
 ```csharp
 public record PointerEventData(
-    int ClientX,
-    int ClientY,
-    int ScreenX,
-    int ScreenY,
-    int Button,
-    bool CtrlKey,
-    bool ShiftKey,
-    bool AltKey,
-    bool MetaKey
-);
+    double ClientX,
+    double ClientY,
+    int Button);
 ```
 
 ### KeyEventData
 
-For keyboard events:
+Used by keyboard events:
 
 ```csharp
 public record KeyEventData(
     string Key,
-    string Code,
-    bool CtrlKey,
-    bool ShiftKey,
+    bool Repeat,
     bool AltKey,
-    bool MetaKey,
-    bool Repeat
-);
+    bool CtrlKey,
+    bool ShiftKey);
 ```
 
 ### InputEventData
 
-For input/change events:
+Used by input and change events:
 
 ```csharp
-public record InputEventData(
-    string Value,
-    bool Checked
-);
+public record InputEventData(string? Value);
+```
+
+### ScrollEventData
+
+Used by scroll events:
+
+```csharp
+public record ScrollEventData(
+    double ScrollTop,
+    double ScrollLeft,
+    double ScrollHeight,
+    double ScrollWidth,
+    double ClientHeight,
+    double ClientWidth);
 ```
 
 ### GenericEventData
 
-For events without specific data:
+Catch-all for events without a specialized type:
 
 ```csharp
 public record GenericEventData(
-    string Type,
-    string TargetId
-);
+    string? Value,
+    bool? Checked,
+    string? Key,
+    bool? Repeat,
+    bool AltKey,
+    bool CtrlKey,
+    bool ShiftKey,
+    double? ClientX,
+    double? ClientY,
+    int? Button);
 ```
 
-## Event Handling Patterns
+## Mouse Events
 
-### Conditional Dispatch
+All mouse events use `PointerEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onclick` | Click |
+| `ondblclick` | Double-click |
+| `oncontextmenu` | Right-click (context menu) |
+| `onmousedown` | Mouse button pressed |
+| `onmouseup` | Mouse button released |
+| `onmousemove` | Mouse moved |
+| `onmouseenter` | Mouse entered element (no bubbling) |
+| `onmouseleave` | Mouse left element (no bubbling) |
+| `onmouseover` | Mouse over element (bubbles) |
+| `onmouseout` | Mouse out of element (bubbles) |
 
 ```csharp
-onkeydown(e => e?.Key switch
+button([onclick(new ButtonClicked())], [text("Click me")])
+
+div([
+    onmousemove(e => new MouseMoved(e?.ClientX ?? 0, e?.ClientY ?? 0))
+], [text("Track mouse here")])
+```
+
+## Wheel Events
+
+Wheel events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onwheel` | Mouse wheel scrolled |
+
+```csharp
+onwheel(new WheelScrolled())
+```
+
+## Keyboard Events
+
+All keyboard events use `KeyEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onkeydown` | Key pressed |
+| `onkeyup` | Key released |
+| `onkeypress` | Key pressed (deprecated — use `onkeydown`) |
+
+```csharp
+onkeydown(e => new KeyDown(e?.Key ?? ""))
+onkeydown(e => e.Key switch
 {
     "Enter" => new Submit(),
     "Escape" => new Cancel(),
@@ -579,51 +149,259 @@ onkeydown(e => e?.Key switch
 })
 ```
 
-### Combining with Model Data
+## Form Events
+
+| Function | Data Type | Description |
+|----------|-----------|-------------|
+| `oninput` | `InputEventData` | Input value changed (fires on each keystroke) |
+| `onchange` | `InputEventData` | Value committed (fires on blur for text, immediately for select/checkbox) |
+| `onsubmit` | `GenericEventData` | Form submitted |
+| `onreset` | `GenericEventData` | Form reset |
+| `oninvalid` | `GenericEventData` | Form field validation failed |
+| `onselect` | `GenericEventData` | Text selected in input/textarea |
 
 ```csharp
-div([], [
-    ..model.Items.Select((item, index) =>
-        button([
-            onclick(new ItemClicked(item.Id, index))
-        ], [text(item.Name)])
-    )
+input([
+    type("text"),
+    oninput(e => new TextChanged(e?.Value ?? ""))
+])
+
+form([onsubmit(new FormSubmitted())], [
+    // form fields
+    button([type("submit")], [text("Submit")])
 ])
 ```
 
-### Preventing Default Behavior
+## Focus Events
 
-Note: Abies handles event prevention at the framework level. For custom behavior, you may need to use JavaScript interop.
+All focus events use `GenericEventData`.
 
-## Complete Example
+| Function | Description |
+|----------|-------------|
+| `onfocus` | Element received focus |
+| `onblur` | Element lost focus |
+| `onfocusin` | Element or descendant received focus (bubbles) |
+| `onfocusout` | Element or descendant lost focus (bubbles) |
 
 ```csharp
-form([
-    class_("search-form"),
-    onsubmit(new SearchSubmitted())
-], [
-    input([
-        type("text"),
-        class_("search-input"),
-        placeholder("Search articles..."),
-        value(model.SearchText),
-        oninput(e => new SearchTextChanged(e?.Value ?? "")),
-        onkeydown(e => e?.Key == "Escape" ? new ClearSearch() : null),
-        onfocus(new SearchFocused()),
-        onblur(new SearchBlurred())
-    ]),
-    button([
-        type("submit"),
-        class_("search-button"),
-        disabled(model.IsSearching ? "true" : null)
-    ], [
-        text(model.IsSearching ? "Searching..." : "Search")
-    ])
+input([
+    onfocus(new InputFocused()),
+    onblur(new ValidateField())
 ])
+```
+
+## Pointer Events
+
+All pointer events use `PointerEventData`. Pointer events are the unified replacement for mouse and touch events.
+
+| Function | Description |
+|----------|-------------|
+| `onpointerdown` | Pointer pressed |
+| `onpointerup` | Pointer released |
+| `onpointermove` | Pointer moved |
+| `onpointercancel` | Pointer cancelled |
+| `onpointerover` | Pointer over element |
+| `onpointerout` | Pointer left element |
+| `onpointerenter` | Pointer entered (no bubbling) |
+| `onpointerleave` | Pointer left (no bubbling) |
+| `ongotpointercapture` | Element captured pointer |
+| `onlostpointercapture` | Element lost pointer capture |
+
+```csharp
+div([
+    onpointerdown(new DrawStart()),
+    onpointermove(e => new DrawMove(e?.ClientX ?? 0, e?.ClientY ?? 0)),
+    onpointerup(new DrawEnd())
+], [text("Draw here")])
+```
+
+## Touch Events
+
+All touch events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `ontouchstart` | Touch began |
+| `ontouchend` | Touch ended |
+| `ontouchmove` | Touch moved |
+| `ontouchcancel` | Touch cancelled |
+
+## Drag and Drop Events
+
+All drag events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `ondrag` | Element being dragged |
+| `ondragstart` | Drag started |
+| `ondragend` | Drag ended |
+| `ondragenter` | Dragged over a target |
+| `ondragleave` | Left a drag target |
+| `ondragover` | Dragging over a target |
+| `ondrop` | Dropped on a target |
+
+```csharp
+div([
+    ondragover(new DragOver()),
+    ondrop(new Dropped())
+], [text("Drop zone")])
+```
+
+## Scroll Events
+
+| Function | Data Type | Description |
+|----------|-----------|-------------|
+| `onscroll` | `ScrollEventData` | Element scrolled |
+| `onresize` | `GenericEventData` | Element resized |
+
+```csharp
+div([
+    onscroll(e => new Scrolled(e?.ScrollTop ?? 0, e?.ClientHeight ?? 0, e?.ScrollHeight ?? 0))
+], [/* scrollable content */])
+```
+
+## Clipboard Events
+
+All clipboard events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `oncopy` | Content copied |
+| `oncut` | Content cut |
+| `onpaste` | Content pasted |
+
+## Animation Events
+
+All animation and transition events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onanimationstart` | CSS animation started |
+| `onanimationend` | CSS animation ended |
+| `onanimationiteration` | CSS animation completed one cycle |
+| `onanimationcancel` | CSS animation cancelled |
+| `ontransitionstart` | CSS transition started |
+| `ontransitionend` | CSS transition ended |
+| `ontransitionrun` | CSS transition first created |
+| `ontransitioncancel` | CSS transition cancelled |
+
+```csharp
+div([
+    onanimationend(new AnimationComplete()),
+    ontransitionend(new TransitionComplete())
+], [/* animated content */])
+```
+
+## Media Events
+
+All media events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onplay` | Media playback started |
+| `onpause` | Media playback paused |
+| `onended` | Media playback ended |
+| `ontimeupdate` | Playback position changed |
+| `onvolumechange` | Volume changed |
+| `onseeking` | Seek operation started |
+| `onseeked` | Seek operation completed |
+| `onratechange` | Playback rate changed |
+| `ondurationchange` | Duration changed |
+| `oncanplay` | Enough data to start playback |
+| `oncanplaythrough` | Enough data to play to end |
+| `onwaiting` | Waiting for data |
+| `onplaying` | Playback resumed after waiting |
+| `onstalled` | Data transfer stalled |
+| `onsuspend` | Data loading suspended |
+| `onemptied` | Media emptied |
+| `onloadeddata` | First frame of media loaded |
+| `onloadedmetadata` | Media metadata loaded |
+| `onloadstart` | Loading started |
+| `onprogress` | Data being received |
+| `onabort` | Loading aborted |
+
+## Load and Error Events
+
+All load/error events use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `onload` | Resource finished loading |
+| `onerror` | Error during loading |
+| `onunload` | Page is unloading |
+| `onbeforeunload` | Before page unload |
+
+## Toggle and Misc Events
+
+All use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `ontoggle` | Details/dialog toggled |
+| `onclose` | Dialog closed |
+| `oncancel` | Dialog cancelled (Escape key) |
+| `onfullscreenchange` | Fullscreen state changed |
+| `onfullscreenerror` | Fullscreen request failed |
+
+## Composition Events (IME)
+
+All use `GenericEventData`.
+
+| Function | Description |
+|----------|-------------|
+| `oncompositionstart` | IME composition started |
+| `oncompositionupdate` | IME composition updated |
+| `oncompositionend` | IME composition ended |
+
+## Custom Events
+
+### on (Generic Event)
+
+```csharp
+public static Handler on(string eventName, Message command, string? id = null)
+public static Handler on<T>(string eventName, Func<T?, Message> factory, string? id = null)
+```
+
+Create a handler for any DOM event name:
+
+```csharp
+// Simple
+on("customevent", new CustomEventReceived())
+
+// With typed data
+on<CustomEventData>("customevent", e => new CustomEvent(e?.Detail))
+```
+
+## Event Handling Patterns
+
+### Conditional Dispatch
+
+Return `null` from a data-carrying handler to skip dispatch:
+
+```csharp
+onkeydown(e => e?.Key switch
+{
+    "Enter" => new Submit(),
+    "Escape" => new Cancel(),
+    _ => null  // Swallowed — no message dispatched
+})
+```
+
+### List Item Events
+
+Capture item identity in the message:
+
+```csharp
+ul([], model.Items.Select(item =>
+    li([
+        onclick(new ItemClicked(item.Id))
+    ], [text(item.Name)])
+).ToArray())
 ```
 
 ## See Also
 
-- [Elements API](./html-elements.md) — HTML elements
-- [Attributes API](./html-attributes.md) — HTML attributes
-- [Concepts: MVU Architecture](../concepts/mvu-architecture.md) — Event flow
+- [HTML Elements](html-elements.md) — HTML element functions
+- [HTML Attributes](html-attributes.md) — HTML attribute functions
+- [DOM Types](dom-types.md) — The `Handler` attribute type
+- [Message](message.md) — Messages produced by event handlers

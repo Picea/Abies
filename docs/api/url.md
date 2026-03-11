@@ -1,258 +1,170 @@
-# URL API Reference
+# Url API
 
-The `Url` record provides strongly-typed URL representation with immutable components.
+The `Url` record provides a parsed, strongly-typed representation of a URL with path segments, query parameters, and an optional fragment.
 
-## Usage
-
-```csharp
-using Abies;
-```
-
-## Creating URLs
-
-### Url.Create
-
-Parses a URL string:
+## Definition
 
 ```csharp
-var url = Url.Create("https://example.com/articles?page=1#section");
-var relative = Url.Create("/profile/johndoe");
+public record Url(
+    IReadOnlyList<string> Path,
+    IReadOnlyDictionary<string, string> Query,
+    Option<string> Fragment);
 ```
 
-## URL Components
+## Properties
 
 | Property | Type | Description |
-| -------- | ---- | ----------- |
-| `Scheme` | `Protocol?` | HTTP/HTTPS protocol (null for relative URLs) |
-| `Host` | `Host?` | Domain name (null for relative URLs) |
-| `Port` | `Port?` | Port number (null if default) |
-| `Path` | `Path` | URL path (always present) |
-| `Query` | `Query` | Query string including `?` |
-| `Fragment` | `Fragment` | Fragment including `#` |
+|----------|------|-------------|
+| `Path` | `IReadOnlyList<string>` | Path segments, split on `/` and URL-decoded. E.g., `/articles/my-slug` → `["articles", "my-slug"]` |
+| `Query` | `IReadOnlyDictionary<string, string>` | Query parameters as key-value pairs. E.g., `?page=1&sort=date` → `{ "page": "1", "sort": "date" }` |
+| `Fragment` | `Option<string>` | URL fragment (hash), if present. E.g., `#section-2` → `Some("section-2")` |
 
-## Component Types
+## Static Members
 
-### Protocol
-
-Sum type for URL schemes:
+### Url.Root
 
 ```csharp
-public interface Protocol
-{
-    public sealed record Http : Protocol;
-    public sealed record Https : Protocol;
-}
+public static readonly Url Root
 ```
 
-**Usage:**
+An empty URL representing the root path with no query or fragment:
 
 ```csharp
-if (url.Scheme is Protocol.Https)
-{
-    // Secure connection
-}
+Url.Root
+// Path: [], Query: {}, Fragment: None
 ```
 
-### Host
-
-Domain name wrapper:
+### Url.FromUri
 
 ```csharp
-public record Host(string Value);
+public static Url FromUri(Uri uri)
 ```
 
-**Implicit conversion to string:**
+Parses a `System.Uri` into an Abies `Url`:
 
 ```csharp
-string hostname = url.Host;  // "example.com"
+var url = Url.FromUri(new Uri("https://example.com/articles/my-slug?page=1#comments"));
+// url.Path      → ["articles", "my-slug"]
+// url.Query     → { "page": "1" }
+// url.Fragment  → Some("comments")
 ```
 
-### Port
+Path segments are URL-decoded via `Uri.UnescapeDataString`. Query parameters are split on `&` and `=`, then URL-decoded.
 
-Port number wrapper:
+### ToRelativeUri
 
 ```csharp
-public record Port(int Value);
+public string ToRelativeUri()
 ```
 
-**Null when default:**
-
-- HTTP: 80
-- HTTPS: 443
-
-### Path
-
-URL path wrapper:
+Converts back to a relative URI string:
 
 ```csharp
-public record Path(string Value);
+var url = new Url(["articles", "my-slug"], new Dictionary<string, string> { ["page"] = "1" }, Option<string>.None);
+url.ToRelativeUri()  // "/articles/my-slug?page=1"
+
+Url.Root.ToRelativeUri()  // "/"
 ```
 
-**Always includes leading slash:**
+## Constructing URLs
+
+Create `Url` values directly using the record constructor:
 
 ```csharp
-string path = url.Path;  // "/articles/my-post"
-```
+// Root path
+var root = Url.Root;
 
-### Query
-
-Query string wrapper:
-
-```csharp
-public record Query(string Value);
-```
-
-**Includes the `?`:**
-
-```csharp
-string query = url.Query;  // "?page=1&sort=date"
-```
-
-### Fragment
-
-Fragment wrapper:
-
-```csharp
-public record Fragment(string Value);
-```
-
-**Includes the `#`:**
-
-```csharp
-string fragment = url.Fragment;  // "#section-2"
-```
-
-## Examples
-
-### Parse Absolute URL
-
-```csharp
-var url = Url.Create("https://api.example.com:8080/users/123?include=posts#bio");
-
-// Components
-url.Scheme   // Protocol.Https
-url.Host     // "api.example.com"
-url.Port     // 8080
-url.Path     // "/users/123"
-url.Query    // "?include=posts"
-url.Fragment // "#bio"
-```
-
-### Parse Relative URL
-
-```csharp
-var url = Url.Create("/article/my-post?edit=true#comments");
-
-// Components
-url.Scheme   // null
-url.Host     // null
-url.Port     // null
-url.Path     // "/article/my-post"
-url.Query    // "?edit=true"
-url.Fragment // "#comments"
-```
-
-### Check Protocol
-
-```csharp
-bool isSecure = url.Scheme switch
-{
-    Protocol.Https => true,
-    Protocol.Http => false,
-    null => false  // Relative URL
-};
-```
-
-### Build URLs
-
-While `Url` is immutable, you can construct URL strings:
-
-```csharp
 // Simple path
-var articleUrl = Url.Create($"/article/{article.Slug}");
+var articleUrl = new Url(
+    ["article", slug],
+    new Dictionary<string, string>(),
+    Option<string>.None);
 
-// With query parameters
-var searchUrl = Url.Create($"/search?q={Uri.EscapeDataString(query)}&page={page}");
+// Path with query parameters
+var searchUrl = new Url(
+    ["search"],
+    new Dictionary<string, string> { ["q"] = query, ["page"] = page.ToString() },
+    Option<string>.None);
 
-// Complex URL
-var fullUrl = Url.Create($"https://example.com/api/v1/users/{userId}");
+// Path with fragment
+var sectionUrl = new Url(
+    ["docs", "api"],
+    new Dictionary<string, string>(),
+    Option.Some("events"));
 ```
 
-### URL in Navigation
+## Pattern Matching on URLs
+
+The primary use of `Url` is pattern matching on `Path` for routing in `Transition`:
 
 ```csharp
-// In Update function
-case NavigateToProfile profile:
-    var url = Url.Create($"/profile/{profile.Username}");
-    return (model, new Navigation.Command.PushState(url));
-```
-
-### URL Matching in Initialize
-
-```csharp
-public static (Model, Command) Initialize(Url url, Unit _)
-{
-    var route = url.Path.Value switch
+private static (Model, Command) Route(Model model, Url url) =>
+    url.Path.ToArray() switch
     {
-        "/" => Route.Home,
-        "/login" => Route.Login,
-        var path when path.StartsWith("/article/") => 
-            Route.Article(path.Substring("/article/".Length)),
-        _ => Route.NotFound
+        [] => (model with { Page = Page.Home }, Commands.None),
+        ["login"] => (model with { Page = Page.Login }, Commands.None),
+        ["register"] => (model with { Page = Page.Register }, Commands.None),
+        ["article", var slug] => (model with { Page = Page.Article }, new LoadArticle(slug)),
+        ["profile", var username] => (model with { Page = Page.Profile }, new LoadProfile(username)),
+        ["editor"] => (model with { Page = Page.Editor }, Commands.None),
+        ["editor", var slug] => (model with { Page = Page.Editor }, new LoadArticle(slug)),
+        _ => (model with { Page = Page.NotFound }, Commands.None)
     };
-    
-    return (new Model(Route: route), Commands.None);
-}
 ```
 
-## ToString
-
-Converts back to string:
+### Accessing Query Parameters
 
 ```csharp
-var url = Url.Create("https://example.com/path");
-string str = url.ToString();  // "https://example.com/path"
-```
-
-## Error Handling
-
-Invalid URLs throw `FormatException`:
-
-```csharp
-try
-{
-    var url = Url.Create("not a valid url ://");
-}
-catch (FormatException ex)
-{
-    // Handle invalid URL
-}
-```
-
-## Integration with Routing
-
-URLs work seamlessly with the routing system:
-
-```csharp
-var router = Route.Templates.Build<Page>(r => r
-    .Map("/", _ => new Page.Home())
-    .Map("/article/{slug}", m => new Page.Article(m.GetRequired<string>("slug")))
-    .Map("/profile/{username}", m => new Page.Profile(m.GetRequired<string>("username")))
-);
-
-// In OnUrlChanged
-public static Message OnUrlChanged(Url url)
-{
-    if (router.TryMatch(url.Path.Value, out var page))
+private static (Model, Command) Route(Model model, Url url) =>
+    url.Path.ToArray() switch
     {
-        return new RouteChanged(page);
-    }
-    return new RouteChanged(new Page.NotFound());
-}
+        [] =>
+            url.Query.TryGetValue("tag", out var tag)
+                ? (model with { Page = Page.Home, Filter = tag }, new LoadTaggedArticles(tag))
+                : (model with { Page = Page.Home }, new LoadGlobalFeed()),
+        // ...
+    };
 ```
+
+### Accessing the Fragment
+
+```csharp
+var section = url.Fragment.Match(
+    some: fragment => fragment,  // e.g., "section-2"
+    none: () => "top");
+```
+
+## URL in Navigation
+
+Use `Url` values with navigation commands:
+
+```csharp
+// Navigate to a new URL
+(model, Navigation.PushUrl(new Url(["article", slug], new Dictionary<string, string>(), Option<string>.None)))
+
+// Replace current URL
+(model, Navigation.ReplaceUrl(Url.Root))
+```
+
+## URL Change Messages
+
+URLs arrive in the `Transition` function via `UrlChanged` messages:
+
+```csharp
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
+    {
+        UrlChanged(var url) => Route(model, url),
+        UrlRequest.Internal(var url) => (model, Navigation.PushUrl(url)),
+        UrlRequest.External(var href) => (model, Navigation.ExternalUrl(href)),
+        _ => (model, Commands.None)
+    };
+```
+
+The runtime dispatches `UrlChanged(initialUrl)` automatically after `Initialize`, so the application routes correctly on the initial page load.
 
 ## See Also
 
-- [Navigation API](./navigation.md) — URL navigation commands
-- [Route API](./route.md) — URL routing
-- [Concepts: Routing](../concepts/routing.md) — Deep dive
+- [Navigation](navigation.md) — Commands and subscriptions for URL management
+- [Routing](route.md) — How to implement routing with URL pattern matching
+- [Program](program.md) — Where `Transition` handles URL messages
