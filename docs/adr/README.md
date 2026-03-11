@@ -29,6 +29,9 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-019](./ADR-019-trunk-based-development.md) | Trunk-Based Development | Accepted | Protected main branch with PR workflow |
 | [ADR-020](./ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates | Accepted | Automated quality gates for performance benchmarks |
 | [ADR-021](./ADR-021-html-validation-analyzers-over-typed-dsl.md) | HTML Validation via Roslyn Analyzers | Accepted | Analyzers over type-safe DSL for HTML correctness |
+| [ADR-022](./ADR-022-picea-ecosystem-migration.md) | Picea Ecosystem Migration | Accepted | Migrates Automaton monorepo to Picea GitHub org with five focused repos |
+| [ADR-023](./ADR-023-package-rename.md) | Package Rename: Abies → Picea.Abies | Accepted | All packages use `Picea.` prefix; old names become metapackages |
+| [ADR-024](./ADR-024-four-render-modes.md) | Four Render Modes | Accepted | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
 
 > **Note:** There are two files numbered ADR-005: [ADR-005-webassembly-runtime.md](./ADR-005-webassembly-runtime.md) (indexed above) and [ADR-005-security-scanning-sast-dast-sca.md](./ADR-005-security-scanning-sast-dast-sca.md) (security scanning). The security scanning ADR was created separately and retains its number for historical reasons.
 
@@ -80,15 +83,17 @@ ADRs document significant architectural decisions, their context, and consequenc
 │ ADR-010: Opt  │    │                 │    │                 │
 └───────────────┘    └─────────────────┘    └─────────────────┘
 
-┌───────────────┐    ┌─────────────────┐
-│ ADR-004: Route│    │ ADR-005: WASM   │
-│  (DEPRECATED) │    │                 │
-└───────────────┘    └─────────────────┘
+┌───────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ ADR-004: Route│    │ ADR-005: WASM   │    │ ADR-024: Render │
+│  (DEPRECATED) │    │       ┌─────────┤    │   Modes         │
+└───────────────┘    │       │ ADR-024 │    └─────────────────┘
+                     └───────┴─────────┘
 
-┌───────────────┐    ┌─────────────────┐
-│ ADR-012: Test │    │ ADR-013: OTEL   │
-│               │    │                 │
-└───────────────┘    └─────────────────┘
+┌───────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ ADR-012: Test │    │ ADR-013: OTEL   │    │ ADR-022: Picea  │
+│               │    │                 │    │   Migration     │
+└───────────────┘    └─────────────────┘    │ ADR-023: Rename │
+                                            └─────────────────┘
 ```
 
 ## References
