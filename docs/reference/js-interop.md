@@ -1,512 +1,381 @@
-# JavaScript Interop
+# JavaScript Interop Architecture
 
-This document describes how Abies communicates with the browser via JavaScript.
+Abies uses .NET's `System.Runtime.InteropServices.JavaScript` (`JSImport`/`JSExport`) to bridge C# and the browser. All interop flows through a single JavaScript module and a binary batch protocol — there is no JSON serialization, no runtime reflection, and no per-event round-trip overhead.
 
-## Overview
+## Architecture Overview
 
-Abies runs as WebAssembly in the browser but needs JavaScript for:
-
-- DOM manipulation
-- Browser navigation
-- Event handling
-- Storage APIs
-- Subscriptions (timers, WebSocket, etc.)
-
-The interop layer uses .NET's `[JSImport]` and `[JSExport]` attributes for type-safe communication.
-
-## Architecture
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                         Browser                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                        DOM                                │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↑ ↓                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                     abies.js                              │   │
-│  │  • Event delegation                                       │   │
-│  │  • DOM operations                                         │   │
-│  │  • Navigation API                                         │   │
-│  │  • Subscriptions                                          │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↑ ↓                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                   .NET Interop                            │   │
-│  │  [JSImport] ──────→ Call JS from .NET                     │   │
-│  │  [JSExport] ←────── Call .NET from JS                     │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↑ ↓                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                   Abies Runtime                           │   │
-│  │  • Interop.cs  (declarations)                             │   │
-│  │  • Runtime.cs  (message dispatch)                         │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```
+┌─────────────────────────────────────────────────────────────┐
+│ .NET (WASM)                                                 │
+│                                                             │
+│  Program.Transition ──▶ View ──▶ Diff ──▶ RenderBatchWriter │
+│       ▲                                        │            │
+│       │                              binary batch (byte[])  │
+│       │                                        │            │
+│  HandlerRegistry.CreateMessage                 ▼            │
+│       ▲                              ApplyBinaryBatch       │
+│       │                              [JSImport]             │
+├───────┼────────────────────────────────────┼─────────────────┤
+│       │         JS Module "Abies"         │                 │
+│       │                                   ▼                 │
+│  DispatchDomEvent                  Parse binary batch       │
+│  [JSExport]                        Apply DOM mutations      │
+│       ▲                                                     │
+│       │                                                     │
+│  Event delegation (document-level listeners)                │
+│  data-event-{name} attribute ──▶ commandId lookup           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Importing JavaScript Functions
+Key design decisions:
 
-Use `[JSImport]` to call JavaScript from .NET:
+- **One binary batch per render cycle** — all DOM mutations from a single transition are serialized into one `Span<byte>` and applied in a single `JSImport` call
+- **Event delegation** — one document-level listener per event type, not per-element listeners
+- **No main.js** — the .NET side wires all callbacks via `JSImport`, so the consumer's `index.html` only needs `<script type="module" src="./_framework/dotnet.js"></script>`
+
+## Module Loading
+
+The browser runtime loads the JavaScript module during startup:
 
 ```csharp
-public static partial class Interop
-{
-    [JSImport("setAppContent", "abies.js")]
-    public static partial Task SetAppContent(string html);
-    
-    [JSImport("updateAttribute", "abies.js")]
-    public static partial Task UpdateAttribute(string id, string name, string value);
-}
+await JSHost.ImportAsync("Abies", "../abies.js");
 ```
 
-### Naming Convention
+The module name `"Abies"` is used in all `[JSImport]` and `[JSExport]` attributes to bind .NET methods to JavaScript functions.
 
-The first argument is the JavaScript function name, the second is the module name:
+## JSImport Functions (.NET → JavaScript)
+
+These are C# methods that call into JavaScript. Defined in `Abies.Browser/Interop.cs`:
+
+### DOM Patching
 
 ```csharp
-[JSImport("functionName", "moduleName.js")]
+[JSImport("applyBinaryBatch", "Abies")]
+internal static partial void ApplyBinaryBatch(Span<byte> data);
 ```
 
-### Return Types
+Receives the entire patch batch as a binary `Span<byte>` via `JSType.MemoryView` (zero-copy transfer). The JavaScript side parses the binary format and applies DOM mutations.
 
-| .NET Type | JavaScript Type |
-| --------- | --------------- |
-| `void` | `undefined` |
-| `Task` | `Promise<void>` |
-| `Task<T>` | `Promise<T>` |
-| `string` | `string` |
-| `int` | `number` |
-| `bool` | `boolean` |
-| `string?` | `string \| null` |
-
-## Exporting .NET Functions
-
-Use `[JSExport]` to call .NET from JavaScript:
+### Title Management
 
 ```csharp
-public static partial class Runtime
-{
-    [JSExport]
-    public static void Dispatch(string messageId)
-    {
-        if (_handlers.TryGetValue(messageId, out var message))
-        {
-            _messageChannel.Writer.TryWrite(message);
-        }
-    }
-    
-    [JSExport]
-    public static void DispatchData(string messageId, string? json)
-    {
-        if (_dataHandlers.TryGetValue(messageId, out var entry))
-        {
-            object? data = json is null 
-                ? null 
-                : JsonSerializer.Deserialize(json, entry.dataType);
-            var message = entry.handler(data);
-            _messageChannel.Writer.TryWrite(message);
-        }
-    }
-}
+[JSImport("setTitle", "Abies")]
+internal static partial void SetTitle(string title);
 ```
 
-### Calling Exported Functions from JS
+Sets `document.title`. Called by the runtime when `Document.Title` changes between renders.
 
-```javascript
-// In abies.js
-const runtime = await dotnet.create();
-const dispatch = runtime.getAssemblyExports("Abies.Browser").Abies.Runtime.Dispatch;
-
-// Call .NET
-dispatch("handler-id-123");
-```
-
-## DOM Operations
-
-### Setting Content
+### Navigation
 
 ```csharp
-[JSImport("setAppContent", "abies.js")]
-public static partial Task SetAppContent(string html);
+[JSImport("navigateTo", "Abies")]
+internal static partial void NavigateTo(string url);
+
+[JSImport("replaceUrl", "Abies")]
+internal static partial void ReplaceUrl(string url);
+
+[JSImport("historyBack", "Abies")]
+internal static partial void HistoryBack();
+
+[JSImport("historyForward", "Abies")]
+internal static partial void HistoryForward();
+
+[JSImport("externalNavigate", "Abies")]
+internal static partial void ExternalNavigate(string href);
 ```
 
-JavaScript implementation:
+These map directly to `NavigationCommand` variants:
 
-```javascript
-export function setAppContent(html) {
-    document.body.innerHTML = html;
-}
-```
+| NavigationCommand | JSImport | Browser API |
+|---|---|---|
+| `Push(url)` | `NavigateTo` | `history.pushState` |
+| `Replace(url)` | `ReplaceUrl` | `history.replaceState` |
+| `GoBack` | `HistoryBack` | `history.back()` |
+| `GoForward` | `HistoryForward` | `history.forward()` |
+| `External(href)` | `ExternalNavigate` | `window.location.href =` |
 
-### Updating Attributes
+### Event System Setup
 
 ```csharp
-[JSImport("updateAttribute", "abies.js")]
-public static partial Task UpdateAttribute(string id, string name, string value);
+[JSImport("setupEventDelegation", "Abies")]
+internal static partial void SetupEventDelegation();
 
-[JSImport("addAttribute", "abies.js")]
-public static partial Task AddAttribute(string id, string name, string value);
+[JSImport("setupNavigation", "Abies")]
+internal static partial void SetupNavigation();
 
-[JSImport("removeAttribute", "abies.js")]
-public static partial Task RemoveAttribute(string id, string name);
+[JSImport("getCurrentUrl", "Abies")]
+internal static partial string GetCurrentUrl();
 ```
 
-JavaScript:
-
-```javascript
-export function updateAttribute(id, name, value) {
-    const el = document.getElementById(id);
-    if (el) el.setAttribute(name, value);
-}
-
-export function addAttribute(id, name, value) {
-    const el = document.getElementById(id);
-    if (el) el.setAttribute(name, value);
-}
-
-export function removeAttribute(id, name) {
-    const el = document.getElementById(id);
-    if (el) el.removeAttribute(name);
-}
-```
-
-### Child Operations
+### Callback Wiring
 
 ```csharp
-[JSImport("addChildHtml", "abies.js")]
-public static partial Task AddChildHtml(string parentId, string childHtml);
+[JSImport("setDispatchCallback", "Abies")]
+internal static partial void SetDispatchCallback(
+    [JSMarshalAs<JSType.Function<JSType.String, JSType.String, JSType.String>>]
+    Action<string, string, string> callback);
 
-[JSImport("removeChild", "abies.js")]
-public static partial Task RemoveChild(string parentId, string childId);
-
-[JSImport("replaceChildHtml", "abies.js")]
-public static partial Task ReplaceChildHtml(string oldNodeId, string newHtml);
-
-[JSImport("setChildrenHtml", "abies.js")]
-public static partial Task SetChildrenHtml(string parentId, string html);
+[JSImport("setOnUrlChangedCallback", "Abies")]
+internal static partial void SetOnUrlChangedCallback(
+    [JSMarshalAs<JSType.Function<JSType.String>>]
+    Action<string> callback);
 ```
 
-JavaScript:
+These pass .NET function pointers to JavaScript so the JS event system can call back into .NET. The dispatch callback receives `(commandId, eventName, eventData)`. The URL-changed callback receives the new URL string.
 
-```javascript
-export function addChildHtml(parentId, html) {
-    const parent = document.getElementById(parentId);
-    if (parent) parent.insertAdjacentHTML('beforeend', html);
-}
+## JSExport Functions (JavaScript → .NET)
 
-export function removeChild(parentId, childId) {
-    const child = document.getElementById(childId);
-    if (child) child.remove();
-}
+These are C# methods callable from JavaScript:
 
-export function replaceChildHtml(oldId, newHtml) {
-    const old = document.getElementById(oldId);
-    if (old) {
-        old.insertAdjacentHTML('afterend', newHtml);
-        old.remove();
-    }
-}
-
-export function setChildrenHtml(parentId, html) {
-    const parent = document.getElementById(parentId);
-    if (parent) parent.innerHTML = html;
-}
-```
-
-`setChildrenHtml` is a batch operation that replaces all children of a parent element
-with a single `innerHTML` assignment. It is used by the `SetChildrenHtml` fast path
-when going from 0→N children (Add-All) or when all keys differ (Complete Replacement),
-avoiding N individual DOM insertions.
-
-## Event Delegation
-
-Abies uses event delegation for efficient event handling.
-
-### Rendered HTML
-
-Event handlers are rendered as data attributes:
-
-```html
-<button id="btn1" data-event-click="handler-123">Click me</button>
-<input id="input1" data-event-input="handler-456" />
-```
-
-### Event Listener Setup
-
-```javascript
-document.addEventListener('click', (e) => {
-    const handlerId = e.target.getAttribute('data-event-click');
-    if (handlerId) {
-        e.preventDefault();
-        dispatch(handlerId);
-    }
-});
-
-document.addEventListener('input', (e) => {
-    const handlerId = e.target.getAttribute('data-event-input');
-    if (handlerId) {
-        const data = JSON.stringify({ value: e.target.value });
-        dispatchData(handlerId, data);
-    }
-});
-```
-
-### Event Data
-
-Events that need data (like input values) use `DispatchData`:
-
-```csharp
-// Event data types
-public record InputEventData(string? Value);
-public record CheckboxEventData(bool Checked);
-public record KeyboardEventData(string Key, bool CtrlKey, bool ShiftKey, bool AltKey);
-```
-
-## Navigation
-
-### Browser History
-
-```csharp
-[JSImport("pushState", "abies.js")]
-public static partial Task PushState(string url);
-
-[JSImport("replaceState", "abies.js")]
-public static partial Task ReplaceState(string url);
-
-[JSImport("back", "abies.js")]
-public static partial Task Back(int steps);
-
-[JSImport("forward", "abies.js")]
-public static partial Task Forward(int steps);
-
-[JSImport("load", "abies.js")]
-public static partial Task Load(string url);
-```
-
-JavaScript:
-
-```javascript
-export function pushState(url) {
-    history.pushState(null, '', url);
-}
-
-export function replaceState(url) {
-    history.replaceState(null, '', url);
-}
-
-export function back(steps) {
-    history.go(-steps);
-}
-
-export function forward(steps) {
-    history.go(steps);
-}
-
-export function load(url) {
-    window.location.href = url;
-}
-```
-
-### URL Change Callback
-
-```csharp
-[JSImport("onUrlChange", "abies.js")]
-public static partial void OnUrlChange(
-    [JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler
-);
-
-[JSImport("getCurrentUrl", "abies.js")]
-public static partial string GetCurrentUrl();
-```
-
-JavaScript:
-
-```javascript
-let urlChangeHandler = null;
-
-export function onUrlChange(handler) {
-    urlChangeHandler = handler;
-}
-
-window.addEventListener('popstate', () => {
-    if (urlChangeHandler) {
-        urlChangeHandler(window.location.href);
-    }
-});
-
-export function getCurrentUrl() {
-    return window.location.href;
-}
-```
-
-## Link Interception
-
-Abies intercepts link clicks for client-side routing:
-
-```csharp
-[JSImport("onLinkClick", "abies.js")]
-internal static partial void OnLinkClick(
-    [JSMarshalAs<JSType.Function<JSType.String>>] Action<string> handler
-);
-```
-
-JavaScript:
-
-```javascript
-let linkClickHandler = null;
-
-export function onLinkClick(handler) {
-    linkClickHandler = handler;
-}
-
-document.addEventListener('click', (e) => {
-    const link = e.target.closest('a[href]');
-    if (link && linkClickHandler) {
-        e.preventDefault();
-        linkClickHandler(link.href);
-    }
-});
-```
-
-## Storage
-
-```csharp
-[JSImport("setLocalStorage", "abies.js")]
-public static partial Task SetLocalStorage(string key, string value);
-
-[JSImport("getLocalStorage", "abies.js")]
-public static partial string? GetLocalStorage(string key);
-
-[JSImport("removeLocalStorage", "abies.js")]
-public static partial Task RemoveLocalStorage(string key);
-```
-
-JavaScript:
-
-```javascript
-export function setLocalStorage(key, value) {
-    localStorage.setItem(key, value);
-}
-
-export function getLocalStorage(key) {
-    return localStorage.getItem(key);
-}
-
-export function removeLocalStorage(key) {
-    localStorage.removeItem(key);
-}
-```
-
-## Subscriptions
-
-Subscriptions let JavaScript call .NET when external events occur:
-
-```csharp
-[JSImport("subscribe", "abies.js")]
-internal static partial void Subscribe(string key, string kind, string? data);
-
-[JSImport("unsubscribe", "abies.js")]
-internal static partial void Unsubscribe(string key);
-```
-
-### Timer Example
-
-```javascript
-const subscriptions = new Map();
-
-export function subscribe(key, kind, data) {
-    if (kind === 'interval') {
-        const interval = JSON.parse(data).milliseconds;
-        const id = setInterval(() => {
-            dispatchSubscriptionData(key, null);
-        }, interval);
-        subscriptions.set(key, { kind, id });
-    }
-    // ... other subscription kinds
-}
-
-export function unsubscribe(key) {
-    const sub = subscriptions.get(key);
-    if (sub) {
-        if (sub.kind === 'interval') {
-            clearInterval(sub.id);
-        }
-        subscriptions.delete(key);
-    }
-}
-```
-
-## Error Handling
-
-### Missing Elements
-
-JavaScript gracefully handles missing elements:
-
-```javascript
-export function updateAttribute(id, name, value) {
-    const el = document.getElementById(id);
-    if (!el) {
-        console.warn(`Element not found: ${id}`);
-        return;
-    }
-    el.setAttribute(name, value);
-}
-```
-
-### Missing Handlers
-
-.NET gracefully handles missing handlers:
+### Event Dispatch
 
 ```csharp
 [JSExport]
-public static void Dispatch(string messageId)
+internal static void DispatchDomEvent(string commandId, string eventName, string eventData)
 {
-    if (_handlers.TryGetValue(messageId, out var message))
+    if (Handlers is null) return;
+
+    var message = Handlers.CreateMessage(commandId, eventData);
+    if (message is not null)
     {
-        _messageChannel.Writer.TryWrite(message);
-        return;
+        Handlers.Dispatch?.Invoke(message);
     }
-    // Handler may be gone during DOM updates - ignore
-    Debug.WriteLine($"Missing handler: {messageId}");
 }
 ```
 
-## Performance
+When a DOM event fires, JavaScript's event delegation system reads the `data-event-{eventName}` attribute from the target element to get the `commandId`, extracts event data (e.g., `input.value`), and calls this function.
 
-### Batching
+The `HandlerRegistry` looks up the handler by `commandId` and creates the appropriate `Message`.
 
-DOM operations return `Task` to allow batching via await:
+### URL Change Notification
 
 ```csharp
-// Applied sequentially
-foreach (var patch in patches)
+[JSExport]
+internal static void OnUrlChanged(string url)
 {
-    await Operations.Apply(patch);  // Each await allows JS to batch
+    NavigationCallbacks.HandleUrlChanged(url);
 }
 ```
 
-### Minimal Data
+Called when the browser URL changes (popstate, link click interception). Parses the URL string into a `Url` record and dispatches it through the navigation subscription.
 
-Event data is serialized as minimal JSON:
+## Event Delegation System
 
-```javascript
-// Only send needed data
-const data = JSON.stringify({ value: e.target.value });
-dispatchData(handlerId, data);
+Abies uses **event delegation** rather than per-element listeners. This is the same pattern used by React and virtual-DOM frameworks:
+
+1. **Single listener per event type** — JavaScript registers one `click` listener at the document level, one `input` listener, etc.
+2. **Attribute-based routing** — Each element that handles events has a `data-event-{eventName}="{commandId}"` attribute rendered into the HTML
+3. **Bubbling** — When an event fires, it bubbles up to the document listener. The listener walks up the DOM tree looking for `data-event-{eventName}` attributes
+4. **CommandId lookup** — The `commandId` from the attribute is passed to `DispatchDomEvent`, which looks up the handler in the `HandlerRegistry`
+
+### Handler Record
+
+The `Handler` record carries everything needed to process an event:
+
+```csharp
+public record Handler(
+    string EventName,      // DOM event name ("click", "input", etc.)
+    string CommandId,       // Unique ID linking DOM attribute to handler
+    Message? Command,       // Static message (null for data-carrying handlers)
+    string Id,              // Attribute node ID (from Praefixum)
+    Func<object?, Message>? WithData = null,      // Factory for data-carrying messages
+    Func<string, object?>?  Deserializer = null)   // Trim-safe JSON deserializer
+    : Attribute(Id, $"data-event-{EventName}", CommandId);
 ```
 
-### Event Delegation
+Handlers support two modes:
 
-Single event listeners handle all elements:
+| Mode | Fields Used | Example |
+|---|---|---|
+| **Static** | `Command` is set | `onclick(() => new Increment())` — dispatches the same message every time |
+| **Data-carrying** | `WithData` + `Deserializer` | `oninput<InputEventData>(e => new TextChanged(e.Value))` — deserializes event data, passes to factory |
 
-```javascript
-// One listener for all clicks, not one per button
-document.addEventListener('click', handleClick);
+The `Deserializer` field is a `Func<string, object?>` that uses a source-generated `JsonSerializerContext` for trim-safe deserialization. No reflection is used.
+
+### HandlerRegistry
+
+The `HandlerRegistry` is a per-runtime instance that maps `commandId` strings to `Handler` records:
+
+```csharp
+public sealed class HandlerRegistry
+{
+    private readonly Dictionary<string, Handler> _handlers = new();
+    internal Action<Message>? Dispatch { get; set; }
+
+    public void Register(Handler handler);
+    public void Unregister(string commandId);
+    public Message? CreateMessage(string commandId, string eventData);
+    public void RegisterHandlers(Node? node);    // Recursive tree scan
+    public void UnregisterHandlers(Node? node);  // Recursive tree scan
+    internal void Clear();
+}
 ```
 
-## See Also
+Key design points:
 
-- [API: Runtime](../api/runtime.md) — Runtime API
-- [Reference: Runtime Internals](./runtime-internals.md) — Internal implementation
-- [ADR-011: JavaScript Interop](../adr/ADR-011-javascript-interop.md) — Design decision
+- **Per-runtime isolation** — Each `Runtime<TProgram,TModel,TArgument>` owns its own `HandlerRegistry`, enabling concurrent server-side sessions with isolated handler state
+- **Non-concurrent dictionary** — Uses `Dictionary<string, Handler>` (not `ConcurrentDictionary`) because the MVU loop is serialized: only one transition runs at a time per runtime instance
+- **Recursive registration** — `RegisterHandlers` and `UnregisterHandlers` walk the virtual DOM tree (including `MemoNode` and `LazyMemoNode` wrappers) to batch-register/unregister all handlers in a subtree
+- **CreateMessage logic** — Checks `Command` first (static handler), then `WithData`/`Deserializer` (data-carrying handler). Returns `null` if the `commandId` is not found
+
+### Event Flow (Complete Path)
+
+```
+User clicks button
+  │
+  ▼
+document click listener fires (event delegation)
+  │
+  ▼
+JS walks up DOM tree, finds data-event-click="cmd_42"
+  │
+  ▼
+JS extracts event data (if needed)
+  │
+  ▼
+JS calls dispatchDomEvent("cmd_42", "click", "")
+  │
+  ▼
+[JSExport] DispatchDomEvent receives (commandId, eventName, eventData)
+  │
+  ▼
+HandlerRegistry.CreateMessage("cmd_42", "")
+  ├── handler.Command is set → return the static Message
+  └── handler.WithData is set → deserialize eventData, call factory
+  │
+  ▼
+Handlers.Dispatch?.Invoke(message)
+  │
+  ▼
+Runtime._core.Dispatch(message)
+  │
+  ▼
+TProgram.Transition(model, message) → (newModel, command)
+  │
+  ▼
+Observer: View → Diff → Binary batch → ApplyBinaryBatch
+```
+
+## Binary Batch Protocol
+
+The `RenderBatchWriter` serializes all patches from a render cycle into a compact binary format transferred via `Span<byte>` (zero-copy `MemoryView`).
+
+### Format
+
+```
+┌──────────────────────────────────────────┐
+│ Header (8 bytes)                         │
+│   PatchCount:        int32 LE (4 bytes)  │
+│   StringTableOffset: int32 LE (4 bytes)  │
+├──────────────────────────────────────────┤
+│ Patch Entries (16 bytes each)            │
+│   Type:   int32 LE — BinaryPatchType     │
+│   Field1: int32 LE — string table index  │
+│   Field2: int32 LE — string table index  │
+│   Field3: int32 LE — string table index  │
+│   (unused fields = -1)                   │
+├──────────────────────────────────────────┤
+│ String Table                             │
+│   LEB128-length-prefixed UTF-8 strings   │
+│   Deduplicated (same string = same idx)  │
+└──────────────────────────────────────────┘
+```
+
+### Design Decisions
+
+- **3 fields per entry** — covers the widest patch (e.g., `MoveChild`: parentId, childId, beforeId). Narrower patches leave trailing fields as `-1`
+- **Fixed-size entries** — O(1) random access, trivial `DataView` parsing in JavaScript
+- **String deduplication** — Element IDs are frequently repeated (parent + child). Dedup via `Dictionary<string, int>` reduces payload size significantly
+- **LEB128 length encoding** — compact for short strings (IDs, tag names), no wasted bytes on alignment padding
+
+### Patch Type Opcodes
+
+| Opcode | Type | Fields |
+|---|---|---|
+| 0 | `AddRoot` | elementId, html, — |
+| 1 | `ReplaceChild` | oldId, newId, html |
+| 2 | `AddChild` | parentId, childId, html |
+| 3 | `RemoveChild` | parentId, childId, — |
+| 4 | `ClearChildren` | parentId, —, — |
+| 5 | `SetChildrenHtml` | parentId, html, — |
+| 6 | `MoveChild` | parentId, childId, beforeId |
+| 7 | `UpdateAttribute` | elementId, name, value |
+| 8 | `AddAttribute` | elementId, name, value |
+| 9 | `RemoveAttribute` | elementId, name, — |
+| 10 | `AddHandler` | elementId, name, commandId |
+| 11 | `RemoveHandler` | elementId, name, commandId |
+| 12 | `UpdateHandler` | elementId, oldName, newCommandId |
+| 13 | `UpdateText` | parentId, text, newId |
+| 14 | `AddText` | parentId, value, id |
+| 15 | `RemoveText` | parentId, id, — |
+| 16 | `AddRaw` | parentId, html, id |
+| 17 | `RemoveRaw` | parentId, id, — |
+| 18 | `ReplaceRaw` | oldId, newId, html |
+| 19 | `UpdateRaw` | nodeId, html, newId |
+| 20 | `AddHeadElement` | key, html, — |
+| 21 | `UpdateHeadElement` | key, html, — |
+| 22 | `RemoveHeadElement` | key, —, — |
+| 23 | `AppendChildrenHtml` | parentId, html, — |
+
+## Navigation Interop
+
+Navigation commands flow from the MVU loop through the runtime's built-in interpreter to JavaScript interop calls:
+
+```csharp
+// In Browser/Runtime.cs:
+void NavigationExecutor(NavigationCommand command)
+{
+    switch (command)
+    {
+        case NavigationCommand.Push push:
+            Interop.NavigateTo(push.Url.ToRelativeUri());
+            break;
+        case NavigationCommand.Replace replace:
+            Interop.ReplaceUrl(replace.Url.ToRelativeUri());
+            break;
+        case NavigationCommand.GoBack:
+            Interop.HistoryBack();
+            break;
+        case NavigationCommand.GoForward:
+            Interop.HistoryForward();
+            break;
+        case NavigationCommand.External ext:
+            Interop.ExternalNavigate(ext.Href);
+            break;
+    }
+}
+```
+
+URL changes flow back from JavaScript to .NET via the `OnUrlChanged` JSExport, which dispatches through `NavigationCallbacks` to the `Navigation.UrlChanges` subscription.
+
+## Browser Runtime Bootstrap
+
+The `Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the complete bootstrap sequence:
+
+1. Load `abies.js` via `JSHost.ImportAsync("Abies", "../abies.js")`
+2. Wire dispatch callback: `SetDispatchCallback(DispatchDomEvent)`
+3. Wire URL-changed callback: `SetOnUrlChangedCallback(OnUrlChanged)`
+4. Set up event delegation at document level
+5. Set up navigation interception (popstate + link clicks)
+6. Create `RenderBatchWriter` and `BrowserApply` delegate
+7. Parse current URL for initial routing
+8. Start core `Runtime<TProgram,TModel,TArgument>.Start(...)`
+9. Wire `Interop.Handlers = runtime.Handlers` (static reference for JSExport)
+10. Block with `Task.Delay(Timeout.Infinite)` to keep WASM alive
+
+This replaces ~30 lines of boilerplate that every WASM consumer previously needed. The consumer's `Program.cs` is a single line:
+
+```csharp
+await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
+```
+
+## Source Files
+
+| File | Role |
+|---|---|
+| `Abies.Browser/Interop.cs` | `[JSImport]`/`[JSExport]` declarations |
+| `Abies.Browser/Runtime.cs` | Browser bootstrap sequence |
+| `Abies.Browser/wwwroot/abies.js` | JavaScript runtime (event delegation, DOM patching, navigation) |
+| `Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
+| `Abies/RenderBatchWriter.cs` | Binary patch serializer |
+| `Abies/DOM/Attribute.cs` | `Handler` record definition |

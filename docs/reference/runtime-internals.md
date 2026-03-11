@@ -1,483 +1,326 @@
 # Runtime Internals
 
-This document describes the internal implementation of the Abies runtime.
-
-## Overview
-
-The runtime is the engine that drives Abies applications. It:
-
-1. Manages the message loop
-2. Coordinates virtual DOM updates
-3. Handles JavaScript interop
-4. Manages subscriptions
-5. Provides OpenTelemetry instrumentation
+The `Runtime<TProgram,TModel,TArgument>` class orchestrates the MVU execution loop. It composes the Automaton kernel's `AutomatonRuntime` with three MVU-specific concerns: **View** (render + diff + apply), **Subscriptions** (lifecycle management), and **Commands** (side effect interpretation).
 
 ## Architecture
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│                           Runtime                                 │
-├──────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          │
-│  │   Message   │    │   Handler   │    │Subscription │          │
-│  │   Channel   │    │  Registries │    │   Manager   │          │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘          │
-│         │                  │                   │                  │
-│  ┌──────┴──────────────────┴───────────────────┴──────┐          │
-│  │                    Message Loop                     │          │
-│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐    │          │
-│  │  │ Update │→ │  View  │→ │  Diff  │→ │ Apply  │    │          │
-│  │  └────────┘  └────────┘  └────────┘  └────────┘    │          │
-│  └─────────────────────────────────────────────────────┘          │
-│                              │                                    │
-│  ┌───────────────────────────┴───────────────────────────┐       │
-│  │                   JavaScript Interop                   │       │
-│  │  SetAppContent, UpdateAttribute, AddChild, etc.        │       │
-│  └────────────────────────────────────────────────────────┘       │
-└──────────────────────────────────────────────────────────────────┘
+```
+┌──────────────────────────────────────────────────────────┐
+│ Runtime<TProgram, TModel, TArgument>                     │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ AutomatonRuntime (Automaton kernel)                 │  │
+│  │                                                    │  │
+│  │  Dispatch(message)                                 │  │
+│  │    │                                               │  │
+│  │    ▼                                               │  │
+│  │  TProgram.Transition(model, message)               │  │
+│  │    │                                               │  │
+│  │    ├──▶ (newModel, command)                        │  │
+│  │    │                                               │  │
+│  │    ├──▶ Observer(newModel, message, command)       │  │
+│  │    │     ├── View → Diff → Apply                  │  │
+│  │    │     ├── HeadDiff → Apply                     │  │
+│  │    │     ├── UpdateHandlerRegistry                │  │
+│  │    │     └── SubscriptionManager.Update           │  │
+│  │    │                                               │  │
+│  │    └──▶ Interpreter(command)                      │  │
+│  │          └── feedback Messages → re-enter loop    │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  HandlerRegistry (per-runtime instance)                  │
+│  SubscriptionState (current subscriptions)               │
+│  Document? (current virtual DOM)                         │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Message Channel
+## The MVU Loop
 
-Messages are queued in an unbounded channel:
+Every dispatched `Message` triggers the following sequence:
+
+### 1. Transition
 
 ```csharp
-private static readonly Channel<Message> _messageChannel = Channel.CreateUnbounded<Message>();
+static (TModel, Command) Transition(TModel model, Message message);
 ```
 
-### Why Unbounded?
+The program's `Transition` function (inherited from `Automaton<TState,TEvent,TEffect,TParameters>`) produces a new model and an optional command. This is a **pure function** — no side effects.
 
-- No backpressure needed (UI events are rare relative to processing speed)
-- Prevents blocking on dispatch
-- Simple implementation
+### 2. Observer (View → Diff → Apply)
 
-### Message Sources
-
-Messages enter the channel from:
-
-1. **Event handlers** — User interactions
-2. **Commands** — Async operation results
-3. **Subscriptions** — External events (timers, WebSocket, etc.)
-4. **Navigation** — URL changes
-
-## Handler Registries
-
-Event handlers are stored in dictionaries (non-concurrent, since WASM is single-threaded):
+The observer is an instance method on `Runtime` that runs after every transition:
 
 ```csharp
-// Simple handlers (message only)
-private static readonly Dictionary<string, Message> _handlers = new();
-
-// Handlers with data (e.g., input value)
-private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _dataHandlers = new();
-
-// Subscription handlers
-private static readonly Dictionary<string, (Func<object?, Message> handler, Type dataType)> _subscriptionHandlers = new();
-```
-
-### Handler Lifecycle
-
-1. **Registration** — When DOM is rendered, handlers are added
-2. **Dispatch** — JavaScript calls `Dispatch(handlerId)` or `DispatchData(handlerId, json)`
-3. **Unregistration** — When element is removed, handlers are cleaned up
-
-## Message Loop
-
-The core message processing loop:
-
-```csharp
-await foreach (var message in _messageChannel.Reader.ReadAllAsync())
+private ValueTask<Result<Unit, PipelineError>> Observe(TModel state, Message _, Command __)
 {
-    using var activity = Instrumentation.ActivitySource.StartActivity("Message");
-    
-    // 1. Update model
-    var (newModel, command) = TProgram.Update(message, model);
-    model = newModel;
-    
-    // 2. Generate new virtual DOM
-    var newDom = TProgram.View(model);
-    var alignedBody = PreserveIds(dom, newDom.Body);
-    
-    // 3. Compute patches
-    var patches = Operations.Diff(dom, alignedBody);
-    
-    // 4. Apply patches
+    // 1. Render new view
+    var newDocument = TProgram.View(state);
+
+    // 2. Diff body against previous
+    var patches = Operations.Diff(_currentDocument?.Body, newDocument.Body);
+
+    // 3. Diff head content
+    var headPatches = HeadDiff.Diff(
+        _currentDocument?.Head ?? [],
+        newDocument.Head);
+
+    // 4. Merge body + head patches into single list
+    // 5. Update handler registry
+    // 6. Apply all patches via single binary batch
+    // 7. Update title if changed
+    // 8. Update subscriptions
+}
+```
+
+Key details:
+
+- **Body and head patches are merged** into a single `IReadOnlyList<Patch>` and applied in one `Apply` call. This means one binary batch per render cycle carries both body and head mutations.
+- **Handler registry updates happen before apply** — the runtime walks the patch list and registers/unregisters handlers so that event delegation can dispatch messages correctly as soon as the DOM is updated.
+- **Title changes are detected** by string comparison and trigger a separate `titleChanged` callback.
+- **Subscriptions are reconciled** after every render via `SubscriptionManager.Update`.
+
+### 3. Handler Registry Update
+
+The runtime walks the patch list and updates the `HandlerRegistry` based on what changed:
+
+```csharp
+private void UpdateHandlerRegistry(IReadOnlyList<Patch> patches)
+{
     foreach (var patch in patches)
-        await Operations.Apply(patch);
-    
-    dom = alignedBody;
-    
-    // 5. Update subscriptions
-    subscriptionState = SubscriptionManager.Update(
-        subscriptionState, 
-        TProgram.Subscriptions(model), 
-        Dispatch
-    );
-    
-    // 6. Execute command
-    await ExecuteCommand(command);
-}
-```
-
-### ID Preservation
-
-The `PreserveIds` function maintains element identity across renders:
-
-```csharp
-private static Node PreserveIds(Node? oldNode, Node newNode)
-{
-    if (oldNode is Element oldEl && newNode is Element newEl && oldEl.Tag == newEl.Tag)
     {
-        // Copy IDs from old tree to new tree
-        var attrs = newEl.Attributes.Select(attr =>
+        switch (patch)
         {
-            var oldAttr = Array.Find(oldEl.Attributes, a => a.Name == attr.Name);
-            return attr with { Id = oldAttr?.Id ?? attr.Id };
-        }).ToArray();
-        
-        var children = newEl.Children
-            .Select((child, i) => i < oldEl.Children.Length 
-                ? PreserveIds(oldEl.Children[i], child) 
-                : child)
-            .ToArray();
-        
-        return new Element(oldEl.Id, newEl.Tag, attrs, children);
-    }
-    return newNode;
-}
-```
-
-## JavaScript Interop
-
-### Setup
-
-The runtime sets up interop handlers during initialization:
-
-```csharp
-private static void SetupInteropHandlers<TProgram, TArguments, TModel>()
-{
-    // URL change handler
-    Interop.OnUrlChange(newUrlString =>
-    {
-        var newUrl = Url.Create(new(newUrlString));
-        var message = TProgram.OnUrlChanged(newUrl);
-        Dispatch(message);
-    });
-    
-    // Link click handler
-    Interop.OnLinkClick(urlString =>
-    {
-        var currentUrl = Url.Create(Interop.GetCurrentUrl());
-        var newUrl = Url.Create(urlString);
-        
-        if (AreSameOrigin(currentUrl, newUrl))
-            Dispatch(TProgram.OnLinkClicked(new UrlRequest.Internal(newUrl)));
-        else
-            Dispatch(TProgram.OnLinkClicked(new UrlRequest.External(urlString)));
-    });
-    
-    // Form submit handler
-    Interop.OnFormSubmit(urlString => /* similar to link click */);
-}
-```
-
-### Exported Functions
-
-JavaScript can call these .NET methods:
-
-```csharp
-[JSExport]
-public static void Dispatch(string messageId)
-{
-    if (_handlers.TryGetValue(messageId, out var message))
-    {
-        _messageChannel.Writer.TryWrite(message);
-    }
-}
-
-[JSExport]
-public static void DispatchData(string messageId, string? json)
-{
-    if (_dataHandlers.TryGetValue(messageId, out var entry))
-    {
-        object? data = json is null ? null : JsonSerializer.Deserialize(json, entry.dataType);
-        var message = entry.handler(data);
-        _messageChannel.Writer.TryWrite(message);
-    }
-}
-
-[JSExport]
-public static void DispatchSubscriptionData(string key, string? json)
-{
-    if (_subscriptionHandlers.TryGetValue(key, out var entry))
-    {
-        object? data = json is null ? null : JsonSerializer.Deserialize(json, entry.dataType);
-        var message = entry.handler(data);
-        _messageChannel.Writer.TryWrite(message);
+            case AddHandler p:      _handlerRegistry.Register(p.Handler); break;
+            case RemoveHandler p:   _handlerRegistry.Unregister(p.Handler.CommandId); break;
+            case UpdateHandler p:
+                _handlerRegistry.Unregister(p.OldHandler.CommandId);
+                _handlerRegistry.Register(p.NewHandler);
+                break;
+            case AddChild p:        _handlerRegistry.RegisterHandlers(p.Child); break;
+            case AddRoot p:         _handlerRegistry.RegisterHandlers(p.Element); break;
+            case ReplaceChild p:
+                _handlerRegistry.UnregisterHandlers(p.OldElement);
+                _handlerRegistry.RegisterHandlers(p.NewElement);
+                break;
+            case RemoveChild p:     _handlerRegistry.UnregisterHandlers(p.Child); break;
+            case ClearChildren p:
+                foreach (var child in p.OldChildren)
+                    _handlerRegistry.UnregisterHandlers(child);
+                break;
+            case SetChildrenHtml p:
+                foreach (var child in p.Children)
+                    _handlerRegistry.RegisterHandlers(child);
+                break;
+            case AppendChildrenHtml p:
+                foreach (var child in p.Children)
+                    _handlerRegistry.RegisterHandlers(child);
+                break;
+        }
     }
 }
 ```
 
-### DOM Operations
+For tree-level patches (`AddChild`, `ReplaceChild`, `ClearChildren`, `SetChildrenHtml`, `AppendChildrenHtml`), the registry recursively walks the virtual DOM subtree to register/unregister all handlers, including those inside `MemoNode` and `LazyMemoNode` wrappers.
 
-The `Interop` class provides DOM manipulation methods:
+### 4. Command Interpretation
 
-```csharp
-public static partial class Interop
-{
-    [JSImport("setAppContent", "app")]
-    public static partial Task SetAppContent(string html);
-    
-    [JSImport("updateAttribute", "app")]
-    public static partial Task UpdateAttribute(string id, string name, string value);
-    
-    [JSImport("addAttribute", "app")]
-    public static partial Task AddAttribute(string id, string name, string value);
-    
-    [JSImport("removeAttribute", "app")]
-    public static partial Task RemoveAttribute(string id, string name);
-    
-    [JSImport("addChildHtml", "app")]
-    public static partial Task AddChildHtml(string parentId, string html);
-    
-    [JSImport("removeChild", "app")]
-    public static partial Task RemoveChild(string parentId, string childId);
-    
-    [JSImport("replaceChildHtml", "app")]
-    public static partial Task ReplaceChildHtml(string oldId, string newHtml);
-    
-    [JSImport("updateTextContent", "app")]
-    public static partial Task UpdateTextContent(string id, string text);
-}
-```
-
-## Command Execution
-
-Commands are executed after each update:
+After the observer runs, the Automaton kernel passes the command to the interpreter. The runtime wraps the caller-supplied interpreter with structural command handling:
 
 ```csharp
-switch (command)
+static async ValueTask<Result<Message[], PipelineError>> InterpretCommand(
+    Command command,
+    Interpreter<Command, Message> interpreter,
+    Action<NavigationCommand>? navigationExecutor)
 {
-    // Navigation commands handled specially
-    case Navigation.Command.PushState pushState:
-        await Interop.PushState(pushState.Url.ToString());
-        Dispatch(TProgram.OnUrlChanged(pushState.Url));
-        break;
-        
-    case Navigation.Command.Load load:
-        await Interop.Load(load.Url.ToString());
-        break;
-        
-    case Navigation.Command.ReplaceState replaceState:
-        await Interop.ReplaceState(replaceState.Url.ToString());
-        Dispatch(TProgram.OnUrlChanged(replaceState.Url));
-        break;
-    
-    // Batch commands
-    case Command.Batch batch:
-        foreach (var cmd in batch.Commands)
-            await ExecuteCommand(cmd);
-        break;
-    
-    // Custom commands delegated to program
-    default:
-        await TProgram.HandleCommand(command, Dispatch);
-        break;
-}
-```
-
-## Subscription Manager
-
-The subscription manager tracks active subscriptions:
-
-```csharp
-internal static class SubscriptionManager
-{
-    public static SubscriptionState Start(Subscription subscription, Func<Message, ValueTuple> dispatch)
+    switch (command)
     {
-        var state = new SubscriptionState();
-        AddSubscriptions(state, subscription, dispatch);
-        return state;
-    }
-    
-    public static SubscriptionState Update(
-        SubscriptionState currentState, 
-        Subscription newSubscription, 
-        Func<Message, ValueTuple> dispatch)
-    {
-        // Compare old and new subscriptions
-        var oldKeys = currentState.ActiveKeys;
-        var newKeys = ExtractKeys(newSubscription);
-        
-        // Stop removed subscriptions
-        foreach (var key in oldKeys.Except(newKeys))
-            StopSubscription(currentState, key);
-        
-        // Start new subscriptions
-        foreach (var key in newKeys.Except(oldKeys))
-            StartSubscription(currentState, key, newSubscription, dispatch);
-        
-        return currentState;
+        case Command.None:
+            return Result<Message[], PipelineError>.Ok([]);
+
+        case Command.Batch batch:
+            var allMessages = new List<Message>();
+            foreach (var sub in batch.Commands)
+            {
+                var result = await InterpretCommand(sub, interpreter, navigationExecutor);
+                if (result.IsErr) return result;
+                if (result.Value.Length > 0) allMessages.AddRange(result.Value);
+            }
+            return Result<Message[], PipelineError>.Ok(allMessages.ToArray());
+
+        case NavigationCommand navCommand:
+            navigationExecutor?.Invoke(navCommand);
+            return Result<Message[], PipelineError>.Ok([]);
+
+        default:
+            return await interpreter(command);
     }
 }
 ```
 
-### Subscription Registration
+The interpretation order:
 
-Subscriptions register handlers with the runtime:
+1. **`Command.None`** — no-op (identity element of the command monoid)
+2. **`Command.Batch`** — recursively interpret each sub-command, collecting all feedback messages
+3. **`NavigationCommand`** — handled by the runtime's built-in navigation executor (browser: calls JS interop; server: sends over transport)
+4. **All other commands** — fall through to the caller-supplied interpreter
 
-```csharp
-internal static void RegisterSubscriptionHandler(
-    string key, 
-    Func<object?, Message> handler, 
-    Type dataType)
-{
-    _subscriptionHandlers[key] = (handler, dataType);
-}
+Feedback messages from the interpreter are dispatched back into the MVU loop, triggering new transitions.
 
-internal static void UnregisterSubscriptionHandler(string key)
-{
-    _subscriptionHandlers.TryRemove(key, out _);
-}
-```
+## Navigation Commands
 
-## OpenTelemetry Integration
-
-The runtime creates activities for tracing:
+Navigation is modeled as `NavigationCommand` records that implement the `Command` interface:
 
 ```csharp
-public static class Instrumentation
+public interface NavigationCommand : Command
 {
-    public static readonly ActivitySource ActivitySource = new("Abies");
-}
-
-// Usage in runtime
-using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
-// ... initialization
-
-await foreach (var message in _messageChannel.Reader.ReadAllAsync())
-{
-    using var messageActivity = Instrumentation.ActivitySource.StartActivity("Message");
-    messageActivity?.SetTag("message.type", message.GetType().FullName);
-    // ... processing
+    sealed record Push(Url Url) : NavigationCommand;
+    sealed record Replace(Url Url) : NavigationCommand;
+    sealed record GoBack : NavigationCommand;
+    sealed record GoForward : NavigationCommand;
+    sealed record External(string Href) : NavigationCommand;
 }
 ```
 
-### Activity Hierarchy
-
-```text
-Run
-├── Message (UrlChanged)
-│   └── HandleCommand
-├── Message (DataLoaded)
-│   └── HandleCommand
-└── Message (ButtonClicked)
-```
-
-## Error Handling
-
-The runtime handles errors gracefully:
+Application code uses the `Navigation` static class for convenience:
 
 ```csharp
-[JSExport]
-public static void Dispatch(string messageId)
-{
-    if (_handlers.TryGetValue(messageId, out var message))
-    {
-        _messageChannel.Writer.TryWrite(message);
-        return;
-    }
-    
-    // Handler may be missing during rapid DOM updates
-    Debug.WriteLine($"[Abies] Missing handler for messageId={messageId}");
-}
+Navigation.PushUrl(url)       // → NavigationCommand.Push(url)
+Navigation.ReplaceUrl(url)    // → NavigationCommand.Replace(url)
+Navigation.Back               // → NavigationCommand.GoBack
+Navigation.Forward             // → NavigationCommand.GoForward
+Navigation.ExternalUrl(href)  // → NavigationCommand.External(href)
 ```
 
-### Why Handlers Go Missing
+The runtime handles these before the caller-supplied interpreter ever sees them. Application code never needs to pattern-match on navigation commands.
 
-1. Element is clicked during DOM replacement
-2. Race condition between patch application and event
-3. Event bubbling from removed element
+## Head Content Management
 
-The runtime ignores these cases rather than throwing.
+The `Document` record carries optional `HeadContent[]` alongside the body:
+
+```csharp
+public record Document(string Title, Node Body, params HeadContent[] Head);
+```
+
+`HeadContent` is a sum type with variants for each kind of `<head>` element:
+
+| Variant | Key Format | HTML Output |
+|---|---|---|
+| `Meta(name, content)` | `"meta:{name}"` | `<meta name="..." content="..." data-abies-head="...">` |
+| `MetaProperty(property, content)` | `"property:{property}"` | `<meta property="..." content="..." data-abies-head="...">` |
+| `Link(rel, href, type?)` | `"link:{rel}:{href}"` | `<link rel="..." href="..." data-abies-head="...">` |
+| `Script(type, content)` | `"script:{type}"` | `<script type="..." data-abies-head="...">...</script>` |
+| `Base(href)` | `"base"` | `<base href="..." data-abies-head="base">` |
+
+Head diffing uses `HeadDiff.Diff(oldHead, newHead)` which produces standard `Patch` types (`AddHeadElement`, `UpdateHeadElement`, `RemoveHeadElement`) that flow through the same binary batch protocol as body patches.
+
+Convenience factories are available via `using static Abies.Head`:
+
+```csharp
+meta("description", "My page")   // <meta name="description" content="My page">
+og("title", "My Page")            // <meta property="og:title" content="My Page">
+twitter("card", "summary")        // <meta name="twitter:card" content="summary">
+canonical("https://example.com")  // <link rel="canonical" href="...">
+stylesheet("/css/app.css")        // <link rel="stylesheet" href="...">
+jsonLd(structuredData)            // <script type="application/ld+json">...</script>
+```
+
+## Startup Sequence
+
+The `Runtime.Start` factory method performs a multi-phase initialization:
+
+```
+Phase 1: Create runtime shell (observer needs `this` reference)
+    │
+    ▼
+Phase 2: Wire HandlerRegistry.Dispatch to runtime
+    │
+    ▼
+Phase 3: TProgram.Initialize(argument) → (model, initialCommand)
+    │
+    ▼
+Phase 4: TProgram.View(model) → initial Document
+    │
+    ▼
+Phase 5: Diff(null, document.Body) → AddRoot patch
+         HeadDiff.Diff([], document.Head) → head patches
+         Merge + RegisterHandlers + Apply
+    │
+    ▼
+Phase 6: Set initial title
+    │
+    ▼
+Phase 7: Create AutomatonRuntime with wrapped interpreter
+    │
+    ▼
+Phase 8: SubscriptionManager.Start(initialSubscriptions)
+    │
+    ▼
+Phase 9: InterpretEffect(initialCommand)
+    │
+    ▼
+Phase 10: Dispatch UrlChanged(initialUrl) if provided
+```
+
+**Two-phase initialization** — The runtime instance is constructed before the `AutomatonRuntime` so the observer can be an instance method. This avoids the stale-closure problem where lambda-captured local variables would diverge from the runtime's fields after startup.
+
+## Subscription Lifecycle
+
+Subscriptions are declared as a function of the model:
+
+```csharp
+static Subscription Subscriptions(TModel model);
+```
+
+The `SubscriptionManager` handles the lifecycle:
+
+- **Start**: called during initialization with the initial subscription set
+- **Update**: called after every render. Compares desired subscriptions (by key) against running subscriptions:
+  - New keys → start subscription task
+  - Removed keys → cancel via `CancellationToken`
+  - Unchanged keys → keep running
+- **Stop**: called during disposal, cancels all running subscriptions
+
+Subscriptions dispatch messages via a `DispatchFromSubscription` method that calls `_core.Dispatch` (fire-and-forget).
 
 ## Thread Safety
 
-Since WASM is single-threaded, the runtime uses non-concurrent collections for
-handler registries and object pools. This avoids the overhead of thread-safe
-abstractions that provide no benefit in a single-threaded environment:
+| Environment | `threadSafe` | Behavior |
+|---|---|---|
+| WASM (browser) | `false` | No synchronization overhead. Single-threaded by nature. |
+| Server (SSR) | `true` | `SemaphoreSlim` serializes dispatch calls. Required for async I/O. |
 
-- `Channel<T>` — Thread-safe message queue (retained for its async enumeration API)
-- `Dictionary<K,V>` — Handler registries (replaced `ConcurrentDictionary`)
-- `Stack<T>` — Object pools (replaced `ConcurrentQueue`, LIFO is more cache-friendly)
+Each server-side session creates its own `Runtime` instance with its own `HandlerRegistry`, providing complete isolation between concurrent sessions.
 
-## Memory Management
+## Observability
 
-### Object Pooling
+The runtime uses `System.Diagnostics.ActivitySource` with the name `"Abies.Runtime"` for OpenTelemetry instrumentation:
 
-Frequently allocated objects are pooled using `Stack<T>` (LIFO pattern for cache
-locality). Since WASM is single-threaded, no concurrent collections are needed:
+| Activity Name | Tags | When |
+|---|---|---|
+| `Abies.Start` | `abies.program` | Runtime startup |
+| `Abies.Render` | `abies.patches` (count) | Each render cycle |
+| `Abies.Stop` | — | Runtime disposal |
 
-```csharp
-private static readonly Stack<List<Patch>> _patchListPool = new();
+## Disposal
 
-private static List<Patch> RentPatchList()
-{
-    if (_patchListPool.TryPop(out var list))
-    {
-        list.Clear();
-        return list;
-    }
-    return new List<Patch>();
-}
+`Runtime<TProgram,TModel,TArgument>` implements `IDisposable`. Disposal:
 
-private static void ReturnPatchList(List<Patch> list)
-{
-    if (list.Count < 1000)  // Prevent memory bloat
-        _patchListPool.Push(list);
-}
-```
+1. Stops all running subscriptions via `SubscriptionManager.Stop`
+2. Clears the `HandlerRegistry.Dispatch` callback
+3. Clears all registered handlers
+4. Disposes the underlying `AutomatonRuntime`
 
-### Handler Cleanup
+## Source Files
 
-Handlers are cleaned up when elements are removed:
-
-```csharp
-internal static void UnregisterHandlers(Node node)
-{
-    switch (node)
-    {
-        case Element element:
-            foreach (var attr in element.Attributes)
-            {
-                if (attr is Handler handler)
-                {
-                    _handlers.Remove(handler.CommandId);
-                    _dataHandlers.Remove(handler.CommandId);
-                }
-            }
-            foreach (var child in element.Children)
-                UnregisterHandlers(child);
-            break;
-        
-        case ILazyMemoNode lazyMemo:
-            UnregisterHandlers(lazyMemo.RenderedNode);
-            break;
-        
-        case IMemoNode memo:
-            UnregisterHandlers(memo.RenderedNode);
-            break;
-    }
-}
-```
-
-The `ILazyMemoNode` and `IMemoNode` cases ensure that handlers inside memoized
-subtrees are properly cleaned up when those subtrees are removed from the DOM.
-
-## See Also
-
-- [API: Runtime](../api/runtime.md) — Public API
-- [API: Program](../api/program.md) — Program interface
-- [Concepts: MVU Architecture](../concepts/mvu-architecture.md) — Conceptual overview
-- [Reference: Virtual DOM Algorithm](./virtual-dom-algorithm.md) — Diffing details
-- [ADR-005: WebAssembly Runtime](../adr/ADR-005-webassembly-runtime.md) — Design decision
+| File | Role |
+|---|---|
+| `Abies/Runtime.cs` | MVU runtime, observer, command interpretation, startup |
+| `Abies/Program.cs` | `Program<TModel,TArgument>` interface, `Url`, `UrlChanged`, `UrlRequest` |
+| `Abies/Navigation.cs` | `NavigationCommand` types, `Navigation` convenience API, URL subscriptions |
+| `Abies/HandlerRegistry.cs` | Per-runtime event handler mapping |
+| `Abies/Head.cs` | `HeadContent` sum type and factory functions |
+| `Abies/Diff.cs` | Virtual DOM diff algorithm |
+| `Abies/RenderBatchWriter.cs` | Binary patch serializer |
+| `Abies/Subscriptions/` | Subscription infrastructure |
+| `Abies.Browser/Runtime.cs` | Browser-specific bootstrap |
+| `Abies.Browser/Interop.cs` | JSImport/JSExport declarations |
