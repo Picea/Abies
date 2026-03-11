@@ -1,278 +1,181 @@
-# Element API Reference
+# UI Composition
 
-The `Element` interface defines reusable UI components with their own state and update logic.
+Abies does not have a component model in the traditional sense. There are no component interfaces, no component lifecycle hooks, and no component trees. Instead, Abies uses **plain functions** for UI composition and **memoization** for performance optimization.
 
-## Interface Definition
+This page covers how to build reusable UI in Abies.
 
-```csharp
-public interface Element<TModel, in TArgument>
-{
-    static abstract TModel Initialize(TArgument argument);
-    static abstract (TModel model, Command command) Update(Message message, TModel model);
-    static abstract Node View(TModel model);
-    static abstract Subscription Subscriptions(TModel model);
-}
-```
+## View Functions
 
-## Type Parameters
-
-| Parameter | Description |
-| --------- | ----------- |
-| `TModel` | The type of the element's internal state |
-| `TArgument` | The type of initialization data passed when creating the element |
-
-## Methods
-
-### Initialize
-
-Creates the initial element state from input arguments.
+The simplest form of UI reuse is a plain function that returns a `Node`:
 
 ```csharp
-static abstract TModel Initialize(TArgument argument);
-```
-
-**Parameters:**
-
-- `argument` — Initialization data
-
-**Returns:** The initial element model
-
-**Example:**
-
-```csharp
-public static DropdownModel Initialize(DropdownInput input)
-    => new(
-        Options: input.Options,
-        Selected: input.DefaultSelection,
-        IsOpen: false
-    );
-```
-
-### Update
-
-Handles element-specific messages.
-
-```csharp
-static abstract (TModel model, Command command) Update(Message message, TModel model);
-```
-
-**Parameters:**
-
-- `message` — The message to handle
-- `model` — Current element state
-
-**Returns:** New state and optional command
-
-**Example:**
-
-```csharp
-public static (DropdownModel, Command) Update(Message msg, DropdownModel model)
-    => msg switch
-    {
-        ToggleOpen => (model with { IsOpen = !model.IsOpen }, Commands.None),
-        SelectOption opt => (model with { Selected = opt.Value, IsOpen = false }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-### View
-
-Renders the element to a virtual DOM node.
-
-```csharp
-static abstract Node View(TModel model);
-```
-
-**Parameters:**
-
-- `model` — Current element state
-
-**Returns:** A `Node` (not a full `Document`)
-
-**Example:**
-
-```csharp
-public static Node View(DropdownModel model)
-    => div([class_("dropdown")], [
-        button([onclick(new ToggleOpen())], [text(model.Selected ?? "Select...")]),
-        model.IsOpen
-            ? ul([class_("dropdown-menu")], 
-                model.Options.Select(opt => 
-                    li([onclick(new SelectOption(opt))], [text(opt)])
-                ).ToArray())
-            : text("")
-    ]);
-```
-
-### Subscriptions
-
-Declares element-specific subscriptions.
-
-```csharp
-static abstract Subscription Subscriptions(TModel model);
-```
-
-**Parameters:**
-
-- `model` — Current element state
-
-**Returns:** Active subscriptions for this element
-
-**Example:**
-
-```csharp
-public static Subscription Subscriptions(DropdownModel model)
-    => model.IsOpen
-        ? OnKeyDown(key => key == "Escape" ? new CloseDropdown() : null)
-        : SubscriptionModule.None;
-```
-
-## Element vs Program
-
-| Aspect | Element | Program |
-| ------ | ------- | ------- |
-| View output | `Node` | `Document` |
-| Runtime integration | Manual | Automatic |
-| Entry point | No | Yes |
-| Subscriptions | Must be composed | Managed by runtime |
-| Use case | Reusable components | Application root |
-
-## Complete Example
-
-```csharp
-using Abies;
-using Abies.Html;
 using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
-// Model
-public record AccordionModel(
-    string Title,
-    string Content,
-    bool IsExpanded
-);
+// A reusable avatar component — just a function
+public static Node Avatar(string imageUrl, string name, string size = "md") =>
+    img([
+        src(imageUrl),
+        alt(name),
+        class_($"avatar avatar-{size}")
+    ]);
 
-// Input for initialization
-public record AccordionInput(
-    string Title, 
-    string Content, 
-    bool StartExpanded = false
-);
+// A reusable button component with an event handler
+public static Node PrimaryButton(string label, Message onClick) =>
+    button([
+        class_("btn btn-primary"),
+        onclick(onClick)
+    ], [text(label)]);
 
-// Messages
-public record ToggleAccordion : Message;
-
-// Element implementation
-public class Accordion : Element<AccordionModel, AccordionInput>
-{
-    public static AccordionModel Initialize(AccordionInput input)
-        => new(input.Title, input.Content, input.StartExpanded);
-
-    public static (AccordionModel, Command) Update(Message msg, AccordionModel model)
-        => msg switch
-        {
-            ToggleAccordion => (model with { IsExpanded = !model.IsExpanded }, Commands.None),
-            _ => (model, Commands.None)
-        };
-
-    public static Node View(AccordionModel model)
-        => div([class_("accordion")], [
-            div([
-                class_("accordion-header"),
-                onclick(new ToggleAccordion())
-            ], [
-                text(model.Title),
-                span([class_(model.IsExpanded ? "chevron-up" : "chevron-down")], [])
-            ]),
-            model.IsExpanded
-                ? div([class_("accordion-body")], [text(model.Content)])
-                : text("")
-        ]);
-
-    public static Subscription Subscriptions(AccordionModel model)
-        => SubscriptionModule.None;
-}
-```
-
-## Using Elements in a Program
-
-Elements are not automatically managed. You integrate them manually:
-
-### 1. Embed in Parent Model
-
-```csharp
-public record PageModel(
-    AccordionModel Faq1,
-    AccordionModel Faq2
-);
-```
-
-### 2. Create Wrapper Messages
-
-```csharp
-public record Faq1Msg(Message Inner) : Message;
-public record Faq2Msg(Message Inner) : Message;
-```
-
-### 3. Route Messages
-
-```csharp
-public static (PageModel, Command) Update(Message msg, PageModel model)
-    => msg switch
-    {
-        Faq1Msg m => 
-        {
-            var (newFaq, cmd) = Accordion.Update(m.Inner, model.Faq1);
-            return (model with { Faq1 = newFaq }, cmd);
-        },
-        Faq2Msg m =>
-        {
-            var (newFaq, cmd) = Accordion.Update(m.Inner, model.Faq2);
-            return (model with { Faq2 = newFaq }, cmd);
-        },
-        _ => (model, Commands.None)
-    };
-```
-
-### 4. Render with Message Wrapping
-
-```csharp
-public static Document View(PageModel model)
-    => new("FAQ",
+// Usage in a View function
+public static Document View(Model model) =>
+    new("Profile",
         div([], [
-            // You'd need to wrap messages from child views
-            Accordion.View(model.Faq1),
-            Accordion.View(model.Faq2)
+            Avatar(model.User.AvatarUrl, model.User.Name, "lg"),
+            PrimaryButton("Follow", new FollowClicked())
         ]));
 ```
 
-## Stateless Alternative
+This approach has several advantages over component models:
 
-For components without internal state, use plain functions:
+- **No framework abstractions** — functions are plain C#, no interfaces to implement
+- **Composable** — functions call functions, infinitely nestable
+- **Testable** — pass arguments in, assert on the returned `Node` tree
+- **Refactorable** — IDE rename/extract/inline work perfectly
+- **Zero overhead** — no lifecycle, no component instances, no virtual dispatch
+
+## Parameterized Views
+
+For more complex reusable views, use functions with structured parameters:
 
 ```csharp
-// Stateless component
-public static Node Avatar(string url, string name, string size = "md")
-    => img([
-        src(url),
-        alt(name),
-        class_($"avatar avatar-{size}")
-    ], []);
+public record ArticlePreview(string Title, string Description, string Author, DateTime Date, string Slug);
 
-// Usage
-Avatar("/images/user.jpg", "John Doe", "lg")
+public static Node ArticleCard(ArticlePreview article) =>
+    div([class_("article-preview")], [
+        div([class_("article-meta")], [
+            text(article.Author),
+            text(article.Date.ToString("MMMM d, yyyy"))
+        ]),
+        a([href($"/article/{article.Slug}"), class_("preview-link")], [
+            h2([], [text(article.Title)]),
+            p([], [text(article.Description)])
+        ])
+    ]);
+
+// Render a list
+public static Node ArticleList(IEnumerable<ArticlePreview> articles) =>
+    div([], articles.Select(ArticleCard).ToArray());
 ```
 
-## Best Practices
+## Memoization
 
-1. **Keep element models minimal** — Only include necessary state
-2. **Use initialization arguments** — Configure elements at creation
-3. **Expose subscriptions** — Let parents compose them
-4. **Prefer functions for stateless UI** — Simpler and lighter
+Abies provides two memoization mechanisms to skip unnecessary re-renders of view subtrees. These are analogous to Elm's `lazy` function.
+
+### lazy (Lazy Memoization)
+
+```csharp
+using static Abies.Html.Elements;
+
+Node subtree = lazy(model.SelectedArticle, () => ExpensiveArticleView(model.SelectedArticle));
+```
+
+The `lazy<TKey>(key, factory)` function creates a `LazyMemo<TKey>` node:
+
+- The `key` is compared against the previous render's key using `EqualityComparer<TKey>`
+- If the key hasn't changed, the factory is **never called** — the cached node from the previous render is reused
+- If the key has changed, the factory is called to produce a new node
+
+This is the primary performance optimization tool. Use it for:
+
+- Expensive view computations
+- Large subtrees that rarely change
+- List items with stable identity
+
+```csharp
+// Memoize each item in a list by its unique ID
+public static Node TodoList(IReadOnlyList<Todo> todos) =>
+    ul([], todos.Select(todo =>
+        lazy(todo.Id, () => TodoItem(todo))
+    ).ToArray());
+```
+
+### memo (Eager Memoization)
+
+```csharp
+Node subtree = memo(model.Count, precomputedNode);
+```
+
+The `memo<TKey>(key, node)` function creates a `Memo<TKey>` node:
+
+- Like `lazy`, the key is compared against the previous render
+- Unlike `lazy`, the node is **always materialized** — there's no deferred factory
+- The optimization is in the diff algorithm: when the key matches, the subtree diff is skipped
+
+Use `memo` when you've already computed the node and want to skip diffing, but don't need deferred evaluation.
+
+### When to Memoize
+
+| Scenario | Use |
+|----------|-----|
+| Expensive computation that can be skipped | `lazy(key, factory)` |
+| Already-computed subtree, skip diffing | `memo(key, node)` |
+| Simple/cheap view function | No memoization needed |
+| Dynamic list with stable item identities | `lazy(item.Id, () => ItemView(item))` |
+
+## The Element DOM Type
+
+The `Element` record is the DOM node type that represents an HTML element in the virtual DOM. It is **not** a component interface — it's a data type produced by the `Html.Elements` functions.
+
+```csharp
+public record Element(
+    string Id,
+    string Tag,
+    Attribute[] Attributes,
+    params Node[] Children
+) : Node(Id);
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Id` | `string` | Unique identifier (generated by Praefixum at compile time) |
+| `Tag` | `string` | HTML tag name (e.g., `"div"`, `"button"`, `"input"`) |
+| `Attributes` | `Attribute[]` | HTML attributes and event handlers |
+| `Children` | `Node[]` | Child nodes |
+
+You rarely construct `Element` directly — the `Html.Elements` functions do it for you:
+
+```csharp
+// This function call:
+div([class_("container")], [text("Hello")])
+
+// Produces this Element:
+new Element("auto-id", "div", [new Attribute("...", "class", "container")], [new Text("...", "Hello")])
+```
+
+## Comparison with Component Models
+
+| Aspect | Abies (Functions) | Component Models (Blazor, React) |
+|--------|-------------------|----------------------------------|
+| Reuse unit | Function | Class/component |
+| State | In the parent model | Component-local state |
+| Lifecycle | None | Mount, update, dispose |
+| Communication | Function parameters + messages | Props, events, callbacks |
+| Memoization | `lazy(key, factory)` | `shouldComponentUpdate` / `React.memo` |
+| Testing | Call function, assert on return value | Render component, query DOM |
+| Overhead | Zero | Instance allocation, lifecycle |
+
+## Why No Components?
+
+Abies follows the Elm Architecture strictly: all state lives in a single model, all state transitions happen in a single `Transition` function, and the view is a pure function of the model. This eliminates the need for component-local state, lifecycle hooks, and component communication patterns (props drilling, context, signals, etc.).
+
+The trade-off is that you manage all state explicitly in your model. For small-to-medium applications, this is simpler. For large applications, you structure your model as nested records and use helper functions to delegate transitions — which is still simpler than a component lifecycle model.
 
 ## See Also
 
-- [Program API](./program.md) — Application root interface
-- [Concepts: Components](../concepts/components.md) — Component patterns
-- [Tutorial: Real-World App](../tutorials/07-real-world-app.md) — Elements in practice
+- [DOM Types](dom-types.md) — The `Node`, `Element`, and other virtual DOM types
+- [HTML Elements](html-elements.md) — Functions that create `Element` nodes
+- [HTML Attributes](html-attributes.md) — Functions that create `Attribute` values
+- [HTML Events](html-events.md) — Functions that create event `Handler` attributes
+- [Program](program.md) — The application root where `View` is defined
