@@ -1,10 +1,34 @@
 # ADR-004: Parser Combinators for Routing
 
-**Status:** Accepted  
+**Status:** Deprecated  
 **Date:** 2024-01-15  
 **Decision Makers:** Abies Core Team  
 **Supersedes:** None  
-**Superseded by:** None
+**Superseded by:** None  
+**Deprecated:** 2026-03 (v2 migration)
+
+> **⚠️ Deprecation Notice**
+>
+> This ADR is deprecated. Parser combinators for routing were removed during the Abies v2 migration.
+> Routing is now implemented via plain pattern matching on URL path segments using `switch` expressions
+> — essentially "Alternative 3" from this ADR, which was originally rejected as "doesn't scale to
+> complex routes." In practice, for Abies's routing needs, pattern matching on `url.Path` turned out
+> to be perfectly adequate, simpler, and more idiomatic:
+>
+> ```csharp
+> static Route FromUrl(Url url) => url.Path switch
+> {
+>     [] or [""] => HomeRoute(url),
+>     ["login"]  => LoginRoute(),
+>     ["register"] => RegisterRoute(),
+>     ["article", var slug] => ArticleRoute(slug),
+>     ["profile", var username] => ProfileRoute(username),
+>     _ => NotFoundRoute()
+> };
+> ```
+>
+> The framework-level `Parser.cs` and `Route.cs` files no longer exist. Application-level routing
+> lives in each app's own `Route.cs` (e.g., `Picea.Abies.Conduit.App/Route.cs`).
 
 ## Context
 
@@ -135,6 +159,10 @@ Route FromUrl(Url url) => url.Path.Value switch
 
 Rejected because it doesn't scale to complex routes.
 
+> **Note (2026-03):** This alternative was ultimately adopted in a refined form during the v2 migration.
+> C# list patterns on `url.Path` segments proved to be sufficiently type-safe and composable for
+> real-world routing needs, while being dramatically simpler than parser combinators.
+
 ## Related Decisions
 
 - [ADR-001: Model-View-Update Architecture](./ADR-001-mvu-architecture.md)
@@ -145,10 +173,13 @@ Rejected because it doesn't scale to complex routes.
 - [Elm URL.Parser](https://package.elm-lang.org/packages/elm/url/latest/Url-Parser)
 - [Parser Combinators in Haskell](https://wiki.haskell.org/Parsing_a_simple_imperative_language)
 - [Monadic Parser Combinators (Hutton & Meijer)](http://www.cs.nott.ac.uk/~pszgmh/monparsing.pdf)
-- [`Picea.Abies/Parser.cs`](../../Picea.Abies/Parser.cs) - Core parser implementation
-- [`Picea.Abies/Route.cs`](../../Picea.Abies/Route.cs) - Route-specific parsers
+- ~~[`Picea.Abies/Parser.cs`](../../Picea.Abies/Parser.cs)~~ — Removed in v2 migration
+- ~~[`Picea.Abies/Route.cs`](../../Picea.Abies/Route.cs)~~ — Removed in v2 migration
 
 ## Changelog
 
 - **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
   - Updated file references: `Abies/Parser.cs` → `Picea.Abies/Parser.cs`, `Abies/Route.cs` → `Picea.Abies/Route.cs`
+- **2026-03 (v2 migration)**: **Deprecated.** Parser combinators removed from the framework.
+  Routing replaced by plain pattern matching on URL path segments (`url.Path switch`).
+  Framework-level `Parser.cs` and `Route.cs` no longer exist. See deprecation notice at top.
