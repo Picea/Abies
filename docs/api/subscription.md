@@ -1,375 +1,197 @@
-# Subscription API Reference
+# Subscription API
 
-Subscriptions are declarative event sources for long-lived external events.
+Subscriptions connect the MVU loop to external event sources: timers, WebSocket connections, browser events, server-sent events, and any other asynchronous data stream. They are the declarative counterpart to commands — while commands represent one-shot side effects, subscriptions represent ongoing event sources.
 
-## Overview
-
-Unlike commands (one-time effects), subscriptions stay active as long as they're returned from the `Subscriptions` function. They're managed by the runtime—started when added, stopped when removed.
-
-## Subscription Function
-
-Every `Program` declares its subscriptions:
+## Subscription Type
 
 ```csharp
-public static Subscription Subscriptions(Model model)
-    => model.TimerActive
-        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new TimerTick())
-        : SubscriptionModule.None;
+public abstract record Subscription
+{
+    public sealed record None : Subscription;
+    public sealed record Batch(IReadOnlyList<Subscription> Subscriptions) : Subscription;
+    public sealed record Source(SubscriptionKey Key, StartSubscription Start) : Subscription;
+}
 ```
 
-## SubscriptionModule
+| Variant | Description |
+|---------|-------------|
+| `None` | No subscriptions. Identity element of the subscription monoid. |
+| `Batch` | Multiple subscriptions combined. Binary operation of the subscription monoid. |
+| `Source` | A single subscription source identified by a unique key. |
 
-The `SubscriptionModule` provides subscription utilities:
+### Monoid Structure
+
+Like commands, subscriptions form a **monoid**:
+
+- **Identity:** `Subscription.None` — no subscriptions.
+- **Binary operation:** `Subscription.Batch` — combines subscriptions.
+
+## SubscriptionModule Factory
+
+The `SubscriptionModule` static class provides ergonomic factory methods:
 
 ```csharp
 public static class SubscriptionModule
 {
-    public static Subscription None { get; }
-    public static Subscription Batch(IEnumerable<Subscription> subscriptions);
+    public static readonly Subscription None;
+    public static Subscription Batch(params Subscription[] subscriptions);
+    public static Subscription Create(string key, StartSubscription start);
+    public static Subscription Every(TimeSpan interval, Func<Message> message);
+    public static Subscription Every(string key, TimeSpan interval, Func<Message> message);
 }
 ```
 
 ### SubscriptionModule.None
 
-A subscription that does nothing:
+```csharp
+public static readonly Subscription None
+```
+
+Singleton instance representing no subscriptions. Return this from `Subscriptions` when the application has no active subscriptions:
 
 ```csharp
-public static Subscription Subscriptions(Model model)
-    => SubscriptionModule.None;
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.None;
 ```
 
 ### SubscriptionModule.Batch
 
-Combines multiple subscriptions:
-
 ```csharp
-public static Subscription Subscriptions(Model model)
-    => SubscriptionModule.Batch([
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()),
-        SubscriptionModule.OnResize(size => new Resized(size.Width, size.Height)),
-        SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
-    ]);
+public static Subscription Batch(params Subscription[] subscriptions)
 ```
 
-## Timer Subscriptions
+Combines multiple subscriptions. Includes smart collapsing (same as `Commands.Batch`):
 
-### Every
-
-Fires repeatedly at an interval:
-
-```csharp
-SubscriptionModule.Every(TimeSpan.FromSeconds(1), now => new SecondTick(now))
-SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new AnimationFrame())  // ~60fps
-SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
-```
-
-**Parameters:**
-
-- `interval` — Time between firings
-- `toMessage` — Function that creates a message (receives current `DateTimeOffset`)
-
-## Browser Event Subscriptions
-
-### OnResize
-
-Fires when the window is resized:
+| Input | Output |
+|-------|--------|
+| Zero subscriptions | `SubscriptionModule.None` |
+| One subscription | The single subscription (unwrapped) |
+| N subscriptions | `Subscription.Batch(subscriptions)` |
 
 ```csharp
-SubscriptionModule.OnResize(size => new WindowResized(size.Width, size.Height))
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.Batch(
+        Navigation.UrlChanges(url => new UrlChanged(url)),
+        SubscriptionModule.Every(TimeSpan.FromSeconds(30), () => new RefreshFeed()));
 ```
 
-### OnVisibilityChange
-
-Fires when the tab visibility changes:
+### SubscriptionModule.Create
 
 ```csharp
-SubscriptionModule.OnVisibilityChange(evt => new VisibilityChanged(evt.State))
+public static Subscription Create(string key, StartSubscription start)
 ```
 
-## Keyboard Subscriptions
-
-### OnKeyDown
-
-Fires when any key is pressed:
+Creates a named subscription source with a custom start function. The `key` uniquely identifies the subscription — the runtime uses it to determine which subscriptions to start, keep, or stop when the model changes.
 
 ```csharp
-SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""))
+public static Subscription Subscriptions(Model model) =>
+    model.IsConnected
+        ? SubscriptionModule.Create("websocket", async (dispatch, ct) =>
+            {
+                using var ws = new ClientWebSocket();
+                await ws.ConnectAsync(new Uri("wss://example.com/feed"), ct);
+                var buffer = new byte[4096];
+                while (!ct.IsCancellationRequested)
+                {
+                    var result = await ws.ReceiveAsync(buffer, ct);
+                    var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    dispatch(new WebSocketMessage(text));
+                }
+            })
+        : SubscriptionModule.None;
 ```
 
-**Filtering keys:**
+#### StartSubscription Delegate
 
 ```csharp
-SubscriptionModule.OnKeyDown(data => data?.Key switch
-{
-    "Escape" => new EscapePressed(),
-    "Enter" => new EnterPressed(),
-    _ => null  // Ignore other keys
-})
+public delegate Task StartSubscription(Dispatch dispatch, CancellationToken cancellationToken);
 ```
 
-### OnKeyUp
+The function that runs the subscription. It receives:
 
-Fires when a key is released:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dispatch` | `Dispatch` | Function to send messages into the MVU loop |
+| `cancellationToken` | `CancellationToken` | Signals when the subscription should stop |
+
+The subscription should run until cancellation, dispatching messages as external events arrive. The returned `Task` should complete when the subscription has fully stopped.
+
+### SubscriptionModule.Every
 
 ```csharp
-SubscriptionModule.OnKeyUp(data => new KeyReleased(data?.Key ?? ""))
+public static Subscription Every(TimeSpan interval, Func<Message> message)
+public static Subscription Every(string key, TimeSpan interval, Func<Message> message)
 ```
 
-## Mouse Subscriptions
+Creates a periodic timer that dispatches a message at fixed intervals using `PeriodicTimer`.
 
-### OnMouseMove
-
-Fires when the mouse moves:
+The auto-keyed overload uses `"every:{interval.TotalMilliseconds}"` as the key. Use the keyed overload when you have multiple timers with the same interval:
 
 ```csharp
-SubscriptionModule.OnMouseMove(data => new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0))
+// Single timer — auto-keyed as "every:1000"
+SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick())
+
+// Multiple timers with same interval — need distinct keys
+SubscriptionModule.Batch(
+    SubscriptionModule.Every("animation", TimeSpan.FromMilliseconds(16), () => new AnimationFrame()),
+    SubscriptionModule.Every("polling", TimeSpan.FromMilliseconds(16), () => new PollSensor()))
 ```
 
-### OnMouseDown / OnMouseUp
+## Subscription Lifecycle
 
-Fires on mouse button events:
+The runtime's `SubscriptionManager` manages subscription lifecycle automatically:
+
+1. After every state transition, the runtime calls `TProgram.Subscriptions(model)`
+2. The manager diffs the new subscription set against the running set
+3. **New keys** → start the subscription task
+4. **Same keys** → keep the existing running task (no restart)
+5. **Removed keys** → cancel the subscription's `CancellationToken`
+
+This means subscriptions are **declarative** — you describe *what* should be running, and the manager handles the imperative lifecycle.
+
+### Key-Based Identity
+
+Subscription identity is determined by the `SubscriptionKey` (a string wrapper). As long as the same key appears in consecutive `Subscriptions` calls, the running subscription task is preserved. This is critical for long-lived connections like WebSockets — you don't want to reconnect on every model change.
+
+## Dispatch Delegate
 
 ```csharp
-SubscriptionModule.OnMouseDown(data => new MousePressed(data?.Button ?? 0))
-SubscriptionModule.OnMouseUp(data => new MouseReleased(data?.Button ?? 0))
+public delegate void Dispatch(Message message);
 ```
 
-## Conditional Subscriptions
+Fire-and-forget function that sends a message into the MVU loop. Used by subscription sources to feed external events into the application. The dispatch is asynchronous — calling it does not block.
 
-Subscriptions are declarative—return them based on model state:
+## Example: Conditional Subscriptions
 
 ```csharp
 public static Subscription Subscriptions(Model model)
 {
     var subs = new List<Subscription>();
-    
-    // Timer only when game is playing
+
+    // Always listen for URL changes
+    subs.Add(Navigation.UrlChanges(url => new UrlChanged(url)));
+
+    // Timer only when a game is active
     if (model.GameState == GameState.Playing)
+        subs.Add(SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), () => new Tick()));
+
+    // WebSocket only when connected
+    if (model.IsOnline)
+        subs.Add(SubscriptionModule.Create("realtime", StartRealtimeConnection));
+
+    return subs.Count switch
     {
-        subs.Add(SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new GameTick()));
-    }
-    
-    // Keyboard only when input is focused
-    if (model.InputFocused)
-    {
-        subs.Add(SubscriptionModule.OnKeyDown(data => new KeyInput(data?.Key ?? "")));
-    }
-    
-    // Always track visibility for analytics
-    subs.Add(SubscriptionModule.OnVisibilityChange(evt => new TrackVisibility(evt.State)));
-    
-    return subs.Count > 0 
-        ? SubscriptionModule.Batch(subs) 
-        : SubscriptionModule.None;
+        0 => SubscriptionModule.None,
+        _ => SubscriptionModule.Batch(subs.ToArray())
+    };
 }
 ```
 
-## Subscription Lifecycle
-
-```text
-1. Model changes
-2. Subscriptions(model) called
-3. Runtime compares with previous subscriptions
-4. New subscriptions → Started
-5. Removed subscriptions → Stopped
-6. Unchanged subscriptions → Keep running
-7. Active subscriptions dispatch messages
-8. Messages trigger Update, loop continues
-```
-
-## Creating Custom Subscriptions
-
-For specialized event sources, implement `Subscription`:
-
-```csharp
-public class WebSocketSubscription : Subscription
-{
-    private readonly string _url;
-    private readonly Func<string, Message> _toMessage;
-    private WebSocket? _socket;
-    
-    public WebSocketSubscription(string url, Func<string, Message> toMessage)
-    {
-        _url = url;
-        _toMessage = toMessage;
-    }
-    
-    public override async Task Start(Dispatch dispatch, CancellationToken ct)
-    {
-        _socket = new WebSocket(_url);
-        _socket.OnMessage += msg => dispatch(_toMessage(msg));
-        
-        try
-        {
-            await _socket.ConnectAsync(ct);
-        }
-        catch (Exception ex)
-        {
-            dispatch(new ConnectionFailed(ex.Message));
-        }
-    }
-    
-    public override async Task Stop()
-    {
-        if (_socket is not null)
-        {
-            await _socket.CloseAsync();
-            _socket = null;
-        }
-    }
-    
-    public override bool Equals(Subscription other)
-        => other is WebSocketSubscription ws && ws._url == _url;
-    
-    public override int GetHashCode()
-        => _url.GetHashCode();
-}
-
-// Factory function
-public static Subscription OnWebSocket(string url, Func<string, Message> toMessage)
-    => new WebSocketSubscription(url, toMessage);
-```
-
-## Common Patterns
-
-### Auto-Save
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => model.HasUnsavedChanges
-        ? SubscriptionModule.Every(TimeSpan.FromSeconds(30), _ => new AutoSave())
-        : SubscriptionModule.None;
-```
-
-### Polling
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => model.CurrentPage == Page.Dashboard
-        ? SubscriptionModule.Every(TimeSpan.FromMinutes(1), _ => new RefreshDashboard())
-        : SubscriptionModule.None;
-```
-
-### Keyboard Shortcuts
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => SubscriptionModule.OnKeyDown(data => (data?.Key, model.CtrlPressed) switch
-    {
-        ("s", true) => new SaveShortcut(),
-        ("z", true) => new UndoShortcut(),
-        ("Escape", _) => new CloseModal(),
-        _ => null
-    });
-```
-
-### Inactivity Detection
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => SubscriptionModule.Batch([
-        SubscriptionModule.OnMouseMove(_ => new UserActive()),
-        SubscriptionModule.OnKeyDown(_ => new UserActive()),
-        SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new CheckInactivity())
-    ]);
-```
-
-## Testing Subscriptions
-
-### Test Subscription Selection
-
-```csharp
-[Fact]
-public void WhenTimerRunning_ReturnsTimerSubscription()
-{
-    var model = new Model(TimerRunning: true);
-    
-    var sub = Program.Subscriptions(model);
-    
-    Assert.IsType<TimerSubscription>(sub);
-}
-
-[Fact]
-public void WhenTimerStopped_ReturnsNone()
-{
-    var model = new Model(TimerRunning: false);
-    
-    var sub = Program.Subscriptions(model);
-    
-    Assert.Equal(SubscriptionModule.None, sub);
-}
-```
-
-### Test Messages from Subscriptions
-
-```csharp
-[Fact]
-public void TimerTick_UpdatesElapsedTime()
-{
-    var model = new Model(Elapsed: TimeSpan.Zero);
-    
-    var (result, _) = Update(new TimerTick(), model);
-    
-    Assert.Equal(TimeSpan.FromSeconds(1), result.Elapsed);
-}
-```
-
-## Best Practices
-
-### 1. Keep Subscriptions Declarative
-
-```csharp
-// ✅ Good - declarative based on model
-public static Subscription Subscriptions(Model model)
-    => model.WantsTimer 
-        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()) 
-        : SubscriptionModule.None;
-
-// ❌ Bad - imperative side effects
-public static Subscription Subscriptions(Model model)
-{
-    if (model.WantsTimer)
-        StartTimer();  // Side effect!
-    return SubscriptionModule.None;
-}
-```
-
-### 2. Use Appropriate Intervals
-
-```csharp
-// Animation: 16ms (~60fps)
-SubscriptionModule.Every(TimeSpan.FromMilliseconds(16), _ => new Frame())
-
-// UI updates: 100-1000ms
-SubscriptionModule.Every(TimeSpan.FromMilliseconds(500), _ => new UpdateClock())
-
-// Data refresh: minutes
-SubscriptionModule.Every(TimeSpan.FromMinutes(5), _ => new RefreshData())
-```
-
-### 3. Implement Equality for Custom Subscriptions
-
-```csharp
-public override bool Equals(Subscription other)
-    => other is MySubscription ms && ms._key == _key;
-
-public override int GetHashCode()
-    => _key.GetHashCode();
-```
-
-### 4. Handle Cleanup
-
-```csharp
-public override async Task Stop()
-{
-    _timer?.Dispose();
-    await _socket?.CloseAsync();
-    _eventSource?.Close();
-}
-```
+When `model.GameState` changes from `Playing` to `Paused`, the timer subscription's key disappears from the set, and the `SubscriptionManager` automatically cancels it. When it changes back to `Playing`, a new timer is started.
 
 ## See Also
 
-- [Command API](./command.md) — One-time side effects
-- [Concepts: Subscriptions](../concepts/subscriptions.md) — Deep dive
-- [Tutorial: Subscriptions](../tutorials/06-subscriptions.md) — Hands-on examples
+- [Program](program.md) — Where `Subscriptions` is declared
+- [Navigation](navigation.md) — The `Navigation.UrlChanges` subscription
+- [Runtime](runtime.md) — How the runtime manages subscription lifecycle
+- [Command](command.md) — One-shot side effects (counterpart to subscriptions)

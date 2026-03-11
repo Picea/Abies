@@ -1,394 +1,242 @@
-# Runtime API Reference
+# Runtime API
 
-The `Runtime` module manages the MVU message loop and application lifecycle.
+The Abies runtime orchestrates the MVU loop: it wires the Automaton kernel to view rendering, DOM diffing, and subscription management. There are two hosting models — browser (WASM) and server (ASP.NET Core) — each with its own entry point.
 
-## Usage
+## Browser Runtime
 
-```csharp
-using Abies;
-using Abies.Commanding;
-```
-
-## Overview
-
-The runtime is the engine that drives Abies applications. It:
-
-1. Initializes the application with a URL and arguments
-2. Renders the initial virtual DOM
-3. Starts subscriptions
-4. Processes messages in order
-5. Updates the model and re-renders
-6. Executes commands (side effects)
-
-## Runtime.Run
-
-Starts the MVU message loop:
+### Abies.Browser.Runtime.Run
 
 ```csharp
-public static async Task Run<TProgram, TArguments, TModel>(
-    TArguments arguments,
-    params Commanding.Handler[] handlers)
-    where TProgram : Program<TModel, TArguments>
-```
-
-**Type Parameters:**
-
-| Parameter | Description |
-| --------- | ----------- |
-| `TProgram` | Type implementing `Program<TModel, TArguments>` |
-| `TArguments` | Type of initialization arguments |
-| `TModel` | Type of application model |
-
-**Parameters:**
-
-| Parameter | Type | Description |
-| --------- | ---- | ----------- |
-| `arguments` | `TArguments` | Arguments passed to `Initialize` |
-| `handlers` | `params Commanding.Handler[]` | Zero or more command handlers composed into a pipeline |
-
-**Returns:** `Task` that runs for the application lifetime.
-
-## Starting an Application
-
-### Basic Startup
-
-```csharp
-using Abies;
-using Abies.Commanding;
-using System.Runtime.Versioning;
-
-[assembly: SupportedOSPlatform("browser")]
-
-public partial class Program
+[SupportedOSPlatform("browser")]
+public static class Runtime
 {
-    static async Task Main()
-    {
-        await Runtime.Run<MyProgram, Unit, Model>(Unit.Value);
-    }
-}
-
-public class MyProgram : Program<Model, Unit>
-{
-    // Implementation...
+    public static async Task Run<TProgram, TModel, TArgument>(
+        TArgument argument = default!,
+        Interpreter<Command, Message>? interpreter = null)
+        where TProgram : Program<TModel, TArgument>;
 }
 ```
 
-### With Arguments
+One-line entry point for running an Abies application in the browser. This single method handles the entire WASM bootstrap sequence:
+
+1. Loads `abies.js` via `JSHost.ImportAsync`
+2. Wires DOM event dispatch callbacks (JS → .NET)
+3. Wires URL-changed callbacks (navigation → .NET)
+4. Sets up document-level event delegation
+5. Sets up navigation interception (popstate + link clicks)
+6. Creates a `RenderBatchWriter` and browser `Apply` delegate
+7. Parses the current browser URL for initial routing
+8. Starts the core `Runtime<TProgram, TModel, TArgument>`
+9. Blocks indefinitely to keep the WASM process alive
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `argument` | `TArgument` | `default!` | Initialization parameters passed to `TProgram.Initialize`. Use `Unit` for parameterless apps. |
+| `interpreter` | `Interpreter<Command, Message>?` | `null` | Converts commands into feedback messages. When `null`, a no-op interpreter is used. |
+
+#### Usage
 
 ```csharp
-public record AppConfig(string ApiUrl, bool Debug);
+// Entire Program.cs for a browser application:
+await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
+```
 
-static async Task Main()
+```csharp
+// With a custom interpreter for HTTP commands:
+await Abies.Browser.Runtime.Run<ConduitProgram, ConduitModel, Unit>(
+    interpreter: ConduitInterpreter.Interpret);
+```
+
+```csharp
+// With initialization argument:
+await Abies.Browser.Runtime.Run<MyApp, MyModel, AppConfig>(
+    argument: new AppConfig(ApiBaseUrl: "https://api.example.com"),
+    interpreter: MyInterpreter.Interpret);
+```
+
+> **Note:** `Runtime.Run` never returns — it calls `Task.Delay(Timeout.Infinite)` to keep the WASM process alive. The entire `Program.cs` for a browser app is typically a single line.
+
+## Server Runtime
+
+### MapAbies Extension Method
+
+```csharp
+public static IEndpointRouteBuilder MapAbies<TProgram, TModel, TArgument>(
+    this IEndpointRouteBuilder endpoints,
+    string path,
+    RenderMode mode,
+    Interpreter<Command, Message>? interpreter = null,
+    TArgument argument = default!)
+    where TProgram : Program<TModel, TArgument>;
+```
+
+ASP.NET Core extension method that maps an Abies application to a URL path with a specified render mode.
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `path` | `string` | — | The URL path to map (e.g., `"/"`, `"/{**catch-all}"`) |
+| `mode` | `RenderMode` | — | The rendering strategy (see below) |
+| `interpreter` | `Interpreter<Command, Message>?` | `null` | Command interpreter. Required for interactive modes with custom commands. |
+| `argument` | `TArgument` | `default!` | Initialization parameters for the program. |
+
+#### Render Modes
+
+| Mode | Initial HTML | MVU Loop | Use Case |
+|------|-------------|----------|----------|
+| `RenderMode.Static` | Server | None | Content pages, SEO-critical pages |
+| `RenderMode.InteractiveServer(webSocketPath?)` | Server | Server (WebSocket) | Instant interactivity, no WASM download |
+| `RenderMode.InteractiveWasm` | Server | Client (WASM) | No persistent connection after load |
+| `RenderMode.InteractiveAuto(webSocketPath?)` | Server | Server → Client | Best UX: fast interactivity + connectionless |
+
+The `webSocketPath` parameter defaults to `"/_abies/ws"` for both `InteractiveServer` and `InteractiveAuto`.
+
+#### Usage
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Static rendering — no interactivity
+app.MapAbies<MyApp, MyModel, Unit>("/", new RenderMode.Static());
+
+// Interactive server — MVU loop on the server over WebSocket
+app.MapAbies<MyApp, MyModel, Unit>("/", new RenderMode.InteractiveServer());
+
+// Interactive WASM — server-rendered HTML, then client takes over
+app.MapAbies<MyApp, MyModel, Unit>(
+    "/{**catch-all}",
+    new RenderMode.InteractiveWasm,
+    interpreter: MyInterpreter.Interpret);
+
+// Interactive Auto — server-first, transitions to WASM when ready
+app.MapAbies<MyApp, MyModel, Unit>(
+    "/",
+    new RenderMode.InteractiveAuto(),
+    interpreter: MyInterpreter.Interpret);
+
+app.Run();
+```
+
+> **Catch-all routes:** When the path contains `**`, `MapFallback` is used instead of `MapGet` so that static file middleware gets priority over the HTML page handler.
+
+## Core Runtime
+
+The `Runtime<TProgram, TModel, TArgument>` is the platform-agnostic MVU execution loop used internally by both browser and server runtimes.
+
+### Runtime.Start
+
+```csharp
+public static async Task<Runtime<TProgram, TModel, TArgument>> Start(
+    Apply apply,
+    Interpreter<Command, Message> interpreter,
+    TArgument argument = default!,
+    Action<string>? titleChanged = null,
+    Action<NavigationCommand>? navigationExecutor = null,
+    Url? initialUrl = null,
+    bool threadSafe = false);
+```
+
+Starts the MVU runtime with a platform-specific `Apply` delegate. This is the low-level API — most applications use `Browser.Runtime.Run` or `MapAbies` instead.
+
+#### Startup Sequence
+
+1. `TProgram.Initialize(argument)` → `(model, command)`
+2. `TProgram.View(model)` → `document`
+3. `Operations.Diff(null, document.Body)` → initial patches
+4. `HeadDiff.Diff([], document.Head)` → head patches
+5. `apply(allPatches)` → render to platform
+6. `TProgram.Subscriptions(model)` → start initial subscriptions
+7. Interpret initial command
+8. Dispatch `UrlChanged(initialUrl)` if provided
+
+### Runtime Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Model` | `TModel` | The current application state |
+| `CurrentDocument` | `Document?` | The current virtual DOM document |
+| `Handlers` | `HandlerRegistry` | Event handler registry for this runtime instance |
+
+### Runtime.Dispatch
+
+```csharp
+public ValueTask<Result<Unit, PipelineError>> Dispatch(
+    Message message, CancellationToken cancellationToken = default);
+```
+
+Dispatches a message into the MVU loop: transition → render → diff → apply → subscriptions.
+
+### Apply Delegate
+
+```csharp
+public delegate void Apply(IReadOnlyList<Patch> patches);
+```
+
+The boundary between the pure Abies core and platform-specific rendering:
+
+| Platform | Implementation |
+|----------|----------------|
+| Browser | JS interop to mutate the real DOM via binary batch protocol |
+| Server | Binary patches sent over WebSocket transport |
+| Tests | Captures patches for assertions |
+
+## Interpreter Delegate
+
+```csharp
+public delegate ValueTask<Result<Message[], PipelineError>> Interpreter<TEffect, TEvent>(
+    TEffect effect);
+```
+
+Converts commands into feedback messages. The runtime wraps the caller-supplied interpreter with built-in handling:
+
+| Command | Handling |
+|---------|----------|
+| `Command.None` | No-op (monoid identity) |
+| `Command.Batch` | Recursively interprets each sub-command |
+| `NavigationCommand` | Executed by the runtime's navigation executor |
+| Everything else | Falls through to your interpreter |
+
+## Server Sessions
+
+For interactive server modes, each connected client gets its own `Session` wrapping an MVU runtime:
+
+```csharp
+public static class Session
 {
-    var config = new AppConfig(
-        ApiUrl: "https://api.example.com",
-        Debug: true
-    );
-
-    await Runtime.Run<MyProgram, AppConfig, Model>(config);
+    public static Task<Session<TProgram, TModel, TArgument>> Start<TProgram, TModel, TArgument>(
+        SendPatches sendPatches,
+        ReceiveEvent receiveEvent,
+        Interpreter<Command, Message> interpreter,
+        SendText? sendText = null,
+        TArgument argument = default!,
+        Url? initialUrl = null)
+        where TProgram : Program<TModel, TArgument>;
 }
-
-public class MyProgram : Program<Model, AppConfig>
-{
-    public static (Model, Command) Initialize(Url url, AppConfig config)
-    {
-        var model = new Model(ApiUrl: config.ApiUrl);
-        return (model, Commands.None);
-    }
-}
 ```
 
-## Message Loop
+Sessions use `threadSafe: true` since server sessions are accessed from async I/O threads. Each session's `HandlerRegistry` is instance-based — no cross-session contention.
 
-The runtime processes messages sequentially:
+## OpenTelemetry
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Runtime.Run                          │
-├─────────────────────────────────────────────────────────┤
-│  1. Initialize(url, args) → (model, cmd)                │
-│  2. View(model) → document                              │
-│  3. Render initial DOM                                  │
-│  4. Start subscriptions                                 │
-│  5. Execute initial command                             │
-│                                                         │
-│  ┌─── Message Loop ────────────────────────────────┐    │
-│  │  foreach message:                               │    │
-│  │    1. Update(msg, model) → (newModel, cmd)      │    │
-│  │    2. View(newModel) → newDocument              │    │
-│  │    3. Diff(oldDom, newDom) → patches            │    │
-│  │    4. Apply patches to real DOM                 │    │
-│  │    5. Update subscriptions                      │    │
-│  │    6. Execute command                           │    │
-│  └─────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
+The runtime emits spans via `System.Diagnostics.ActivitySource`:
 
-## Message Dispatch
+| Span | Source | Description |
+|------|--------|-------------|
+| `Abies.Start` | `Abies.Runtime` | Runtime initialization |
+| `Abies.Render` | `Abies.Runtime` | View + diff + apply cycle |
+| `Abies.Stop` | `Abies.Runtime` | Runtime disposal |
+| `Abies.Server.Session.Start` | `Abies.Server.Session` | Server session initialization |
+| `Abies.Server.Session.EventLoop` | `Abies.Server.Session` | Server event loop |
 
-Messages are dispatched through an unbounded channel:
-
-```csharp
-// Internal implementation
-private static readonly Channel<Message> _messageChannel =
-    Channel.CreateUnbounded<Message>();
-```
-
-### From Events
-
-Event handlers dispatch messages automatically:
-
-```csharp
-button(onClick(new Increment()), text("+"))
-// Click → Dispatch(new Increment())
-```
-
-### From Commands
-
-Command handlers return an `Option<Message>`:
-
-```csharp
-var loginHandler = Pipeline.For<LoginCommand>(async cmd =>
-{
-    var result = await login(cmd.Email, cmd.Password);
-    return Some<Message>(result switch
-    {
-        Ok<User, LoginError>(var user) => new LoginSuccess(user),
-        _ => new LoginError("Invalid credentials")
-    });
-});
-```
-
-### From Subscriptions
-
-Subscriptions dispatch messages when events occur:
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => Subscription.Batch(
-        Every(TimeSpan.FromSeconds(1), () => new Tick())
-    );
-```
-
-## URL Handling
-
-The runtime intercepts URL changes:
-
-### OnUrlChanged
-
-Called when browser navigation occurs:
-
-```csharp
-public static Message OnUrlChanged(Url url)
-    => new UrlChanged(url);
-```
-
-### OnLinkClicked
-
-Called when a link is clicked:
-
-```csharp
-public static Message OnLinkClicked(UrlRequest request)
-    => request switch
-    {
-        UrlRequest.Internal internal_ => new Navigate(internal_.Url),
-        UrlRequest.External external => new ExternalNavigation(external.Url),
-        _ => new NoOp()
-    };
-```
-
-## Command Execution
-
-Commands are executed after each update:
-
-### Navigation Commands
-
-Handled specially by the runtime:
-
-```csharp
-case Navigation.Command.PushState pushState:
-    await Interop.PushState(pushState.Url.ToString());
-    var msg = TProgram.OnUrlChanged(pushState.Url);
-    Dispatch(msg);
-    break;
-
-case Navigation.Command.Load load:
-    await Interop.Load(load.Url.ToString());
-    break;
-
-case Navigation.Command.ReplaceState replaceState:
-    await Interop.ReplaceState(replaceState.Url.ToString());
-    var msg = TProgram.OnUrlChanged(replaceState.Url);
-    Dispatch(msg);
-    break;
-```
-
-### Batch Commands
-
-Executed sequentially:
-
-```csharp
-case Command.Batch batch:
-    foreach (var cmd in batch.Commands)
-    {
-        await ExecuteCommand(cmd);
-    }
-    break;
-```
-
-### Custom Commands
-
-Routed to the command handler pipeline:
-
-```csharp
-default:
-    var result = await handleCommand(command);
-    if (result is Some<Message> some)
-    {
-        Dispatch(some.Value);
-    }
-    break;
-```
-
-## Subscription Management
-
-Subscriptions are updated after each model change:
-
-```csharp
-subscriptionState = SubscriptionManager.Update(
-    subscriptionState,
-    TProgram.Subscriptions(model),
-    Dispatch
-);
-```
-
-The manager:
-- Starts new subscriptions
-- Stops removed subscriptions
-- Keeps unchanged subscriptions running
-
-## Handler Registration
-
-Event handlers are registered with the runtime:
-
-```csharp
-// Internal - called during DOM patching
-internal static void RegisterHandler(DOM.Handler handler);
-internal static void UnregisterHandler(DOM.Handler handler);
-```
-
-Handler IDs are stored in concurrent dictionaries for lookup during dispatch.
-
-## JavaScript Interop
-
-The runtime exposes entry points for JavaScript:
-
-### Dispatch (from events)
-
-```csharp
-[JSExport]
-public static void Dispatch(string messageId)
-```
-
-Called by JavaScript when an event occurs on an element with a `data-event-*` attribute.
-
-### DispatchData (events with data)
-
-```csharp
-[JSExport]
-public static void DispatchData(string messageId, string? json)
-```
-
-Called when an event includes data (e.g., input value).
-
-### DispatchSubscriptionData
-
-```csharp
-[JSExport]
-public static void DispatchSubscriptionData(string key, string? json)
-```
-
-Called by JavaScript when a subscription produces data.
-
-## Instrumentation
-
-The runtime integrates with OpenTelemetry:
-
-```csharp
-using var runActivity = Instrumentation.ActivitySource.StartActivity("Run");
-// ...
-using var messageActivity = Instrumentation.ActivitySource.StartActivity("Message");
-messageActivity?.SetTag("message.type", message.GetType().FullName);
-```
-
-Activities are created for:
-- Overall run lifecycle
-- Each message processing
-- Command handling
-
-## Error Handling
-
-The runtime handles missing handlers gracefully:
-
-```csharp
-if (_handlers.TryGetValue(messageId, out var message))
-{
-    Dispatch(message);
-    return;
-}
-// Missing handler can occur during DOM replacement; ignore gracefully
-System.Diagnostics.Debug.WriteLine($"[Abies] Missing handler for messageId={messageId}");
-```
-
-This prevents crashes during rapid DOM updates.
-
-## Best Practices
-
-### 1. Keep Commands Fast
-
-Long-running commands block the message loop:
-
-```csharp
-// ❌ Avoid blocking calls
-case LongCommand:
-    Thread.Sleep(5000);  // Blocks all messages!
-    break;
-
-// ✅ Use async properly
-case LongCommand:
-    await Task.Delay(5000);  // Allows other processing
-    break;
-```
-
-### 2. Return Messages from Handlers
-
-Command handlers return `Option<Message>` instead of dispatching imperatively:
-
-```csharp
-// ✅ Return a message
-var handler = Pipeline.For<LoadDataCommand>(async cmd =>
-{
-    var data = await fetchData(cmd.Id);
-    return new Some<Message>(new DataLoaded(data));
-});
-```
-
-### 3. Batch Related Commands
-
-```csharp
-// Instead of dispatching multiple commands
-return (model, new Command.Batch(
-    new LoadUser(userId),
-    new LoadArticles(userId),
-    new LoadNotifications(userId)
-));
-```
+The browser-side `abies.js` also creates spans for DOM events and propagates `traceparent` headers on fetch requests.
 
 ## See Also
 
-- [Program API](./program.md) — Program interface
-- [Command API](./command.md) — Command types
-- [Subscription API](./subscription.md) — Subscription system
-- [Concepts: MVU Architecture](../concepts/mvu-architecture.md)
-- [ADR-001: MVU Architecture](../adr/ADR-001-mvu-architecture.md)
-- [ADR-005: WebAssembly Runtime](../adr/ADR-005-webassembly-runtime.md)
+- [Program](program.md) — The application interface the runtime executes
+- [Command](command.md) — Side effects and the interpreter pattern
+- [Subscription](subscription.md) — External event sources managed by the runtime
+- [DOM Types](dom-types.md) — Virtual DOM types produced by `View`

@@ -1,284 +1,175 @@
-# Program API Reference
+# Program Interface
 
-The `Program` interface defines the complete MVU lifecycle for an Abies application.
+The `Program<TModel, TArgument>` interface is the compile-time contract that defines an Abies MVU application. It extends the Automaton kernel's transition function with two MVU-specific capabilities: rendering views and declaring subscriptions.
 
-## Interface Definition
+## Type Signature
 
 ```csharp
-public interface Program<TModel, in TArgument> 
+public interface Program<TModel, TArgument> : Automaton<TModel, Message, Command, TArgument>
 {
-    static abstract (TModel, Command) Initialize(Url url, TArgument argument);
-    static abstract (TModel model, Command command) Update(Message message, TModel model);
     static abstract Document View(TModel model);
-    static abstract Message OnUrlChanged(Url url);
-    static abstract Message OnLinkClicked(UrlRequest urlRequest);
     static abstract Subscription Subscriptions(TModel model);
-    static abstract Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch);
 }
 ```
+
+## Automaton Kernel Mapping
+
+The `Program` interface inherits two members from the `Automaton<TState, TEvent, TEffect, TParameters>` kernel and adds two MVU-specific members:
+
+| Automaton | MVU | Member | Signature |
+|-----------|-----|--------|-----------|
+| `TState` | `TModel` | — | The application state |
+| `TEvent` | `Message` | — | User and system events |
+| `TEffect` | `Command` | — | Side effects |
+| `TParameters` | `TArgument` | — | Initialization parameters |
+| `Initialize` | `Initialize` | From kernel | `static (TModel, Command) Initialize(TArgument argument)` |
+| `Transition` | `Transition` | From kernel | `static (TModel, Command) Transition(TModel model, Message message)` |
+| — | `View` | MVU-specific | `static Document View(TModel model)` |
+| — | `Subscriptions` | MVU-specific | `static Subscription Subscriptions(TModel model)` |
+
+The interface has exactly **four static abstract members** — two inherited from the Automaton kernel (`Initialize`, `Transition`) and two defined directly (`View`, `Subscriptions`).
+
+## Members
+
+### Initialize
+
+```csharp
+static (TModel, Command) Initialize(TArgument argument)
+```
+
+Creates the initial model and optionally returns an initial command. Called once when the runtime starts.
+
+- **`argument`** — Initialization parameters. Use `Unit` for parameterless applications.
+- **Returns** — A tuple of the initial model and an initial command (use `Commands.None` for no initial side effects).
+
+> **Navigation note:** The runtime dispatches `UrlChanged(initialUrl)` as the first message *after* initialization. Applications do not receive the initial URL in `Initialize` — they handle it in `Transition` like any other URL change.
+
+### Transition
+
+```csharp
+static (TModel, Command) Transition(TModel model, Message message)
+```
+
+The pure state transition function. Given the current model and a message, produces a new model and optionally a command.
+
+- **`model`** — The current application state.
+- **`message`** — The event to process (user interaction, subscription event, URL change, etc.).
+- **Returns** — A tuple of the new model and a command to execute.
+
+This function must be **pure** — no side effects, no mutation. All side effects are expressed as `Command` values that the runtime's interpreter executes.
+
+### View
+
+```csharp
+static Document View(TModel model)
+```
+
+Renders the current model as a virtual DOM `Document`. Called after every state transition.
+
+- **`model`** — The current application state.
+- **Returns** — A `Document` describing the desired UI.
+
+This function must be **pure**. The runtime diffs the returned document against the previous one and applies the minimal set of patches to the actual DOM.
+
+### Subscriptions
+
+```csharp
+static Subscription Subscriptions(TModel model)
+```
+
+Declares the external event sources the application wants to listen to. Called after every state transition.
+
+- **`model`** — The current application state.
+- **Returns** — A `Subscription` describing the desired set of active subscriptions.
+
+Subscriptions are **declarative** — the runtime's `SubscriptionManager` handles the lifecycle (starting new subscriptions, keeping unchanged ones, stopping removed ones). Return `SubscriptionModule.None` when the application has no subscriptions in its current state.
 
 ## Type Parameters
 
 | Parameter | Description |
-| --------- | ----------- |
-| `TModel` | The type of the application's model (state) |
-| `TArgument` | The type of the initialization argument passed at startup |
-
-## Methods
-
-### Initialize
-
-Creates the initial model and startup commands.
-
-```csharp
-static abstract (TModel, Command) Initialize(Url url, TArgument argument);
-```
-
-**Parameters:**
-
-- `url` — The initial URL when the application starts
-- `argument` — Initialization data passed from the host
-
-**Returns:** A tuple of the initial model and any startup command
-
-**Example:**
-
-```csharp
-public static (Model, Command) Initialize(Url url, Unit argument)
-{
-    var route = Route.FromUrl(url);
-    var model = new Model(Route: route, Count: 0, IsLoading: true);
-    return (model, new LoadInitialDataCommand());
-}
-```
-
-### Update
-
-Handles messages and produces new state.
-
-```csharp
-static abstract (TModel model, Command command) Update(Message message, TModel model);
-```
-
-**Parameters:**
-
-- `message` — The message to handle
-- `model` — The current model state
-
-**Returns:** A tuple of the new model and any command to execute
-
-**Example:**
-
-```csharp
-public static (Model, Command) Update(Message message, Model model)
-    => message switch
-    {
-        Increment => (model with { Count = model.Count + 1 }, Commands.None),
-        Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-        Reset => (model with { Count = 0 }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-### View
-
-Renders the model to a virtual DOM document.
-
-```csharp
-static abstract Document View(TModel model);
-```
-
-**Parameters:**
-
-- `model` — The current model state
-
-**Returns:** A `Document` representing the page
-
-**Example:**
-
-```csharp
-public static Document View(Model model)
-    => new("My App",
-        div([class_("app")], [
-            h1([], [text($"Count: {model.Count}")]),
-            button([onclick(new Increment())], [text("+")])
-        ]));
-```
-
-### OnUrlChanged
-
-Creates a message when the browser URL changes (e.g., back/forward navigation).
-
-```csharp
-static abstract Message OnUrlChanged(Url url);
-```
-
-**Parameters:**
-
-- `url` — The new URL
-
-**Returns:** A message to dispatch
-
-**Example:**
-
-```csharp
-public static Message OnUrlChanged(Url url)
-    => new UrlChangedMessage(url);
-```
-
-### OnLinkClicked
-
-Creates a message when a link is clicked.
-
-```csharp
-static abstract Message OnLinkClicked(UrlRequest urlRequest);
-```
-
-**Parameters:**
-
-- `urlRequest` — Either `Internal(Url)` or `External(string)`
-
-**Returns:** A message to dispatch
-
-**Example:**
-
-```csharp
-public static Message OnLinkClicked(UrlRequest urlRequest)
-    => urlRequest switch
-    {
-        UrlRequest.Internal @internal => new NavigateTo(@internal.Url),
-        UrlRequest.External external => new OpenExternal(external.Url),
-        _ => throw new NotImplementedException()
-    };
-```
-
-### Subscriptions
-
-Declares external event sources based on current state.
-
-```csharp
-static abstract Subscription Subscriptions(TModel model);
-```
-
-**Parameters:**
-
-- `model` — The current model state
-
-**Returns:** Active subscriptions
-
-**Example:**
-
-```csharp
-public static Subscription Subscriptions(Model model)
-    => model.TimerRunning
-        ? Every(TimeSpan.FromSeconds(1), _ => new TimerTick())
-        : SubscriptionModule.None;
-```
-
-### HandleCommand
-
-Executes side effects and dispatches result messages.
-
-```csharp
-static abstract Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch);
-```
-
-**Parameters:**
-
-- `command` — The command to execute
-- `dispatch` — Function to dispatch result messages
-
-**Example:**
-
-```csharp
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-{
-    switch (command)
-    {
-        case LoadData:
-            try
-            {
-                var data = await httpClient.GetFromJsonAsync<Data>("/api/data");
-                dispatch(new DataLoaded(data));
-            }
-            catch (Exception ex)
-            {
-                dispatch(new LoadFailed(ex.Message));
-            }
-            break;
-            
-        case Commands.None:
-            break;
-    }
-}
-```
+|-----------|-------------|
+| `TModel` | The application model (state). Typically an immutable record. |
+| `TArgument` | Initialization parameters. Use `Unit` for parameterless applications. |
 
 ## Complete Example
 
 ```csharp
 using Abies;
-using Abies.Html;
+using Abies.DOM;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Elements;
 using static Abies.Html.Attributes;
 using static Abies.Html.Events;
 
-public record Model(int Count, bool IsLoading);
+public record CounterModel(int Count);
 
-public record Increment : Message;
-public record Decrement : Message;
-public record Reset : Message;
-
-public class CounterProgram : Program<Model, Unit>
+public interface CounterMessage : Message
 {
-    public static (Model, Command) Initialize(Url url, Unit argument)
-        => (new Model(0, false), Commands.None);
+    record struct Increment : CounterMessage;
+    record struct Decrement : CounterMessage;
+}
 
-    public static (Model, Command) Update(Message message, Model model)
-        => message switch
+public class Counter : Program<CounterModel, Unit>
+{
+    public static (CounterModel, Command) Initialize(Unit _) =>
+        (new CounterModel(0), Commands.None);
+
+    public static (CounterModel, Command) Transition(CounterModel model, Message message) =>
+        message switch
         {
-            Increment => (model with { Count = model.Count + 1 }, Commands.None),
-            Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-            Reset => (model with { Count = 0 }, Commands.None),
+            CounterMessage.Increment => (model with { Count = model.Count + 1 }, Commands.None),
+            CounterMessage.Decrement => (model with { Count = model.Count - 1 }, Commands.None),
             _ => (model, Commands.None)
         };
 
-    public static Document View(Model model)
-        => new("Counter",
-            div([class_("counter")], [
-                button([onclick(new Decrement())], [text("-")]),
-                span([], [text(model.Count.ToString())]),
-                button([onclick(new Increment())], [text("+")]),
-                button([onclick(new Reset())], [text("Reset")])
+    public static Document View(CounterModel model) =>
+        new("Counter",
+            div([], [
+                button([onclick(new CounterMessage.Decrement())], [text("-")]),
+                text(model.Count.ToString()),
+                button([onclick(new CounterMessage.Increment())], [text("+")])
             ]));
 
-    public static Message OnUrlChanged(Url url) 
-        => new NoOp();
-
-    public static Message OnLinkClicked(UrlRequest request) 
-        => new NoOp();
-
-    public static Subscription Subscriptions(Model model) 
-        => SubscriptionModule.None;
-
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch) 
-        => Task.CompletedTask;
+    public static Subscription Subscriptions(CounterModel model) =>
+        SubscriptionModule.None;
 }
-
-public record NoOp : Message;
 ```
 
 ## Running a Program
 
-```csharp
-// Program.cs
-using Abies;
+### Browser (WASM)
 
-await Runtime.Run<CounterProgram, Arguments, Model>(new Arguments());
+```csharp
+await Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
 ```
+
+### Server (ASP.NET Core)
+
+```csharp
+app.MapAbies<Counter, CounterModel, Unit>("/", new RenderMode.InteractiveServer());
+```
+
+See [Runtime](runtime.md) for the full API reference of both hosting models.
+
+## Design Principles
+
+### Pure Functions Only
+
+All four members are pure functions. Side effects are expressed as `Command` values returned from `Initialize` and `Transition`. The runtime's interpreter executes commands and feeds any resulting messages back into the loop.
+
+### Navigation is a Message
+
+URL changes and link clicks are modeled as regular `Message` types (`UrlChanged`, `UrlRequest`) rather than dedicated interface members. Applications opt into navigation by handling these messages in `Transition`. This follows the Open/Closed Principle — the `Program` interface is closed for modification but open for extension via new message types.
+
+### Static Abstract Members
+
+All members are `static abstract`, meaning the program type itself is the capability — no instance is needed. This enables the runtime to call program functions directly via the type parameter constraint, with zero allocation overhead.
 
 ## See Also
 
-- [Element Interface](./element.md) — Reusable components
-- [Command API](./command.md) — Side effect handling
-- [Message Interface](./message.md) — Event types
-- [Concepts: MVU Architecture](../concepts/mvu-architecture.md) — Deep dive
+- [Command](command.md) — Side effects returned from `Initialize` and `Transition`
+- [Message](message.md) — Events processed by `Transition`
+- [Subscription](subscription.md) — External event sources declared by `Subscriptions`
+- [DOM Types](dom-types.md) — The `Document` and `Node` types returned by `View`
+- [Runtime](runtime.md) — How the runtime executes the MVU loop
