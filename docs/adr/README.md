@@ -13,7 +13,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-003](./ADR-003-virtual-dom.md) | Virtual DOM Implementation | Accepted | Uses virtual DOM for declarative rendering |
 | [ADR-004](./ADR-004-parser-combinators.md) | Parser Combinators for Routing | Accepted | Type-safe routing with parser combinators |
 | [ADR-005](./ADR-005-webassembly-runtime.md) | WebAssembly Runtime | Accepted | Runs entirely in browser via .NET WASM |
-| [ADR-006](./ADR-006-command-pattern.md) | Command Pattern for Side Effects | Accepted | Keeps Update pure; effects via Commands |
+| [ADR-006](./ADR-006-command-pattern.md) | Command Pattern for Side Effects | Accepted | Keeps Transition pure; effects via Commands |
 | [ADR-007](./ADR-007-subscriptions.md) | Subscription Model for External Events | Accepted | Declarative subscriptions for ongoing events |
 | [ADR-008](./ADR-008-immutable-state.md) | Immutable State Management | Accepted | All state via immutable records |
 | [ADR-009](./ADR-009-sum-types.md) | Sum Types for State Representation | Accepted | Discriminated unions for mutually exclusive states |
