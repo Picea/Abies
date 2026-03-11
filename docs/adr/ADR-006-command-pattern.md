@@ -8,7 +8,7 @@
 
 ## Context
 
-In the MVU architecture, the `Update` function must be pure—given the same message and model, it must always return the same result. However, real applications need side effects:
+In the MVU architecture, the `Transition` function must be pure—given the same message and model, it must always return the same result. However, real applications need side effects:
 
 - HTTP requests to APIs
 - Local storage access
@@ -18,16 +18,16 @@ In the MVU architecture, the `Update` function must be pure—given the same mes
 
 We needed a pattern to:
 
-1. Keep `Update` pure and testable
+1. Keep `Transition` pure and testable
 2. Express intent for side effects declaratively
 3. Execute effects outside the update loop
 4. Dispatch result messages back into the loop
 
 ## Decision
 
-We adopt the **Command pattern** where `Update` returns both a new model and a `Command` value describing side effects to perform.
+We adopt the **Command pattern** where `Transition` returns both a new model and a `Command` value describing side effects to perform.
 
-The runtime executes commands asynchronously via `HandleCommand`, which dispatches result messages back into the update loop.
+The runtime executes commands asynchronously via `Interpret`, which dispatches result messages back into the update loop.
 
 Core types:
 
@@ -45,10 +45,10 @@ public static class Commands
 }
 ```
 
-Update signature:
+Transition signature:
 
 ```csharp
-public static (Model model, Command command) Update(Message message, Model model)
+public static (Model model, Command command) Transition(Message message, Model model)
 ```
 
 Example command flow:
@@ -57,8 +57,8 @@ Example command flow:
 // 1. User action triggers message
 public record FetchArticles : Message;
 
-// 2. Update returns command describing intent
-public static (Model, Command) Update(Message msg, Model model) => msg switch
+// 2. Transition returns command describing intent
+public static (Model, Command) Transition(Message msg, Model model) => msg switch
 {
     FetchArticles => (model with { IsLoading = true }, new LoadArticlesCommand()),
     ArticlesLoaded loaded => (model with { Articles = loaded.Articles, IsLoading = false }, Commands.None),
@@ -68,8 +68,8 @@ public static (Model, Command) Update(Message msg, Model model) => msg switch
 // 3. Command type expresses side effect
 public sealed record LoadArticlesCommand(int Limit = 10) : Command;
 
-// 4. HandleCommand executes effect and dispatches result
-public static async Task HandleCommand(Command cmd, Func<Message, ValueTuple> dispatch)
+// 4. Interpret executes effect and dispatches result
+public static async Task Interpret(Command cmd, Func<Message, ValueTuple> dispatch)
 {
     switch (cmd)
     {
@@ -84,16 +84,13 @@ public static async Task HandleCommand(Command cmd, Func<Message, ValueTuple> di
 Built-in navigation commands:
 
 ```csharp
-public static class Navigation
+public abstract record NavigationCommand : Command
 {
-    public interface Command : Abies.Command
-    {
-        public record struct PushState(Url Url) : Command;
-        public record struct ReplaceState(Url Url) : Command;
-        public record struct Load(Url Url) : Command;
-        public record struct Back(int times) : Command;
-        public record struct Forward(int times) : Command;
-    }
+    public sealed record Push(Url Url) : NavigationCommand;
+    public sealed record Replace(Url Url) : NavigationCommand;
+    public sealed record External(Url Url) : NavigationCommand;
+    public sealed record GoBack(int Times) : NavigationCommand;
+    public sealed record GoForward(int Times) : NavigationCommand;
 }
 ```
 
@@ -101,7 +98,7 @@ public static class Navigation
 
 ### Positive
 
-- **Pure updates**: `Update` remains a pure function; all effects are external
+- **Pure transitions**: `Transition` remains a pure function; all effects are external
 - **Testable**: Commands can be asserted without executing effects
 - **Declarative intent**: Commands describe *what* to do, not *how*
 - **Composable**: `Command.Batch` combines multiple effects
@@ -110,7 +107,7 @@ public static class Navigation
 
 ### Negative
 
-- **Indirection**: Effect logic is separate from update logic
+- **Indirection**: Effect logic is separate from transition logic
 - **Boilerplate**: Each effect requires a command type and handler case
 - **Testing effects**: Effect execution still needs integration tests
 - **Error handling**: Must dispatch error messages for failed effects
@@ -122,20 +119,20 @@ public static class Navigation
 
 ## Alternatives Considered
 
-### Alternative 1: Perform Effects Directly in Update
+### Alternative 1: Perform Effects Directly in Transition
 
-Allow `Update` to call async methods directly:
+Allow `Transition` to call async methods directly:
 
 ```csharp
-public static async Task<Model> Update(Message msg, Model model)
+public static async Task<Model> Transition(Message msg, Model model)
 {
-    var data = await Http.GetAsync(...);  // Side effect in Update
+    var data = await Http.GetAsync(...);  // Side effect in Transition
     return model with { Data = data };
 }
 ```
 
 - Simpler mental model initially
-- Update becomes impure and untestable
+- Transition becomes impure and untestable
 - Hard to reason about concurrent updates
 - Breaks MVU guarantees
 
@@ -157,13 +154,13 @@ Rejected for simplicity; can be reconsidered if needed.
 Pass effect capabilities as function parameters:
 
 ```csharp
-public static (Model, Command) Update(
+public static (Model, Command) Transition(
     Message msg, Model model,
     Func<string, Task<Data>> fetchData)
 ```
 
 - Explicit dependencies
-- Increases Update signature complexity
+- Increases Transition signature complexity
 - Harder to extend
 - Still requires async handling
 
@@ -179,6 +176,15 @@ Rejected because Command pattern is simpler for the common case.
 
 - [Elm Commands and Subscriptions](https://guide.elm-lang.org/effects/)
 - [The Elm Architecture Effects](https://guide.elm-lang.org/architecture/effects/)
-- [`Abies/Types.cs`](../../Abies/Types.cs) - Command interface
-- [`Abies/Navigation.cs`](../../Abies/Navigation.cs) - Navigation commands
-- [`Abies.Conduit/Commands.cs`](../../Abies.Conduit/Commands.cs) - Example commands
+- [`Picea.Abies/Command.cs`](../../Picea.Abies/Command.cs) - Command interface
+- [`Picea.Abies/Navigation.cs`](../../Picea.Abies/Navigation.cs) - Navigation commands
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current API after Picea migration.
+  - Renamed `Update` → `Transition` throughout (function name and prose)
+  - Renamed `HandleCommand` → `Interpret` (function name and prose)
+  - Updated navigation commands: `PushState` → `Push`, `ReplaceState` → `Replace`, `Load` → `External`, `Back` → `GoBack`, `Forward` → `GoForward`
+  - Changed `Navigation.Command` interface hierarchy → `NavigationCommand` abstract record with sealed record cases
+  - Updated file references: `Abies/Types.cs` → `Picea.Abies/Command.cs`, `Abies/Navigation.cs` → `Picea.Abies/Navigation.cs`
+  - Removed stale reference to `Abies.Conduit/Commands.cs`

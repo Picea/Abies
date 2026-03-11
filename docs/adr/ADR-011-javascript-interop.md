@@ -25,7 +25,7 @@ The .NET WebAssembly runtime provides several interop mechanisms:
 
 ## Decision
 
-We use the **modern `[JSImport]`/`[JSExport]` attributes** for JavaScript interop, with a thin `abies.js` JavaScript layer that handles browser APIs.
+We use the **modern `[JSImport]`/`[JSExport]` attributes** for JavaScript interop, with a thin `abies.js` JavaScript layer that handles browser APIs. DOM patches are transferred using a **binary batching protocol** for performance.
 
 Architecture:
 
@@ -34,9 +34,10 @@ Architecture:
 │                    C# (.NET WASM)                        │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │              Interop.cs                           │   │
-│  │   [JSImport] void SetAppContent(string html)     │   │
-│  │   [JSImport] void UpdateAttribute(...)           │   │
-│  │   [JSExport] void Dispatch(string messageId)     │   │
+│  │   [JSImport] void ApplyBinaryBatch(Span<byte>)   │   │
+│  │   [JSImport] void PushState(string url)          │   │
+│  │   [JSExport] void DispatchDomEvent(string id)    │   │
+│  │   [JSExport] void OnUrlChanged(string url)       │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
                            ↕
@@ -44,9 +45,9 @@ Architecture:
 │                     JavaScript                           │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │                  abies.js                         │   │
-│  │   setAppContent(html) { ... }                    │   │
-│  │   updateAttribute(id, name, value) { ... }       │   │
-│  │   // Event listeners call Dispatch()             │   │
+│  │   applyBinaryBatch(span) { ... }                 │   │
+│  │   pushState(url) { ... }                         │   │
+│  │   // Event listeners call DispatchDomEvent()     │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
                            ↕
@@ -55,28 +56,22 @@ Architecture:
 └─────────────────────────────────────────────────────────┘
 ```
 
-Key interop methods in `Interop.cs`:
+The JavaScript module is imported using the module name `"Abies"`:
 
 ```csharp
 public static partial class Interop
 {
+    // Binary batch — all DOM patches in a single call
+    [JSImport("applyBinaryBatch", "Abies")]
+    public static partial void ApplyBinaryBatch(
+        [JSMarshalAs<JSType.MemoryView>] Span<byte> batchData);
+
     // Navigation
-    [JSImport("pushState", "abies.js")]
+    [JSImport("pushState", "Abies")]
     public static partial Task PushState(string url);
 
-    // DOM manipulation
-    [JSImport("setAppContent", "abies.js")]
-    public static partial Task SetAppContent(string html);
-    
-    [JSImport("updateAttribute", "abies.js")]
-    public static partial Task UpdateAttribute(string id, string name, string value);
-
-    // Event callbacks
-    [JSImport("onUrlChange", "abies.js")]
-    public static partial void OnUrlChange(Action<string> handler);
-
     // Storage
-    [JSImport("setLocalStorage", "abies.js")]
+    [JSImport("setLocalStorage", "Abies")]
     public static partial Task SetLocalStorage(string key, string value);
 }
 ```
@@ -85,20 +80,25 @@ Event dispatch from JavaScript back to C#:
 
 ```csharp
 [JSExport]
-public static void Dispatch(string messageId)
+public static void DispatchDomEvent(string handlerId)
 {
-    if (_handlers.TryGetValue(messageId, out var message))
-    {
-        _messageChannel.Writer.TryWrite(message);
-    }
+    // Looks up the handler in the HandlerRegistry and queues the message
 }
 
 [JSExport]
-public static void DispatchData(string messageId, string? json)
+public static void OnUrlChanged(string url)
 {
-    // Deserialize and dispatch with event data
+    // Dispatches a URL change message into the MVU loop
 }
 ```
+
+The **binary batching protocol** writes all DOM patches into a compact binary buffer:
+
+- **Header** (8 bytes): patch count + string table offset
+- **Patch entries** (16 bytes each): type + 3 string table indices
+- **String table**: LEB128 length-prefixed UTF-8 strings with deduplication
+
+This eliminates per-patch interop overhead and achieves performance matching Blazor WASM.
 
 ## Consequences
 
@@ -110,18 +110,18 @@ public static void DispatchData(string messageId, string? json)
 - **Thin JS layer**: JavaScript code is minimal and focused
 - **Centralized**: All interop goes through `Interop.cs`
 - **Testable**: Can mock `Interop` for unit testing
+- **High performance**: Binary batching transfers all patches in a single call
 
 ### Negative
 
-- **Async overhead**: Each call crosses JS boundary asynchronously
-- **Serialization cost**: Complex data must be serialized (JSON)
+- **Serialization cost**: Non-batched data must be serialized (strings, JSON)
 - **Two codebases**: Must maintain both C# and JS files
 - **Debug complexity**: Call stack crosses language boundaries
 - **Breaking changes**: JS API changes require coordinating both sides
 
 ### Neutral
 
-- String-based message IDs map handlers to events
+- String-based handler IDs map handlers to events
 - Event data is JSON-serialized for type safety
 - Subscription handlers use separate registry from one-shot handlers
 
@@ -252,5 +252,16 @@ the shared-memory protocol should be re-evaluated.
 
 - [.NET WASM JavaScript Interop](https://learn.microsoft.com/en-us/aspnet/core/blazor/javascript-interoperability)
 - [JSImport/JSExport](https://learn.microsoft.com/en-us/aspnet/core/blazor/javascript-interoperability/import-export-interop)
-- [`Abies/Interop.cs`](../../Abies/Interop.cs) - C# interop declarations
-- [`Abies/wwwroot/abies.js`](../../Abies/wwwroot/abies.js) - JavaScript implementation
+- [`Picea.Abies.Browser/Interop.cs`](../../Picea.Abies.Browser/Interop.cs) - C# interop declarations
+- [`Picea.Abies.Browser/wwwroot/abies.js`](../../Picea.Abies.Browser/wwwroot/abies.js) - JavaScript implementation
+- [`Picea.Abies/RenderBatchWriter.cs`](../../Picea.Abies/RenderBatchWriter.cs) - Binary batch writer
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current architecture after Picea migration.
+  - Replaced individual DOM interop calls (`SetAppContent`, `UpdateAttribute`, `Dispatch`) in architecture diagram with binary batching architecture (`ApplyBinaryBatch`, `DispatchDomEvent`, `OnUrlChanged`)
+  - Updated JS module name from `"abies.js"` → `"Abies"` in `[JSImport]` declarations
+  - Updated interop method examples to show `ApplyBinaryBatch(Span<byte>)`, `DispatchDomEvent`, `OnUrlChanged`
+  - Added binary batching protocol description to main Decision section
+  - Updated file references: `Abies/Interop.cs` → `Picea.Abies.Browser/Interop.cs`, `Abies/wwwroot/abies.js` → `Picea.Abies.Browser/wwwroot/abies.js`
+  - Added reference to `Picea.Abies/RenderBatchWriter.cs`
