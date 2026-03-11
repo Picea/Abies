@@ -2,8 +2,8 @@
 
 These instructions capture practical functional domain-driven design and adapt them to this repo’s constraints:
 
-* C# (latest features), but **pure functional programming** style (see `csharp.instructions.md`).
-* MVU apps exist (e.g., `Abies.Conduit`), but domain modeling principles still apply.
+* C# (latest featuUse `Option<T>` (repo has `Picea.Abies/Option.cs`) for "might be missing".es), but **pure functional programming** style (see `csharp.instructions.md`).
+* MVU apps exist (e.g., `Picea.Abies.Conduit`), but domain modeling principles still apply.
 * **No OO-first design**: prefer immutable records + pure functions + explicit types.
 
 ---

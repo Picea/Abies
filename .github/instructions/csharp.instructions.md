@@ -28,8 +28,8 @@ applyTo: '**/*.cs'
 
 - Never prefix interface names with "I" (e.g., IUserService).
 - Never use the naming convention for async code using the Async suffix
-- Treat and use namespaces like bounded context in DDD. Prefer something like "Abies.Commanding.Handler" over "Abies.CommandHandler" and "Abies.Commanding.Pipeline" over "Abies.CommandPipeline".
-- Treat project names as namespaces. For example, "Abies" should be the root namespace for all code in the project. Prefer "Abies.Demos.Subscriptions" over "Abies.SubscriptionDemo" and "Abies.Conduit.Testing.E2E" over "Abies.Conduit.E2E".
+- Treat and use namespaces like bounded context in DDD. Prefer something like "Picea.Abies.Commanding.Handler" over "Picea.Abies.CommandHandler" and "Picea.Abies.Commanding.Pipeline" over "Picea.Abies.CommandPipeline".
+- Treat project names as namespaces. For example, "Picea.Abies" should be the root namespace for all code in the project. Prefer "Picea.Abies.Demos.Subscriptions" over "Picea.Abies.SubscriptionDemo" and "Picea.Abies.Conduit.Testing.E2E" over "Picea.Abies.Conduit.E2E".
 
 ## Formatting
 

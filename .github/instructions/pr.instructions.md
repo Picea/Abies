@@ -25,7 +25,7 @@ dotnet format
 **Important:** When fixing formatting issues in a PR branch, use `--include` to target only your changed files to avoid reformatting unrelated code:
 
 ```bash
-dotnet format Abies/Abies.csproj --include path/to/your/file.cs
+dotnet format Picea.Abies/Picea.Abies.csproj --include path/to/your/file.cs
 ```
 
 ### EditorConfig Rules

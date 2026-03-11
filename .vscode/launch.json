@@ -7,10 +7,10 @@
     
 
         {
-            "name": "C#: Abies. Debug",
+            "name": "C#: Picea.Abies.Conduit Debug",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/Abies.Conduit/Abies.Conduit.csproj"
+            "projectPath": "${workspaceFolder}/Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj"
         },
         {
             "type": "firefox",

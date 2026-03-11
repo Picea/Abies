@@ -38,6 +38,8 @@ bld/
 #wwwroot/
 Abies.Conduit/wwwroot/abies.js
 Abies.Counter/wwwroot/abies.js
+Picea.Abies.Conduit.Wasm/wwwroot/abies.js
+Picea.Abies.Counter.Wasm/wwwroot/abies.js
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
@@ -125,11 +127,11 @@ ipch/
 
 # Visual Studio Trace Files
 *.e2e
-!Abies.Conduit.E2E/
-!Abies.Conduit.E2E/**/*.cs
-Abies.Conduit.E2E/bin/
-Abies.Conduit.E2E/obj/
-Abies.Conduit.E2E/TestResults/
+!Picea.Abies.Conduit.Testing.E2E/
+!Picea.Abies.Conduit.Testing.E2E/**/*.cs
+Picea.Abies.Conduit.Testing.E2E/bin/
+Picea.Abies.Conduit.Testing.E2E/obj/
+Picea.Abies.Conduit.Testing.E2E/TestResults/
 
 # Local runtime artifacts
 .apphost.pid

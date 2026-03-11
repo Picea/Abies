@@ -4,7 +4,7 @@ description: 'Guidelines for the Realworld Conduit application'
 
 # Conduit
 
-The Conduit application is a real-world example of a web application built to showcase the abilities of the Abies framework. Abies.Conduit is that application in this solution.
+The Conduit application is a real-world example of a web application built to showcase the abilities of the Abies framework. Picea.Abies.Conduit is that application in this solution.
 
 ## Specification
 

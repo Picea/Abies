@@ -18,7 +18,7 @@
 			"command": "bash",
 			"args": [
 				"-lc",
-				"set -euo pipefail; cd \"${workspaceFolder}\"; pid=$(lsof -t -iTCP:5179 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"${pid:-}\" ]; then kill \"$pid\" || true; sleep 1; fi; nohup dotnet run --project Abies.Conduit.Api --no-build --urls http://localhost:5179 > /tmp/abies-conduit-api-5179.log 2>&1 & echo $! > /tmp/abies-conduit-api-5179.pid; echo \"API started (detached). Log: /tmp/abies-conduit-api-5179.log\""
+				"set -euo pipefail; cd \"${workspaceFolder}\"; pid=$(lsof -t -iTCP:5179 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"${pid:-}\" ]; then kill \"$pid\" || true; sleep 1; fi; nohup dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://localhost:5179 > /tmp/abies-conduit-api-5179.log 2>&1 & echo $! > /tmp/abies-conduit-api-5179.pid; echo \"API started (detached). Log: /tmp/abies-conduit-api-5179.log\""
 			],
 			"isBackground": false,
 			"problemMatcher": [],
@@ -45,7 +45,7 @@
 		{
 			"label": "Run E2E tests",
 			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -c Debug -v minimal",
 			"problemMatcher": [
 				"$msCompile"
 			],
@@ -54,7 +54,7 @@
 		{
 			"label": "Start API server (5179)",
 			"type": "shell",
-			"command": "dotnet run --project Abies.Conduit.Api --no-build --urls http://localhost:5179",
+			"command": "dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://localhost:5179",
 			"args": [],
 			"isBackground": true,
 			"problemMatcher": [],
@@ -63,141 +63,19 @@
 		{
 			"label": "Start Frontend (5209)",
 			"type": "shell",
-			"command": "dotnet run --project Abies.Conduit --no-build",
+			"command": "dotnet run --project Picea.Abies.Conduit.Wasm --no-build",
 			"args": [],
 			"isBackground": true,
 			"problemMatcher": [],
 			"group": "build"
 		},
 		{
-			"label": "Run E2E tests (fresh)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "test"
-		},
-		{
-			"label": "Run E2E tests (pass 1)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E tests (pass 2)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E tests (full suite pass 1)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E tests (full suite pass 2)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E tests (agent)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E tests (verbosity m)",
+			"label": "Run E2E tests (headed) full suite",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
-				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
-				"-v",
-				"m"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E Favorite and Pagination tests",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -v minimal --filter \"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests\"",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E Favorite and Pagination tests (fully qualified)",
-			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -v minimal --filter \"FullyQualifiedName~Abies.Conduit.E2E.FavoriteTests|FullyQualifiedName~Abies.Conduit.E2E.PaginationTests\"",
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "Run E2E (headed + slowmo) Favorite and Pagination",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
-				"-v",
-				"minimal",
-				"--filter",
-				"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests"
-			],
-			"options": {
-				"env": {
-					"HEADED": "1",
-					"PW_SLOWMO_MS": "150",
-					"PWDEBUG": "0",
-					"PLAYWRIGHT_BROWSERS_PATH": "0"
-				}
-			},
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "test"
-		},
-		{
-			"label": "Run E2E (headed) full suite",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"Abies.Conduit.E2E/Abies.Conduit.E2E.csproj",
+				"Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj",
 				"-c",
 				"Debug",
 				"-v",
@@ -218,19 +96,45 @@
 			"group": "test"
 		},
 		{
-			"label": "Run single E2E test",
+			"label": "Run E2E Favorite and Pagination tests",
 			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj --filter FullyQualifiedName~Abies.Conduit.E2E.PaginationTests.CanNavigateArticlePages -l trx",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -v minimal --filter \"FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.FavoriteTests|FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests\"",
 			"isBackground": false,
 			"problemMatcher": [
 				"$msCompile"
 			],
-			"group": "build"
+			"group": "test"
 		},
 		{
-			"label": "Run E2E tests (project-only)",
+			"label": "Run E2E (headed + slowmo) Favorite and Pagination",
 			"type": "shell",
-			"command": "dotnet test Abies.Conduit.E2E/Abies.Conduit.E2E.csproj -c Debug -v minimal",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~FavoriteTests|FullyQualifiedName~PaginationTests"
+			],
+			"options": {
+				"env": {
+					"HEADED": "1",
+					"PW_SLOWMO_MS": "150",
+					"PWDEBUG": "0",
+					"PLAYWRIGHT_BROWSERS_PATH": "0"
+				}
+			},
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run single E2E test",
+			"type": "shell",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj --filter FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests.CanNavigateArticlePages -l trx",
 			"isBackground": false,
 			"problemMatcher": [
 				"$msCompile"
