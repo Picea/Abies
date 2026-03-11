@@ -268,6 +268,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Nerdbank.GitVersioning requires full git history to compute versions
+          fetch-depth: 0
       
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -277,44 +280,60 @@ jobs:
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
       
-      - name: Restore Conduit.Wasm dependencies
-        run: dotnet restore Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj
-        env:
-          # Suppress audit for bundle size check — not its concern
-          DOTNET_NUGET_AUDIT: "false"
-      
-      - name: Build and Publish Release (Trimmed)
+      - name: Publish Release (Trimmed)
         run: |
           dotnet publish Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj \
-            -c Release -o ./publish-trimmed --no-restore
+            -c Release
+        env:
+          # Suppress NuGet audit — the security-scan job handles vulnerability detection
+          DOTNET_NUGET_AUDIT: "false"
       
       - name: Measure Bundle Size
         id: bundle-size
         run: |
-          # Measure the _framework directory size (WASM bundle)
-          FRAMEWORK_DIR="./publish-trimmed/wwwroot/_framework"
+          # For browser-wasm projects using Microsoft.NET.Sdk, the publish output
+          # goes to bin/Release/<tfm>/browser-wasm/AppBundle/ (not wwwroot/_framework).
+          # The _framework directory contains the WASM runtime and assemblies.
+          PUBLISH_DIR="Picea.Abies.Conduit.Wasm/bin/Release/net10.0/browser-wasm"
           
-          if [ -d "$FRAMEWORK_DIR" ]; then
-            # Get total size in bytes
-            TOTAL_BYTES=$(du -sb "$FRAMEWORK_DIR" | cut -f1)
-            TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
-            FILE_COUNT=$(find "$FRAMEWORK_DIR" -type f | wc -l)
-            
-            echo "bundle_size_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
-            echo "bundle_size_bytes=$TOTAL_BYTES" >> $GITHUB_OUTPUT
-            echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
-            
-            echo "📦 WASM Bundle Size Report"
-            echo "=========================="
-            echo "Total Size: ${TOTAL_MB}MB ($TOTAL_BYTES bytes)"
-            echo "File Count: $FILE_COUNT"
-            echo ""
-            echo "Largest files:"
-            find "$FRAMEWORK_DIR" -type f -exec du -h {} + | sort -rh | head -10
-          else
-            echo "❌ Framework directory not found at $FRAMEWORK_DIR"
+          # Find the _framework directory in the publish output
+          FRAMEWORK_DIR=""
+          for candidate in \
+            "$PUBLISH_DIR/AppBundle/_framework" \
+            "$PUBLISH_DIR/publish/wwwroot/_framework" \
+            "$PUBLISH_DIR/publish/_framework"; do
+            if [ -d "$candidate" ]; then
+              FRAMEWORK_DIR="$candidate"
+              break
+            fi
+          done
+          
+          if [ -z "$FRAMEWORK_DIR" ]; then
+            echo "❌ Could not find _framework directory in publish output"
+            echo "Searched in: $PUBLISH_DIR"
+            echo "Directory contents:"
+            find "$PUBLISH_DIR" -maxdepth 4 -type d 2>/dev/null || echo "  (directory not found)"
             exit 1
           fi
+          
+          echo "📂 Found framework directory: $FRAMEWORK_DIR"
+          
+          # Get total size in bytes
+          TOTAL_BYTES=$(du -sb "$FRAMEWORK_DIR" | cut -f1)
+          TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
+          FILE_COUNT=$(find "$FRAMEWORK_DIR" -type f | wc -l)
+          
+          echo "bundle_size_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
+          echo "bundle_size_bytes=$TOTAL_BYTES" >> $GITHUB_OUTPUT
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+          
+          echo "📦 WASM Bundle Size Report"
+          echo "=========================="
+          echo "Total Size: ${TOTAL_MB}MB ($TOTAL_BYTES bytes)"
+          echo "File Count: $FILE_COUNT"
+          echo ""
+          echo "Largest files:"
+          find "$FRAMEWORK_DIR" -type f -exec du -h {} + | sort -rh | head -10
       
       - name: Check Bundle Size Limits
         run: |
