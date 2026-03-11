@@ -1,6 +1,6 @@
 # ADR-005: Security Scanning (SAST/DAST/SCA) in Build Pipeline
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Date:** 2026-02-05  
 **Deciders:** Development Team  
 **Related:** ADR-002 (Pure Functional Programming)
@@ -107,11 +107,11 @@ We need to decide whether to implement automated security scanning (SAST/DAST/SC
 4. **Minimal effort**: One command line in CI pipeline
 5. **Framework responsibility**: Users trust our dependency choices
 
-### Why SAST Should Wait
-1. **Pure functional architecture**: Limited attack surface (no SQL, no file system, no network)
-2. **CodeQL is free for public repos**: We can enable it anytime
-3. **Let the project mature**: Establish baseline before adding more tooling
-4. **Focus on core features**: Don't over-engineer security prematurely
+### Why SAST was Added
+1. **CodeQL is free for public repos**: No cost barrier
+2. **Catches code-level vulnerabilities**: Complements SCA
+3. **Automated triage**: GitHub integrates results into PRs
+4. **Low maintenance**: Query suites are maintained by GitHub
 
 ### Why DAST is Not Needed (Yet)
 1. **No backend**: Blazor WASM runs entirely in browser
@@ -213,7 +213,7 @@ updates:
 ## Monitoring & Review
 
 - **Monthly**: Review any new vulnerability alerts
-- **Quarterly**: Assess if CodeQL SAST should be enabled
+- **Quarterly**: Assess if additional scanning tools are needed
 - **Annually**: Reassess full security scanning strategy
 - **Trigger**: If framework adds server-side features, reassess DAST need
 
@@ -227,10 +227,17 @@ updates:
 
 ## Notes
 
-This ADR focuses on **practical, incremental security improvements** rather than comprehensive coverage. The Abies framework's architecture (pure functional, client-side only, minimal dependencies) reduces attack surface significantly, making aggressive SAST/DAST less critical initially.
+This ADR focuses on **practical, incremental security improvements** rather than comprehensive coverage. The Abies framework's architecture (pure functional, client-side only, minimal dependencies) reduces attack surface significantly, making aggressive DAST less critical initially.
 
 As the project grows and adds features, we should revisit this decision and consider:
-- Enabling GitHub CodeQL (Phase 2)
 - Adding secret scanning
 - Implementing SBOM (Software Bill of Materials) generation
 - Considering third-party SCA tools like Snyk or WhiteSource if the project becomes enterprise-critical
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated status from "Proposed" → "Accepted" (Phases 1 and 2 are completed)
+  - Consolidated "Why SAST Should Wait" rationale into "Why SAST was Added" to reflect Phase 2 completion
+  - Removed stale "Enabling GitHub CodeQL (Phase 2)" from Notes section (already completed)
+  - Updated monitoring cadence for CodeQL assessment (no longer pending)

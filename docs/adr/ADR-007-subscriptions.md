@@ -154,5 +154,10 @@ Rejected because it introduces hidden state.
 
 - [Elm Subscriptions](https://guide.elm-lang.org/effects/time.html)
 - [Elmish Subscriptions](https://elmish.github.io/elmish/#subscriptions)
-- [`Abies/Subscriptions/Subscription.cs`](../../Abies/Subscriptions/Subscription.cs) - Subscription types
-- [`Abies/Subscriptions/SubscriptionManager.cs`](../../Abies/Subscriptions/SubscriptionManager.cs) - Lifecycle management
+- [`Picea.Abies/Subscriptions/Subscription.cs`](../../Picea.Abies/Subscriptions/Subscription.cs) - Subscription types
+- [`Picea.Abies/Subscriptions/SubscriptionManager.cs`](../../Picea.Abies/Subscriptions/SubscriptionManager.cs) - Lifecycle management
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated file references: `Abies/Subscriptions/*` → `Picea.Abies/Subscriptions/*`

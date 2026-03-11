@@ -145,5 +145,10 @@ Rejected because it doesn't scale to complex routes.
 - [Elm URL.Parser](https://package.elm-lang.org/packages/elm/url/latest/Url-Parser)
 - [Parser Combinators in Haskell](https://wiki.haskell.org/Parsing_a_simple_imperative_language)
 - [Monadic Parser Combinators (Hutton & Meijer)](http://www.cs.nott.ac.uk/~pszgmh/monparsing.pdf)
-- [`Abies/Parser.cs`](../../Abies/Parser.cs) - Core parser implementation
-- [`Abies/Route.cs`](../../Abies/Route.cs) - Route-specific parsers
+- [`Picea.Abies/Parser.cs`](../../Picea.Abies/Parser.cs) - Core parser implementation
+- [`Picea.Abies/Route.cs`](../../Picea.Abies/Route.cs) - Route-specific parsers
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated file references: `Abies/Parser.cs` → `Picea.Abies/Parser.cs`, `Abies/Route.cs` → `Picea.Abies/Route.cs`
