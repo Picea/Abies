@@ -1,412 +1,427 @@
-# Virtual DOM Algorithm
+# Virtual DOM Diff Algorithm
 
-This document describes the internal implementation of Abies' virtual DOM diffing and patching algorithm.
+Abies implements a virtual DOM diff algorithm inspired by Elm's VirtualDom and Inferno's keyed reconciliation. The algorithm is a pure function with no browser or JavaScript dependencies — it works identically for WASM, server-side rendering, and test environments.
 
-## Overview
+All diffing logic lives in `Abies/Diff.cs` in the static class `Operations`.
 
-The virtual DOM is an in-memory representation of the UI. When the model changes:
+## Node Type Hierarchy
 
-1. A new virtual DOM tree is created from `View(model)`
-2. The new tree is compared against the previous tree (diffing)
-3. A minimal set of patches is computed
-4. Patches are applied to the real DOM via JavaScript interop
+The virtual DOM is an Abstract Syntax Tree (AST) of immutable record types:
 
-This approach minimizes expensive DOM operations.
-
-## Tree Structure
-
-### Node Types
-
-```csharp
-public record Node(string Id);
-public record Element(string Id, string Tag, Attribute[] Attributes, Node[] Children) : Node(Id);
-public record Text(string Id, string Value) : Node(Id);
-public record RawHtml(string Id, string Html) : Node(Id);
-public record Empty() : Node("");
+```
+Node(Id: string)
+├── Element(Id, Tag, Attributes, Children)
+├── Text(Id, Value)
+├── RawHtml(Id, Html)
+├── Empty()
+├── Memo<TKey>(Id, Key, CachedNode) : MemoNode
+└── LazyMemo<TKey>(Id, Key, Factory, CachedNode?) : LazyMemoNode
 ```
 
-Every node has a unique `Id` used to track it across renders.
+Every node carries a string `Id` for stable identity across renders. IDs are generated at compile time by the Praefixum source generator, ensuring deterministic, zero-cost identification.
 
-### Attributes
+### Memoization Nodes
 
-```csharp
-public record Attribute(string Id, string Name, string Value);
-public record Handler(
-    string Name,
-    string CommandId,
-    Message? Command,
-    string Id,
-    Func<object?, Message>? WithData = null,
-    Type? DataType = null
-) : Attribute(Id, $"data-event-{Name}", CommandId);
+**`MemoNode` (interface)** — Eager memoization. The `CachedNode` is always materialized. During diffing, if the memo key equals the previous key (via `EqualityComparer<TKey>.Default` to avoid boxing), the cached node is reused without re-diffing the subtree.
+
+**`LazyMemoNode` (interface)** — Lazy memoization. The `Factory` function is only called if the key differs. This is the equivalent of Elm's `lazy` function — the true performance benefit is that the node content is never even *constructed* when the key matches.
+
+Both use generic `EqualityComparer<TKey>` for key comparison to avoid boxing overhead for value-type keys. The `MemoKeyEquals` method on each interface enables polymorphic key comparison in the diff algorithm without reflection (trim-safe for WASM).
+
+### Attribute Types
+
+```
+Attribute(Id, Name, Value)
+└── Handler(EventName, CommandId, Command, Id, WithData?, Deserializer?)
 ```
 
-Handlers are special attributes that register event callbacks.
+`Handler` extends `Attribute` and renders as `data-event-{EventName}="{CommandId}"` in the DOM. The `CommandId` links the DOM attribute to the registered event handler in the `HandlerRegistry`.
 
-## Diffing Algorithm
+## Algorithm Overview
 
-### Top-Level Comparison
+The `Operations.Diff(oldNode, newNode)` method computes the minimal set of `Patch` instructions to transform an old virtual DOM tree into a new one:
+
+```
+Operations.Diff(old, new)
+  │
+  ├── Reference equality bailout ──────── O(1)
+  │
+  ├── LazyMemo key comparison ─────────── skip evaluation AND diffing
+  │
+  ├── Memo key comparison ─────────────── skip subtree diffing
+  │
+  ├── Text/RawHtml value comparison ───── O(1) per node
+  │
+  ├── Element (same tag)
+  │   ├── DiffAttributes
+  │   ├── Void element skip ───────────── no children to diff
+  │   └── DiffChildren
+  │       ├── Head/tail skip
+  │       ├── Fast paths (clear, add-all, append)
+  │       ├── Small count (≤8): O(n²) linear scan
+  │       └── Keyed reconciliation
+  │           ├── Reorder: LIS algorithm O(n log n)
+  │           └── Membership change: add/remove/diff sets
+  │
+  └── Element (different tag) ─────────── replace
+```
+
+### Step 1: Reference Equality Bailout
 
 ```csharp
-public static List<Patch> Diff(Node? oldNode, Node newNode)
+if (ReferenceEquals(oldNode, newNode))
+    return;
+```
+
+If both nodes are the exact same reference (e.g., a cached node reused across renders), there is nothing to diff. This is an O(1) check that short-circuits entire subtrees.
+
+### Step 2: Memo Node Comparison
+
+**LazyMemo** — The most impactful optimization. If both old and new are `LazyMemoNode` and their keys match (via `MemoKeyEquals`), the diff skips both *evaluation* and *diffing* entirely. The factory function is never called:
+
+```csharp
+if (oldNode is LazyMemoNode oldLazy && newNode is LazyMemoNode newLazy)
 {
-    if (oldNode is null)
-        return [new AddRoot((Element)newNode)];
-    
-    DiffInternal(oldNode, newNode, null, patches);
-    return patches;
+    if (oldLazy.MemoKeyEquals(newLazy))
+    {
+        MemoHits++;  // Simple increment — WASM is single-threaded
+        return;      // Skip evaluation AND diffing
+    }
+    MemoMisses++;
+    // Keys differ — evaluate and diff the results
 }
 ```
 
-### Node Comparison
+**Memo** — Similar but for eager memos. If keys match, skip diffing the `CachedNode` subtree.
+
+The diff algorithm maintains counters (`MemoHits`, `MemoMisses`) for diagnostics.
+
+### Step 3: Text and RawHtml Comparison
+
+Text and RawHtml nodes are compared by value. If the value or ID changed, an `UpdateText` or `UpdateRaw` patch is emitted.
+
+### Step 4: Element Diffing
+
+If both nodes are `Element`:
+
+- **Different tag** → emit `ReplaceChild` (or `AddRoot` at the root level)
+- **Same tag** → `DiffAttributes` then `DiffChildren`
+
+**Void element optimization**: Elements whose tag is in `HtmlSpec.VoidElements` (e.g., `<input>`, `<br>`, `<img>`, `<hr>`, `<meta>`, `<source>`) skip `DiffChildren` entirely, avoiding unnecessary work.
+
+## Attribute Diffing
+
+Attribute diffing (`DiffAttributes`) handles three attribute types differently:
+
+| Patch Type | When |
+|---|---|
+| `AddAttribute` | New attribute not in old |
+| `RemoveAttribute` | Old attribute not in new |
+| `UpdateAttribute` | Same name, different value |
+| `AddHandler` | New event handler |
+| `RemoveHandler` | Old handler removed |
+| `UpdateHandler` | Same event, different handler |
+
+### Same-Order Fast Path
+
+Most renders don't change attribute order or count. When old and new have the same count, the algorithm compares them positionally first:
 
 ```csharp
-private static void DiffInternal(Node oldNode, Node newNode, Element? parent, List<Patch> patches)
+if (oldAttrs.Length == newAttrs.Length)
 {
-    // Same reference = no change
-    if (ReferenceEquals(oldNode, newNode))
-        return;
-    
-    // Text nodes
-    if (oldNode is Text oldText && newNode is Text newText)
+    var sameOrder = true;
+    for (int i = 0; i < oldAttrs.Length; i++)
     {
-        if (oldText.Value != newText.Value)
-            patches.Add(new UpdateText(oldText, newText.Value, newText.Id));
-        return;
-    }
-    
-    // Elements with same tag
-    if (oldNode is Element oldEl && newNode is Element newEl && oldEl.Tag == newEl.Tag)
-    {
-        DiffAttributes(oldEl, newEl, patches);
-        DiffChildren(oldEl, newEl, patches);
-        return;
-    }
-    
-    // Type or tag mismatch = replace
-    patches.Add(new ReplaceChild(oldElement, newElement));
-}
-```
-
-### Attribute Diffing
-
-```csharp
-private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
-{
-    var oldMap = oldElement.Attributes.ToDictionary(a => a.Name);
-    
-    foreach (var newAttr in newElement.Attributes)
-    {
-        if (oldMap.TryGetValue(newAttr.Name, out var oldAttr))
+        if (oldAttrs[i].Name != newAttrs[i].Name)
         {
-            oldMap.Remove(newAttr.Name);
-            if (!newAttr.Equals(oldAttr))
-            {
-                if (oldAttr is Handler && newAttr is Handler)
-                    patches.Add(new UpdateHandler(newElement, (Handler)oldAttr, (Handler)newAttr));
-                else
-                    patches.Add(new UpdateAttribute(oldElement, newAttr, newAttr.Value));
-            }
-        }
-        else
-        {
-            patches.Add(new AddAttribute(newElement, newAttr));
-        }
-    }
-    
-    // Remove attributes not in new
-    foreach (var remaining in oldMap.Values)
-    {
-        patches.Add(new RemoveAttribute(oldElement, remaining));
-    }
-}
-```
-
-### Child Diffing
-
-```csharp
-private static void DiffChildren(Element oldParent, Element newParent, List<Patch> patches)
-{
-    var oldChildren = oldParent.Children;
-    var newChildren = newParent.Children;
-    var shared = Math.Min(oldChildren.Length, newChildren.Length);
-    
-    // Check for keyed children
-    if (HasKeyedChildren(oldChildren) || HasKeyedChildren(newChildren))
-    {
-        // Key-based reconciliation
-        var oldKeys = BuildKeySequence(oldChildren);
-        var newKeys = BuildKeySequence(newChildren);
-        
-        if (!oldKeys.SequenceEqual(newKeys))
-        {
-            // Keys changed - replace all children
-            RemoveAllChildren(oldParent, patches);
-            AddAllChildren(newParent, patches);
-            return;
+            sameOrder = false;
+            break;
         }
     }
-    
-    // Diff matching children
-    for (int i = 0; i < shared; i++)
-        DiffInternal(oldChildren[i], newChildren[i], oldParent, patches);
-    
-    // Remove extra old children
-    for (int i = oldChildren.Length - 1; i >= shared; i--)
-        patches.Add(new RemoveChild(oldParent, oldChildren[i]));
-    
-    // Add new children
-    for (int i = shared; i < newChildren.Length; i++)
-        patches.Add(new AddChild(newParent, newChildren[i]));
+
+    if (sameOrder)
+    {
+        // Compare positionally — no dictionary needed
+    }
 }
 ```
+
+This avoids dictionary allocation and hash computation overhead for the common case.
+
+### Dictionary Fallback
+
+When attribute order or count differs, the algorithm builds a `Dictionary<string, Attribute>` from the old attributes and looks up each new attribute. The dictionary is rented from an object pool (`Stack<Dictionary<...>>`) and returned after use.
+
+## Children Diffing
+
+Children diffing (`DiffChildren`) is the most complex part of the algorithm. It uses a multi-phase approach with several fast paths.
+
+### Key Generation
+
+Each child is assigned a key for identity matching:
+
+1. **Explicit key** — `data-key` or `key` attribute on the element (set via `key()` in the HTML DSL)
+2. **Element ID** — The Praefixum-generated ID (default)
+3. **Index string** — For non-keyed children, a cached index string (`"__index:0"`, `"__index:1"`, etc.) from a pre-allocated 256-entry cache
+
+The index string cache avoids string interpolation allocation for the 99% case where elements have fewer than 256 children.
+
+### Phase 1: Head/Tail Skip
+
+Before building key maps, the algorithm skips common prefix (head) and suffix (tail) elements:
+
+```
+Old: [A, B, C, D, E]
+New: [A, B, X, Y, E]
+         ↑        ↑
+     headSkip  tailSkip
+
+Middle to diff: old=[C, D], new=[X, Y]
+```
+
+This is highly effective for:
+- **Append-only** patterns (chat messages, logs) — the entire old list is head-skipped
+- **Single item changes** — head + tail skip leaves a tiny middle
+- **Prepend** patterns — the entire old list is tail-skipped
+
+Head and tail elements are still diffed recursively (they might have changed attributes or children), but they don't participate in the expensive keyed reconciliation.
+
+### Phase 2: Fast Paths
+
+After head/tail skip, several fast paths avoid the full keyed reconciliation:
+
+| Condition | Fast Path | Patch Type |
+|---|---|---|
+| Old non-empty, new empty | Clear all children | `ClearChildren` |
+| Old empty, new non-empty | Set all children via innerHTML | `SetChildrenHtml` |
+| All old matched in head skip, new has extras | Append via insertAdjacentHTML | `AppendChildrenHtml` |
+| Middle empty after skip | Done (head/tail covered everything) | — |
+
+The `SetChildrenHtml` and `AppendChildrenHtml` patches are critical performance optimizations — they replace N individual `AddChild` patches with a single bulk DOM operation.
+
+**MaterializeChildren**: Before emitting `SetChildrenHtml` or `AppendChildrenHtml`, the algorithm materializes any `LazyMemoNode` or `MemoNode` wrappers in the children array. This ensures that `RegisterHandlers` (which registers command IDs) and `Render.HtmlChildren` (which renders `data-event-*` attributes) see the same concrete nodes with the same `CommandId`s.
+
+### Phase 3: Small Count Fast Path
+
+For middle sections with ≤8 children on both sides, the algorithm uses an O(n²) linear scan with `stackalloc` instead of building dictionaries:
+
+```csharp
+private const int SmallChildCountThreshold = 8;
+
+// stackalloc for tracking matched indices — no heap allocation
+Span<int> oldMatched = stackalloc int[oldLength];
+Span<int> newMatched = stackalloc int[newLength];
+```
+
+This eliminates dictionary allocation and hashing overhead, which dominates for small n. The threshold of 8 was chosen based on benchmarks.
+
+### Phase 4: Keyed Reconciliation
+
+For larger middle sections, the algorithm builds `Dictionary<string, int>` maps (rented from object pools) and determines whether the change is a **reorder** (same keys, different order) or a **membership change** (some keys added/removed).
+
+#### Reorder Detection
+
+```csharp
+var isReorder = oldMiddleLength == newMiddleLength &&
+                AreKeysSameSet(oldMiddleKeys, newKeyToIndex);
+```
+
+If all old keys exist in new keys and the counts match, it's a pure reorder.
+
+#### LIS Algorithm (Longest Increasing Subsequence)
+
+For reorders, the algorithm computes the Longest Increasing Subsequence of old indices in new order. Elements in the LIS don't need to be moved — only elements outside the LIS require DOM `insertBefore` operations.
+
+The LIS algorithm uses **patience sorting with binary search** (O(n log n)):
+
+```csharp
+private static void ComputeLISInto(ReadOnlySpan<int> arr, Span<bool> inLIS)
+{
+    // result[j] = index in arr of smallest ending value for LIS of length j+1
+    // p[i] = predecessor index for position i in the LIS chain
+    var result = ArrayPool<int>.Shared.Rent(len);
+    var p = ArrayPool<int>.Shared.Rent(len);
+
+    for (int i = 0; i < len; i++)
+    {
+        // Binary search to find position where val fits
+        int lo = 0, hi = lisLen;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) >> 1;
+            if (arr[result[mid]] < val) lo = mid + 1;
+            else hi = mid;
+        }
+        // ... update result, p, lisLen
+    }
+
+    // Mark LIS positions by following predecessor chain backwards
+}
+```
+
+A separate `ComputeLISIntoSmall` variant uses `stackalloc` instead of `ArrayPool` for small arrays.
+
+After computing the LIS, elements NOT in the LIS are moved to their correct positions by iterating in reverse and emitting `MoveChild` patches with `insertBefore` semantics.
+
+#### Membership Change
+
+When keys differ between old and new:
+
+1. **Remove** — old keys not in new → `RemoveChild` / `RemoveText` / `RemoveRaw` (iterate backwards)
+2. **Diff** — keys present in both → recursive `DiffInternal`
+3. **Add** — new keys not in old → `AddChild` / `AddText` / `AddRaw`
+
+**Complete replacement fast path**: When NO keys overlap (e.g., replacing an entire list), emit `ClearChildren` + `SetChildrenHtml` for 2 bulk operations instead of N+M individual patches.
 
 ## Patch Types
 
-| Patch | Description |
-| ----- | ----------- |
-| `AddRoot(element)` | Set root element |
-| `ReplaceChild(old, new)` | Replace element with another |
-| `AddChild(parent, child)` | Append child element |
-| `RemoveChild(parent, child)` | Remove child element |
-| `MoveChild(parent, child, before)` | Move child to new position |
-| `ClearChildren(parent)` | Remove all children at once |
-| `UpdateAttribute(el, attr, value)` | Update attribute value |
-| `AddAttribute(el, attr)` | Add new attribute |
-| `RemoveAttribute(el, attr)` | Remove attribute |
-| `AddHandler(el, handler)` | Add event handler |
-| `RemoveHandler(el, handler)` | Remove event handler |
-| `UpdateHandler(el, old, new)` | Update event handler |
-| `UpdateText(node, text, newId)` | Update text content |
-| `AddText(parent, text)` | Add text node |
-| `RemoveText(parent, text)` | Remove text node |
-| `AddRaw(parent, raw)` | Add raw HTML |
-| `RemoveRaw(parent, raw)` | Remove raw HTML |
-| `ReplaceRaw(old, new)` | Replace raw HTML |
-| `UpdateRaw(node, html, newId)` | Update raw HTML content |
-| `SetChildrenHtml(parent, html)` | Set all children via single innerHTML (batch fast path) |
+All patch types are `readonly struct` implementing the `Patch` marker interface, ensuring zero allocation on the hot path:
 
-## Patch Application
+### Tree Mutations
 
-Patches are serialized into a binary batch format and transferred to JavaScript via
-`JSType.MemoryView` for zero-copy memory transfer. This binary protocol replaces the
-original JSON-based approach and provides ~17% better performance.
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddRoot` | Set root element (initial render) | `Element` |
+| `ReplaceChild` | Replace element with another | `OldElement`, `NewElement` |
+| `AddChild` | Append child to parent | `Parent`, `Child` |
+| `RemoveChild` | Remove child from parent | `Parent`, `Child` |
+| `ClearChildren` | Remove all children | `Parent`, `OldChildren` |
+| `SetChildrenHtml` | Set all children via innerHTML | `Parent`, `Children` |
+| `AppendChildrenHtml` | Append children via insertAdjacentHTML | `Parent`, `Children` |
+| `MoveChild` | Move child to new position | `Parent`, `Child`, `BeforeId?` |
 
-### Binary Batch Format
+### Attribute Mutations
 
-```text
-Header (8 bytes):
-  - PatchCount: int32 (4 bytes)
-  - StringTableOffset: int32 (4 bytes)
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddAttribute` | Add new attribute | `Element`, `Attribute` |
+| `RemoveAttribute` | Remove attribute | `Element`, `Attribute` |
+| `UpdateAttribute` | Change attribute value | `Element`, `Attribute`, `Value` |
 
-Patch Entries (16 bytes each):
-  - Type: int32 (4 bytes) — BinaryPatchType enum value
-  - Field1: int32 (4 bytes) — string table index (-1 = null)
-  - Field2: int32 (4 bytes) — string table index (-1 = null)
-  - Field3: int32 (4 bytes) — string table index (-1 = null)
+### Handler Mutations
 
-String Table:
-  - LEB128 length prefix + UTF8 bytes for each string
-  - String deduplication via Dictionary lookup
-```
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddHandler` | Add event handler | `Element`, `Handler` |
+| `RemoveHandler` | Remove event handler | `Element`, `Handler` |
+| `UpdateHandler` | Replace event handler | `Element`, `OldHandler`, `NewHandler` |
 
-The JavaScript side reads the binary data using `DataView` and applies DOM mutations
-in a single synchronous pass. See `RenderBatchWriter.cs` and `abies.js` for the
-full implementation.
+### Text Mutations
+
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddText` | Add text node | `Parent`, `Child` |
+| `RemoveText` | Remove text node | `Parent`, `Child` |
+| `UpdateText` | Change text content | `Parent`, `Node`, `Text`, `NewId` |
+
+### Raw HTML Mutations
+
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddRaw` | Add raw HTML node | `Parent`, `Child` |
+| `RemoveRaw` | Remove raw HTML node | `Parent`, `Child` |
+| `ReplaceRaw` | Replace raw HTML node | `OldNode`, `NewNode` |
+| `UpdateRaw` | Update raw HTML content | `Node`, `Html`, `NewId` |
+
+### Head Element Mutations
+
+| Patch | Purpose | Fields |
+|---|---|---|
+| `AddHeadElement` | Add managed `<head>` element | `Content` |
+| `UpdateHeadElement` | Update managed `<head>` element | `Content` |
+| `RemoveHeadElement` | Remove managed `<head>` element | `Key` |
+
+All patches address DOM nodes by their stable string `Id` rather than positional paths. This enables O(1) element lookup via `getElementById` and makes patches order-independent.
 
 ## Performance Optimizations
 
-### Object Pooling
+The diff algorithm is heavily optimized for WASM's single-threaded, memory-constrained environment.
 
-Lists and dictionaries are pooled to reduce allocations. Since WASM is single-threaded,
-pools use `Stack<T>` instead of `ConcurrentQueue<T>` for better cache locality (LIFO reuse):
+### Object Pools
 
-```csharp
-private static readonly Stack<List<Patch>> _patchListPool = new();
-private static readonly Stack<Dictionary<string, Attribute>> _attributeMapPool = new();
+Several data structures are pooled using `Stack<T>` (safe because WASM is single-threaded):
 
-private static List<Patch> RentPatchList()
-{
-    if (_patchListPool.TryPop(out var list))
-    {
-        list.Clear();
-        return list;
-    }
-    return new List<Patch>();
-}
+| Pool | Type | Purpose |
+|---|---|---|
+| `PatchListPool` | `Stack<List<Patch>>` | Intermediate patch lists |
+| `AttributeMapPool` | `Stack<Dictionary<string, Attribute>>` | Attribute diff fallback |
+| `KeyIndexMapPool` | `Stack<Dictionary<string, int>>` | Keyed children reconciliation |
+| `IntListPool` | `Stack<List<int>>` | Keys to add/remove indices |
+| `IntPairListPool` | `Stack<List<(int,int)>>` | Old→new index pairs for diffing |
 
-private static void ReturnPatchList(List<Patch> list)
-{
-    if (list.Count < 1000)  // Prevent memory bloat
-        _patchListPool.Push(list);
-}
-```
+Pools have size limits (e.g., `PatchListPool` rejects lists with >1000 entries) to prevent memory bloat.
 
-### Early Exits
+### ArrayPool
 
-The algorithm checks for common cases that don't require comparison:
+Key arrays and LIS working storage use `ArrayPool<T>.Shared` to avoid allocation:
 
 ```csharp
-// Reference equality - same object
-if (ReferenceEquals(oldAttrs, newAttrs))
-    return;
-
-// Both empty
-if (oldAttrs.Length == 0 && newAttrs.Length == 0)
-    return;
-```
-
-### ID Preservation
-
-IDs are preserved across renders to enable accurate patching:
-
-```csharp
-private static Node PreserveIds(Node? oldNode, Node newNode)
-{
-    if (oldNode is Element oldEl && newNode is Element newEl && oldEl.Tag == newEl.Tag)
-    {
-        // Preserve attribute IDs
-        var attrs = newEl.Attributes.Select(attr => 
-        {
-            var oldAttr = Array.Find(oldEl.Attributes, a => a.Name == attr.Name);
-            return attr with { Id = oldAttr?.Id ?? attr.Id };
-        }).ToArray();
-        
-        // Preserve child IDs recursively
-        var children = newEl.Children.Zip(oldEl.Children)
-            .Select(pair => PreserveIds(pair.Second, pair.First))
-            .ToArray();
-        
-        return new Element(oldEl.Id, newEl.Tag, attrs, children);
-    }
-    return newNode;
+var oldKeysArray = ArrayPool<string>.Shared.Rent(oldLength);
+var newKeysArray = ArrayPool<string>.Shared.Rent(newLength);
+try {
+    // ... diff using rented arrays
+} finally {
+    Array.Clear(oldKeysArray, 0, oldLength);  // prevent string reference leaks
+    ArrayPool<string>.Shared.Return(oldKeysArray);
 }
 ```
 
-## Keyed Reconciliation (ADR-016)
+### stackalloc
 
-Element IDs enable efficient list diffing. Per ADR-016, the element's `Id` is used
-as the primary key for matching elements across renders.
-
-### Three-Phase Diff
-
-Keyed child diffing uses a three-phase approach to minimize DOM mutations:
-
-1. **Head skip** — Skip matching elements at the start (common prefix)
-2. **Tail skip** — Skip matching elements at the end (common suffix)
-3. **Middle reconciliation** — Build key maps and apply LIS for the remaining section
-
-This makes append-only and prepend-only operations O(1) in terms of key-map overhead.
-
-### Longest Increasing Subsequence (LIS)
-
-For reordering operations, the algorithm computes the Longest Increasing Subsequence
-of old-to-new index mappings to determine the minimum number of DOM moves:
+For small child counts (≤8), `stackalloc` is used for matching indices and LIS computation, eliminating all heap allocation:
 
 ```csharp
-// For a swap of rows 1 and 998 in a 1000-element list:
-// LIS = [0, 2, 3, ..., 997, 999] (length 998)
-// Only 2 MoveChild patches needed (positions 1 and 998)
+Span<int> oldMatched = stackalloc int[oldLength];
+Span<int> newMatched = stackalloc int[newLength];
+Span<int> oldIndices = stackalloc int[newLength];
+Span<bool> inLIS = stackalloc bool[newLength];
 ```
 
-Elements in the LIS stay in place; elements not in the LIS are moved using
-`MoveChild(parentId, childId, beforeId)` patches with stable element IDs.
+### Index String Cache
 
-### Memoization
-
-The diffing algorithm supports memoized nodes via `LazyMemo`. When a `LazyMemo` node's
-key matches between old and new trees (checked via `MemoKeyEquals<TKey>()` with
-`EqualityComparer<TKey>.Default`), the diff exits early without traversing the subtree.
-
-A view cache layer enables `ReferenceEquals` bailout: if the same `LazyMemo` reference
-is returned across renders (because its key hasn't changed), diffing is skipped entirely.
-
-### Fast Paths
-
-- **Clear** (`newLength == 0`): O(1) `ClearChildren` patch
-- **Add-All** (`oldLength == 0`): Single `SetChildrenHtml` patch — concatenates all children HTML and applies via `parent.innerHTML` instead of N individual `AddChild` patches
-- **Complete Replacement** (all old keys differ from all new keys): `ClearChildren` + `SetChildrenHtml` — detected when `keysToDiff.Count == 0` after head/tail skip, reduces 2N individual DOM operations to 2 bulk operations
-- **Same reference** (`ReferenceEquals(old, new)`): Skip immediately
-
-## Rendering to HTML
-
-The `Render.Html` function converts virtual DOM to HTML string:
+A pre-allocated 256-entry cache avoids string interpolation for non-keyed children:
 
 ```csharp
-public static string Html(Node node)
-{
-    var sb = new StringBuilder();
-    RenderNode(node, sb);
-    return sb.ToString();
-}
+private const int IndexStringCacheSize = 256;
+private static readonly string[] IndexStringCache = InitializeIndexStringCache();
 
-private static void RenderNode(Node node, StringBuilder sb)
-{
-    switch (node)
-    {
-        case Element element:
-            sb.Append($"<{element.Tag} id=\"{element.Id}\"");
-            foreach (var attr in element.Attributes)
-                sb.Append($" {attr.Name}=\"{HtmlEncode(attr.Value)}\"");
-            sb.Append('>');
-            foreach (var child in element.Children)
-                RenderNode(child, sb);
-            sb.Append($"</{element.Tag}>");
-            break;
-            
-        case Text text:
-            sb.Append($"<span id=\"{text.Id}\">{HtmlEncode(text.Value)}</span>");
-            break;
-            
-        case RawHtml raw:
-            sb.Append($"<span id=\"{raw.Id}\">{raw.Html}</span>");
-            break;
-    }
-}
+private static string GetIndexString(int index) =>
+    (uint)index < IndexStringCacheSize ? IndexStringCache[index] : $"__index:{index}";
 ```
 
-### HTML Spec-Aware Rendering
+### Memo Diagnostics
 
-The renderer is aware of the HTML specification for two categories of elements:
+Internal counters track memo cache effectiveness:
 
-**Void elements** (`area`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`,
-`source`, `track`, `wbr`) — These elements cannot have children and must not have a closing
-tag. The renderer omits the closing tag and skips child diffing for void elements.
+```csharp
+internal static int MemoHits;    // Subtree diff skipped
+internal static int MemoMisses;  // Subtree diff required
+```
 
-**Boolean attributes** (`checked`, `disabled`, `hidden`, `readonly`, `required`, `selected`,
-`autofocus`, `autoplay`, `controls`, `loop`, `muted`, `multiple`, `open`, `novalidate`,
-`formnovalidate`, `defer`, `async`, `allowfullscreen`) — These attributes are rendered as
-bare attributes (e.g., `<input disabled>`) instead of `disabled="true"` when their value is
-`"true"`, following the HTML specification.
+Simple increment (no `Interlocked`) because WASM is single-threaded.
 
-These optimizations are implemented via `HtmlSpec.VoidElements` and `HtmlSpec.BooleanAttributes`
-(both `FrozenSet<string>` for O(1) lookup).
+## Complexity Summary
 
-### Batch Children Rendering
+| Operation | Complexity | Notes |
+|---|---|---|
+| Reference equality | O(1) | Short-circuits unchanged subtrees |
+| Memo key comparison | O(1) | Skips entire subtree evaluation + diffing |
+| Text/RawHtml comparison | O(n) | String comparison |
+| Attribute diff (same order) | O(n) | Positional comparison, no dictionary |
+| Attribute diff (different order) | O(n) | Dictionary-based, pooled |
+| Children diff (head/tail skip) | O(k) | k = length of matching prefix + suffix |
+| Children diff (small, ≤8) | O(n²) | Linear scan with stackalloc |
+| Children diff (keyed, reorder) | O(n log n) | LIS with patience sorting |
+| Children diff (keyed, membership) | O(n) | Dictionary-based set operations |
 
-The `Render.HtmlChildren` function concatenates the HTML of all children into a single
-string. This is used by the `SetChildrenHtml` fast path to emit one bulk innerHTML
-operation instead of N individual `AddChild` patches.
+## Source Files
 
-## Complexity Analysis
-
-| Operation | Time Complexity | Space Complexity |
-| --------- | --------------- | ---------------- |
-| Diff (same structure) | O(n) | O(h) |
-| Diff (different structure) | O(n) | O(h) |
-| Attribute comparison | O(a) | O(a) |
-| Apply single patch | O(1) | O(1) |
-
-Where:
-
-- n = number of nodes
-- h = tree height
-- a = number of attributes
-
-## See Also
-
-- [API: DOM Types](../api/dom-types.md) — DOM type reference
-- [Concepts: Virtual DOM](../concepts/virtual-dom.md) — Conceptual overview
-- [ADR-003: Virtual DOM](../adr/ADR-003-virtual-dom.md) — Design decision
-- [ADR-016: Keyed DOM Diffing](../adr/ADR-016-keyed-dom-diffing.md) — LIS algorithm and keyed reconciliation
-- [Benchmarks](../benchmarks.md) — Performance benchmark results and methodology
+| File | Role |
+|---|---|
+| `Abies/Diff.cs` | Complete diff algorithm (`Operations` class) |
+| `Abies/DOM/Node.cs` | Node type hierarchy (`Node`, `Element`, `Text`, `RawHtml`, `MemoNode`, `LazyMemoNode`) |
+| `Abies/DOM/Patch.cs` | Patch type definitions (all `readonly struct`) |
+| `Abies/DOM/Attribute.cs` | `Attribute` and `Handler` records |
+| `Abies/RenderBatchWriter.cs` | Binary serialization of patches |
+| `Abies/Render.cs` | HTML string rendering for bulk patches |
+| `Abies/Head.cs` | `HeadContent` types and `HeadDiff` |
