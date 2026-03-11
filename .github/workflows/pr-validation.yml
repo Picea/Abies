@@ -133,6 +133,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+      
       - name: Restore
         run: dotnet restore
         env:
@@ -200,6 +203,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
       
       - name: Restore
         run: dotnet restore
