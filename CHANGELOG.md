@@ -5,6 +5,75 @@ All notable changes to Abies will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc.1] - Unreleased
+
+### ⚠️ Breaking Changes — Picea Ecosystem Migration
+
+This release migrates Abies into the **Picea ecosystem**. The framework functionality is unchanged, but packages, namespaces, and project structure have been reorganized.
+
+### Changed
+
+- **Package rename**: All packages renamed from `Abies.*` to `Picea.Abies.*` (see [ADR-023](docs/adr/ADR-023-package-rename.md))
+  - `Abies` → `Picea.Abies`
+  - `Abies.Browser` → `Picea.Abies.Browser`
+  - `Abies.Server` → `Picea.Abies.Server`
+- **Namespace rename**: All namespaces follow the package rename (`using Abies;` → `using Picea.Abies;`)
+- **Kernel dependency**: Now depends on `Picea` NuGet package (extracted from `Automaton`) for `Automaton<>`, `Result<>`, `Option<>`, `Decider<>`, Runtime, and Diagnostics
+- **Solution structure**: Reorganized from flat `Abies.*` directories to `Picea.Abies.*` directories
+- **Repository**: Moved from `MCGPPeters/Automaton` monorepo to `picea/abies` focused repository (see [ADR-022](docs/adr/ADR-022-picea-ecosystem-migration.md))
+
+### Added
+
+- **Four render modes**: Static, InteractiveServer, InteractiveWasm, InteractiveAuto (see [ADR-024](docs/adr/ADR-024-four-render-modes.md))
+  - `Picea.Abies.Server` — SSR runtime with WebSocket-based MVU loop
+  - `Picea.Abies.Server.Kestrel` — Kestrel integration with `MapAbies<>()` endpoint
+  - Same `Program<TModel, TArgument>` interface works across all render modes
+- **Metapackages** for backward compatibility:
+  - `Abies` → forwards to `Picea.Abies` (with deprecation message)
+  - `Abies.Browser` → forwards to `Picea.Abies.Browser`
+  - `Abies.Server` → forwards to `Picea.Abies.Server`
+- **Roslyn Analyzers**: `Picea.Abies.Analyzers` package for compile-time HTML validation
+- **Routing documentation**: Pattern-matching routing guide (replaces deprecated parser combinators)
+- **Architecture Decision Records**: ADR-022 (Picea Migration), ADR-023 (Package Rename), ADR-024 (Four Render Modes)
+
+### Deprecated
+
+- **ADR-004 (Parser Combinators)**: Routing now uses plain `url.Path switch` pattern matching
+- **Old package names**: `Abies`, `Abies.Browser`, `Abies.Server` are now metapackages — use `Picea.Abies.*` instead
+
+### Migration Guide (1.x → 2.0)
+
+1. **Update package references**:
+   ```xml
+   <!-- Before -->
+   <PackageReference Include="Abies" />
+   <PackageReference Include="Abies.Browser" />
+
+   <!-- After -->
+   <PackageReference Include="Picea.Abies" />
+   <PackageReference Include="Picea.Abies.Browser" />
+   ```
+
+2. **Update using directives**:
+   ```csharp
+   // Before
+   using Abies;
+   using Abies.Html;
+
+   // After
+   using Picea.Abies;
+   using Picea.Abies.Html;
+   ```
+
+3. **Add Picea kernel dependency** (if you use `Result<>`, `Option<>`, or `Automaton<>` directly):
+   ```xml
+   <PackageReference Include="Picea" />
+   ```
+
+4. **Routing** (if using parser combinators): Replace `Parser<Page>` chains with `url.Path switch` expressions. See the [routing guide](docs/guides/routing.md).
+
+> **Note:** If you prefer a gradual migration, the metapackages (`Abies`, `Abies.Browser`) will continue to work for 2 major versions.
+
 ## [1.0.0-rc.2] - 2026-02-23
 
 ### Added
@@ -170,5 +239,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenTelemetry tracing support (browser and .NET)
 - Apache 2.0 license
 
+[2.0.0-rc.1]: https://github.com/Picea/Abies/compare/v1.0.0-rc.2...HEAD
 [1.0.0-rc.2]: https://github.com/Picea/Abies/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Picea/Abies/releases/tag/v1.0.0-rc.1
