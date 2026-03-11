@@ -55,10 +55,10 @@ public readonly record struct UserName(string Value);
 public readonly record struct Email(string Value);
 ```
 
-Update pattern:
+Transition pattern:
 
 ```csharp
-public static (Model, Command) Update(Message msg, Model model) => msg switch
+public static (Model, Command) Transition(Message msg, Model model) => msg switch
 {
     // Creates new Model with updated Page
     PageLoaded loaded => (model with { Page = loaded.Page }, Commands.None),
@@ -161,3 +161,8 @@ Rejected because C# records provide this automatically.
 - [Immutability in C#](https://docs.microsoft.com/en-us/dotnet/csharp/write-safe-efficient-code)
 - [LanguageExt Immutable Collections](https://github.com/louthy/language-ext)
 - [The Value of Values (Rich Hickey)](https://www.infoq.com/presentations/Value-Values/)
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current API after Picea migration.
+  - Renamed `Update` → `Transition` in code examples and prose

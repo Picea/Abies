@@ -34,7 +34,7 @@ We adopt **OpenTelemetry (OTEL)** as the observability standard for Abies applic
 
 ### Core Implementation
 
-Implementation in `Abies/Instrumentation.cs`:
+Implementation in `Picea.Abies/Instrumentation.cs`:
 
 ```csharp
 public static class Instrumentation
@@ -238,7 +238,7 @@ UI Event (Click Button: Sign In)
 
 ### Do Instrument
 
-- Entry points (Initialize, Update, View)
+- Entry points (Initialize, Transition, View)
 - Command handlers
 - External calls (HTTP, storage)
 - Performance-sensitive operations (DOM diff/apply)
@@ -275,11 +275,20 @@ UI Event (Click Button: Sign In)
 
 ### Implementation Files
 
-- [`Abies/Instrumentation.cs`](../../Abies/Instrumentation.cs) - ActivitySource definition
-- [`Abies/Telemetry.cs`](../../Abies/Telemetry.cs) - Console tracing for development
-- [`Abies/Runtime.cs`](../../Abies/Runtime.cs) - Runtime loop instrumentation
-- [`Abies/DOM/Operations.cs`](../../Abies/DOM/Operations.cs) - Virtual DOM instrumentation
-- [`Abies/Subscriptions/SubscriptionManager.cs`](../../Abies/Subscriptions/SubscriptionManager.cs) - Subscription instrumentation
-- [`Abies/wwwroot/abies.js`](../../Abies/wwwroot/abies.js) - JavaScript instrumentation
-- [`Abies.Conduit.Api/OtlpJsonToProtobuf.cs`](../../Abies.Conduit.Api/OtlpJsonToProtobuf.cs) - JSON to protobuf converter
-- [`Abies.Conduit.Api/Program.cs`](../../Abies.Conduit.Api/Program.cs) - OTLP proxy endpoint
+- [`Picea.Abies/Instrumentation.cs`](../../Picea.Abies/Instrumentation.cs) - ActivitySource definition
+- [`Picea.Abies/Telemetry.cs`](../../Picea.Abies/Telemetry.cs) - Console tracing for development
+- [`Picea.Abies/Runtime.cs`](../../Picea.Abies/Runtime.cs) - Runtime loop instrumentation
+- [`Picea.Abies/Diff.cs`](../../Picea.Abies/Diff.cs) - Virtual DOM instrumentation
+- [`Picea.Abies/Subscriptions/SubscriptionManager.cs`](../../Picea.Abies/Subscriptions/SubscriptionManager.cs) - Subscription instrumentation
+- [`Picea.Abies.Browser/wwwroot/abies.js`](../../Picea.Abies.Browser/wwwroot/abies.js) - JavaScript instrumentation
+- [`Picea.Abies.Conduit.Api/OtlpJsonToProtobuf.cs`](../../Picea.Abies.Conduit.Api/OtlpJsonToProtobuf.cs) - JSON to protobuf converter
+- [`Picea.Abies.Conduit.Api/Program.cs`](../../Picea.Abies.Conduit.Api/Program.cs) - OTLP proxy endpoint
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated all file references from `Abies/*` → `Picea.Abies/*` prefix
+  - Updated `Abies/DOM/Operations.cs` → `Picea.Abies/Diff.cs` (file was renamed)
+  - Updated `Abies/wwwroot/abies.js` → `Picea.Abies.Browser/wwwroot/abies.js`
+  - Updated `Abies.Conduit.Api/*` → `Picea.Abies.Conduit.Api/*`
+  - Updated instrumentation code reference from `Abies/Instrumentation.cs` → `Picea.Abies/Instrumentation.cs`

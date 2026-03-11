@@ -25,7 +25,7 @@ We adopt a **pure functional programming style** as the primary paradigm for Abi
 Key principles:
 
 1. **Immutability by default**: Use `record` and `record struct` types instead of mutable classes
-2. **Pure functions**: Core logic (Update, View) must not have side effects
+2. **Pure functions**: Core logic (Transition, View) must not have side effects
 3. **Explicit data flow**: Pass data through function parameters, not shared mutable state
 4. **No inheritance hierarchies**: Prefer composition and sum types over OOP inheritance
 5. **Avoid "I" prefix**: Do not use the `IService` naming convention for interfaces
@@ -37,15 +37,15 @@ Guidelines from `csharp.instructions.md`:
 public record Model(int Count, bool IsLoading);
 
 // DO: Use pure functions
-public static (Model, Command) Update(Message msg, Model model) =>
+public static (Model, Command) Transition(Message msg, Model model) =>
     msg switch
     {
         Increment => (model with { Count = model.Count + 1 }, Commands.None),
         _ => (model, Commands.None)
     };
 
-// DON'T: Use mutable state or side effects in Update
-public static Model Update(Message msg, Model model)
+// DON'T: Use mutable state or side effects in Transition
+public static Model Transition(Message msg, Model model)
 {
     _counter++;  // Side effect - forbidden
     return model;
@@ -117,7 +117,7 @@ Rejected to maximize reach to the broader .NET community.
 - [ADR-001: Model-View-Update Architecture](./ADR-001-mvu-architecture.md)
 - [ADR-008: Immutable State Management](./ADR-008-immutable-state.md)
 - [ADR-009: Sum Types for State Representation](./ADR-009-sum-types.md)
-- [ADR-010: Result/Option Types for Error Handling](./ADR-010-result-option-types.md)
+- [ADR-010: Option Type for Optional Values](./ADR-010-option-type.md)
 
 ## References
 
@@ -125,3 +125,9 @@ Rejected to maximize reach to the broader .NET community.
 - [Domain Modeling Made Functional (Scott Wlaschin)](https://pragprog.com/titles/swdddf/domain-modeling-made-functional/)
 - [C# Records Documentation](https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-9#record-types)
 - [Pattern Matching in C#](https://docs.microsoft.com/en-us/dotnet/csharp/pattern-matching)
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current API after Picea migration.
+  - Renamed `Update` → `Transition` in code examples and prose
+  - Fixed broken link: `ADR-010-result-option-types.md` → `ADR-010-option-type.md`

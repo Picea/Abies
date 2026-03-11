@@ -166,7 +166,7 @@ Can migrate when available; current approach is forward-compatible.
 
 - [ADR-002: Pure Functional Programming Style](./ADR-002-pure-functional-programming.md)
 - [ADR-008: Immutable State Management](./ADR-008-immutable-state.md)
-- [ADR-010: Result/Option Types for Error Handling](./ADR-010-result-option-types.md)
+- [ADR-010: Option Type for Optional Values](./ADR-010-option-type.md)
 
 ## References
 
@@ -174,3 +174,8 @@ Can migrate when available; current approach is forward-compatible.
 - [Making Illegal States Unrepresentable](https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/)
 - [Domain Modeling Made Functional](https://pragprog.com/titles/swdddf/domain-modeling-made-functional/)
 - [OneOf Library](https://github.com/mcintyre321/OneOf)
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Fixed broken link: `ADR-010-result-option-types.md` → `ADR-010-option-type.md`

@@ -24,7 +24,7 @@ Key requirements:
 
 ## Decision
 
-We use **.NET WebAssembly** to run applications entirely in the browser, using the .NET 8+ WASM SDK with ahead-of-time (AOT) compilation support.
+We use **.NET WebAssembly** to run applications entirely in the browser, using the .NET 10+ WASM SDK with ahead-of-time (AOT) compilation support.
 
 The runtime architecture:
 
@@ -37,7 +37,7 @@ The runtime architecture:
 │  │  │              Abies Runtime                  │  │   │
 │  │  │  ┌─────────────────────────────────────┐   │  │   │
 │  │  │  │          User Application            │   │  │   │
-│  │  │  │   Model | Update | View | Commands   │   │  │   │
+│  │  │  │ Model | Transition | View | Commands │   │  │   │
 │  │  │  └─────────────────────────────────────┘   │  │   │
 │  │  └────────────────────────────────────────────┘  │   │
 │  └──────────────────────────────────────────────────┘   │
@@ -51,11 +51,11 @@ The runtime architecture:
 
 Key implementation details:
 
-1. `Runtime.Run<TProgram>` starts the MVU message loop
+1. `Runtime.Run<TProgram, TArgument, TModel>` starts the MVU message loop
 2. Messages are queued via `Channel<Message>` for ordered processing
 3. JavaScript interop uses `[JSImport]` and `[JSExport]` attributes
-4. DOM operations are batched through `abies.js`
-5. Event handlers dispatch back to the .NET runtime via `Runtime.Dispatch`
+4. DOM operations are batched through `abies.js` using a binary batching protocol
+5. Event handlers dispatch back to the .NET runtime via `Interop.DispatchDomEvent`
 
 ## Consequences
 
@@ -71,7 +71,7 @@ Key implementation details:
 
 - **Download size**: Initial payload includes .NET runtime (mitigated by trimming)
 - **Startup time**: WASM initialization takes longer than vanilla JS
-- **JavaScript interop overhead**: Each DOM operation crosses the JS boundary
+- **JavaScript interop overhead**: Each DOM operation crosses the JS boundary (mitigated by binary batching)
 - **Browser compatibility**: Requires modern browsers with WASM support
 - **Debugging experience**: WASM debugging is less mature than JS debugging
 
@@ -138,4 +138,14 @@ Rejected because unified C# is a key benefit.
 - [.NET WebAssembly](https://learn.microsoft.com/en-us/aspnet/core/blazor/webassembly)
 - [Blazor WASM vs Server](https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models)
 - [WebAssembly Specification](https://webassembly.github.io/spec/)
-- [`Abies/Runtime.cs`](../../Abies/Runtime.cs) - WASM runtime loop
+- [`Picea.Abies/Runtime.cs`](../../Picea.Abies/Runtime.cs) - WASM runtime loop
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated `Runtime.Run<TProgram>` → `Runtime.Run<TProgram, TArgument, TModel>` signature
+  - Updated `Runtime.Dispatch` → `Interop.DispatchDomEvent` for event dispatch
+  - Updated `Model | Update | View` → `Model | Transition | View` in architecture diagram
+  - Updated .NET version reference from "8+" → "10+"
+  - Added note about binary batching protocol for DOM operations
+  - Updated file reference: `Abies/Runtime.cs` → `Picea.Abies/Runtime.cs`
