@@ -31,13 +31,26 @@ While nullable reference types help, they have limitations:
 
 We provide an **Option type** (`Option<T>`) as an explicit representation of optional values, inspired by functional languages.
 
-Core types in `Abies/Option.cs`:
+The `Option<T>` type is a `readonly struct` with a boolean discriminator, defined in the Picea kernel (not in Abies itself):
 
 ```csharp
-public interface Option<T>;
+public readonly struct Option<T>
+{
+    private readonly T _value;
+    private readonly bool _hasValue;
 
-public readonly record struct Some<T>(T Value) : Option<T>;
-public readonly struct None<T> : Option<T>;
+    public Option(T value)
+    {
+        _value = value;
+        _hasValue = true;
+    }
+
+    public static Option<T> Some(T value) => new(value);
+    public static Option<T> None => default;
+
+    public bool IsSome => _hasValue;
+    public bool IsNone => !_hasValue;
+}
 ```
 
 Usage patterns:
@@ -50,14 +63,14 @@ public record Model(
 );
 
 // Creating options
-Option<User> loggedIn = new Some<User>(user);
-Option<User> anonymous = new None<User>();
+Option<User> loggedIn = Option<User>.Some(user);
+Option<User> anonymous = Option<User>.None;
 
 // Pattern matching
 string greeting = currentUser switch
 {
-    Some<User> some => $"Hello, {some.Value.Name}",
-    None<User> => "Hello, Guest"
+    { IsSome: true } some => $"Hello, {some.Value.Name}",
+    _ => "Hello, Guest"
 };
 ```
 
@@ -72,23 +85,24 @@ Guidelines from `ddd.instructions.md`:
 ### Positive
 
 - **Explicit optionality**: Type signature documents that value may be absent
-- **No null checks**: Pattern matching handles both cases
-- **Value type None**: `None<T>` is a struct; no allocation for empty case
+- **No null checks**: Property-based or pattern matching handles both cases
+- **Value type**: `Option<T>` is a `readonly struct`; no heap allocation for the wrapper itself
 - **Composition**: Can chain operations on Options
-- **Compiler enforcement**: Can't access `.Value` without matching
+- **Zero-allocation None**: `default` struct represents absence without allocation
 
 ### Negative
 
 - **Verbosity**: More characters than `?` syntax
 - **Learning curve**: Unfamiliar to developers used to nullable references
 - **Interop friction**: Must convert at boundaries with null-using APIs
-- **Generic noise**: `Some<T>`, `None<T>` require type parameters
+- **Boxing risk**: Using `Option<T>` in generic contexts may cause boxing if not carefully handled
 
 ### Neutral
 
 - Nullable reference types are still used at API boundaries and interop
 - Option doesn't replace `Nullable<T>` for value types in all cases
 - Can be extended with map/bind/match extension methods
+- Defined in the Picea kernel, shared across all Picea framework libraries
 
 ## Alternatives Considered
 
@@ -149,4 +163,12 @@ Can be added as extension methods to current Option if needed.
 - [Null References: The Billion Dollar Mistake](https://www.infoq.com/presentations/Null-References-The-Billion-Dollar-Mistake-Tony-Hoare/)
 - [F# Options](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/options)
 - [LanguageExt](https://github.com/louthy/language-ext)
-- [`Abies/Option.cs`](../../Abies/Option.cs) - Implementation
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current implementation after Picea migration.
+  - Changed Option from `interface Option<T>` with `Some<T>`/`None<T>` record implementations → `readonly struct Option<T>` with `bool _hasValue` discriminator
+  - Updated code examples to show struct-based API (`Option<T>.Some()`, `Option<T>.None`, `.IsSome`/`.IsNone`)
+  - Clarified that `Option<T>` lives in the Picea kernel, not in Abies
+  - Removed reference to `Abies/Option.cs` (file no longer exists in Abies)
+  - Updated consequences to reflect value-type semantics (zero-allocation None, boxing risk)

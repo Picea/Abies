@@ -27,11 +27,11 @@ The MVU pattern consists of three core components:
 
 1. **Model** - An immutable record representing the entire application state
 2. **View** - A pure function `Model → Document` that produces a virtual DOM tree
-3. **Update** - A pure function `(Message, Model) → (Model, Command)` that handles state transitions
+3. **Transition** - A pure function `(Message, Model) → (Model, Command)` that handles state transitions
 
 Messages flow unidirectionally:
 ```
-User Action → Message → Update → New Model → View → Virtual DOM → Real DOM
+User Action → Message → Transition → New Model → View → Virtual DOM → Real DOM
                            ↑
                      Commands/Effects
 ```
@@ -42,12 +42,12 @@ The pattern is implemented through the `Program<TModel, TArgument>` interface:
 public interface Program<TModel, in TArgument> 
 {
     public static abstract (TModel, Command) Initialize(Url url, TArgument argument);
-    public static abstract (TModel model, Command command) Update(Message message, TModel model);
+    public static abstract (TModel model, Command command) Transition(Message message, TModel model);
     public static abstract Document View(TModel model);
     public static abstract Message OnUrlChanged(Url url);
-    public static abstract Message OnLinkClicked(UrlRequest urlRequest);
+    public static abstract Message OnUrlRequested(UrlRequest urlRequest);
     public static abstract Subscription Subscriptions(TModel model);
-    public static abstract Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch);
+    public static abstract Task Interpret(Command command, Func<Message, ValueTuple> dispatch);
 }
 ```
 
@@ -56,16 +56,16 @@ public interface Program<TModel, in TArgument>
 ### Positive
 
 - **Predictable state management**: The entire application state lives in a single immutable model, making it trivial to understand what state the application is in at any point in time
-- **Testable update logic**: Since `Update` is a pure function, unit tests can verify state transitions without mocking or side effects
+- **Testable transition logic**: Since `Transition` is a pure function, unit tests can verify state transitions without mocking or side effects
 - **Time-travel debugging**: State history can be recorded and replayed since each state is an immutable snapshot
-- **Clear separation of concerns**: Side effects are isolated in `HandleCommand`, keeping core logic pure
+- **Clear separation of concerns**: Side effects are isolated in `Interpret`, keeping core logic pure
 - **Simple mental model**: Developers can reason about the application as `(state, event) → newState`
 - **Natural fit for .NET records**: C# records with `with` expressions work well for immutable state updates
 
 ### Negative
 
 - **Learning curve**: Developers accustomed to imperative frameworks may need time to adapt to the unidirectional flow
-- **Boilerplate for simple changes**: Each state change requires defining a message type and handling it in `Update`
+- **Boilerplate for simple changes**: Each state change requires defining a message type and handling it in `Transition`
 - **Large model considerations**: Very large applications may need to think carefully about model structure to avoid performance issues
 - **Callback indirection**: Side effects must be expressed as commands and handled asynchronously, adding indirection
 
@@ -116,3 +116,11 @@ Rejected because centralized state provides better predictability.
 - [Elmish (F#)](https://elmish.github.io/elmish/)
 - [Bolero (Blazor + Elmish)](https://fsbolero.io/)
 - [Model-View-Update Pattern](https://elmprogramming.com/model-view-update-part-1.html)
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current API after Picea migration.
+  - Renamed `Update` → `Transition` throughout (interface member and prose)
+  - Renamed `HandleCommand` → `Interpret` (interface member and prose)
+  - Renamed `OnLinkClicked` → `OnUrlRequested` (interface member)
+  - Updated `Program<TModel, TArgument>` interface to match current source
