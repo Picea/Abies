@@ -226,10 +226,29 @@ jobs:
           dotnet list package --vulnerable --include-transitive 2>&1 | tee transitive-vulnerability-report.txt
           
           if grep -qi "critical\|high" transitive-vulnerability-report.txt; then
-            echo "⚠️  Vulnerabilities detected in transitive dependencies."
-            echo "These require upstream package updates and are tracked for monitoring."
+            echo "❌ Critical or High severity vulnerabilities detected in transitive dependencies!"
+            echo "These usually require updating one or more direct package versions."
             echo "Review the report above for details."
-            # Warning only — transitive vulnerabilities are not directly actionable
+            
+            # Allow temporary exceptions via ALLOW_TRANSITIVE_VULNS env var.
+            # Set it to a tracking issue URL to document the exception.
+            if [ -n "${ALLOW_TRANSITIVE_VULNS:-}" ]; then
+              if echo "${ALLOW_TRANSITIVE_VULNS}" | grep -Eq '^https?://'; then
+                echo "⚠️  Temporarily allowing transitive vulnerabilities due to tracked issue:"
+                echo "    ${ALLOW_TRANSITIVE_VULNS}"
+                echo "Ensure this exception is revisited and removed before the next release."
+              else
+                echo "❌ ALLOW_TRANSITIVE_VULNS is set but is not a valid http(s) URL:"
+                echo "    ${ALLOW_TRANSITIVE_VULNS}"
+                echo "Please set it to a link to the tracking issue or security exception document."
+                exit 1
+              fi
+            else
+              echo "❌ Failing build because high/critical transitive vulnerabilities were found."
+              echo "To temporarily allow this (with explicit tracking), set ALLOW_TRANSITIVE_VULNS"
+              echo "to the URL of the issue or security exception that documents the risk."
+              exit 1
+            fi
           else
             echo "✅ No critical or high severity vulnerabilities in transitive dependencies"
           fi

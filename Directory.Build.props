@@ -7,10 +7,6 @@
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>moderate</NuGetAuditLevel>
-    <!-- Suppress low-severity transitive dependency audit warnings that
-         generate error-level annotations in CI. These are not directly
-         actionable without upstream package updates. -->
-    <NoWarn>$(NoWarn);NU1903;NU1904</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
