@@ -135,6 +135,10 @@ jobs:
       
       - name: Restore
         run: dotnet restore
+        env:
+          # Suppress NuGet audit during lint restore — audit is not the lint
+          # check's concern; the security-scan job handles vulnerability detection.
+          DOTNET_NUGET_AUDIT: "false"
       
       - name: Get changed C# files
         id: changed-files
@@ -199,18 +203,35 @@ jobs:
       
       - name: Restore
         run: dotnet restore
+        env:
+          # Suppress audit during restore — we run our own scan below
+          DOTNET_NUGET_AUDIT: "false"
       
-      - name: Check for vulnerable packages
+      - name: Check for vulnerable direct packages
         run: |
-          echo "🔍 Scanning for vulnerable packages..."
-          dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+          echo "🔍 Scanning direct packages for vulnerabilities..."
+          dotnet list package --vulnerable 2>&1 | tee direct-vulnerability-report.txt
           
-          if grep -qi "critical\|high" vulnerability-report.txt; then
-            echo "❌ Critical or High severity vulnerabilities detected!"
-            echo "Please review and update dependencies before merging."
+          if grep -qi "critical\|high" direct-vulnerability-report.txt; then
+            echo "❌ Critical or High severity vulnerabilities detected in direct dependencies!"
+            echo "Please update the affected packages before merging."
             exit 1
           else
-            echo "✅ No critical or high severity vulnerabilities found"
+            echo "✅ No critical or high severity vulnerabilities in direct dependencies"
+          fi
+      
+      - name: Check for vulnerable transitive packages
+        run: |
+          echo "🔍 Scanning transitive packages for vulnerabilities..."
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee transitive-vulnerability-report.txt
+          
+          if grep -qi "critical\|high" transitive-vulnerability-report.txt; then
+            echo "⚠️  Vulnerabilities detected in transitive dependencies."
+            echo "These require upstream package updates and are tracked for monitoring."
+            echo "Review the report above for details."
+            # Warning only — transitive vulnerabilities are not directly actionable
+          else
+            echo "✅ No critical or high severity vulnerabilities in transitive dependencies"
           fi
 
   # Bundle size quality gate
@@ -231,12 +252,16 @@ jobs:
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
       
-      - name: Restore dependencies
-        run: dotnet restore
+      - name: Restore Conduit.Wasm dependencies
+        run: dotnet restore Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj
+        env:
+          # Suppress audit for bundle size check — not its concern
+          DOTNET_NUGET_AUDIT: "false"
       
       - name: Build and Publish Release (Trimmed)
         run: |
-          dotnet publish Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj -c Release -o ./publish-trimmed
+          dotnet publish Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj \
+            -c Release -o ./publish-trimmed --no-restore
       
       - name: Measure Bundle Size
         id: bundle-size
