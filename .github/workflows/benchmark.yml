@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'Picea.Abies/**'
+      - 'Picea.Abies.Benchmark.Wasm/**'
       - 'Picea.Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
       - 'scripts/merge-benchmark-results.py'
@@ -75,11 +76,11 @@ jobs:
           filters: |
             e2e-scripts:
               - 'Picea.Abies/**'
+              - 'Picea.Abies.Benchmark.Wasm/**'
               - '.github/workflows/benchmark.yml'
               - 'scripts/compare-benchmark.py'
               - 'scripts/convert-e2e-results.py'
               - 'scripts/run-benchmarks.sh'
-              - 'contrib/js-framework-benchmark/**'
       - name: Check if performance PR
         id: check-perf
         run: |
@@ -201,6 +202,10 @@ jobs:
   # ============================================================================
   # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
   # ============================================================================
+  # Uses the js-framework-benchmark submodule for benchmark infrastructure
+  # (server, webdriver-ts, CSS) and builds Picea.Abies.Benchmark.Wasm from
+  # the repo for the framework-under-test.
+  # ============================================================================
   e2e-benchmark:
     name: E2E Benchmark (js-framework-benchmark)
     runs-on: ubuntu-latest
@@ -215,6 +220,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -226,38 +233,52 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Clone js-framework-benchmark
+      # Build the benchmark WASM app from the repo's own project
+      - name: Build Abies benchmark WASM app
         run: |
-          git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork
+          dotnet publish Picea.Abies.Benchmark.Wasm/Picea.Abies.Benchmark.Wasm.csproj -c Release
 
-      # Set up Abies framework in the benchmark repo
-      - name: Setup Abies framework
+      # Set up the framework entry in the js-framework-benchmark directory
+      - name: Setup Abies framework in benchmark
         run: |
-          # Create framework directory structure
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/bundled-dist
+          # Ensure framework directory structure exists
+          mkdir -p js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot
 
-          # Copy framework files from contrib (package.json AND package-lock.json required by /ls endpoint)
-          cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
-          cp $GITHUB_WORKSPACE/contrib/js-framework-benchmark/package-lock.json ../js-framework-benchmark-fork/frameworks/keyed/abies/
-          cp -r $GITHUB_WORKSPACE/contrib/js-framework-benchmark/src/* ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
+          # Write package.json for framework registration with the benchmark server
+          cat > js-framework-benchmark/frameworks/keyed/abies/package.json << 'PACKAGE_EOF'
+          {
+            "name": "js-framework-benchmark-abies",
+            "version": "1.0.0",
+            "js-framework-benchmark": {
+              "frameworkVersionFromPackage": "",
+              "frameworkVersion": "2.0.0",
+              "customURL": "/bundled-dist/wwwroot/",
+              "frameworkHomeURL": "https://github.com/picea/abies"
+            }
+          }
+          PACKAGE_EOF
 
-          # Copy Picea.Abies library source (excluding bin/obj to avoid stale artifacts)
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies
-          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Picea.Abies/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies/
+          # Find the AppBundle output directory (location varies by .NET SDK version)
+          APPBUNDLE=$(find Picea.Abies.Benchmark.Wasm/bin -path "*/AppBundle" -type d | head -1)
+          if [ -z "$APPBUNDLE" ]; then
+            echo "Error: AppBundle directory not found after publish"
+            find Picea.Abies.Benchmark.Wasm/bin -type d | head -20
+            exit 1
+          fi
+          echo "Found AppBundle at: $APPBUNDLE"
 
-          # Copy Picea.Abies.Browser library source (excluding bin/obj to avoid stale artifacts)
-          mkdir -p ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies.Browser
-          rsync -a --exclude='bin' --exclude='obj' $GITHUB_WORKSPACE/Picea.Abies.Browser/ ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Picea.Abies.Browser/
+          # Copy published WASM output to benchmark framework directory
+          cp -r "$APPBUNDLE"/* js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot/
 
-          # Copy Global folder (referenced by Directory.Build.props)
-          cp -r $GITHUB_WORKSPACE/Global ../js-framework-benchmark-fork/frameworks/keyed/abies/src/Global
+          # Fix base href for benchmark server context
+          sed -i 's|<head>|<head>\n    <base href="/frameworks/keyed/abies/bundled-dist/wwwroot/">|' \
+            js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot/index.html
 
-          # Copy build configuration
-          cp $GITHUB_WORKSPACE/Directory.Build.props ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
-          cp $GITHUB_WORKSPACE/global.json ../js-framework-benchmark-fork/frameworks/keyed/abies/src/
+          # Verify the framework files are in place
+          echo "Framework files:"
+          ls -la js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot/ | head -20
 
-      # Cache npm dependencies (key based on static version since files are outside workspace)
+      # Cache npm dependencies
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
@@ -275,17 +296,9 @@ jobs:
           restore-keys: |
             selenium-chrome-${{ runner.os }}-
 
-      - name: Build Abies for benchmark
-        run: |
-          cd ../js-framework-benchmark-fork/frameworks/keyed/abies/src
-          # Publish
-          dotnet publish -c Release
-          # Copy to bundled-dist
-          cp -r bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
-
       - name: Install benchmark dependencies
         run: |
-          cd ../js-framework-benchmark-fork
+          cd js-framework-benchmark
           npm ci
           cd webdriver-ts
           npm ci
@@ -294,7 +307,7 @@ jobs:
 
       - name: Start benchmark server
         run: |
-          cd ../js-framework-benchmark-fork
+          cd js-framework-benchmark
           npm start &
           # Wait for server to be ready (up to 30 seconds)
           echo "Waiting for benchmark server to start..."
@@ -312,7 +325,7 @@ jobs:
 
       - name: Run E2E benchmarks (all CPU benchmarks)
         run: |
-          cd ../js-framework-benchmark-fork/webdriver-ts
+          cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
           npm run bench -- --headless --framework keyed/abies --benchmark 02_replace1k
           npm run bench -- --headless --framework keyed/abies --benchmark 03_update10th1k
@@ -325,7 +338,7 @@ jobs:
 
       - name: Run Memory benchmarks
         run: |
-          cd ../js-framework-benchmark-fork/webdriver-ts
+          cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 21_ready-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 22_run-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory
@@ -345,7 +358,7 @@ jobs:
       - name: Compare against baseline
         run: |
           python3 scripts/compare-benchmark.py \
-            --results-dir ../js-framework-benchmark-fork/webdriver-ts/results \
+            --results-dir js-framework-benchmark/webdriver-ts/results \
             --baseline benchmark-results/baseline.json \
             --threshold 5.0 \
             --framework abies
@@ -353,7 +366,7 @@ jobs:
       - name: Convert E2E results to benchmark format
         run: |
           python3 scripts/convert-e2e-results.py \
-            --results-dir ../js-framework-benchmark-fork/webdriver-ts/results \
+            --results-dir js-framework-benchmark/webdriver-ts/results \
             --output ./e2e-benchmark-results.json \
             --output-memory ./e2e-benchmark-memory.json \
             --framework abies
@@ -404,7 +417,7 @@ jobs:
         if: always()
         run: |
           mkdir -p ./e2e-results
-          cp -r ../js-framework-benchmark-fork/webdriver-ts/results/* ./e2e-results/ 2>/dev/null || true
+          cp -r js-framework-benchmark/webdriver-ts/results/* ./e2e-results/ 2>/dev/null || true
           cp ./e2e-benchmark-results.json ./e2e-results/ 2>/dev/null || true
           cp ./e2e-benchmark-memory.json ./e2e-results/ 2>/dev/null || true
 
