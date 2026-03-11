@@ -17,7 +17,7 @@ Testing web applications traditionally requires complex infrastructure:
 
 Abies's architecture—with pure functions, immutable state, and explicit side effects—creates opportunities for simpler, faster testing. We needed a test strategy that:
 
-1. Leverages the purity of Update and View functions
+1. Leverages the purity of Transition and View functions
 2. Tests side effects at appropriate boundaries
 3. Provides confidence without excessive mocking
 4. Supports both unit and integration testing
@@ -28,14 +28,14 @@ We adopt a **layered test strategy** with three distinct levels:
 
 ### Level 1: Unit Tests (Pure Function Tests)
 
-Test `Update`, `View`, routing, and domain logic as pure functions:
+Test `Transition`, `View`, routing, and domain logic as pure functions:
 
 ```csharp
 [Fact]
-public void Update_Increment_IncreasesCount()
+public void Transition_Increment_IncreasesCount()
 {
     var model = new Model(Count: 0);
-    var (newModel, command) = Program.Update(new Increment(), model);
+    var (newModel, command) = Program.Transition(new Increment(), model);
     
     Assert.Equal(1, newModel.Count);
     Assert.IsType<Command.None>(command);
@@ -72,7 +72,7 @@ public async Task HomePage_LoadsArticles()
     
     // Act: simulate application flow
     var (model, _) = Program.Initialize(Url.Create("/"), new Arguments());
-    await Program.HandleCommand(new LoadArticlesCommand(), Dispatch);
+    await Program.Interpret(new LoadArticlesCommand(), Dispatch);
     
     // Assert: verify model state
     Assert.Equal(3, ((Page.Home)model.Page).Model.Articles.Count);
@@ -193,3 +193,10 @@ Not rejected—can supplement—but not primary strategy.
 - [`Picea.Abies.Tests/`](../../Picea.Abies.Tests/) - Unit tests
 - [`Picea.Abies.Conduit.Tests/`](../../Picea.Abies.Conduit.Tests/) - Integration tests
 - [`Picea.Abies.Conduit.Testing.E2E/`](../../Picea.Abies.Conduit.Testing.E2E/) - End-to-end tests
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current API after Picea migration.
+  - Renamed `Update` → `Transition` in code examples and prose
+  - Renamed `HandleCommand` → `Interpret` in integration test code example
+  - Prose already referenced correct `Picea.Abies.*` project names (no change needed)
