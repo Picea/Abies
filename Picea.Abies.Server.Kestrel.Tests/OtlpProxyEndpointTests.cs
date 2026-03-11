@@ -127,7 +127,8 @@ public class OtlpProxyEndpointTests : IDisposable
 
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
-        Assert.Equal(HttpStatusCode.PayloadTooLarge, response.StatusCode);
+        // HttpStatusCode uses the HTTP/1.0 name RequestEntityTooLarge for 413
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
     }
 
     [Fact]
