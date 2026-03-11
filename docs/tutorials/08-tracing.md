@@ -1,42 +1,48 @@
-# Tutorial: Distributed Tracing with OpenTelemetry
+# Tutorial 8: Distributed Tracing
 
 Learn how to use Abies's built-in distributed tracing to understand user journeys, debug issues, and monitor your application in production.
+
+**Prerequisites:** A running Abies application, familiarity with [MVU architecture](../concepts/mvu-architecture.md)
+
+**Time:** 20 minutes
+
+**What you'll learn:**
+
+- How Abies traces user interactions end-to-end
+- Configuring verbosity levels
+- Viewing traces in the .NET Aspire dashboard
+- Correlating frontend and backend traces
+- Adding custom spans to your backend
 
 ## Overview
 
 Abies includes built-in OpenTelemetry instrumentation that provides:
 
-- **User Interaction Tracing**: Every click, input, and form submission is traced
-- **API Call Correlation**: HTTP requests are automatically linked to the UI events that triggered them
-- **End-to-End Visibility**: Trace context propagates from browser → API → backend services
-- **Verbosity Control**: Configure how much detail to capture based on your needs
-
-## Prerequisites
-
-- A running Abies application
-- .NET Aspire (optional, for dashboard visualization)
-- Basic understanding of the MVU architecture
+- **User interaction tracing** — Every click, input, and form submission creates a trace span
+- **API call correlation** — HTTP requests are automatically linked to the UI events that triggered them
+- **End-to-end visibility** — Trace context propagates from browser → API → backend services
+- **Verbosity control** — Configure how much detail to capture based on your needs
 
 ## Quick Start
 
-### 1. Enable Tracing (Default: On)
+### 1. Tracing Is Enabled by Default
 
-Tracing is enabled by default. Your application automatically:
+Your Abies application automatically:
 
 1. Creates spans for UI events (clicks, inputs, form submissions)
 2. Propagates `traceparent` headers to API calls
 3. Exports traces to `/otlp/v1/traces` (proxied to your collector)
 
-### 2. View Traces in Aspire Dashboard
+### 2. View Traces in the Aspire Dashboard
 
 If using .NET Aspire:
 
 ```bash
-cd Abies.Conduit.AppHost
+cd Picea.Abies.Conduit.AppHost
 dotnet run
 ```
 
-Open the Aspire dashboard (typically https://localhost:17195) and navigate to **Traces** to see:
+Open the Aspire dashboard (typically `https://localhost:17195`) and navigate to **Traces** to see:
 
 - User interactions as parent spans
 - HTTP calls as child spans
@@ -56,30 +62,29 @@ UI Event: Click Button "Submit Article"          [Browser - Abies.Web]
 
 ## Verbosity Levels
 
-Abies supports three verbosity levels to control tracing detail:
+Abies supports three verbosity levels:
 
 | Level | What's Traced | Use Case |
-|-------|---------------|----------|
+| --- | --- | --- |
 | `off` | Nothing | Disable tracing entirely |
-| `user` | UI Events + HTTP calls | **Default** - Production monitoring, user journey analysis |
-| `debug` | Everything (DOM updates, attribute changes, etc.) | Framework debugging, performance analysis |
+| `user` | UI events + HTTP calls | **Default** — production monitoring |
+| `debug` | Everything (DOM updates, attribute changes, etc.) | Framework debugging |
 
 ### Setting Verbosity
 
-**Method 1: Meta Tag (Recommended)**
+**Method 1: Meta tag (recommended)**
 
 ```html
-<!-- In your index.html -->
 <meta name="otel-verbosity" content="user">
 ```
 
-**Method 2: URL Parameter (Development)**
+**Method 2: URL parameter (development)**
 
 ```
 https://localhost:5209/?otel_verbosity=debug
 ```
 
-**Method 3: JavaScript Global**
+**Method 3: JavaScript global**
 
 ```javascript
 // Before page load
@@ -87,12 +92,6 @@ window.__OTEL_VERBOSITY = 'debug';
 
 // At runtime (in browser console)
 window.__otel.setVerbosity('debug');
-```
-
-**Method 4: Check Current Verbosity**
-
-```javascript
-console.log(window.__otel.getVerbosity()); // 'user'
 ```
 
 ## What Each Level Traces
@@ -115,7 +114,7 @@ Traces that matter for understanding user behavior:
 
 ### `debug` Level
 
-Everything - useful when debugging the framework itself:
+Everything — useful when debugging the framework itself:
 
 ```
 ✓ UI Event: Click Button "Sign In"
@@ -129,54 +128,49 @@ Everything - useful when debugging the framework itself:
 ✓ setLocalStorage                  ← Storage operations
 ```
 
-## Understanding Trace Context
-
-### How Correlation Works
+## How Trace Correlation Works
 
 1. **User clicks a button** → Abies creates a `UI Event` span with a unique `traceId`
 2. **Event triggers API call** → The `traceparent` header carries the `traceId` to the backend
 3. **Backend processes request** → Creates spans under the same `traceId`
-4. **Trace collector assembles** → All spans with same `traceId` form one distributed trace
+4. **Trace collector assembles** → All spans with the same `traceId` form one distributed trace
 
 ### Trace Attributes
 
-Each `UI Event` span includes rich context:
+Each `UI Event` span includes context:
 
 | Attribute | Example | Description |
-|-----------|---------|-------------|
+| --- | --- | --- |
 | `ui.event.type` | `click` | DOM event type |
 | `ui.element.tag` | `button` | HTML element tag |
 | `ui.element.id` | `submit-btn` | Element ID if present |
 | `ui.element.text` | `Submit Article` | Button/link text (truncated) |
 | `ui.action` | `Click Button: Submit Article` | Human-readable description |
-| `abies.message_id` | `CreateArticle` | Abies message dispatched |
 
-## Integration with .NET Backend
+## Adding Custom Backend Spans
 
-### Aspire AppHost Configuration
-
-The Aspire AppHost configures OTLP proxy automatically:
+For deeper visibility in your .NET backend:
 
 ```csharp
-// In Program.cs of AppHost
-var frontend = builder.AddProject<Abies_Conduit>("frontend")
-    .WithOtlpExporter();  // Routes /otlp/v1/traces to Aspire collector
+using System.Diagnostics;
 
-var api = builder.AddProject<Abies_Conduit_Api>("api")
-    .WithOtlpExporter();
-```
+public static class Instrumentation
+{
+    public static readonly ActivitySource ActivitySource =
+        new("Picea.Abies.Conduit.Api");
+}
 
-### Backend Span Correlation
+// In your endpoint or service:
+using var activity = Instrumentation.ActivitySource.StartActivity("ValidateArticle");
+activity?.SetTag("article.title", article.Title);
 
-The API automatically extracts `traceparent` from incoming requests:
+// ... validation logic
 
-```csharp
-// Incoming request has:
-// traceparent: 00-abc123...-def456...-01
-
-// API creates spans under the same trace
-using var activity = ActivitySource.StartActivity("ProcessArticle");
-// This span has traceId: abc123... (same as browser)
+if (errors.Any())
+{
+    activity?.SetTag("validation.error_count", errors.Count);
+    activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
+}
 ```
 
 ## Debugging with Traces
@@ -185,11 +179,11 @@ using var activity = ActivitySource.StartActivity("ProcessArticle");
 
 When something goes wrong:
 
-1. **Open Aspire Dashboard** → Traces
-2. **Find the failing request** by status code or error
-3. **Click to expand** the trace waterfall
-4. **Follow the chain** from UI Event → HTTP → Backend → Database
-5. **Identify the failing span** (usually marked red)
+1. Open the Aspire Dashboard → **Traces**
+2. Find the failing request by status code or error
+3. Click to expand the trace waterfall
+4. Follow the chain: UI Event → HTTP → Backend → Database
+5. Identify the failing span (usually marked red)
 
 ### Example: Debugging a Failed Submit
 
@@ -203,73 +197,27 @@ UI Event: Click Button "Publish"           ✓ 2ms
 
 The trace immediately shows: database timeout caused the failure.
 
-### Adding Custom Spans (C#)
-
-For more detail in your backend:
-
-```csharp
-using System.Diagnostics;
-
-public static class Instrumentation
-{
-    public static readonly ActivitySource ActivitySource = new("Abies.Conduit.Api");
-}
-
-// In your code:
-using var activity = Instrumentation.ActivitySource.StartActivity("ValidateArticle");
-activity?.SetTag("article.title", article.Title);
-
-// ... validation logic
-
-if (errors.Any())
-{
-    activity?.SetTag("validation.error_count", errors.Count);
-    activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
-}
-```
-
-## Performance Considerations
-
-### Overhead
+## Performance Overhead
 
 | Verbosity | Overhead | When to Use |
-|-----------|----------|-------------|
+| --- | --- | --- |
 | `off` | 0% | When tracing causes issues |
-| `user` | ~1-2% | **Production default** |
-| `debug` | ~5-10% | Development only |
+| `user` | ~1–2% | **Production default** |
+| `debug` | ~5–10% | Development only |
 
-### Sampling (High-Volume Apps)
+## CDN vs. Shim Mode
 
-For high-traffic applications, configure sampling in your collector:
+Abies automatically handles two modes for the OpenTelemetry SDK:
 
-```yaml
-# otel-collector-config.yaml
-processors:
-  probabilistic_sampler:
-    sampling_percentage: 10  # Sample 10% of traces
+**CDN mode (full SDK):** When the CDN is reachable, loads the full OpenTelemetry SDK with `ZoneContextManager`, `FetchInstrumentation`, and `UserInteractionInstrumentation`.
+
+**Shim mode (lightweight fallback):** When the CDN is blocked (corporate firewalls, offline), falls back to a minimal ~50-line implementation that manually patches `fetch()` for context propagation. Both modes provide identical user-facing behavior and trace correlation.
+
+Force shim mode with:
+
+```html
+<meta name="otel-cdn" content="off">
 ```
-
-Or client-side with a custom sampler (advanced).
-
-## CDN vs Shim Mode
-
-Abies automatically handles two modes:
-
-### CDN Mode (Full SDK)
-
-When unpkg CDN is reachable:
-- Loads full OpenTelemetry SDK
-- Uses `ZoneContextManager` for async context
-- Full `FetchInstrumentation` and `UserInteractionInstrumentation`
-
-### Shim Mode (Lightweight Fallback)
-
-When CDN is blocked (corporate firewalls, offline):
-- Minimal ~50-line implementation
-- Manually patches `fetch()` for context propagation
-- Exports to same OTLP endpoint
-
-Both modes provide the same user-facing behavior and trace correlation.
 
 ## Configuration Reference
 
@@ -289,16 +237,7 @@ Both modes provide the same user-facing behavior and trace correlation.
 <meta name="otlp-endpoint" content="https://my-collector:4318/v1/traces">
 ```
 
-### JavaScript Globals (Before Page Load)
-
-```javascript
-window.__OTEL_DISABLED = true;          // Disable entirely
-window.__OTEL_VERBOSITY = 'debug';      // Set verbosity
-window.__OTEL_USE_CDN = false;          // Force shim mode
-window.__OTLP_ENDPOINT = 'https://...'; // Custom endpoint
-```
-
-### Runtime API
+### JavaScript Runtime API
 
 ```javascript
 // Get current verbosity
@@ -309,67 +248,52 @@ window.__otel.setVerbosity('debug');
 
 // Force flush pending spans
 await window.__otel.provider.forceFlush();
-
-// Access OTLP endpoint
-console.log(window.__otel.endpoint);
 ```
 
 ## Best Practices
 
 ### For Production
 
-1. **Use `user` verbosity** - captures what matters without noise
+1. **Use `user` verbosity** — Captures what matters without noise
 2. **Set up alerts** on error traces in your observability platform
-3. **Sample if needed** - 1-10% is usually sufficient for large apps
-4. **Correlate with logs** - use `traceId` in log messages
+3. **Sample if needed** — 1–10% is usually sufficient for high-traffic apps
+4. **Correlate with logs** — Use `traceId` in log messages for cross-referencing
 
 ### For Development
 
 1. **Use `debug` verbosity** when investigating DOM issues
-2. **Check Aspire dashboard** for trace visualization
+2. **Check the Aspire dashboard** for trace visualization
 3. **Use browser DevTools** Network tab alongside traces
-4. **Add URL parameter** `?otel_verbosity=debug` for quick toggling
-
-### For Framework Development
-
-When debugging Abies itself:
-
-```javascript
-// Enable maximum verbosity
-window.__OTEL_VERBOSITY = 'debug';
-
-// Verify spans are being created
-// Look for: setAppContent, updateAttribute, replaceChildHtml, etc.
-```
+4. **Add `?otel_verbosity=debug`** to the URL for quick toggling
 
 ## Troubleshooting
 
 ### No Traces Appearing
 
-1. Check if OTel is disabled: `console.log(window.__otel)`
-2. Verify endpoint is reachable: Network tab → filter by `/otlp`
+1. Check if OTel is initialized: `console.log(window.__otel)` in browser console
+2. Verify the endpoint is reachable: Network tab → filter by `/otlp`
 3. Check verbosity isn't `off`: `window.__otel.getVerbosity()`
 
 ### Traces Not Correlated
 
 1. Verify `traceparent` header is being sent (Network tab → Headers)
 2. Check backend is extracting the header (look for `Activity` in logs)
-3. Ensure same collector receives both frontend and backend traces
+3. Ensure the same collector receives both frontend and backend traces
 
 ### CDN Loading Failures
 
 If you see "OTel CDN disabled" or timeout errors:
 
 1. Check network connectivity to unpkg.com
-2. Add `<meta name="otel-cdn" content="off">` to use shim
+2. Add `<meta name="otel-cdn" content="off">` to use the shim
 3. The shim provides identical functionality
 
 ## Next Steps
 
 - [Guide: Performance Optimization](../guides/performance.md) — Use traces to find bottlenecks
 - [Guide: Testing](../guides/testing.md) — Test tracing in integration tests
+- [Guide: Debugging](../guides/debugging.md) — Combine tracing with other debugging techniques
 - [Concepts: MVU Architecture](../concepts/mvu-architecture.md) — Understand the message flow
-- [Reference: Runtime](../reference/runtime.md) — Backend tracing details
 
 ## See Also
 
