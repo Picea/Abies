@@ -62,7 +62,7 @@ public class OtlpProxyEndpointTests : IDisposable
     public async Task Traces_Endpoint_Returns_204_When_No_Collector_Configured()
     {
         // Arrange
-        var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
+        using var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         // Act
@@ -75,7 +75,7 @@ public class OtlpProxyEndpointTests : IDisposable
     [Fact]
     public async Task Metrics_Endpoint_Returns_204_When_No_Collector_Configured()
     {
-        var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
+        using var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         var response = await _client.PostAsync("/otlp/v1/metrics", content);
@@ -86,7 +86,7 @@ public class OtlpProxyEndpointTests : IDisposable
     [Fact]
     public async Task Logs_Endpoint_Returns_204_When_No_Collector_Configured()
     {
-        var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
+        using var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         var response = await _client.PostAsync("/otlp/v1/logs", content);
@@ -97,7 +97,7 @@ public class OtlpProxyEndpointTests : IDisposable
     [Fact]
     public async Task Rejects_Unsupported_Content_Type()
     {
-        var content = new StringContent("not protobuf");
+        using var content = new StringContent("not protobuf");
         content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
 
         var response = await _client.PostAsync("/otlp/v1/traces", content);
@@ -108,7 +108,7 @@ public class OtlpProxyEndpointTests : IDisposable
     [Fact]
     public async Task Accepts_Application_Json_Content_Type()
     {
-        var content = new StringContent("{}");
+        using var content = new StringContent("{}");
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
         var response = await _client.PostAsync("/otlp/v1/traces", content);
@@ -122,7 +122,7 @@ public class OtlpProxyEndpointTests : IDisposable
     {
         // MaxRequestSizeBytes = 1024 in test setup
         var oversizedBody = new byte[2048];
-        var content = new ByteArrayContent(oversizedBody);
+        using var content = new ByteArrayContent(oversizedBody);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         var response = await _client.PostAsync("/otlp/v1/traces", content);
@@ -134,22 +134,20 @@ public class OtlpProxyEndpointTests : IDisposable
     public async Task Rate_Limiting_Blocks_Excess_Requests()
     {
         // RateLimitPerMinute = 5 in test setup
-        var content = () =>
-        {
-            var c = new ByteArrayContent([0x0A]);
-            c.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
-            return c;
-        };
 
         // First 5 requests should succeed
         for (var i = 0; i < 5; i++)
         {
-            var response = await _client.PostAsync("/otlp/v1/traces", content());
+            using var c = new ByteArrayContent([0x0A]);
+            c.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+            var response = await _client.PostAsync("/otlp/v1/traces", c);
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         }
 
         // 6th request should be rate limited
-        var rateLimitedResponse = await _client.PostAsync("/otlp/v1/traces", content());
+        using var rateLimitContent = new ByteArrayContent([0x0A]);
+        rateLimitContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+        var rateLimitedResponse = await _client.PostAsync("/otlp/v1/traces", rateLimitContent);
         Assert.Equal(HttpStatusCode.TooManyRequests, rateLimitedResponse.StatusCode);
         Assert.Equal("60", rateLimitedResponse.Headers.GetValues("Retry-After").First());
     }
@@ -230,8 +228,6 @@ public class OtlpProxyForwardingTests : IDisposable
             })
             .Start();
 
-        var collectorClient = _collectorHost.GetTestClient();
-
         // Start the proxy, pointing at the mock collector
         _proxyHost = new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -274,7 +270,7 @@ public class OtlpProxyForwardingTests : IDisposable
     {
         // Arrange
         var traceData = new byte[] { 0x0A, 0x12, 0x34, 0x56, 0x78 };
-        var content = new ByteArrayContent(traceData);
+        using var content = new ByteArrayContent(traceData);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         // Act
@@ -289,7 +285,7 @@ public class OtlpProxyForwardingTests : IDisposable
     [Fact]
     public async Task Preserves_Content_Type_When_Forwarding()
     {
-        var content = new ByteArrayContent([0x0A]);
+        using var content = new ByteArrayContent([0x0A]);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
         await _client.PostAsync("/otlp/v1/traces", content);
@@ -303,7 +299,7 @@ public class OtlpProxyForwardingTests : IDisposable
     {
         for (var i = 0; i < 3; i++)
         {
-            var content = new ByteArrayContent([(byte)i]);
+            using var content = new ByteArrayContent([(byte)i]);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
             await _client.PostAsync("/otlp/v1/traces", content);
         }

@@ -35,12 +35,17 @@
 //   This eliminates the need for a separate main.js bootstrap script.
 //
 // OpenTelemetry Integration:
-//   When <meta name="abies-otel-verbosity" content="user"> is present,
-//   this module dynamically imports abies-otel.js which loads the OTel
+//   When <meta name="otel-verbosity"> (or legacy <meta name="abies-otel-verbosity">)
+//   is present, this module dynamically imports abies-otel.js which loads the OTel
 //   Web SDK from CDN and instruments:
 //     - DOM events → spans with command IDs and event attributes
 //     - fetch() → traceparent header injection for browser→server correlation
 //     - DOM mutation batches → spans (debug verbosity only)
+//   Configuration priority (highest first):
+//     1. URL query parameter: ?otel-verbosity=off|user|debug
+//     2. window.__otel.verbosity (if present and string)
+//     3. <meta name="otel-verbosity" content="...">
+//     4. <meta name="abies-otel-verbosity" content="..."> (legacy/internal)
 //   If CDN loading fails, a no-op shim is used — the app still works.
 //
 // See also:
@@ -115,23 +120,66 @@ let dispatchDomEvent = null;
 let otelModule = null;
 
 /**
- * Initializes OpenTelemetry if configured via <meta> tag.
+ * Resolves OTel verbosity from multiple configuration sources.
+ * Priority (highest first):
+ *  1. URL query parameter: ?otel-verbosity=off|user|debug
+ *  2. window.__otel.verbosity (if present and string)
+ *  3. <meta name="otel-verbosity" content="...">
+ *  4. <meta name="abies-otel-verbosity" content="..."> (legacy/internal)
+ *
+ * @returns {string|null} The verbosity level, or null if not configured.
+ */
+function resolveOtelVerbosity() {
+    // 1. URL parameter (?otel-verbosity=...)
+    try {
+        const url = new URL(window.location.href);
+        const urlVerbosity = url.searchParams.get("otel-verbosity");
+        if (typeof urlVerbosity === "string" && urlVerbosity.length > 0) {
+            return urlVerbosity;
+        }
+    } catch {
+        // Ignore URL parsing issues
+    }
+
+    // 2. window.__otel.verbosity
+    if (typeof window !== "undefined" && window.__otel && typeof window.__otel.verbosity === "string") {
+        if (window.__otel.verbosity.length > 0) {
+            return window.__otel.verbosity;
+        }
+    }
+
+    // 3. Meta tags (prefer documented name, support legacy name for compatibility)
+    const meta =
+        document.querySelector('meta[name="otel-verbosity"]') ||
+        document.querySelector('meta[name="abies-otel-verbosity"]');
+
+    if (meta && typeof meta.content === "string" && meta.content.length > 0) {
+        return meta.content;
+    }
+
+    return null;
+}
+
+/**
+ * Initializes OpenTelemetry if configured via meta tag, URL param, or window.__otel.
  * Called once during setupEventDelegation.
  */
 async function initializeOtel() {
-    const meta = document.querySelector('meta[name="abies-otel-verbosity"]');
-    if (!meta) return;
-
-    const verbosity = meta.content || "user";
-    if (verbosity === "off") return;
+    const verbosity = resolveOtelVerbosity();
+    if (!verbosity || verbosity === "off") return;
 
     try {
         // Resolve the OTel module path relative to this script
         // In WASM mode: abies.js is at /abies.js, so otel is at /abies-otel.js
         // In server mode: abies.js is loaded from the server
         const scriptUrl = new URL("./abies-otel.js", import.meta.url);
-        otelModule = await import(/* webpackIgnore: true */ scriptUrl.href);
-        await otelModule.initialize(verbosity);
+        const mod = await import(/* webpackIgnore: true */ scriptUrl.href);
+        const success = await mod.initialize(verbosity);
+
+        // Only keep the module reference if initialization succeeded.
+        // When CDN loading fails, initialize() returns false and uses a
+        // no-op shim internally — no point calling traceEvent/traceBatch.
+        otelModule = success ? mod : null;
     } catch (err) {
         console.warn("[abies] Failed to load OTel module. Tracing disabled.", err);
         otelModule = null;

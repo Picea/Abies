@@ -19,7 +19,7 @@
 // Security:
 //   - Request size capped (default 1 MB) to prevent DoS
 //   - Per-IP rate limiting to prevent abuse
-//   - Content-Type validation (only application/x-protobuf)
+//   - Content-Type validation (application/x-protobuf or application/json)
 //   - No authentication by default — traces contain performance data, not secrets
 //
 // Graceful degradation:
@@ -56,6 +56,58 @@ public static class OtlpProxyEndpoint
     /// Uses a sliding window of 1 minute.
     /// </summary>
     private static readonly ConcurrentDictionary<string, Queue<DateTime>> RateLimitBuckets = new();
+
+    /// <summary>
+    /// Time-to-live for inactive rate limit buckets.
+    /// Buckets with no requests newer than this TTL are removed to avoid unbounded growth.
+    /// </summary>
+    private static readonly TimeSpan RateLimitBucketTtl = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Background timer that periodically scans and cleans up stale rate limit buckets.
+    /// Stored in a static field to prevent garbage collection.
+    /// </summary>
+    private static readonly Timer RateLimitCleanupTimer = new(
+        _ => CleanupRateLimitBuckets(),
+        state: null,
+        dueTime: RateLimitBucketTtl,
+        period: RateLimitBucketTtl);
+
+    /// <summary>
+    /// Static fallback HttpClient used when IHttpClientFactory is not registered.
+    /// Avoids creating a new HttpClient per request (socket exhaustion).
+    /// </summary>
+    private static readonly HttpClient FallbackHttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10),
+    };
+
+    /// <summary>
+    /// Periodically invoked to trim old timestamps from each bucket and remove buckets
+    /// that have been inactive longer than <see cref="RateLimitBucketTtl"/>.
+    /// This prevents the static <see cref="RateLimitBuckets"/> dictionary from growing
+    /// without bound in long-running processes with many unique client IPs.
+    /// </summary>
+    private static void CleanupRateLimitBuckets()
+    {
+        var cutoff = DateTime.UtcNow - RateLimitBucketTtl;
+
+        foreach (var (key, timestamps) in RateLimitBuckets)
+        {
+            lock (timestamps)
+            {
+                while (timestamps.Count > 0 && timestamps.Peek() < cutoff)
+                {
+                    timestamps.Dequeue();
+                }
+
+                if (timestamps.Count == 0)
+                {
+                    RateLimitBuckets.TryRemove(key, out _);
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// Maps OTLP proxy endpoints for forwarding browser traces to a collector.
@@ -215,7 +267,7 @@ public static class OtlpProxyEndpoint
 
         try
         {
-            var client = httpClientFactory?.CreateClient("OtlpProxy") ?? new HttpClient();
+            var client = httpClientFactory?.CreateClient("OtlpProxy") ?? FallbackHttpClient;
 
             using var forwardRequest = new HttpRequestMessage(HttpMethod.Post, targetUrl);
             memoryStream.Position = 0;
