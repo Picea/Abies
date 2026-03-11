@@ -161,4 +161,9 @@ Rejected because order dependency breaks diffing.
 - [Praefixum Source Generator](https://github.com/...)
 - [React Reconciliation and Keys](https://reactjs.org/docs/reconciliation.html#keys)
 - [C# Source Generators](https://docs.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview)
-- [`Abies/Html/Elements.cs`](../../Abies/Html/Elements.cs) - Usage of UniqueId
+- [`Picea.Abies/Html/Elements.cs`](../../Picea.Abies/Html/Elements.cs) - Usage of UniqueId
+
+## Changelog
+
+- **2026-03 (v2 migration)**: Updated to reflect current state after Picea migration.
+  - Updated file reference: `Abies/Html/Elements.cs` → `Picea.Abies/Html/Elements.cs`
