@@ -5,7 +5,7 @@ public interface HeadContent
     string Key { get; }
     string ToHtml();
 
-    public sealed record Meta(string Name, string Content) : HeadContent
+    sealed record Meta(string Name, string Content) : HeadContent
     {
         public string Key => $"meta:{Name}";
 
@@ -13,7 +13,7 @@ public interface HeadContent
             $"""<meta name="{HtmlSpec.Encode(Name)}" content="{HtmlSpec.Encode(Content)}" data-abies-head="{HtmlSpec.Encode(Key)}">""";
     }
 
-    public sealed record MetaProperty(string Property, string Content) : HeadContent
+    sealed record MetaProperty(string Property, string Content) : HeadContent
     {
         public string Key => $"property:{Property}";
 
@@ -21,18 +21,18 @@ public interface HeadContent
             $"""<meta property="{HtmlSpec.Encode(Property)}" content="{HtmlSpec.Encode(Content)}" data-abies-head="{HtmlSpec.Encode(Key)}">""";
     }
 
-    public sealed record Link(string Rel, string Href, string? As = null) : HeadContent
+    sealed record Link(string Rel, string Href, string? As = null) : HeadContent
     {
         public string Key => $"link:{Rel}:{Href}";
 
         public string ToHtml()
         {
-            var asAttr = As is not null ? $""" as="{HtmlSpec.Encode(As)}"""" : "";
+            var asAttr = As is not null ? $" as=\"{HtmlSpec.Encode(As)}\"" : "";
             return $"""<link rel="{HtmlSpec.Encode(Rel)}" href="{HtmlSpec.Encode(Href)}"{asAttr} data-abies-head="{HtmlSpec.Encode(Key)}">""";
         }
     }
 
-    public sealed record Script(string Type, string Content) : HeadContent
+    sealed record Script(string Type, string Content) : HeadContent
     {
         public string Key => $"script:{Type}";
 
@@ -40,7 +40,7 @@ public interface HeadContent
             $"""<script type="{HtmlSpec.Encode(Type)}" data-abies-head="{HtmlSpec.Encode(Key)}">{Content}</script>""";
     }
 
-    public sealed record Base(string Href) : HeadContent
+    sealed record Base(string Href) : HeadContent
     {
         public string Key => "base";
 

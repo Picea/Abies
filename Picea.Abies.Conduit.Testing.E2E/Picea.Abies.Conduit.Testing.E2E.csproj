@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Picea.Abies.AppHost\Picea.Abies.AppHost.csproj" />
+    <ProjectReference Include="..\Picea.Abies.Conduit.AppHost\Picea.Abies.Conduit.AppHost.csproj" />
     <ProjectReference Include="..\Picea.Abies.Conduit.App\Picea.Abies.Conduit.App.csproj" />
     <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
   </ItemGroup>
