@@ -23,7 +23,9 @@ jobs:
           # The E2E project was temporarily removed from the solution
           # because its Aspire AppHost reference is broken.
           # Skip gracefully if it's not in the solution.
-          if dotnet sln list 2>/dev/null | grep -q 'Picea.Abies.Conduit.Testing.E2E'; then
+          # Use grep instead of `dotnet sln list` to avoid requiring
+          # the .NET SDK before the setup-dotnet step.
+          if grep -q 'Picea.Abies.Conduit.Testing.E2E' Picea.Abies.sln; then
             echo "in_solution=true" >> $GITHUB_OUTPUT
             echo "✅ E2E project found in solution"
           else
