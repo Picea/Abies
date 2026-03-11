@@ -228,6 +228,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
