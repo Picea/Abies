@@ -34,10 +34,20 @@
 //     setOnUrlChangedCallback(fn) — passes OnUrlChanged [JSExport]
 //   This eliminates the need for a separate main.js bootstrap script.
 //
+// OpenTelemetry Integration:
+//   When <meta name="abies-otel-verbosity" content="user"> is present,
+//   this module dynamically imports abies-otel.js which loads the OTel
+//   Web SDK from CDN and instruments:
+//     - DOM events → spans with command IDs and event attributes
+//     - fetch() → traceparent header injection for browser→server correlation
+//     - DOM mutation batches → spans (debug verbosity only)
+//   If CDN loading fails, a no-op shim is used — the app still works.
+//
 // See also:
 //   - Picea.Abies.Browser/Interop.cs — JSImport/JSExport declarations
 //   - Picea.Abies/RenderBatchWriter.cs — binary serialization (.NET side)
 //   - Picea.Abies/DOM/Patch.cs — patch type definitions
+//   - abies-otel.js — OpenTelemetry instrumentation module
 // =============================================================================
 
 // =============================================================================
@@ -98,6 +108,35 @@ const utf8Decoder = new TextDecoder("utf-8");
 // DispatchDomEvent callback — set by .NET during initialization
 // =============================================================================
 let dispatchDomEvent = null;
+
+// =============================================================================
+// OpenTelemetry module — loaded dynamically when configured
+// =============================================================================
+let otelModule = null;
+
+/**
+ * Initializes OpenTelemetry if configured via <meta> tag.
+ * Called once during setupEventDelegation.
+ */
+async function initializeOtel() {
+    const meta = document.querySelector('meta[name="abies-otel-verbosity"]');
+    if (!meta) return;
+
+    const verbosity = meta.content || "user";
+    if (verbosity === "off") return;
+
+    try {
+        // Resolve the OTel module path relative to this script
+        // In WASM mode: abies.js is at /abies.js, so otel is at /abies-otel.js
+        // In server mode: abies.js is loaded from the server
+        const scriptUrl = new URL("./abies-otel.js", import.meta.url);
+        otelModule = await import(/* webpackIgnore: true */ scriptUrl.href);
+        await otelModule.initialize(verbosity);
+    } catch (err) {
+        console.warn("[abies] Failed to load OTel module. Tracing disabled.", err);
+        otelModule = null;
+    }
+}
 
 // =============================================================================
 // HTML fragment parser helper — reusable <template> container
@@ -271,6 +310,12 @@ function registerEventType(eventType) {
             if (el.hasAttribute && el.hasAttribute(attrName)) {
                 const commandId = el.getAttribute(attrName);
                 const eventData = extractEventData(event);
+
+                // OTel: trace the event dispatch if instrumentation is active
+                if (otelModule) {
+                    otelModule.traceEvent(commandId, eventType, eventData);
+                }
+
                 dispatchDomEvent(commandId, eventType, eventData);
 
                 // Prevent default for form submissions
@@ -655,6 +700,11 @@ export function applyBinaryBatch(batchData) {
     // Read string table
     const strings = readStringTable(bytes, stringTableOffset, bytes.byteLength);
 
+    // OTel: trace the batch if debug verbosity is active
+    if (otelModule) {
+        otelModule.traceBatch(patchCount);
+    }
+
     // Apply each patch
     const headerSize = 8;
     const entrySize = 16;
@@ -748,6 +798,9 @@ export function getCurrentUrl() {
  */
 export function setupEventDelegation() {
     COMMON_EVENT_TYPES.forEach(registerEventType);
+
+    // Initialize OpenTelemetry if configured (non-blocking)
+    initializeOtel();
 }
 
 // =============================================================================
