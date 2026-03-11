@@ -1,449 +1,349 @@
 # Tutorial 6: Subscriptions
 
-This tutorial teaches you to work with external event sources: timers, browser events, and WebSockets.
+Learn how to connect your application to external event sources like timers, WebSockets, and browser APIs.
 
-**Prerequisites:** [Tutorial 5: Forms](./05-forms.md)
+**Prerequisites:** [Tutorial 5: Forms](05-forms.md)
 
 **Time:** 25 minutes
 
-## What You'll Build
+**What you'll learn:**
 
-An application demonstrating:
+- What subscriptions are and how they differ from events
+- The subscription lifecycle (start, keep, stop)
+- Using `SubscriptionModule.Every` for timers
+- Using `SubscriptionModule.Create` for custom event sources
+- Combining subscriptions with `SubscriptionModule.Batch`
+- Conditional subscriptions based on model state
 
-- Periodic timer updates
-- Keyboard event handling
-- Mouse tracking
-- Window resize detection
-- WebSocket connections
+## What Are Subscriptions?
 
-## Commands vs Subscriptions
+In Abies, the `View` function describes what the UI looks like. But what about events that don't come from the UI? Timers, WebSocket messages, keyboard shortcuts, server-sent events — these are **external event sources** that exist outside the DOM.
 
-| Commands | Subscriptions |
-| -------- | ------------- |
-| One-time effects | Continuous event sources |
-| Fire and forget | Lifecycle managed by runtime |
-| HTTP requests, storage | Timers, browser events, sockets |
-| Returned from Update | Returned from Subscriptions |
+**Subscriptions** connect your application to these external sources. Each render cycle, the runtime calls your `Subscriptions(model)` function to get the set of active subscriptions. The runtime then:
 
-## The Subscriptions Function
+1. **Starts** new subscriptions that weren't active before
+2. **Keeps** subscriptions that are still active (same key)
+3. **Stops** subscriptions that are no longer active
+
+This declarative approach means subscriptions are managed the same way as the DOM — you describe *what* you want, and the runtime figures out the minimal changes.
+
+> **Principle:** Subscriptions form a [Monoid](https://en.wikipedia.org/wiki/Monoid) with `SubscriptionModule.None` as the identity and `SubscriptionModule.Batch` as the binary operation. This is the same algebraic structure as commands — you can combine any number of subscriptions without special-casing zero, one, or many.
+
+## The Subscription API
+
+Abies provides four factory methods:
+
+| Method | Purpose |
+| --- | --- |
+| `SubscriptionModule.None` | No subscriptions (identity element) |
+| `SubscriptionModule.Batch(...)` | Combine multiple subscriptions |
+| `SubscriptionModule.Every(interval, msgFactory)` | Periodic timer |
+| `SubscriptionModule.Create(key, startFn)` | Custom event source |
+
+## Example 1: A Clock with `Every`
+
+Let's build a clock that updates every second.
+
+### Model and Messages
 
 ```csharp
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.None;  // No subscriptions
+using Abies.DOM;
+using Abies.Subscriptions;
+using Automaton;
+using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
+
+namespace ClockApp;
+
+public record Model(DateTime CurrentTime, bool IsRunning);
+
+public interface ClockMessage : Message;
+public record Tick : ClockMessage;
+public record ToggleClock : ClockMessage;
 ```
 
-The runtime calls `Subscriptions(model)` after every update. It diffs the result against the previous subscriptions and starts/stops as needed.
-
-## Step 1: Timer Subscription
-
-Let's add a clock that updates every second:
+### Transition
 
 ```csharp
-public record Model(DateTimeOffset CurrentTime);
-
-public record Tick(DateTimeOffset Time) : Message;
-
-public static (Model, Command) Initialize(Url url, Arguments argument)
-    => (new Model(DateTimeOffset.UtcNow), Commands.None);
-
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Tick tick => (model with { CurrentTime = tick.Time }, Commands.None),
-        _ => (model, Commands.None)
-    };
-
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.Every(TimeSpan.FromSeconds(1), time => new Tick(time));
-
-public static Document View(Model model)
-    => new("Clock",
-        div([], [
-            text($"Current time: {model.CurrentTime:HH:mm:ss}")
-        ]));
-```
-
-`SubscriptionModule.Every` creates a timer that fires at the specified interval.
-
-## Step 2: Keyboard Events
-
-Add keyboard handling:
-
-```csharp
-public record Model(
-    DateTimeOffset CurrentTime,
-    string LastKeyPressed
-);
-
-public record KeyDown(string Key) : Message;
-
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Tick tick => (model with { CurrentTime = tick.Time }, Commands.None),
-        KeyDown key => (model with { LastKeyPressed = key.Key }, Commands.None),
-        _ => (model, Commands.None)
-    };
-
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.Batch([
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), time => new Tick(time)),
-        SubscriptionModule.OnKeyDown(data => new KeyDown(data?.Key ?? ""))
-    ]);
-```
-
-`SubscriptionModule.Batch` combines multiple subscriptions.
-
-## Step 3: Mouse Tracking
-
-Track mouse position:
-
-```csharp
-public record Model(
-    DateTimeOffset CurrentTime,
-    string LastKeyPressed,
-    int MouseX,
-    int MouseY
-);
-
-public record MouseMoved(int X, int Y) : Message;
-
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Tick tick => (model with { CurrentTime = tick.Time }, Commands.None),
-        KeyDown key => (model with { LastKeyPressed = key.Key }, Commands.None),
-        MouseMoved mouse => (model with { MouseX = mouse.X, MouseY = mouse.Y }, Commands.None),
-        _ => (model, Commands.None)
-    };
-
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.Batch([
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), time => new Tick(time)),
-        SubscriptionModule.OnKeyDown(data => new KeyDown(data?.Key ?? "")),
-        SubscriptionModule.OnMouseMove(data => new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0))
-    ]);
-```
-
-## Step 4: Conditional Subscriptions
-
-Subscribe only when needed:
-
-```csharp
-public record Model(
-    DateTimeOffset CurrentTime,
-    bool TrackingEnabled
-);
-
-public record ToggleTracking : Message;
-
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        ToggleTracking => (model with { TrackingEnabled = !model.TrackingEnabled }, Commands.None),
-        // ...
-    };
-
-public static Subscription Subscriptions(Model model)
+public sealed class Clock : Program<Model, Unit>
 {
-    var subs = new List<Subscription>
-    {
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), time => new Tick(time))
-    };
-    
-    if (model.TrackingEnabled)
-    {
-        subs.Add(SubscriptionModule.OnMouseMove(data => 
-            new MouseMoved(data?.ClientX ?? 0, data?.ClientY ?? 0)));
-    }
-    
-    return SubscriptionModule.Batch(subs);
+    public static (Model, Command) Initialize(Unit _) =>
+        (new Model(DateTime.Now, IsRunning: true), Commands.None);
+
+    public static (Model, Command) Transition(Model model, Message message) =>
+        message switch
+        {
+            Tick => (model with { CurrentTime = DateTime.Now }, Commands.None),
+            ToggleClock => (model with { IsRunning = !model.IsRunning }, Commands.None),
+            _ => (model, Commands.None)
+        };
+```
+
+### Subscriptions — The Key Part
+
+```csharp
+    public static Subscription Subscriptions(Model model) =>
+        model.IsRunning
+            ? SubscriptionModule.Every(
+                TimeSpan.FromSeconds(1),
+                () => new Tick())
+            : SubscriptionModule.None;
+```
+
+When `IsRunning` is true, the timer is active. When the user toggles it off, the subscription disappears from the returned set, and the runtime automatically stops the timer.
+
+**How `Every` works internally:**
+
+1. Creates a `PeriodicTimer` with the given interval
+2. On each tick, calls the message factory (`() => new Tick()`)
+3. Dispatches the message into the MVU loop
+4. Runs until the cancellation token is triggered (when the subscription is removed)
+
+**Automatic key generation:** `Every` generates a key based on the interval: `"every:1000"` for 1-second intervals. If you have multiple timers with the same interval, use the overload with a custom key:
+
+```csharp
+SubscriptionModule.Every(
+    key: "animation-timer",
+    TimeSpan.FromMilliseconds(16),
+    () => new AnimationFrame())
+```
+
+### View
+
+```csharp
+    public static Document View(Model model) =>
+        new("Clock",
+            div([class_("clock")],
+            [
+                h1([], [text(model.CurrentTime.ToString("HH:mm:ss"))]),
+                button([
+                    onclick(new ToggleClock())
+                ], [text(model.IsRunning ? "Pause" : "Resume")])
+            ]));
 }
 ```
 
-When `TrackingEnabled` becomes false, the runtime automatically unsubscribes from mouse events.
+## Example 2: Custom Subscriptions with `Create`
 
-## Step 5: Window Resize
-
-Track viewport size:
+For event sources beyond timers, use `SubscriptionModule.Create`. It takes a key and a start function:
 
 ```csharp
-public record WindowResized(int Width, int Height) : Message;
-
-SubscriptionModule.OnResize(data => 
-    new WindowResized(data?.Width ?? 0, data?.Height ?? 0))
+SubscriptionModule.Create(key, (dispatch, cancellationToken) => { ... })
 ```
 
-## Step 6: Animation Frames
+The start function receives:
 
-For smooth animations, use animation frame subscriptions:
+- **`dispatch`** — A function to send messages into the MVU loop
+- **`cancellationToken`** — Cancelled when the subscription should stop
+
+### WebSocket Example
 
 ```csharp
-public record AnimationFrame(double Timestamp) : Message;
-public record AnimationDelta(double Delta) : Message;
+public static Subscription Subscriptions(Model model) =>
+    model.IsConnected
+        ? SubscriptionModule.Create(
+            "chat-websocket",
+            async (dispatch, ct) =>
+            {
+                using var ws = new ClientWebSocket();
+                await ws.ConnectAsync(
+                    new Uri("wss://chat.example.com/ws"), ct);
 
-// Regular animation frame (provides timestamp)
-SubscriptionModule.OnAnimationFrame(data => 
-    new AnimationFrame(data?.Timestamp ?? 0))
+                var buffer = new byte[4096];
+                while (!ct.IsCancellationRequested)
+                {
+                    var result = await ws.ReceiveAsync(buffer, ct);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                        break;
 
-// Delta variant (provides time since last frame)
-SubscriptionModule.OnAnimationFrameDelta(data => 
-    new AnimationDelta(data?.DeltaTime ?? 0))
+                    var text = Encoding.UTF8.GetString(
+                        buffer, 0, result.Count);
+                    dispatch(new ChatMessageReceived(text));
+                }
+            })
+        : SubscriptionModule.None;
 ```
 
-## Step 7: WebSocket Connections
+**Key behaviors:**
 
-Connect to a WebSocket server:
+- When `model.IsConnected` becomes `true`, the runtime starts the WebSocket subscription
+- When it becomes `false`, the runtime cancels the token, which closes the WebSocket
+- The `dispatch` function sends messages back into `Transition` from the background task
+- The string key `"chat-websocket"` identifies this subscription for diffing
 
-```csharp
-public record SocketMessage(WebSocketEvent Event) : Message;
-
-SubscriptionModule.WebSocket(
-    new WebSocketOptions("wss://echo.websocket.events"),
-    evt => new SocketMessage(evt))
-```
-
-Handle different WebSocket events:
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        SocketMessage { Event: WebSocketEvent.Opened } =>
-            (model with { ConnectionStatus = "Connected" }, Commands.None),
-        
-        SocketMessage { Event: WebSocketEvent.Closed closed } =>
-            (model with { ConnectionStatus = $"Closed: {closed.Reason}" }, Commands.None),
-        
-        SocketMessage { Event: WebSocketEvent.Error error } =>
-            (model with { ConnectionStatus = $"Error: {error.Message}" }, Commands.None),
-        
-        SocketMessage { Event: WebSocketEvent.MessageReceived msg } =>
-            (model with { LastMessage = msg.Data }, Commands.None),
-        
-        _ => (model, Commands.None)
-    };
-```
-
-## Step 8: Custom Subscriptions
-
-Create custom subscriptions for any async event source:
+### Server-Sent Events Example
 
 ```csharp
 public static Subscription Subscriptions(Model model) =>
     SubscriptionModule.Create(
-        "my-custom-sub",  // Unique key for diffing
-        async (dispatch, cancellationToken) =>
+        "notifications-sse",
+        async (dispatch, ct) =>
         {
-            // Your async logic here
-            while (!cancellationToken.IsCancellationRequested)
+            using var client = new HttpClient();
+            using var stream = await client.GetStreamAsync(
+                "https://api.example.com/events", ct);
+            using var reader = new StreamReader(stream);
+
+            while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(5000, cancellationToken);
-                dispatch(new CustomEvent());
+                var line = await reader.ReadLineAsync(ct);
+                if (line?.StartsWith("data: ") == true)
+                {
+                    var data = line[6..];
+                    dispatch(new NotificationReceived(data));
+                }
             }
         });
 ```
 
-## Complete Example
+## Combining Subscriptions with `Batch`
+
+Use `SubscriptionModule.Batch` to combine multiple subscriptions:
 
 ```csharp
-using Abies;
-using Abies.DOM;
-using Abies.Html;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+public static Subscription Subscriptions(Model model) =>
+    SubscriptionModule.Batch(
+        // Always run: update clock every second
+        SubscriptionModule.Every(
+            TimeSpan.FromSeconds(1),
+            () => new Tick()),
 
-await Runtime.Run<SubsDemo, Arguments, Model>(new Arguments());
+        // Conditional: only when connected
+        model.IsConnected
+            ? SubscriptionModule.Create("websocket", ConnectWebSocket)
+            : SubscriptionModule.None,
 
-public record Arguments;
+        // Conditional: only when on the dashboard
+        model.CurrentPage is Page.Dashboard
+            ? SubscriptionModule.Every(
+                key: "poll-stats",
+                TimeSpan.FromSeconds(30),
+                () => new PollStats())
+            : SubscriptionModule.None
+    );
+```
 
-public record Model(
-    DateTimeOffset CurrentTime,
-    string LastKey,
-    int MouseX,
-    int MouseY,
-    int WindowWidth,
-    int WindowHeight,
-    bool TrackMouse,
-    string? WsMessage
-);
+`Batch` is smart about its inputs:
 
-// Messages
-public record Tick(DateTimeOffset Time) : Message;
-public record KeyDown(string Key) : Message;
-public record MouseMoved(int X, int Y) : Message;
-public record Resized(int W, int H) : Message;
-public record ToggleMouseTracking : Message;
-public record WsEvent(WebSocketEvent Event) : Message;
+- Passing zero subscriptions returns `None`
+- Passing one subscription returns it directly (no wrapper)
+- Passing multiple creates a `Batch` node
 
-public class SubsDemo : Program<Model, Arguments>
-{
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(
-            DateTimeOffset.UtcNow, "", 0, 0, 0, 0, false, null
-        ), Commands.None);
+## The Subscription Lifecycle
 
-    public static (Model model, Command command) Update(Message message, Model model)
-        => message switch
-        {
-            Tick t => (model with { CurrentTime = t.Time }, Commands.None),
-            KeyDown k => (model with { LastKey = k.Key }, Commands.None),
-            MouseMoved m => (model with { MouseX = m.X, MouseY = m.Y }, Commands.None),
-            Resized r => (model with { WindowWidth = r.W, WindowHeight = r.H }, Commands.None),
-            ToggleMouseTracking => (model with { TrackMouse = !model.TrackMouse }, Commands.None),
-            WsEvent { Event: WebSocketEvent.MessageReceived msg } => 
-                (model with { WsMessage = msg.Data }, Commands.None),
-            _ => (model, Commands.None)
-        };
+The runtime diffs subscriptions by their **key** (the `SubscriptionKey` string):
 
-    public static Document View(Model model)
-        => new("Subscriptions Demo",
-            div([class_("demo")], [
-                h1([], [text("Subscriptions Demo")]),
-                
-                section([], [
-                    h2([], [text("⏰ Timer")]),
-                    p([], [text($"Time: {model.CurrentTime:HH:mm:ss}")])
-                ]),
-                
-                section([], [
-                    h2([], [text("⌨️ Keyboard")]),
-                    p([], [text($"Last key: {model.LastKey}")])
-                ]),
-                
-                section([], [
-                    h2([], [text("🖱️ Mouse")]),
-                    button([onclick(new ToggleMouseTracking())], [
-                        text(model.TrackMouse ? "Stop tracking" : "Start tracking")
-                    ]),
-                    model.TrackMouse
-                        ? p([], [text($"Position: ({model.MouseX}, {model.MouseY})")])
-                        : text("")
-                ]),
-                
-                section([], [
-                    h2([], [text("📐 Window")]),
-                    p([], [text($"Size: {model.WindowWidth} × {model.WindowHeight}")])
-                ]),
-                
-                section([], [
-                    h2([], [text("🔌 WebSocket")]),
-                    p([], [text(model.WsMessage ?? "No messages yet")])
-                ])
-            ]));
+```
+Previous cycle: { "every:1000", "websocket" }
+Current cycle:  { "every:1000", "poll-stats:30000" }
 
-    public static Subscription Subscriptions(Model model)
+→ "every:1000"     — same key, KEEP running
+→ "websocket"      — removed, STOP (cancel token)
+→ "poll-stats:30000" — new key, START
+```
+
+This is exactly how the virtual DOM diff works for elements — same key means keep, missing means remove, new means create. The runtime uses the same reconciliation principle for both UI and subscriptions.
+
+## Conditional Subscriptions
+
+Subscriptions that depend on model state are automatically managed:
+
+```csharp
+public static Subscription Subscriptions(Model model) =>
+    model switch
     {
-        var subs = new List<Subscription>
-        {
-            SubscriptionModule.Every(TimeSpan.FromSeconds(1), t => new Tick(t)),
-            SubscriptionModule.OnKeyDown(d => new KeyDown(d?.Key ?? "")),
-            SubscriptionModule.OnResize(d => new Resized(d?.Width ?? 0, d?.Height ?? 0)),
-            SubscriptionModule.WebSocket(
-                new WebSocketOptions("wss://echo.websocket.events"),
-                e => new WsEvent(e))
-        };
-        
-        if (model.TrackMouse)
-        {
-            subs.Add(SubscriptionModule.OnMouseMove(d => 
-                new MouseMoved(d?.ClientX ?? 0, d?.ClientY ?? 0)));
-        }
-        
-        return SubscriptionModule.Batch(subs);
-    }
+        // Game is playing: run the game loop
+        { GameState: GameState.Playing } =>
+            SubscriptionModule.Every(
+                key: "game-loop",
+                TimeSpan.FromMilliseconds(16),  // ~60 FPS
+                () => new GameTick()),
 
-    public static Message OnUrlChanged(Url url) => new Tick(DateTimeOffset.UtcNow);
-    public static Message OnLinkClicked(UrlRequest r) => new Tick(DateTimeOffset.UtcNow);
-    public static Task HandleCommand(Command c, Func<Message, ValueTuple> d) 
-        => Task.CompletedTask;
+        // Game is paused: no subscriptions
+        { GameState: GameState.Paused } =>
+            SubscriptionModule.None,
+
+        // Menu: no subscriptions
+        _ => SubscriptionModule.None
+    };
+```
+
+When the game transitions from `Playing` to `Paused`, the `Subscriptions` function returns `None`, and the runtime automatically stops the game loop timer. When it transitions back, the timer is restarted.
+
+## Navigation Subscription
+
+URL changes are delivered via a subscription:
+
+```csharp
+public static Subscription Subscriptions(Model model) =>
+    Navigation.UrlChanges(url => new UrlChanged(url));
+```
+
+`Navigation.UrlChanges` is a convenience wrapper around `SubscriptionModule.Create` that listens for browser `popstate` events and intercepted link clicks. It's keyed as `"navigation:urlChanges"`.
+
+## Testing Subscriptions
+
+You can test the `Subscriptions` function like any other pure function — verify it returns the right subscription structure based on the model:
+
+```csharp
+[Fact]
+public void Subscriptions_WhenRunning_ReturnsTimerSubscription()
+{
+    var model = new Model(DateTime.Now, IsRunning: true);
+
+    var sub = Clock.Subscriptions(model);
+
+    Assert.IsType<Subscription.Source>(sub);
+}
+
+[Fact]
+public void Subscriptions_WhenPaused_ReturnsNone()
+{
+    var model = new Model(DateTime.Now, IsRunning: false);
+
+    var sub = Clock.Subscriptions(model);
+
+    Assert.IsType<Subscription.None>(sub);
 }
 ```
 
-## Available Subscriptions
-
-| Subscription | Description |
-| ------------ | ----------- |
-| `Every(interval, toMessage)` | Periodic timer |
-| `OnAnimationFrame(toMessage)` | RAF with timestamp |
-| `OnAnimationFrameDelta(toMessage)` | RAF with delta time |
-| `OnResize(toMessage)` | Window resize |
-| `OnVisibilityChange(toMessage)` | Page visibility |
-| `OnKeyDown(toMessage)` | Key press |
-| `OnKeyUp(toMessage)` | Key release |
-| `OnMouseDown(toMessage)` | Mouse button down |
-| `OnMouseUp(toMessage)` | Mouse button up |
-| `OnMouseMove(toMessage)` | Mouse movement |
-| `OnClick(toMessage)` | Mouse click |
-| `WebSocket(options, toMessage)` | WebSocket connection |
-| `Create(key, start)` | Custom subscription |
-| `Batch(subscriptions)` | Combine multiple |
-| `None` | No subscriptions |
-
-## What You Learned
-
-| Concept | Application |
-| ------- | ----------- |
-| Timer subscriptions | Periodic updates |
-| Browser event subscriptions | Keyboard, mouse, resize |
-| Conditional subscriptions | Enable/disable based on state |
-| WebSocket subscriptions | Real-time connections |
-| Subscription batching | Combine multiple sources |
-| Custom subscriptions | Any async event source |
-
-## Best Practices
-
-### Use stable keys
-
-When using `Create`, ensure keys are stable:
+For integration tests, verify that subscription messages flow correctly through the `Transition` function:
 
 ```csharp
-// Good: Key changes when room changes
-SubscriptionModule.Create($"chat:{model.RoomId}", ...)
-
-// Bad: Key is always different
-SubscriptionModule.Create(Guid.NewGuid().ToString(), ...)
-```
-
-### Avoid expensive subscriptions
-
-Mouse move fires frequently. Consider throttling:
-
-```csharp
-// Only track when needed
-if (model.IsDragging)
-    subs.Add(SubscriptionModule.OnMouseMove(...));
-```
-
-### Clean up in custom subscriptions
-
-Use the cancellation token:
-
-```csharp
-SubscriptionModule.Create("my-sub", async (dispatch, ct) =>
+[Fact]
+public void Tick_UpdatesCurrentTime()
 {
-    try
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            await DoWork(ct);
-        }
-    }
-    catch (OperationCanceledException)
-    {
-        // Expected on cleanup
-    }
-})
+    var oldTime = DateTime.Now.AddMinutes(-5);
+    var model = new Model(oldTime, IsRunning: true);
+
+    var (newModel, _) = Clock.Transition(model, new Tick());
+
+    Assert.True(newModel.CurrentTime > oldTime);
+}
 ```
 
 ## Exercises
 
-1. **Stopwatch**: Build a stopwatch with start/stop/reset
-2. **Drag and drop**: Implement dragging using mouse subscriptions
-3. **Idle detection**: Detect when user is idle
-4. **Live search**: Combine input with debounced API calls
+1. **Countdown timer** — Build a countdown that starts from a user-entered number, decrements every second, and stops at zero. Use conditional subscriptions to stop the timer automatically.
 
-## Next Tutorial
+2. **Auto-save** — Add a subscription that saves form data every 30 seconds (using a command + interpreter). Only active when there are unsaved changes.
 
-→ [Tutorial 7: Real-World App](./07-real-world-app.md) — Explore the Conduit sample
+3. **Polling** — Poll an API endpoint every 10 seconds for new data. Show a "last updated" timestamp.
+
+4. **Multiple timers** — Create an app with a stopwatch and a countdown running simultaneously. Use `Batch` with different keys.
+
+## Key Concepts
+
+| Concept | In This Tutorial |
+| --- | --- |
+| `SubscriptionModule.None` | No subscriptions (identity element) |
+| `SubscriptionModule.Every` | Periodic timer with auto-generated or custom key |
+| `SubscriptionModule.Create` | Custom event source (WebSocket, SSE, etc.) |
+| `SubscriptionModule.Batch` | Combine multiple subscriptions |
+| `dispatch(message)` | Send messages from background tasks into the MVU loop |
+| Key-based diffing | Same key = keep running; missing = stop; new = start |
+| Conditional subs | Return `None` to stop, return a source to start |
+
+## Next Steps
+
+→ [Tutorial 7: Real-World App](07-real-world-app.md) — See all these concepts come together in a production application
