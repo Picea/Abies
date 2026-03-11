@@ -11,7 +11,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-001](./ADR-001-mvu-architecture.md) | Model-View-Update Architecture | Accepted | Adopts MVU (The Elm Architecture) as the core pattern |
 | [ADR-002](./ADR-002-pure-functional-programming.md) | Pure Functional Programming Style | Accepted | Mandates pure FP with immutable records |
 | [ADR-003](./ADR-003-virtual-dom.md) | Virtual DOM Implementation | Accepted | Uses virtual DOM for declarative rendering |
-| [ADR-004](./ADR-004-parser-combinators.md) | Parser Combinators for Routing | Accepted | Type-safe routing with parser combinators |
+| [ADR-004](./ADR-004-parser-combinators.md) | Parser Combinators for Routing | **Deprecated** | ~~Type-safe routing with parser combinators~~ Replaced by plain pattern matching on URL path segments |
 | [ADR-005](./ADR-005-webassembly-runtime.md) | WebAssembly Runtime | Accepted | Runs entirely in browser via .NET WASM |
 | [ADR-006](./ADR-006-command-pattern.md) | Command Pattern for Side Effects | Accepted | Keeps Transition pure; effects via Commands |
 | [ADR-007](./ADR-007-subscriptions.md) | Subscription Model for External Events | Accepted | Declarative subscriptions for ongoing events |
@@ -82,7 +82,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 
 ┌───────────────┐    ┌─────────────────┐
 │ ADR-004: Route│    │ ADR-005: WASM   │
-│               │    │                 │
+│  (DEPRECATED) │    │                 │
 └───────────────┘    └─────────────────┘
 
 ┌───────────────┐    ┌─────────────────┐
