@@ -52,7 +52,7 @@ against a battery session.
 
 ## Benchmark Suite
 
-The project has benchmark suites in `Abies.Benchmarks/`:
+The project has benchmark suites in `Picea.Abies.Benchmarks/`:
 - `DomDiffingBenchmarks.cs` - Virtual DOM diffing performance
 - `RenderingBenchmarks.cs` - HTML rendering performance
 - `EventHandlerBenchmarks.cs` - Event handler creation performance
@@ -295,7 +295,7 @@ The following Toub-inspired optimizations have been applied:
 - `BeforeTargets="Build;ComputeFilesToPublish"` ensures local copy exists before publish resolution
 - `AfterTargets="ComputeFilesToPublish"` allows removal BEFORE NETSDK1152 check runs
 
-**Applied to**: Abies.Conduit, Abies.Counter, Abies.Presentation, Abies.SubscriptionsDemo
+**Applied to**: Picea.Abies.Conduit, Picea.Abies.Counter, Picea.Abies.Presentation, Picea.Abies.SubscriptionsDemo
 
 ### dotnet format - Multi-Targeted Solution Issues
 
