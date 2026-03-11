@@ -1,327 +1,346 @@
 # Tutorial 1: Counter App
 
-This tutorial reinforces the MVU fundamentals by building a counter with additional features.
+Build a counter application from scratch to learn the fundamentals of Abies's Model-View-Update (MVU) architecture.
 
-**Prerequisites:** Complete [Your First App](../getting-started/your-first-app.md)
+**Prerequisites:** [Installation](../getting-started/installation.md) complete
 
 **Time:** 15 minutes
 
-## What You'll Build
+**What you'll learn:**
 
-A counter application with:
+- The four-function `Program` interface
+- Immutable models with `record` types
+- Messages as discriminated unions
+- The `Transition` function (pure state machine)
+- Virtual DOM rendering with `View`
+- Running an Abies program in the browser
 
-- Increment and decrement buttons
-- A reset button
-- Step size control (increment by 1, 5, or 10)
-- Keyboard shortcuts
+## Create the Project
 
-## Starting Point
+```bash
+# Create a new class library for the program logic
+dotnet new classlib -n MyCounter
+cd MyCounter
 
-Create a new project or use the existing counter as a base:
+# Add the Abies framework reference
+dotnet add package Picea.Abies
+```
+
+## Step 1: Define the Model
+
+The **model** is the entire state of your application. For a counter, that's a single integer:
 
 ```csharp
-using Abies;
 using Abies.DOM;
-using static Abies.Html.Elements;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 using static Abies.Html.Events;
 
-await Runtime.Run<Counter, Arguments, Model>(new Arguments());
+namespace MyCounter;
 
-public record Arguments;
+/// <summary>
+/// The complete application state — just a count.
+/// </summary>
 public record Model(int Count);
+```
 
-public record Increment : Message;
-public record Decrement : Message;
+**Key points:**
 
-public class Counter : Program<Model, Arguments>
+- Models are **immutable** C# `record` types
+- Use `with` expressions to create updated copies: `model with { Count = 5 }`
+- The model is the **single source of truth** — there is no other mutable state
+
+## Step 2: Define the Messages
+
+Messages describe **what happened**. They are events, not commands — they say "the user clicked increment", not "please add one".
+
+```csharp
+/// <summary>All messages implement the Abies Message marker interface.</summary>
+public interface CounterMessage : Message;
+
+/// <summary>The user clicked the increment button.</summary>
+public record Increment : CounterMessage;
+
+/// <summary>The user clicked the decrement button.</summary>
+public record Decrement : CounterMessage;
+
+/// <summary>The user clicked the reset button.</summary>
+public record Reset : CounterMessage;
+```
+
+**Key points:**
+
+- Messages implement `Message` (or a sub-interface for organization)
+- Each message is an immutable `record` — no behavior, just data
+- Name messages after what happened, not what should happen
+
+## Step 3: Write the Transition Function
+
+The `Transition` function is the heart of MVU. Given the current model and a message, it returns the new model and optionally a command to execute:
+
+```csharp
+public sealed class Counter : Program<Model, Unit>
 {
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(0), Commands.None);
+    public static (Model, Command) Initialize(Unit argument) =>
+        (new Model(Count: 0), Commands.None);
 
-    public static (Model model, Command command) Update(Message message, Model model)
-        => message switch
+    public static (Model, Command) Transition(Model model, Message message) =>
+        message switch
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-            _ => (model, Commands.None)
+            Reset     => (model with { Count = 0 }, Commands.None),
+            _         => (model, Commands.None)
         };
+```
 
-    public static Document View(Model model)
-        => new("Counter",
-            div([], [
-                button([onclick(new Decrement())], [text("-")]),
-                text(model.Count.ToString()),
-                button([onclick(new Increment())], [text("+")])
+**Key points:**
+
+- `Transition` is a **pure function** — no side effects, no I/O, no mutation
+- It returns a tuple of `(newModel, command)` — use `Commands.None` when there's no side effect
+- Pattern matching on messages makes the state machine exhaustive and readable
+- The `_` catch-all handles framework messages (like navigation) that this program doesn't need
+
+> **Why "Transition" instead of "Update"?** Abies models your program as a *state machine* (an [Automaton](https://en.wikipedia.org/wiki/Finite-state_machine)). In automata theory, the function that takes `(state, input) → (state, output)` is called a *transition function*. This naming makes the formal semantics explicit.
+
+## Step 4: Write the View
+
+The `View` function renders the model as a virtual DOM tree. It's called after every state transition:
+
+```csharp
+    public static Document View(Model model) =>
+        new("Counter",
+            div([class_("counter")],
+            [
+                h1([], [text("Abies Counter")]),
+                div([class_("controls")],
+                [
+                    button([class_("btn"), onclick(new Decrement())], [text("−")]),
+                    span([class_("count")], [text(model.Count.ToString())]),
+                    button([class_("btn")], onclick(new Increment())], [text("+")])
+                ]),
+                button([class_("reset"), onclick(new Reset())], [text("Reset")])
             ]));
+```
 
-    public static Message OnUrlChanged(Url url) => new Increment();
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
+**Key points:**
+
+- `View` returns a `Document(title, body)` — the title updates the browser tab
+- HTML elements are plain C# function calls: `div(attributes, children)`
+- Static imports (`using static Abies.Html.Elements`) keep the syntax clean
+- `onclick(new Increment())` attaches a message to the click event — when the button is clicked, this message flows into `Transition`
+- The view is a **pure function of the model** — same model always produces the same DOM
+
+## Step 5: Declare Subscriptions
+
+Subscriptions connect your program to external event sources (timers, WebSockets, etc.). Our counter doesn't need any:
+
+```csharp
+    public static Subscription Subscriptions(Model model) =>
+        SubscriptionModule.None;
 }
 ```
 
-## Step 1: Add a Reset Button
+## The Complete Program
 
-First, add a message for reset:
-
-```csharp
-public record Reset : Message;
-```
-
-Handle it in Update:
+Here's the full counter in one file:
 
 ```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Increment => (model with { Count = model.Count + 1 }, Commands.None),
-        Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-        Reset => (model with { Count = 0 }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-Add the button to the view:
-
-```csharp
-public static Document View(Model model)
-    => new("Counter",
-        div([], [
-            button([onclick(new Decrement())], [text("-")]),
-            text(model.Count.ToString()),
-            button([onclick(new Increment())], [text("+")]),
-            button([onclick(new Reset())], [text("Reset")])
-        ]));
-```
-
-## Step 2: Add Step Size
-
-Now let's add the ability to change how much we increment/decrement.
-
-Expand the model:
-
-```csharp
-public record Model(int Count, int Step);
-```
-
-Update Initialize:
-
-```csharp
-public static (Model, Command) Initialize(Url url, Arguments argument)
-    => (new Model(Count: 0, Step: 1), Commands.None);
-```
-
-Add a message to change step:
-
-```csharp
-public record SetStep(int Step) : Message;
-```
-
-Update the Update function:
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Increment => (model with { Count = model.Count + model.Step }, Commands.None),
-        Decrement => (model with { Count = model.Count - model.Step }, Commands.None),
-        Reset => (model with { Count = 0 }, Commands.None),
-        SetStep set => (model with { Step = set.Step }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-Add step buttons to the view:
-
-```csharp
-public static Document View(Model model)
-    => new("Counter",
-        div([], [
-            // Counter controls
-            div([], [
-                button([onclick(new Decrement())], [text("-")]),
-                text(model.Count.ToString()),
-                button([onclick(new Increment())], [text("+")]),
-                button([onclick(new Reset())], [text("Reset")])
-            ]),
-            
-            // Step size controls
-            div([], [
-                text($"Step: {model.Step}"),
-                button([onclick(new SetStep(1))], [text("1")]),
-                button([onclick(new SetStep(5))], [text("5")]),
-                button([onclick(new SetStep(10))], [text("10")])
-            ])
-        ]));
-```
-
-## Step 3: Add Keyboard Shortcuts
-
-Let's add keyboard support: arrow up/down to increment/decrement, 'r' to reset.
-
-Add a message for key presses:
-
-```csharp
-public record KeyPressed(string Key) : Message;
-```
-
-Update the Update function to handle keys:
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        Increment => (model with { Count = model.Count + model.Step }, Commands.None),
-        Decrement => (model with { Count = model.Count - model.Step }, Commands.None),
-        Reset => (model with { Count = 0 }, Commands.None),
-        SetStep set => (model with { Step = set.Step }, Commands.None),
-        KeyPressed { Key: "ArrowUp" } => (model with { Count = model.Count + model.Step }, Commands.None),
-        KeyPressed { Key: "ArrowDown" } => (model with { Count = model.Count - model.Step }, Commands.None),
-        KeyPressed { Key: "r" or "R" } => (model with { Count = 0 }, Commands.None),
-        _ => (model, Commands.None)
-    };
-```
-
-Add a subscription for keyboard events:
-
-```csharp
-public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""));
-```
-
-Now pressing arrow keys and 'r' controls the counter!
-
-## Step 4: Visual Feedback
-
-Let's add visual feedback when the count is positive, negative, or zero:
-
-```csharp
-public static Document View(Model model)
-{
-    var countClass = model.Count switch
-    {
-        > 0 => "positive",
-        < 0 => "negative",
-        _ => "zero"
-    };
-    
-    return new("Counter",
-        div([], [
-            div([class_(countClass)], [
-                button([onclick(new Decrement())], [text("-")]),
-                span([], [text(model.Count.ToString())]),
-                button([onclick(new Increment())], [text("+")])
-            ]),
-            button([onclick(new Reset())], [text("Reset")]),
-            div([], [
-                text($"Step: {model.Step} "),
-                button([onclick(new SetStep(1))], [text("1")]),
-                button([onclick(new SetStep(5))], [text("5")]),
-                button([onclick(new SetStep(10))], [text("10")])
-            ]),
-            p([], [text("Use ↑/↓ arrows or click buttons. Press 'r' to reset.")])
-        ]));
-}
-```
-
-## Final Code
-
-Here's the complete application:
-
-```csharp
-using Abies;
 using Abies.DOM;
-using static Abies.Html.Elements;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 using static Abies.Html.Events;
 
-await Runtime.Run<Counter, Arguments, Model>(new Arguments());
+namespace MyCounter;
 
-public record Arguments;
-public record Model(int Count, int Step);
+public record Model(int Count);
 
-// Messages
-public record Increment : Message;
-public record Decrement : Message;
-public record Reset : Message;
-public record SetStep(int Step) : Message;
-public record KeyPressed(string Key) : Message;
+public interface CounterMessage : Message;
+public record Increment : CounterMessage;
+public record Decrement : CounterMessage;
+public record Reset : CounterMessage;
 
-public class Counter : Program<Model, Arguments>
+public sealed class Counter : Program<Model, Unit>
 {
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(Count: 0, Step: 1), Commands.None);
+    public static (Model, Command) Initialize(Unit argument) =>
+        (new Model(Count: 0), Commands.None);
 
-    public static (Model model, Command command) Update(Message message, Model model)
-        => message switch
+    public static (Model, Command) Transition(Model model, Message message) =>
+        message switch
         {
-            Increment => (model with { Count = model.Count + model.Step }, Commands.None),
-            Decrement => (model with { Count = model.Count - model.Step }, Commands.None),
-            Reset => (model with { Count = 0 }, Commands.None),
-            SetStep set => (model with { Step = set.Step }, Commands.None),
-            KeyPressed { Key: "ArrowUp" } => (model with { Count = model.Count + model.Step }, Commands.None),
-            KeyPressed { Key: "ArrowDown" } => (model with { Count = model.Count - model.Step }, Commands.None),
-            KeyPressed { Key: "r" or "R" } => (model with { Count = 0 }, Commands.None),
-            _ => (model, Commands.None)
+            Increment => (model with { Count = model.Count + 1 }, Commands.None),
+            Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            Reset     => (model with { Count = 0 }, Commands.None),
+            _         => (model, Commands.None)
         };
 
-    public static Document View(Model model)
-    {
-        var countClass = model.Count switch
-        {
-            > 0 => "positive",
-            < 0 => "negative",
-            _ => "zero"
-        };
-        
-        return new("Counter",
-            div([], [
-                div([class_(countClass)], [
-                    button([onclick(new Decrement())], [text("-")]),
-                    span([], [text(model.Count.ToString())]),
-                    button([onclick(new Increment())], [text("+")])
+    public static Document View(Model model) =>
+        new("Counter",
+            div([class_("counter")],
+            [
+                h1([], [text("Abies Counter")]),
+                div([class_("controls")],
+                [
+                    button([class_("btn"), onclick(new Decrement())], [text("−")]),
+                    span([class_("count")], [text(model.Count.ToString())]),
+                    button([class_("btn"), onclick(new Increment())], [text("+")])
                 ]),
-                button([onclick(new Reset())], [text("Reset")]),
-                div([], [
-                    text($"Step: {model.Step} "),
-                    button([onclick(new SetStep(1))], [text("1")]),
-                    button([onclick(new SetStep(5))], [text("5")]),
-                    button([onclick(new SetStep(10))], [text("10")])
-                ]),
-                p([], [text("Use ↑/↓ arrows or click buttons. Press 'r' to reset.")])
+                button([class_("reset"), onclick(new Reset())], [text("Reset")])
             ]));
-    }
 
-    public static Message OnUrlChanged(Url url) => new Increment();
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-    
     public static Subscription Subscriptions(Model model) =>
-        SubscriptionModule.OnKeyDown(data => new KeyPressed(data?.Key ?? ""));
-    
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
+        SubscriptionModule.None;
 }
 ```
 
-## What You Learned
+## Step 6: Create a Browser Host
 
-| Concept | Application |
-| ------- | ----------- |
-| Expanding state | Added `Step` to the model |
-| Pattern matching | Used nested patterns like `KeyPressed { Key: "ArrowUp" }` |
-| Subscriptions | Added keyboard event subscription |
-| Conditional rendering | Changed class based on count value |
+The program logic is platform-independent. To run it in the browser, create a WASM host:
+
+```bash
+cd ..
+dotnet new web -n MyCounter.Wasm
+cd MyCounter.Wasm
+dotnet add reference ../MyCounter/MyCounter.csproj
+dotnet add package Picea.Abies.Browser
+```
+
+Replace `Program.cs` with:
+
+```csharp
+using MyCounter;
+
+await Abies.Browser.Runtime.Run<Counter, Model, Unit>();
+```
+
+That's it — one line. The runtime:
+
+1. Calls `Initialize` to get the initial model
+2. Calls `View` to render the initial DOM
+3. Listens for user events (clicks, inputs, etc.)
+4. Dispatches messages to `Transition` when events occur
+5. Diffs the old and new virtual DOM trees
+6. Applies the minimal set of patches to the real DOM
+7. Repeats from step 3
+
+## Step 7: Add the HTML Shell
+
+Create `wwwroot/index.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Abies Counter</title>
+    <style>
+        body { font-family: system-ui; display: flex; justify-content: center; padding: 4rem; }
+        .counter { text-align: center; }
+        .controls { display: flex; align-items: center; gap: 1rem; margin: 2rem 0; }
+        .btn { font-size: 1.5rem; width: 3rem; height: 3rem; cursor: pointer; }
+        .count { font-size: 3rem; min-width: 4rem; }
+        .reset { cursor: pointer; padding: 0.5rem 1rem; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script src="_framework/dotnet.js"></script>
+</body>
+</html>
+```
+
+## Step 8: Run It
+
+```bash
+dotnet run
+```
+
+Open the URL shown in the terminal. You should see a counter with increment, decrement, and reset buttons.
+
+## Understanding the Data Flow
+
+Every interaction follows the same cycle:
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│   User clicks "+"                               │
+│        │                                        │
+│        ▼                                        │
+│   onclick(new Increment())                      │
+│        │                                        │
+│        ▼                                        │
+│   Transition(Model(Count: 3), Increment)        │
+│        │                                        │
+│        ▼                                        │
+│   returns (Model(Count: 4), Commands.None)      │
+│        │                                        │
+│        ▼                                        │
+│   View(Model(Count: 4))                         │
+│        │                                        │
+│        ▼                                        │
+│   Diff old DOM ↔ new DOM                        │
+│        │                                        │
+│        ▼                                        │
+│   Apply patches (update "3" → "4")              │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+This cycle is the same for every Abies application, no matter how complex. The only things that change are the model, messages, and view.
+
+## Testing the Transition Function
+
+Because `Transition` is a pure function, it's trivially testable:
+
+```csharp
+[Fact]
+public void Increment_IncreasesCount()
+{
+    var model = new Model(Count: 5);
+
+    var (newModel, command) = Counter.Transition(model, new Increment());
+
+    Assert.Equal(6, newModel.Count);
+    Assert.Equal(Commands.None, command);
+}
+
+[Fact]
+public void Reset_SetsCountToZero()
+{
+    var model = new Model(Count: 42);
+
+    var (newModel, _) = Counter.Transition(model, new Reset());
+
+    Assert.Equal(0, newModel.Count);
+}
+```
+
+No mocks, no setup, no teardown. Pure functions are the easiest code to test.
 
 ## Exercises
 
-1. **Add bounds**: Limit count to -100 to 100
-2. **Add history**: Track the last 5 count values
-3. **Add undo**: Allow undoing the last action
-4. **Add styling**: Apply CSS based on count magnitude
+1. **Add a step size** — Add an input field that lets the user choose how much to increment/decrement by. You'll need a new message for the input change and an `oninput` event handler.
 
-## Next Tutorial
+2. **Add bounds** — Prevent the counter from going below 0 or above 100. Handle this in `Transition` by returning the unchanged model when the limit is reached.
 
-→ [Tutorial 2: Todo List](./02-todo-list.md) — Learn to manage lists of items
+3. **Add keyboard shortcuts** — Use `SubscriptionModule.Create` to listen for keyboard events (you'll learn more about subscriptions in [Tutorial 6](06-subscriptions.md)).
+
+## Key Concepts
+
+| Concept | In This Tutorial |
+| --- | --- |
+| Model | `record Model(int Count)` — immutable state |
+| Message | `Increment`, `Decrement`, `Reset` — what happened |
+| Transition | Pattern match → new model + command |
+| View | Pure function → virtual DOM tree |
+| Program | `Program<Model, Unit>` — the four-function contract |
+| Commands.None | No side effects needed |
+
+## Next Steps
+
+→ [Tutorial 2: Todo List](02-todo-list.md) — Learn about lists, text input, and keyed rendering
