@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -31,8 +31,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit", "Pice
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.App", "Picea.Abies.Conduit.App\Picea.Abies.Conduit.App.csproj", "{AAE70808-2DF1-4827-B798-8702502C6506}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Api", "Picea.Abies.Conduit.Api\Picea.Abies.Conduit.Api.csproj", "{B28FC211-64FE-46B4-BE87-278652FC301D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Wasm", "Picea.Abies.Conduit.Wasm\Picea.Abies.Conduit.Wasm.csproj", "{7A892763-D1C7-4FE0-B306-CC016EA86EF6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Server", "Picea.Abies.Conduit.Server\Picea.Abies.Conduit.Server.csproj", "{B516E3C0-5E89-4180-99FE-FC91AF3CA82C}"
@@ -41,19 +39,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Wasm.Tests", "Picea.Abies.Conduit.Wasm.Tests\Picea.Abies.Conduit.Wasm.Tests.csproj", "{08881AE1-CCBD-48BA-B56E-A8C2BD8202D1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Api.Tests", "Picea.Abies.Conduit.Api.Tests\Picea.Abies.Conduit.Api.Tests.csproj", "{76D4E326-26C8-4593-B686-93F5DA2387EE}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.ReadStore.PostgreSQL", "Picea.Abies.Conduit.ReadStore.PostgreSQL\Picea.Abies.Conduit.ReadStore.PostgreSQL.csproj", "{DD6C9CCE-C21A-4C21-B660-2CC973754855}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests", "Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests\Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests.csproj", "{729A1898-B0BF-4BCB-B418-A941E28C268A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.Testing.E2E", "Picea.Abies.Conduit.Testing.E2E\Picea.Abies.Conduit.Testing.E2E.csproj", "{17354B73-7B05-4C8F-9624-F59C1B6EAB22}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Analyzers", "Picea.Abies.Analyzers\Picea.Abies.Analyzers.csproj", "{5BD5ED5F-295E-404E-9A2B-191E0165EE76}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Analyzers.Tests", "Picea.Abies.Analyzers.Tests\Picea.Abies.Analyzers.Tests.csproj", "{4DF9B34E-CFEC-40CE-BB30-3D26AED2BF37}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Benchmarks", "Picea.Abies.Benchmarks\Picea.Abies.Benchmarks.csproj", "{1FE218BD-2457-4CD5-9261-71C83363C008}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Conduit.AppHost", "Picea.Abies.Conduit.AppHost\Picea.Abies.Conduit.AppHost.csproj", "{D99B8099-789E-4A26-9BF3-68774FA5A656}"
 EndProject
@@ -64,10 +52,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Browser", "Metapackages\Abies.Browser\Abies.Browser.csproj", "{925AD996-CEB9-44B6-88DC-83A008284815}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abies.Server", "Metapackages\Abies.Server\Abies.Server.csproj", "{6D8838A7-8A5E-4D4D-9378-20052BE816E7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Presentation", "Picea.Abies.Presentation\Picea.Abies.Presentation.csproj", "{6DF8AB31-D337-4AFD-8F58-F92E61DD2A48}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.SubscriptionsDemo", "Picea.Abies.SubscriptionsDemo\Picea.Abies.SubscriptionsDemo.csproj", "{164F9D1B-BBCA-4CA1-A1AD-1C013A844E19}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Templates", "Picea.Abies.Templates\Picea.Abies.Templates.csproj", "{B5D6A754-2654-46CF-9962-E61C8910D655}"
 EndProject
@@ -133,10 +117,6 @@ Global
 		{AAE70808-2DF1-4827-B798-8702502C6506}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AAE70808-2DF1-4827-B798-8702502C6506}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AAE70808-2DF1-4827-B798-8702502C6506}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B28FC211-64FE-46B4-BE87-278652FC301D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B28FC211-64FE-46B4-BE87-278652FC301D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B28FC211-64FE-46B4-BE87-278652FC301D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B28FC211-64FE-46B4-BE87-278652FC301D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7A892763-D1C7-4FE0-B306-CC016EA86EF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7A892763-D1C7-4FE0-B306-CC016EA86EF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A892763-D1C7-4FE0-B306-CC016EA86EF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -153,22 +133,6 @@ Global
 		{08881AE1-CCBD-48BA-B56E-A8C2BD8202D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{08881AE1-CCBD-48BA-B56E-A8C2BD8202D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{08881AE1-CCBD-48BA-B56E-A8C2BD8202D1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{76D4E326-26C8-4593-B686-93F5DA2387EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{76D4E326-26C8-4593-B686-93F5DA2387EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{76D4E326-26C8-4593-B686-93F5DA2387EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{76D4E326-26C8-4593-B686-93F5DA2387EE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DD6C9CCE-C21A-4C21-B660-2CC973754855}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DD6C9CCE-C21A-4C21-B660-2CC973754855}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DD6C9CCE-C21A-4C21-B660-2CC973754855}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DD6C9CCE-C21A-4C21-B660-2CC973754855}.Release|Any CPU.Build.0 = Release|Any CPU
-		{729A1898-B0BF-4BCB-B418-A941E28C268A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{729A1898-B0BF-4BCB-B418-A941E28C268A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{729A1898-B0BF-4BCB-B418-A941E28C268A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{729A1898-B0BF-4BCB-B418-A941E28C268A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{17354B73-7B05-4C8F-9624-F59C1B6EAB22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{17354B73-7B05-4C8F-9624-F59C1B6EAB22}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{17354B73-7B05-4C8F-9624-F59C1B6EAB22}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{17354B73-7B05-4C8F-9624-F59C1B6EAB22}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5BD5ED5F-295E-404E-9A2B-191E0165EE76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5BD5ED5F-295E-404E-9A2B-191E0165EE76}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5BD5ED5F-295E-404E-9A2B-191E0165EE76}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -177,10 +141,6 @@ Global
 		{4DF9B34E-CFEC-40CE-BB30-3D26AED2BF37}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4DF9B34E-CFEC-40CE-BB30-3D26AED2BF37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4DF9B34E-CFEC-40CE-BB30-3D26AED2BF37}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1FE218BD-2457-4CD5-9261-71C83363C008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1FE218BD-2457-4CD5-9261-71C83363C008}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1FE218BD-2457-4CD5-9261-71C83363C008}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1FE218BD-2457-4CD5-9261-71C83363C008}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D99B8099-789E-4A26-9BF3-68774FA5A656}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D99B8099-789E-4A26-9BF3-68774FA5A656}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D99B8099-789E-4A26-9BF3-68774FA5A656}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -201,17 +161,12 @@ Global
 		{6D8838A7-8A5E-4D4D-9378-20052BE816E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D8838A7-8A5E-4D4D-9378-20052BE816E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D8838A7-8A5E-4D4D-9378-20052BE816E7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6DF8AB31-D337-4AFD-8F58-F92E61DD2A48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6DF8AB31-D337-4AFD-8F58-F92E61DD2A48}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6DF8AB31-D337-4AFD-8F58-F92E61DD2A48}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6DF8AB31-D337-4AFD-8F58-F92E61DD2A48}.Release|Any CPU.Build.0 = Release|Any CPU
-		{164F9D1B-BBCA-4CA1-A1AD-1C013A844E19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{164F9D1B-BBCA-4CA1-A1AD-1C013A844E19}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{164F9D1B-BBCA-4CA1-A1AD-1C013A844E19}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{164F9D1B-BBCA-4CA1-A1AD-1C013A844E19}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B5D6A754-2654-46CF-9962-E61C8910D655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B5D6A754-2654-46CF-9962-E61C8910D655}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B5D6A754-2654-46CF-9962-E61C8910D655}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5D6A754-2654-46CF-9962-E61C8910D655}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

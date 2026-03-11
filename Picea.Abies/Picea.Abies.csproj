@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Picea" Version="1.0.0-rc.1" />
+    <PackageReference Include="Picea" Version="1.0.*-*" />
     <PackageReference Include="Praefixum" Version="2.0.1" />
   </ItemGroup>
 

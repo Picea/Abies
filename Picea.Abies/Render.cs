@@ -23,6 +23,14 @@ internal static class HtmlSpec
         "muted", "nomodule", "novalidate", "open", "playsinline",
         "readonly", "required", "reversed", "selected"
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly SearchValues<char> HtmlEncodeChars =
+        SearchValues.Create("&<>\"'");
+
+    internal static string Encode(string value) =>
+        value.AsSpan().ContainsAny(HtmlEncodeChars)
+            ? System.Web.HttpUtility.HtmlEncode(value)
+            : value;
 }
 
 public static class Render
