@@ -1,457 +1,443 @@
 # Tutorial 3: API Integration
 
-This tutorial teaches you to work with external APIs using Commands for side effects.
+Learn how to make HTTP requests and handle side effects using commands and the interpreter pattern.
 
-**Prerequisites:** [Tutorial 2: Todo List](./02-todo-list.md)
+**Prerequisites:** [Tutorial 2: Todo List](02-todo-list.md)
 
 **Time:** 30 minutes
 
-## What You'll Build
+**What you'll learn:**
 
-A post viewer that:
+- Commands as descriptions of side effects
+- The interpreter pattern for executing commands
+- Handling loading states and errors
+- The `Result<Message[], PipelineError>` return type
+- Separating pure logic from effectful execution
 
-- Fetches posts from a REST API
-- Displays loading and error states
-- Refreshes data on demand
-- Shows post details
+## The Problem: Side Effects
 
-## The Command Pattern
+In Tutorials 1 and 2, everything was synchronous and pure. But real applications need to:
 
-In Abies, side effects (API calls, storage, timers) are expressed as **Commands**:
+- Fetch data from APIs
+- Read/write to localStorage
+- Send analytics events
+- Interact with browser APIs
 
-1. `Update` returns a Command describing *what* to do
-2. `HandleCommand` executes the effect and dispatches a result Message
-3. `Update` handles the result Message
+These are **side effects** — they interact with the outside world. The MVU architecture handles them through a two-step process:
 
-This keeps `Update` pure and testable.
+1. **Transition** returns a `Command` describing *what* should happen (pure)
+2. **Interpreter** executes the command and returns feedback messages (effectful)
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  User clicks     Update returns     HandleCommand runs       │
-│  "Refresh" ────▶ FetchPosts ──────▶ HTTP GET /posts          │
-│                                           │                  │
-│                                           ▼                  │
-│  Update handles  ◀──────────────── dispatch(PostsLoaded)    │
-│  PostsLoaded                                                 │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
+This separation is the key insight: your business logic stays pure and testable, while side effects are isolated in a single, replaceable interpreter.
 
-## Step 1: Define Types
+## Building a Quote Viewer
 
-Model the API response and application state:
+Let's build an app that fetches random quotes from an API.
+
+### Model
 
 ```csharp
-// API response type
-public record Post(int Id, int UserId, string Title, string Body);
-
-// Loading state
-public record LoadingState
-{
-    public sealed record Idle : LoadingState;
-    public sealed record Loading : LoadingState;
-    public sealed record Failed(string Error) : LoadingState;
-    public sealed record Success : LoadingState;
-}
-
-// Application model
-public record Model(
-    List<Post> Posts,
-    LoadingState State,
-    Post? SelectedPost
-);
-```
-
-Using a `LoadingState` sum type makes it impossible to be "loading" and "failed" simultaneously.
-
-## Step 2: Define Messages and Commands
-
-```csharp
-// Commands (side effects to perform)
-public record FetchPosts : Command;
-public record FetchPost(int Id) : Command;
-
-// Messages (results and user actions)
-public record PostsLoaded(List<Post> Posts) : Message;
-public record PostLoadFailed(string Error) : Message;
-public record PostSelected(Post Post) : Message;
-public record RefreshClicked : Message;
-public record ClearSelection : Message;
-```
-
-## Step 3: Implement Update
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        // User clicked refresh - start loading
-        RefreshClicked => 
-            (model with { State = new LoadingState.Loading() }, 
-             new FetchPosts()),
-        
-        // Posts loaded successfully
-        PostsLoaded loaded => 
-            (model with 
-            { 
-                Posts = loaded.Posts,
-                State = new LoadingState.Success()
-            }, Commands.None),
-        
-        // Loading failed
-        PostLoadFailed failed => 
-            (model with { State = new LoadingState.Failed(failed.Error) }, 
-             Commands.None),
-        
-        // User selected a post
-        PostSelected selected => 
-            (model with { SelectedPost = selected.Post }, 
-             Commands.None),
-        
-        // Clear selection
-        ClearSelection => 
-            (model with { SelectedPost = null }, 
-             Commands.None),
-        
-        _ => (model, Commands.None)
-    };
-```
-
-Notice: `RefreshClicked` returns `new FetchPosts()` as the command. The actual HTTP call happens in `HandleCommand`.
-
-## Step 4: Implement HandleCommand
-
-This is where side effects actually happen:
-
-```csharp
-private static readonly HttpClient _httpClient = new();
-
-public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-{
-    switch (command)
-    {
-        case FetchPosts:
-            try
-            {
-                var response = await _httpClient.GetAsync(
-                    "https://jsonplaceholder.typicode.com/posts");
-                response.EnsureSuccessStatusCode();
-                
-                var json = await response.Content.ReadAsStringAsync();
-                var posts = JsonSerializer.Deserialize<List<Post>>(json, 
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                    ?? new List<Post>();
-                
-                dispatch(new PostsLoaded(posts));
-            }
-            catch (Exception ex)
-            {
-                dispatch(new PostLoadFailed(ex.Message));
-            }
-            break;
-    }
-}
-```
-
-Key points:
-
-- Use `try/catch` to handle errors
-- Dispatch success or failure messages
-- The runtime calls `Update` with the dispatched message
-
-## Step 5: Initialize with a Command
-
-Load posts immediately on startup:
-
-```csharp
-public static (Model, Command) Initialize(Url url, Arguments argument)
-    => (new Model(
-        Posts: new List<Post>(),
-        State: new LoadingState.Loading(),
-        SelectedPost: null
-    ), new FetchPosts());  // Start loading immediately
-```
-
-## Step 6: Build the View
-
-Handle each loading state:
-
-```csharp
-public static Document View(Model model)
-    => new("Posts",
-        div([class_("posts-app")], [
-            Header(),
-            model.State switch
-            {
-                LoadingState.Loading => LoadingView(),
-                LoadingState.Failed failed => ErrorView(failed.Error),
-                _ => ContentView(model)
-            }
-        ]));
-
-static Node Header() =>
-    header([], [
-        h1([], [text("Posts")]),
-        button([onclick(new RefreshClicked())], [text("Refresh")])
-    ]);
-
-static Node LoadingView() =>
-    div([class_("loading")], [text("Loading posts...")]);
-
-static Node ErrorView(string error) =>
-    div([class_("error")], [
-        text($"Error: {error}"),
-        button([onclick(new RefreshClicked())], [text("Retry")])
-    ]);
-
-static Node ContentView(Model model) =>
-    div([class_("content")], [
-        model.SelectedPost is not null
-            ? PostDetail(model.SelectedPost)
-            : PostList(model.Posts)
-    ]);
-
-static Node PostList(List<Post> posts) =>
-    ul([class_("post-list")], 
-        posts.Select(post => 
-            li([onclick(new PostSelected(post))], [
-                text(post.Title)
-            ])).ToArray());
-
-static Node PostDetail(Post post) =>
-    article([class_("post-detail")], [
-        button([onclick(new ClearSelection())], [text("← Back")]),
-        h2([], [text(post.Title)]),
-        p([], [text(post.Body)])
-    ]);
-```
-
-## Step 7: Complete Program
-
-```csharp
-using System.Net.Http;
-using System.Text.Json;
-using Abies;
 using Abies.DOM;
-using static Abies.Html.Elements;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 using static Abies.Html.Events;
 
-await Runtime.Run<PostsApp, Arguments, Model>(new Arguments());
+namespace QuoteViewer;
 
-public record Arguments;
+public record Quote(string Text, string Author);
 
-// API type
-public record Post(int Id, int UserId, string Title, string Body);
+public record Model(
+    Quote? CurrentQuote,
+    bool IsLoading,
+    string? Error);
+```
 
-// Loading state (sum type)
-public record LoadingState
+Notice the three-state pattern: we either have a quote, are loading, or have an error. This is a common API integration model.
+
+### Messages
+
+```csharp
+public interface QuoteMessage : Message;
+
+/// <summary>User clicked the "New Quote" button.</summary>
+public record FetchNewQuote : QuoteMessage;
+
+/// <summary>A quote was successfully loaded from the API.</summary>
+public record QuoteLoaded(Quote Quote) : QuoteMessage;
+
+/// <summary>The API request failed.</summary>
+public record QuoteFailed(string Error) : QuoteMessage;
+```
+
+Note the separation: `FetchNewQuote` is a user action ("I want a new quote"). `QuoteLoaded` and `QuoteFailed` are responses from the outside world. The user triggers the intent; the interpreter reports the outcome.
+
+### Commands
+
+Commands are **descriptions of side effects**. They carry the data needed to perform the effect but don't execute anything themselves:
+
+```csharp
+/// <summary>Describes a request to fetch a random quote.</summary>
+public record FetchQuote : Command;
+```
+
+A command is just a record — a plain data object. It says *what* to do, not *how* to do it.
+
+> **Principle:** This is the [Command Pattern](https://en.wikipedia.org/wiki/Command_pattern) from the Gang of Four. In Abies, it's combined with the [Interpreter Pattern](https://en.wikipedia.org/wiki/Interpreter_pattern) to create a clean separation between *describing* effects and *executing* them. The formal model is a *free monad* — commands form the "syntax" of an embedded DSL, and the interpreter provides the "semantics".
+
+### Transition
+
+```csharp
+public sealed class QuoteApp : Program<Model, Unit>
 {
-    public sealed record Idle : LoadingState;
-    public sealed record Loading : LoadingState;
-    public sealed record Failed(string Error) : LoadingState;
-    public sealed record Success : LoadingState;
-}
+    public static (Model, Command) Initialize(Unit _) =>
+        (new Model(CurrentQuote: null, IsLoading: true, Error: null),
+         new FetchQuote());  // ← command returned, not executed
 
-// Model
-public record Model(List<Post> Posts, LoadingState State, Post? SelectedPost);
-
-// Commands
-public record FetchPosts : Command;
-
-// Messages
-public record PostsLoaded(List<Post> Posts) : Message;
-public record PostLoadFailed(string Error) : Message;
-public record PostSelected(Post Post) : Message;
-public record RefreshClicked : Message;
-public record ClearSelection : Message;
-
-public class PostsApp : Program<Model, Arguments>
-{
-    private static readonly HttpClient _httpClient = new();
-
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(
-            Posts: new List<Post>(),
-            State: new LoadingState.Loading(),
-            SelectedPost: null
-        ), new FetchPosts());
-
-    public static (Model model, Command command) Update(Message message, Model model)
-        => message switch
+    public static (Model, Command) Transition(Model model, Message message) =>
+        message switch
         {
-            RefreshClicked => 
-                (model with { State = new LoadingState.Loading() }, new FetchPosts()),
-            
-            PostsLoaded loaded => 
-                (model with { Posts = loaded.Posts, State = new LoadingState.Success() }, 
+            FetchNewQuote =>
+                (model with { IsLoading = true, Error = null },
+                 new FetchQuote()),  // ← request a fetch
+
+            QuoteLoaded msg =>
+                (model with { CurrentQuote = msg.Quote, IsLoading = false },
+                 Commands.None),     // ← no further effects
+
+            QuoteFailed msg =>
+                (model with { Error = msg.Error, IsLoading = false },
                  Commands.None),
-            
-            PostLoadFailed failed => 
-                (model with { State = new LoadingState.Failed(failed.Error) }, 
-                 Commands.None),
-            
-            PostSelected selected => 
-                (model with { SelectedPost = selected.Post }, Commands.None),
-            
-            ClearSelection => 
-                (model with { SelectedPost = null }, Commands.None),
-            
+
             _ => (model, Commands.None)
         };
+```
 
-    public static Document View(Model model)
-        => new("Posts",
-            div([class_("posts-app")], [
-                header([], [
-                    h1([], [text("Posts")]),
-                    button([onclick(new RefreshClicked())], [text("Refresh")])
-                ]),
-                model.State switch
+**Key insight:** `Initialize` returns `new FetchQuote()` as a command. This triggers an API call *without* the Transition function ever making a network request. The Transition function is still pure.
+
+### View
+
+```csharp
+    public static Document View(Model model) =>
+        new("Quote Viewer",
+            div([class_("quote-app")],
+            [
+                h1([], [text("Random Quotes")]),
+                model switch
                 {
-                    LoadingState.Loading => div([class_("loading")], [text("Loading...")]),
-                    LoadingState.Failed failed => div([class_("error")], [
-                        text($"Error: {failed.Error}"),
-                        button([onclick(new RefreshClicked())], [text("Retry")])
-                    ]),
-                    _ => model.SelectedPost is not null
-                        ? PostDetail(model.SelectedPost)
-                        : PostList(model.Posts)
-                }
+                    { IsLoading: true } => LoadingView(),
+                    { Error: string err } => ErrorView(err),
+                    { CurrentQuote: Quote q } => QuoteView(q),
+                    _ => text("")
+                },
+                button([
+                    class_("fetch-btn"),
+                    onclick(new FetchNewQuote())
+                ], [text("New Quote")])
             ]));
 
-    static Node PostList(List<Post> posts) =>
-        ul([class_("post-list")], 
-            posts.Select(post => 
-                li([onclick(new PostSelected(post))], [text(post.Title)])).ToArray());
+    static Node LoadingView() =>
+        div([class_("loading")], [text("Loading...")]);
 
-    static Node PostDetail(Post post) =>
-        article([], [
-            button([onclick(new ClearSelection())], [text("← Back")]),
-            h2([], [text(post.Title)]),
-            p([], [text(post.Body)])
+    static Node ErrorView(string error) =>
+        div([class_("error")], [text($"⚠ {error}")]);
+
+    static Node QuoteView(Quote quote) =>
+        blockquote([class_("quote")],
+        [
+            p([], [text($"\"{quote.Text}\"")]),
+            footer([], [text($"— {quote.Author}")])
         ]);
 
-    public static async Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
+    public static Subscription Subscriptions(Model model) =>
+        SubscriptionModule.None;
+}
+```
+
+### The Interpreter
+
+Now we write the code that actually executes side effects. The interpreter is a function with the signature:
+
+```csharp
+ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
+```
+
+It receives a command, executes the effect, and returns an array of messages that flow back into `Transition`:
+
+```csharp
+using System.Net.Http.Json;
+
+namespace QuoteViewer;
+
+public static class QuoteInterpreter
+{
+    private static readonly HttpClient _http = new();
+
+    public static async ValueTask<Result<Message[], PipelineError>> Interpret(
+        Command command)
     {
-        switch (command)
+        try
         {
-            case FetchPosts:
-                try
-                {
-                    var response = await _httpClient.GetAsync(
-                        "https://jsonplaceholder.typicode.com/posts");
-                    response.EnsureSuccessStatusCode();
-                    
-                    var json = await response.Content.ReadAsStringAsync();
-                    var posts = JsonSerializer.Deserialize<List<Post>>(json, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                        ?? new List<Post>();
-                    
-                    dispatch(new PostsLoaded(posts));
-                }
-                catch (Exception ex)
-                {
-                    dispatch(new PostLoadFailed(ex.Message));
-                }
-                break;
+            Message[] messages = command switch
+            {
+                FetchQuote => await HandleFetchQuote(),
+                _ => []  // unknown commands produce no messages
+            };
+
+            return Result<Message[], PipelineError>.Ok(messages);
+        }
+        catch (Exception ex)
+        {
+            return Result<Message[], PipelineError>.Ok(
+                [new QuoteFailed(ex.Message)]);
         }
     }
 
-    public static Message OnUrlChanged(Url url) => new RefreshClicked();
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new RefreshClicked();
-    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
+    private static async Task<Message[]> HandleFetchQuote()
+    {
+        var response = await _http.GetFromJsonAsync<QuoteResponse>(
+            "https://api.example.com/quotes/random");
+
+        return response is not null
+            ? [new QuoteLoaded(new Quote(response.Content, response.Author))]
+            : [new QuoteFailed("No quote returned")];
+    }
+
+    private record QuoteResponse(string Content, string Author);
 }
 ```
 
-## Testing Commands
+**Key patterns:**
 
-Because `Update` is pure, testing is straightforward:
+- The interpreter pattern-matches on command types, just like `Transition` matches on messages
+- It wraps everything in a `try/catch` — the interpreter is the boundary where errors from the outside world are caught
+- It returns `Result<Message[], PipelineError>.Ok(messages)` — the runtime feeds these messages back into `Transition`
+- Unknown commands return an empty array (no messages)
+
+### Wiring It Up
+
+Pass the interpreter to the runtime when starting the application:
+
+```csharp
+using QuoteViewer;
+
+await Abies.Browser.Runtime.Run<QuoteApp, Model, Unit>(
+    interpreter: QuoteInterpreter.Interpret);
+```
+
+The `interpreter` parameter is optional. If omitted, a no-op interpreter is used (returns `Ok([])` for all commands). This is fine for apps like the counter that have no side effects.
+
+## The Command Pipeline
+
+Here's how commands flow through the system:
+
+```
+┌──────────────┐     ┌─────────────┐     ┌───────────────┐
+│  Transition  │───▶│  Command    │───▶│  Interpreter   │
+│              │     │  (data)     │     │               │
+│ returns      │     │ FetchQuote  │     │ HTTP GET      │
+│ (model, cmd) │     │             │     │ → Message[]   │
+└──────────────┘     └─────────────┘     └───────┬───────┘
+      ▲                                       │
+      │              Messages                 │
+      └──────────────[QuoteLoaded]──────────┘
+```
+
+1. `Transition` returns `(newModel, new FetchQuote())`
+2. The runtime passes `FetchQuote` to the interpreter
+3. The interpreter makes the HTTP call and returns `[new QuoteLoaded(quote)]`
+4. The runtime feeds `QuoteLoaded` back into `Transition`
+5. `Transition` returns `(model with quote, Commands.None)` — cycle complete
+
+## Batching Commands
+
+Sometimes a single transition needs to trigger multiple side effects:
+
+```csharp
+// In Transition:
+InitialLoad =>
+    (model with { IsLoading = true },
+     Commands.Batch(
+         new FetchQuote(),
+         new FetchCategories(),
+         new LogAnalytics("page_loaded")
+     ))
+```
+
+`Commands.Batch(...)` combines multiple commands. The runtime sends each one to the interpreter. `Commands.None` is the identity element — batching with `None` has no effect.
+
+> **Principle:** Commands form a [Monoid](https://en.wikipedia.org/wiki/Monoid) with `Commands.None` as the identity and `Commands.Batch` as the binary operation. This algebraic structure means commands compose naturally: you can combine any number of commands without special cases for zero, one, or many.
+
+## Handling Multiple Command Types
+
+As your app grows, the interpreter handles more command types:
+
+```csharp
+public static async ValueTask<Result<Message[], PipelineError>> Interpret(
+    Command command)
+{
+    try
+    {
+        Message[] messages = command switch
+        {
+            FetchQuote => await HandleFetchQuote(),
+            FetchCategories => await HandleFetchCategories(),
+            SaveFavorite cmd => await HandleSaveFavorite(cmd),
+            LogAnalytics cmd => await HandleLogAnalytics(cmd),
+            _ => []
+        };
+
+        return Result<Message[], PipelineError>.Ok(messages);
+    }
+    catch (Exception ex)
+    {
+        return Result<Message[], PipelineError>.Ok(
+            [new ApiError(ex.Message)]);
+    }
+}
+```
+
+## Testing
+
+### Testing Transition (Pure)
+
+The transition function requires no mocks:
 
 ```csharp
 [Fact]
-public void RefreshClicked_SetsLoadingState_And_ReturnsFetchCommand()
+public void FetchNewQuote_SetsLoadingState_AndReturnsCommand()
 {
-    var model = new Model([], new LoadingState.Idle(), null);
-    
-    var (newModel, command) = PostsApp.Update(new RefreshClicked(), model);
-    
-    Assert.IsType<LoadingState.Loading>(newModel.State);
-    Assert.IsType<FetchPosts>(command);
+    var model = new Model(
+        CurrentQuote: new Quote("old", "author"),
+        IsLoading: false,
+        Error: null);
+
+    var (newModel, command) = QuoteApp.Transition(model, new FetchNewQuote());
+
+    Assert.True(newModel.IsLoading);
+    Assert.Null(newModel.Error);
+    Assert.IsType<FetchQuote>(command);
 }
 
 [Fact]
-public void PostsLoaded_UpdatesPostsAndState()
+public void QuoteLoaded_StoresQuote_AndClearsLoading()
 {
-    var model = new Model([], new LoadingState.Loading(), null);
-    var posts = new List<Post> { new(1, 1, "Test", "Body") };
-    
-    var (newModel, command) = PostsApp.Update(new PostsLoaded(posts), model);
-    
-    Assert.Single(newModel.Posts);
-    Assert.IsType<LoadingState.Success>(newModel.State);
-    Assert.IsType<Command.None>(command);
+    var model = new Model(null, true, null);
+    var quote = new Quote("To be or not to be", "Shakespeare");
+
+    var (newModel, command) = QuoteApp.Transition(
+        model, new QuoteLoaded(quote));
+
+    Assert.Equal(quote, newModel.CurrentQuote);
+    Assert.False(newModel.IsLoading);
+    Assert.Equal(Commands.None, command);
+}
+
+[Fact]
+public void QuoteFailed_StoresError_AndClearsLoading()
+{
+    var model = new Model(null, true, null);
+
+    var (newModel, _) = QuoteApp.Transition(
+        model, new QuoteFailed("Network timeout"));
+
+    Assert.False(newModel.IsLoading);
+    Assert.Equal("Network timeout", newModel.Error);
 }
 ```
 
-## What You Learned
+### Testing the Interpreter
 
-| Concept | Application |
-| ------- | ----------- |
-| Commands | Describe side effects to perform |
-| HandleCommand | Execute effects and dispatch results |
-| Loading states | Sum type for Idle/Loading/Failed/Success |
-| Error handling | Try/catch in HandleCommand, dispatch failure |
-| Initial commands | Return command from Initialize |
-
-## Common Patterns
-
-### POST/PUT/DELETE requests
+Interpreter tests verify HTTP behavior using a fake handler:
 
 ```csharp
-public record CreatePost(string Title, string Body) : Command;
+[Fact]
+public async Task Interpret_FetchQuote_ReturnsQuoteLoaded()
+{
+    // Arrange: mock HTTP response
+    var handler = new FakeHttpHandler(new QuoteResponse(
+        "To be or not to be", "Shakespeare"));
 
-case CreatePost create:
-    var content = new StringContent(
-        JsonSerializer.Serialize(new { create.Title, create.Body }),
-        Encoding.UTF8, "application/json");
-    var response = await _httpClient.PostAsync(url, content);
-    // ...
-    break;
+    var interpreter = CreateInterpreter(handler);
+
+    // Act
+    var result = await interpreter(new FetchQuote());
+
+    // Assert
+    var messages = result.Match(ok => ok, _ => []);
+    var loaded = Assert.IsType<QuoteLoaded>(Assert.Single(messages));
+    Assert.Equal("Shakespeare", loaded.Quote.Author);
+}
 ```
 
-### Debouncing requests
+## Why This Architecture?
+
+The command/interpreter split provides several benefits:
+
+| Benefit | How |
+| --- | --- |
+| **Testability** | Transition tests need no mocks; interpreter tests mock only HTTP |
+| **Replaceability** | Swap interpreters for testing, different platforms, or staging vs. production |
+| **Visibility** | Every side effect is visible as a command in the Transition return value |
+| **Time-travel debugging** | Record commands alongside messages for full replay |
+| **Composition** | `Commands.Batch` combines effects; `Commands.None` is the identity |
+
+## Real-World Example: The Conduit Interpreter
+
+The Conduit demo application (a Medium.com clone) uses this pattern at scale. Its interpreter handles 15+ command types:
 
 ```csharp
-// In model
-public record Model(..., string SearchQuery, CancellationTokenSource? SearchCts);
+// Simplified from Abies.Conduit.App/Interpreter.cs
+public static async ValueTask<Result<Message[], PipelineError>> Interpret(
+    Command command)
+{
+    try
+    {
+        Message[] messages = command switch
+        {
+            FetchArticles cmd => await HandleFetchArticles(cmd),
+            FetchFeed cmd => await HandleFetchFeed(cmd),
+            LoginUser cmd => await HandleLogin(cmd),
+            RegisterUser cmd => await HandleRegister(cmd),
+            FavoriteArticle cmd => await HandleFavorite(cmd),
+            // ... 10+ more command types
+            _ => []
+        };
 
-// Cancel previous search, start new one
-case SearchChanged changed:
-    model.SearchCts?.Cancel();
-    var cts = new CancellationTokenSource();
-    return (model with { SearchQuery = changed.Query, SearchCts = cts },
-            new SearchPosts(changed.Query, cts.Token));
+        return Result<Message[], PipelineError>.Ok(messages);
+    }
+    catch (Exception ex)
+    {
+        return Result<Message[], PipelineError>.Ok(
+            [new ApiError([$"Network error: {ex.Message}"])]);
+    }
+}
 ```
 
-### Batching commands
-
-```csharp
-return (model, Commands.Batch([
-    new FetchPosts(),
-    new FetchCategories(),
-    new FetchTags()
-]));
-```
+See [Tutorial 7: Real-World App](07-real-world-app.md) for the complete walkthrough.
 
 ## Exercises
 
-1. **Create posts**: Add a form to create new posts
-2. **Delete posts**: Add delete functionality
-3. **Pagination**: Load posts page by page
-4. **Caching**: Don't refetch if data is recent
+1. **Add retry logic** — When a fetch fails, show a "Retry" button that dispatches `FetchNewQuote` again. Add a retry count to the model.
 
-## Next Tutorial
+2. **Add a favorites list** — Let users save quotes to a favorites list. Use a `SaveFavorite(Quote)` command and have the interpreter store it in `localStorage`.
 
-→ [Tutorial 4: Routing](./04-routing.md) — Learn multi-page navigation
+3. **Add categories** — Fetch a list of categories from the API and let the user filter quotes by category. Use `Commands.Batch` to fetch both categories and a quote on startup.
+
+4. **Add an offline fallback** — If the API call fails, return a hardcoded quote from the interpreter instead of an error.
+
+## Key Concepts
+
+| Concept | In This Tutorial |
+| --- | --- |
+| Command | `record FetchQuote : Command` — describes a side effect |
+| Interpreter | `Interpret(Command) → Result<Message[], PipelineError>` |
+| Commands.None | No side effect needed |
+| Commands.Batch | Combine multiple commands |
+| Result type | Success returns messages; errors are caught in interpreter |
+| Loading state | `IsLoading` flag for UI feedback |
+
+## Next Steps
+
+→ [Tutorial 4: Routing](04-routing.md) — Learn client-side navigation and URL handling

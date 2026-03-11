@@ -1,433 +1,413 @@
 # Tutorial 4: Routing
 
-This tutorial teaches you to build multi-page applications with URL-based navigation.
+Learn how to handle client-side navigation with URLs, route parsing, and the browser history API.
 
-**Prerequisites:** [Tutorial 3: API Integration](./03-api-integration.md)
+**Prerequisites:** [Tutorial 3: API Integration](03-api-integration.md)
 
-**Time:** 30 minutes
+**Time:** 25 minutes
 
-## What You'll Build
+**What you'll learn:**
 
-A multi-page application with:
+- How Abies handles navigation as regular messages
+- Parsing URLs into application routes
+- Programmatic navigation with navigation commands
+- The `UrlChanged` and `UrlRequest` message types
+- Using `Navigation.UrlChanges` as a subscription
 
-- Home, About, and Profile pages
-- URL-based navigation
-- Dynamic route parameters
-- Browser back/forward support
+## Navigation in Abies
 
-## Routing in Abies
+Unlike frameworks where routing is a separate subsystem, Abies treats navigation as **regular messages** flowing through the same MVU loop. When the URL changes:
 
-Abies provides two routing approaches:
+1. The runtime dispatches a `UrlChanged(Url)` message
+2. Your `Transition` function handles it like any other message
+3. You return a new model (e.g., switch to a different page)
 
-1. **Parser Combinators** — Maximum control and type safety
-2. **Templates** — Concise, ASP.NET-style syntax
+This means routing is just pattern matching — no router configuration, no route tables, no middleware.
 
-Both produce a `RouteMatch` with captured parameters.
+## The URL Type
 
-## Step 1: Define Routes
-
-First, define your routes as a sum type:
+Abies represents URLs with a structured `Url` record:
 
 ```csharp
-public record Route
+public record Url(
+    string[] Path,                              // ["article", "hello-world"]
+    IReadOnlyDictionary<string, string> Query,   // { "page": "2" }
+    Option<string> Fragment);                    // Some("comments") or None
+```
+
+The `Path` is already split into segments — no string parsing needed. You pattern-match directly on the segments:
+
+```csharp
+url.Path switch
 {
-    public sealed record Home : Route;
-    public sealed record About : Route;
-    public sealed record Profile(string Username) : Route;
-    public sealed record Article(int Id) : Route;
-    public sealed record NotFound : Route;
-}
-```
-
-Each variant represents a page in your application.
-
-## Step 2: Create the Router (Template Style)
-
-The simplest approach uses template syntax:
-
-```csharp
-using RouteTemplates = Abies.Route.Templates;
-
-public static class Router
-{
-    private static readonly RouteTemplates.TemplateRouter<Route> _router =
-        RouteTemplates.Build<Route>(routes =>
-        {
-            routes.Map("/", _ => new Route.Home());
-            routes.Map("/about", _ => new Route.About());
-            routes.Map("/profile/{username}", m => 
-                new Route.Profile(m.GetRequired<string>("username")));
-            routes.Map("/article/{id:int}", m => 
-                new Route.Article(m.GetRequired<int>("id")));
-        });
-
-    public static Route FromUrl(Url url)
-    {
-        if (_router.TryMatch(url.Path.Value, out var route))
-            return route;
-        return new Route.NotFound();
-    }
-}
-```
-
-Template syntax:
-
-- `{name}` — String parameter
-- `{name:int}` — Integer parameter
-- `{name:double}` — Double parameter
-- `{name?}` — Optional parameter
-
-## Step 3: Create the Router (Parser Style)
-
-For more control, use parser combinators:
-
-```csharp
-using RouteParse = Abies.Route.Parse;
-
-public static class Router
-{
-    public static readonly Parser<Route> Match =
-        // /profile/{username}
-        RouteParse.Path(
-            RouteParse.Segment.Literal("profile"),
-            RouteParse.Segment.Parameter("username"))
-        .Select(m => (Route)new Route.Profile(m.GetRequired<string>("username")))
-        
-        // /article/{id}
-        | RouteParse.Path(
-            RouteParse.Segment.Literal("article"),
-            RouteParse.Segment.Parameter<int>("id", RouteParse.Int))
-        .Select(m => (Route)new Route.Article(m.GetRequired<int>("id")))
-        
-        // /about
-        | RouteParse.Path(RouteParse.Segment.Literal("about"))
-        .Select(_ => (Route)new Route.About())
-        
-        // / (root)
-        | RouteParse.Root.Select(_ => (Route)new Route.Home());
-
-    public static Route FromUrl(Url url)
-    {
-        var result = Match.Parse(url.Path.Value);
-        return result.Success ? result.Value : new Route.NotFound();
-    }
-}
-```
-
-The `|` operator tries parsers in order until one succeeds.
-
-## Step 4: Model with Route
-
-Include the current route in your model:
-
-```csharp
-public record Model(Route CurrentRoute, string? ProfileData);
-```
-
-## Step 5: Handle URL Changes
-
-Implement `OnUrlChanged` to convert URLs to messages:
-
-```csharp
-public record UrlChanged(Url Url) : Message;
-
-public static Message OnUrlChanged(Url url) => new UrlChanged(url);
-```
-
-Handle in Update:
-
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        UrlChanged changed =>
-            (model with { CurrentRoute = Router.FromUrl(changed.Url) }, 
-             Commands.None),
-        
-        // ... other messages
-        
-        _ => (model, Commands.None)
-    };
-```
-
-## Step 6: Handle Link Clicks
-
-Implement `OnLinkClicked` for internal navigation:
-
-```csharp
-public record LinkClicked(UrlRequest Request) : Message;
-
-public static Message OnLinkClicked(UrlRequest urlRequest) => new LinkClicked(urlRequest);
-```
-
-Handle in Update:
-
-```csharp
-using static Abies.Navigation.Command;
-
-LinkClicked { Request: UrlRequest.Internal @internal } =>
-    (model with { CurrentRoute = Router.FromUrl(@internal.Url) },
-     new PushState(@internal.Url)),  // Update browser URL
-
-LinkClicked { Request: UrlRequest.External external } =>
-    (model, new Load(Url.Create(external.Url))),  // Navigate away
-```
-
-## Step 7: Navigation Commands
-
-Abies provides navigation commands:
-
-| Command | Effect |
-| ------- | ------ |
-| `PushState(Url)` | Navigate, add to history |
-| `ReplaceState(Url)` | Navigate, replace history entry |
-| `Back(int steps)` | Go back in history |
-| `Forward(int steps)` | Go forward in history |
-| `Go(int steps)` | Relative history navigation |
-| `Load(Url)` | Full page navigation (external) |
-| `Reload()` | Reload current page |
-
-Example: Programmatic navigation
-
-```csharp
-public record NavigateToProfile(string Username) : Message;
-
-NavigateToProfile nav =>
-    (model, new PushState(Url.Create($"/profile/{nav.Username}"))),
-```
-
-## Step 8: Build the View
-
-Route to different views based on current route:
-
-```csharp
-public static Document View(Model model)
-    => new(TitleFor(model.CurrentRoute),
-        div([], [
-            Navigation(),
-            MainContent(model)
-        ]));
-
-static string TitleFor(Route route) => route switch
-{
-    Route.Home => "Home",
-    Route.About => "About",
-    Route.Profile p => $"{p.Username}'s Profile",
-    Route.Article a => $"Article {a.Id}",
-    _ => "Not Found"
+    [] or [""] => /* home page */,
+    ["about"]  => /* about page */,
+    ["users", var id] => /* user profile with captured id */,
+    _ => /* 404 */
 };
-
-static Node Navigation() =>
-    nav([], [
-        a([href("/")], [text("Home")]),
-        a([href("/about")], [text("About")]),
-        a([href("/profile/alice")], [text("Alice's Profile")])
-    ]);
-
-static Node MainContent(Model model) =>
-    model.CurrentRoute switch
-    {
-        Route.Home => HomePage(),
-        Route.About => AboutPage(),
-        Route.Profile p => ProfilePage(p.Username),
-        Route.Article a => ArticlePage(a.Id),
-        Route.NotFound => NotFoundPage(),
-        _ => NotFoundPage()
-    };
-
-static Node HomePage() =>
-    main([], [h1([], [text("Welcome Home")])]);
-
-static Node AboutPage() =>
-    main([], [h1([], [text("About Us")])]);
-
-static Node ProfilePage(string username) =>
-    main([], [h1([], [text($"Profile: {username}")])]);
-
-static Node ArticlePage(int id) =>
-    main([], [h1([], [text($"Article #{id}")])]);
-
-static Node NotFoundPage() =>
-    main([], [
-        h1([], [text("404 - Not Found")]),
-        a([href("/")], [text("Go Home")])
-    ]);
 ```
 
-## Step 9: Complete Program
+## Building a Multi-Page App
+
+Let's build a simple app with Home, About, and User Profile pages.
+
+### Model
 
 ```csharp
-using Abies;
 using Abies.DOM;
-using static Abies.Html.Elements;
+using Abies.Subscriptions;
+using Automaton;
 using static Abies.Html.Attributes;
+using static Abies.Html.Elements;
 using static Abies.Html.Events;
-using static Abies.Navigation.Command;
-using RouteTemplates = Abies.Route.Templates;
 
-await Runtime.Run<App, Arguments, Model>(new Arguments());
+namespace RoutingApp;
 
-public record Arguments;
-
-// Routes
-public record Route
+/// <summary>Discriminated union for pages.</summary>
+public abstract record Page
 {
-    public sealed record Home : Route;
-    public sealed record About : Route;
-    public sealed record Profile(string Username) : Route;
-    public sealed record Article(int Id) : Route;
-    public sealed record NotFound : Route;
+    private Page() { }
+    public sealed record Home : Page;
+    public sealed record About : Page;
+    public sealed record UserProfile(string Username, bool IsLoading) : Page;
+    public sealed record NotFound : Page;
 }
 
-// Router
-public static class Router
-{
-    private static readonly RouteTemplates.TemplateRouter<Route> _router =
-        RouteTemplates.Build<Route>(routes =>
-        {
-            routes.Map("/", _ => new Route.Home());
-            routes.Map("/about", _ => new Route.About());
-            routes.Map("/profile/{username}", m => 
-                new Route.Profile(m.GetRequired<string>("username")));
-            routes.Map("/article/{id:int}", m => 
-                new Route.Article(m.GetRequired<int>("id")));
-        });
+public record Model(Page CurrentPage);
+```
 
-    public static Route FromUrl(Url url)
+The `Page` type is a discriminated union (sealed hierarchy). Each variant holds the data specific to that page.
+
+### Messages
+
+```csharp
+public interface AppMessage : Message;
+
+/// <summary>User profile data loaded from the API.</summary>
+public record UserLoaded(string Username, string Bio) : AppMessage;
+
+/// <summary>API request failed.</summary>
+public record LoadFailed(string Error) : AppMessage;
+```
+
+Notice what's **not** here: there's no `Navigate` message. Navigation is handled by `UrlChanged` and `UrlRequest`, which are built-in framework message types.
+
+### Commands
+
+```csharp
+/// <summary>Fetch a user's profile from the API.</summary>
+public record FetchUser(string Username) : Command;
+```
+
+### Route Parsing
+
+Create a pure function that converts a URL into a page with optional commands:
+
+```csharp
+public static class Route
+{
+    public static (Page Page, Command Command) FromUrl(Url url) =>
+        url.Path switch
+        {
+            [] or [""] => (new Page.Home(), Commands.None),
+            ["about"]  => (new Page.About(), Commands.None),
+            ["users", var username] =>
+                (new Page.UserProfile(username, IsLoading: true),
+                 new FetchUser(username)),
+            _ => (new Page.NotFound(), Commands.None)
+        };
+}
+```
+
+**Key insight:** Route parsing is a **pure function**. It takes a URL and returns a page + commands. No side effects, no state mutation. When a route needs data (like a user profile), it returns both the loading-state page and the fetch command.
+
+### Transition
+
+```csharp
+public sealed class App : Program<Model, Unit>
+{
+    public static (Model, Command) Initialize(Unit _)
     {
-        if (_router.TryMatch(url.Path.Value, out var route))
-            return route;
-        return new Route.NotFound();
+        // Start with home page. The runtime will dispatch UrlChanged
+        // with the actual browser URL as the first message.
+        return (new Model(new Page.Home()), Commands.None);
     }
-}
 
-// Model
-public record Model(Route CurrentRoute);
-
-// Messages
-public record UrlChanged(Url Url) : Message;
-public record LinkClicked(UrlRequest Request) : Message;
-
-public class App : Program<Model, Arguments>
-{
-    public static (Model, Command) Initialize(Url url, Arguments argument)
-        => (new Model(Router.FromUrl(url)), Commands.None);
-
-    public static (Model model, Command command) Update(Message message, Model model)
-        => message switch
+    public static (Model, Command) Transition(Model model, Message message) =>
+        message switch
         {
-            UrlChanged changed =>
-                (model with { CurrentRoute = Router.FromUrl(changed.Url) }, 
+            // Browser URL changed (back/forward, initial load, link click)
+            UrlChanged url => HandleUrlChanged(url.Url),
+
+            // API response
+            UserLoaded msg when model.CurrentPage is Page.UserProfile profile =>
+                (model with
+                {
+                    CurrentPage = new Page.UserProfile(
+                        profile.Username, IsLoading: false)
+                }, Commands.None),
+
+            LoadFailed when model.CurrentPage is Page.UserProfile =>
+                (model with { CurrentPage = new Page.NotFound() },
                  Commands.None),
-            
-            LinkClicked { Request: UrlRequest.Internal @internal } =>
-                (model with { CurrentRoute = Router.FromUrl(@internal.Url) },
-                 new PushState(@internal.Url)),
-            
-            LinkClicked { Request: UrlRequest.External external } =>
-                (model, new Load(Url.Create(external.Url))),
-            
+
             _ => (model, Commands.None)
         };
 
+    private static (Model, Command) HandleUrlChanged(Url url)
+    {
+        var (page, command) = Route.FromUrl(url);
+        return (new Model(page), command);
+    }
+```
+
+**How it works:**
+
+1. The runtime dispatches `UrlChanged(url)` whenever the browser URL changes
+2. `Transition` delegates to `HandleUrlChanged`, which calls the pure `Route.FromUrl`
+3. The returned page becomes the new model; any commands trigger data loading
+
+### View with Navigation Links
+
+```csharp
     public static Document View(Model model)
-        => new(TitleFor(model.CurrentRoute),
-            div([class_("app")], [
-                nav([], [
-                    a([href("/")], [text("Home")]),
-                    text(" | "),
-                    a([href("/about")], [text("About")]),
-                    text(" | "),
-                    a([href("/profile/alice")], [text("Alice")]),
-                    text(" | "),
-                    a([href("/article/42")], [text("Article 42")])
-                ]),
-                hr([], []),
-                model.CurrentRoute switch
-                {
-                    Route.Home => main([], [h1([], [text("Welcome Home")])]),
-                    Route.About => main([], [h1([], [text("About Us")])]),
-                    Route.Profile p => main([], [h1([], [text($"Profile: {p.Username}")])]),
-                    Route.Article a => main([], [h1([], [text($"Article #{a.Id}")])]),
-                    _ => main([], [h1([], [text("404 - Not Found")])])
-                }
+    {
+        var title = model.CurrentPage switch
+        {
+            Page.Home => "Home",
+            Page.About => "About",
+            Page.UserProfile p => $"{p.Username}'s Profile",
+            _ => "Not Found"
+        };
+
+        return new(title,
+            div([],
+            [
+                Nav(),
+                Content(model.CurrentPage)
             ]));
+    }
 
-    static string TitleFor(Route route) => route switch
+    static Node Nav() =>
+        nav([class_("navbar")],
+        [
+            a([href("/")], [text("Home")]),
+            a([href("/about")], [text("About")]),
+            a([href("/users/alice")], [text("Alice's Profile")])
+        ]);
+
+    static Node Content(Page page) =>
+        page switch
+        {
+            Page.Home => div([], [h1([], [text("Welcome Home")])]),
+            Page.About => div([], [h1([], [text("About Us")])]),
+            Page.UserProfile { IsLoading: true } =>
+                div([], [text("Loading profile...")]),
+            Page.UserProfile p =>
+                div([], [h1([], [text($"{p.Username}'s Profile")])]),
+            Page.NotFound => div([], [h1([], [text("404 — Not Found")])]),
+            _ => text("")
+        };
+```
+
+**How links work:** Regular `<a href="...">` links are intercepted by the runtime. Instead of triggering a full page reload, the runtime:
+
+1. Prevents the default browser navigation
+2. Updates the browser URL via the History API
+3. Dispatches `UrlChanged(newUrl)` into your `Transition` function
+
+You don't need to use special link components — regular `a` elements with `href` just work.
+
+### Subscriptions
+
+To receive URL change notifications, subscribe to `Navigation.UrlChanges`:
+
+```csharp
+    public static Subscription Subscriptions(Model model) =>
+        Navigation.UrlChanges(url => new UrlChanged(url));
+}
+```
+
+`Navigation.UrlChanges` listens for browser `popstate` events (back/forward navigation) and intercepted link clicks, dispatching them as `UrlChanged` messages.
+
+## Programmatic Navigation
+
+Sometimes you need to navigate in response to an action (e.g., redirect after login). Use navigation commands:
+
+```csharp
+// In Transition:
+LoginSucceeded =>
+    (model with { CurrentUser = user },
+     Navigation.PushUrl(new Url(["dashboard"],
+         new Dictionary<string, string>(), Option<string>.None)))
+```
+
+Available navigation commands:
+
+| Command | Effect |
+| --- | --- |
+| `Navigation.PushUrl(url)` | Navigate to URL, add to history |
+| `Navigation.ReplaceUrl(url)` | Navigate to URL, replace current history entry |
+| `Navigation.Back` | Go back one entry |
+| `Navigation.Forward` | Go forward one entry |
+| `Navigation.ExternalUrl(href)` | Navigate to an external URL (full page load) |
+
+### Push vs. Replace
+
+- **PushUrl**: Adds a new entry to the browser history. The user can press Back to return.
+- **ReplaceUrl**: Replaces the current history entry. Useful for redirects where you don't want the user to "go back" to the redirect page.
+
+```csharp
+// After login: redirect to dashboard (replace login page in history)
+LoginSucceeded =>
+    (model with { Session = session },
+     Navigation.ReplaceUrl(dashboardUrl))
+
+// After creating an article: navigate to the new article (push to history)
+ArticleCreated slug =>
+    (model,
+     Navigation.PushUrl(new Url(["article", slug],
+         new Dictionary<string, string>(), Option<string>.None)))
+```
+
+## External Links
+
+For links to external sites, use `Navigation.ExternalUrl`:
+
+```csharp
+OpenDocs =>
+    (model, Navigation.ExternalUrl("https://docs.example.com"))
+```
+
+Or simply use an `<a>` tag with a full URL — the runtime only intercepts same-origin links:
+
+```csharp
+a([href("https://docs.example.com"), target_("_blank")],
+    [text("Documentation")])
+```
+
+## Advanced: Query Parameters
+
+Use the `Query` dictionary on `Url` for search, filters, and pagination:
+
+```csharp
+public static (Page Page, Command Command) FromUrl(Url url) =>
+    url.Path switch
     {
-        Route.Home => "Home",
-        Route.About => "About",
-        Route.Profile p => $"{p.Username}'s Profile",
-        Route.Article a => $"Article {a.Id}",
-        _ => "Not Found"
+        ["search"] =>
+            (new Page.Search(
+                Query: url.Query.GetValueOrDefault("q", ""),
+                PageNumber: int.TryParse(
+                    url.Query.GetValueOrDefault("page", "1"), out var p) ? p : 1
+             ),
+             new FetchSearchResults(
+                 url.Query.GetValueOrDefault("q", ""),
+                 int.TryParse(url.Query.GetValueOrDefault("page", "1"), out var pg) ? pg : 1)),
+        // ...
     };
-
-    public static Message OnUrlChanged(Url url) => new UrlChanged(url);
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new LinkClicked(urlRequest);
-    public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
-}
 ```
 
-## What You Learned
+## Real-World Example: Conduit Routing
 
-| Concept | Application |
-| ------- | ----------- |
-| Route sum types | Each page is a route variant |
-| Template routing | Quick, readable route definitions |
-| Parser routing | Composable, type-safe parsing |
-| Navigation commands | PushState, ReplaceState, Back, etc. |
-| URL handling | OnUrlChanged for browser navigation |
-| Link handling | OnLinkClicked for anchor clicks |
-
-## Advanced Topics
-
-### Nested routes
+The Conduit demo uses the same pattern at scale:
 
 ```csharp
-public record Route
-{
-    public sealed record Settings(SettingsTab Tab) : Route;
-}
-
-public record SettingsTab
-{
-    public sealed record Profile : SettingsTab;
-    public sealed record Security : SettingsTab;
-    public sealed record Notifications : SettingsTab;
-}
-```
-
-### Route-based data loading
-
-```csharp
-UrlChanged changed =>
-    var route = Router.FromUrl(changed.Url);
-    var command = route switch
+// From Abies.Conduit.App/Route.cs
+public static (Page Page, Command Command) FromUrl(
+    Url url, Session? session, string apiUrl) =>
+    url.Path switch
     {
-        Route.Profile p => new LoadProfile(p.Username),
-        Route.Article a => new LoadArticle(a.Id),
-        _ => Commands.None
+        [] or [""]             => HomeRoute(session, apiUrl),
+        ["login"]              => LoginRoute(),
+        ["register"]           => RegisterRoute(),
+        ["settings"]           => SettingsRoute(session),
+        ["editor"]             => EditorRoute(null, session?.Token, apiUrl),
+        ["editor", var slug]   => EditorRoute(slug, session?.Token, apiUrl),
+        ["article", var slug]  => ArticleRoute(slug, session?.Token, apiUrl),
+        ["profile", var user]  => ProfileRoute(user, false, session?.Token, apiUrl),
+        ["profile", var user, "favorites"]
+                               => ProfileRoute(user, true, session?.Token, apiUrl),
+        _                      => (new Page.NotFound(), Commands.None)
     };
-    return (model with { CurrentRoute = route }, command);
 ```
 
-### Query parameters
+Notice how route parameters (`slug`, `user`) are captured directly in the pattern match. No route parameter parsing library needed.
+
+## Testing
 
 ```csharp
-// Parse ?page=2&sort=date from url.Query
-var page = ParseQueryParam(url.Query, "page", 1);
-var sort = ParseQueryParam(url.Query, "sort", "date");
+[Fact]
+public void FromUrl_Home_ReturnsHomePage()
+{
+    var url = new Url([], new Dictionary<string, string>(),
+        Option<string>.None);
+
+    var (page, command) = Route.FromUrl(url);
+
+    Assert.IsType<Page.Home>(page);
+    Assert.Equal(Commands.None, command);
+}
+
+[Fact]
+public void FromUrl_UserProfile_ReturnsLoadingPage_AndFetchCommand()
+{
+    var url = new Url(["users", "alice"],
+        new Dictionary<string, string>(), Option<string>.None);
+
+    var (page, command) = Route.FromUrl(url);
+
+    var profile = Assert.IsType<Page.UserProfile>(page);
+    Assert.Equal("alice", profile.Username);
+    Assert.True(profile.IsLoading);
+    Assert.IsType<FetchUser>(command);
+}
+
+[Fact]
+public void UrlChanged_UpdatesPage()
+{
+    var model = new Model(new Page.Home());
+    var url = new Url(["about"],
+        new Dictionary<string, string>(), Option<string>.None);
+
+    var (newModel, _) = App.Transition(model, new UrlChanged(url));
+
+    Assert.IsType<Page.About>(newModel.CurrentPage);
+}
+
+[Fact]
+public void FromUrl_UnknownPath_ReturnsNotFound()
+{
+    var url = new Url(["nonexistent", "path"],
+        new Dictionary<string, string>(), Option<string>.None);
+
+    var (page, _) = Route.FromUrl(url);
+
+    Assert.IsType<Page.NotFound>(page);
+}
 ```
 
 ## Exercises
 
-1. **Add query params**: Support `/articles?page=2`
-2. **Protected routes**: Redirect to login if not authenticated
-3. **Route transitions**: Add loading states during navigation
-4. **Breadcrumbs**: Show navigation path
+1. **Add a search page** — Create a `/search?q=term` route that reads the query parameter and triggers a search command.
 
-## Next Tutorial
+2. **Protected routes** — Add a `Session?` parameter to your route function. Redirect unauthenticated users to `/login` when they try to access protected pages.
 
-→ [Tutorial 5: Forms](./05-forms.md) — Learn form handling and validation
+3. **Breadcrumbs** — Build a breadcrumb component that derives navigation links from the current URL path segments.
+
+4. **404 with suggestions** — On the NotFound page, show links to routes that are similar to the attempted path.
+
+## Key Concepts
+
+| Concept | In This Tutorial |
+| --- | --- |
+| `UrlChanged(Url)` | Built-in message for URL changes |
+| `Url.Path` | Array of path segments for pattern matching |
+| `Route.FromUrl(url)` | Pure function: URL → (Page, Command) |
+| `Navigation.PushUrl` | Programmatic navigation command |
+| `Navigation.ReplaceUrl` | Replace current history entry |
+| `Navigation.UrlChanges` | Subscription for URL change events |
+| Link interception | Regular `<a href>` links are intercepted automatically |
+
+## Next Steps
+
+→ [Tutorial 5: Forms](05-forms.md) — Learn form input handling, validation, and submission
