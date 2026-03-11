@@ -6,12 +6,12 @@
     <PackageId>Picea.Abies.Templates</PackageId>
     <Title>Picea Abies Templates</Title>
     <Authors>Maurice CGP Peters</Authors>
-    <Description>Templates for creating Abies MVU-style WebAssembly applications with .NET. Use 'dotnet new abies-browser' to create a new Abies application.</Description>
+    <Description>Templates for creating Abies MVU-style web applications with .NET. Use 'dotnet new abies-browser' for WebAssembly or 'dotnet new abies-server' for server-side rendering.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Picea/Abies</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Picea/Abies.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>dotnet-new;templates;picea;abies;webassembly;wasm;mvu;elm;</PackageTags>
+    <PackageTags>dotnet-new;templates;picea;abies;webassembly;wasm;mvu;elm;ssr;server</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>https://github.com/Picea/Abies/releases</PackageReleaseNotes>
     <TargetFramework>netstandard2.0</TargetFramework>
