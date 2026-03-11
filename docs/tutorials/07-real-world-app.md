@@ -1,14 +1,23 @@
 # Tutorial 7: Real-World App
 
-This tutorial walks through the Conduit sample—a full-featured RealWorld app implementation demonstrating production patterns.
+Explore the Conduit sample — a full-featured RealWorld app that demonstrates production patterns with Abies.
 
-**Prerequisites:** Complete tutorials 1-6
+**Prerequisites:** Complete tutorials 1–6
 
-**Time:** 45 minutes (reading/exploration)
+**Time:** 45 minutes (reading and exploration)
+
+**What you'll learn:**
+
+- Structuring a large Abies application
+- Discriminated unions for page state
+- Flat message and command organization
+- The interpreter pattern at scale
+- Route-based data loading
+- Delegated view rendering
 
 ## What is Conduit?
 
-Conduit is a "RealWorld" app implementation—a Medium.com clone with:
+Conduit is the [RealWorld](https://github.com/gothinkster/realworld) specification — a Medium.com clone with:
 
 - User authentication (login, register, logout)
 - Article CRUD (create, read, update, delete)
@@ -18,452 +27,417 @@ Conduit is a "RealWorld" app implementation—a Medium.com clone with:
 - Tag-based filtering
 - Pagination
 
-It demonstrates how all the concepts from previous tutorials come together.
+It demonstrates how all the concepts from previous tutorials come together in a real application.
 
 ## Running Conduit
 
 ```bash
-# Terminal 1: Start the API server
-dotnet run --project Abies.Conduit.Api
+# Start the API server
+dotnet run --project Picea.Abies.Conduit.Api
 
-# Terminal 2: Start the frontend
-dotnet run --project Abies.Conduit
+# In another terminal, start the frontend
+dotnet run --project Picea.Abies.Conduit.Wasm
 ```
-
-Open `http://localhost:5209` in your browser.
 
 ## Project Structure
 
+The Conduit frontend is split into a platform-independent library and a WASM host:
+
 ```text
-Abies.Conduit/
-├── Program.cs              # Entry point
-├── Main.cs                 # Main Program implementation
-├── Commands.cs             # Command handling
-├── Navigation.cs           # URL handling helpers
-├── Route.cs                # Route definitions
+Abies.Conduit.App/              # Platform-independent MVU program
+├── Conduit.cs                  # Main Program implementation
+├── Model.cs                    # Application state (all record types)
+├── Messages.cs                 # All message types
+├── Commands.cs                 # All command types
+├── Interpreter.cs              # HTTP interpreter (side effects)
+├── Route.cs                    # URL → Page routing
+├── ConduitJsonContext.cs       # AOT-safe JSON serialization
 │
-├── Page/                   # Page components
-│   ├── Home.cs             # Home feed
-│   ├── Article.cs          # Article detail
-│   ├── Editor.cs           # Article editor
-│   ├── Login.cs            # Login form
-│   ├── Register.cs         # Registration form
-│   ├── Profile.cs          # User profile
-│   └── Settings.cs         # User settings
+├── Pages/                      # Page-specific view functions
+│   ├── Home.cs
+│   ├── Article.cs
+│   ├── Editor.cs
+│   ├── Login.cs
+│   ├── Register.cs
+│   ├── Profile.cs
+│   └── Settings.cs
 │
-├── Services/               # API clients
-│   ├── ApiClient.cs        # HTTP client wrapper
-│   ├── ArticleService.cs   # Article operations
-│   ├── AuthService.cs      # Authentication
-│   └── ProfileService.cs   # Profile operations
-│
-└── Local/
-    └── Storage.cs          # Browser storage
+└── Views/                      # Shared view components
+    ├── Layout.cs
+    └── ArticlePreview.cs
+
+Abies.Conduit.Wasm/             # Browser host
+└── Program.cs                  # await Runtime.Run<ConduitProgram, Model, Unit>(...)
 ```
 
-## Key Patterns
+**Key organizational principle:** The app has no nested modules for messages, commands, or models. Everything is flat records at the namespace level. This works well in C# because record types are concise, and pattern matching provides the dispatch.
 
-### 1. Global vs Page State
+## Key Pattern 1: Discriminated Union for Pages
 
-The main model owns global state; pages own their local state:
+The `Page` type is a sealed record hierarchy that represents every possible page:
 
 ```csharp
-// Main model (global state)
-public record Model(
-    Page Page,              // Current page component
-    Route CurrentRoute,     // Current route
-    User? CurrentUser       // Logged-in user
-);
-
-// Page is a sum type
-public interface Page
+// From Model.cs
+public abstract record Page
 {
-    public sealed record Home(HomePage.Model Model) : Page;
-    public sealed record Article(ArticlePage.Model Model) : Page;
-    public sealed record Login(LoginPage.Model Model) : Page;
-    // ...
+    private Page() { }  // prevent external inheritance
+
+    public sealed record Home(HomeModel Data) : Page;
+    public sealed record Login(LoginModel Data) : Page;
+    public sealed record Register(RegisterModel Data) : Page;
+    public sealed record Article(ArticleModel Data) : Page;
+    public sealed record Settings(SettingsModel Data) : Page;
+    public sealed record Editor(EditorModel Data) : Page;
+    public sealed record Profile(ProfileModel Data) : Page;
+    public sealed record NotFound : Page;
 }
 ```
 
-### 2. Nested Messages
-
-Messages are organized hierarchically:
+Each page variant holds its own sub-model with page-specific state. The top-level model holds the current page:
 
 ```csharp
-public interface Message : Abies.Message
-{
-    // Commands (side effects to perform)
-    public interface Command : Message
-    {
-        public sealed record ChangeRoute(Route? Route) : Abies.Command;
-        public sealed record LoadCurrentUser : Abies.Command;
-    }
-
-    // Events (things that happened)
-    public interface Event : Message
-    {
-        public sealed record UrlChanged(Url Url) : Event;
-        public sealed record LinkClicked(UrlRequest UrlRequest) : Event;
-        public sealed record UserLoggedIn(User User) : Event;
-        public sealed record UserLoggedOut : Event;
-    }
-}
+public sealed record Model(
+    Page Page,
+    Session? Session,
+    string ApiUrl);
 ```
 
-### 3. Route-Based Initialization
+**Why this works:** The `Page` type makes impossible states unrepresentable. You can't be on the login page and the editor page simultaneously. Pattern matching on `Page` in the view is exhaustive — the compiler warns you if you miss a case.
 
-Each route triggers appropriate data loading:
+## Key Pattern 2: Flat Messages
+
+All messages are flat records implementing a marker interface:
 
 ```csharp
-private static (Model model, Command) HandleUrlChanged(Url url, Model model)
-{
-    var route = Route.FromUrl(url);
-    
-    // Create the appropriate page model
-    var (nextModel, _) = GetNextModel(url, model.CurrentUser);
-    
-    // Get initialization command for the route
-    var initCommand = GetInitCommandForRoute(nextModel);
-    
-    return (nextModel, initCommand);
-}
+// From Messages.cs
+public interface ConduitMessage : Message;
 
-private static Command GetInitCommandForRoute(Model model) =>
-    model.Page switch
-    {
-        Page.Home => new HomePage.Command.LoadArticles(),
-        Page.Article article => new ArticlePage.Command.LoadArticle(article.Model.Slug),
-        Page.Profile profile => new ProfilePage.Command.LoadProfile(profile.Model.Username),
-        _ => Commands.None
-    };
+// Form inputs
+public sealed record LoginEmailChanged(string Value) : ConduitMessage;
+public sealed record LoginPasswordChanged(string Value) : ConduitMessage;
+public sealed record LoginSubmitted : ConduitMessage;
+
+// API responses
+public sealed record ArticlesLoaded(
+    IReadOnlyList<ArticlePreviewData> Articles,
+    int ArticlesCount) : ConduitMessage;
+public sealed record UserAuthenticated(Session Session) : ConduitMessage;
+public sealed record ApiError(IReadOnlyList<string> Errors) : ConduitMessage;
+
+// UI interactions
+public sealed record FeedTabChanged(FeedTab Tab, string? Tag = null) : ConduitMessage;
+public sealed record ToggleFavorite(string Slug, bool Favorited) : ConduitMessage;
+public sealed record Logout : ConduitMessage;
 ```
 
-### 4. Protected Routes
+Messages are organized by domain in the source file (form inputs, API responses, UI interactions) but are structurally flat — no nested interfaces or namespace hierarchies.
 
-Some routes require authentication:
+## Key Pattern 3: Flat Commands
+
+Same pattern for commands:
 
 ```csharp
-private static bool RequiresAuth(Route route) =>
-    route is Route.Settings
-    || route is Route.NewArticle
-    || route is Route.EditArticle;
+// From Commands.cs
+public interface ConduitCommand : Command;
 
-private static (Model model, Command) HandleLinkClicked(UrlRequest request, Model model)
-{
-    if (request is UrlRequest.Internal @internal)
-    {
-        var (nextModel, _) = GetNextModel(@internal.Url, model.CurrentUser);
-        
-        // Redirect to login if auth required but not logged in
-        if (RequiresAuth(nextModel.CurrentRoute) && nextModel.CurrentUser is null)
-        {
-            var loginUrl = Url.Create("/login");
-            var (loginModel, _) = GetNextModel(loginUrl, null);
-            return (loginModel, new Navigation.Command.PushState(loginUrl));
-        }
-        
-        return (nextModel, new Navigation.Command.PushState(@internal.Url));
-    }
-    return (model, Commands.None);
-}
+public sealed record FetchArticles(
+    string ApiUrl, string? Token,
+    int Limit = 10, int Offset = 0,
+    string? Tag = null, string? Author = null,
+    string? Favorited = null) : ConduitCommand;
+
+public sealed record LoginUser(
+    string ApiUrl, string Email, string Password) : ConduitCommand;
+
+public sealed record FavoriteArticle(
+    string ApiUrl, string Token, string Slug) : ConduitCommand;
 ```
 
-### 5. Page Update Delegation
+Commands carry all the data needed for execution — API URL, auth token, request parameters. They are self-contained descriptions of side effects.
 
-The main Update function delegates to page-specific updaters:
+## Key Pattern 4: The Transition Function
 
-```csharp
-public static (Model model, Command command) Update(Message message, Model model)
-    => message switch
-    {
-        // Global events
-        Message.Event.UrlChanged changed => HandleUrlChanged(changed.Url, model),
-        Message.Event.UserLoggedIn user => HandleUserLoggedIn(user.User, model),
-        Message.Event.UserLoggedOut => HandleUserLoggedOut(model),
-        
-        // Page-specific messages - delegate to page updater
-        HomePage.Message homeMsg when model.Page is Page.Home home =>
-            UpdateHomePage(homeMsg, home.Model, model),
-        
-        ArticlePage.Message articleMsg when model.Page is Page.Article article =>
-            UpdateArticlePage(articleMsg, article.Model, model),
-        
-        // ... other pages
-        
-        _ => (model, Commands.None)
-    };
-
-private static (Model model, Command command) UpdateHomePage(
-    HomePage.Message msg, 
-    HomePage.Model pageModel, 
-    Model model)
-{
-    var (newPageModel, command) = HomePage.Update(msg, pageModel);
-    return (model with { Page = new Page.Home(newPageModel) }, command);
-}
-```
-
-### 6. Service Layer
-
-API calls are organized into service classes:
+The main `Transition` function is a large pattern match. It handles navigation, form inputs, UI interactions, and API responses:
 
 ```csharp
-// Services/ArticleService.cs
-public static class ArticleService
-{
-    public static async Task<ArticlesResponse> GetArticles(
-        HttpClient client, 
-        int offset = 0, 
-        int limit = 10,
-        string? tag = null,
-        string? author = null,
-        string? favorited = null)
-    {
-        var query = $"?offset={offset}&limit={limit}";
-        if (tag is not null) query += $"&tag={tag}";
-        if (author is not null) query += $"&author={author}";
-        if (favorited is not null) query += $"&favorited={favorited}";
-        
-        var response = await client.GetAsync($"/api/articles{query}");
-        response.EnsureSuccessStatusCode();
-        
-        return await response.Content.ReadFromJsonAsync<ArticlesResponse>()
-            ?? new ArticlesResponse([], 0);
-    }
-}
-```
-
-### 7. Command Handling
-
-Commands are handled centrally:
-
-```csharp
-public static async Task HandleCommand(
-    Command command, 
-    Func<Message, ValueTuple> dispatch)
-{
-    switch (command)
+// From Conduit.cs (simplified)
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
     {
         // Navigation
-        case Navigation.Command.PushState push:
-            await Interop.PushState(push.Url.ToString());
-            break;
-        
-        // Article loading
-        case ArticlePage.Command.LoadArticle load:
-            try
-            {
-                var article = await ArticleService.GetArticle(_client, load.Slug);
-                dispatch(new ArticlePage.Message.ArticleLoaded(article));
-            }
-            catch (Exception ex)
-            {
-                dispatch(new ArticlePage.Message.LoadFailed(ex.Message));
-            }
-            break;
-        
-        // ... other commands
-    }
-}
-```
+        UrlChanged url => HandleUrlChanged(model, url),
 
-### 8. View Composition
+        // Login form
+        LoginEmailChanged msg when model.Page is Page.Login login =>
+            (model with {
+                Page = new Page.Login(login.Data with { Email = msg.Value })
+            }, Commands.None),
 
-The main view composes the layout with page content:
+        LoginSubmitted when model.Page is Page.Login login =>
+            (model with {
+                Page = new Page.Login(login.Data with { IsSubmitting = true, Errors = [] })
+            }, new LoginUser(model.ApiUrl, login.Data.Email, login.Data.Password)),
 
-```csharp
-public static Document View(Model model)
-{
-    var title = GetTitle(model);
-    
-    return new(title,
-        div([class_("app")], [
-            Header(model.CurrentUser, model.CurrentRoute),
-            MainContent(model),
-            Footer()
-        ]));
-}
+        // API responses
+        UserAuthenticated msg => HandleUserAuthenticated(model, msg),
+        ArticlesLoaded msg => HandleArticlesLoaded(model, msg),
+        ApiError msg => HandleApiError(model, msg),
 
-static Node Header(User? user, Route route) =>
-    nav([class_("navbar")], [
-        a([class_("brand"), href("/")], [text("conduit")]),
-        user is null
-            ? GuestNav()
-            : UserNav(user, route)
-    ]);
+        // UI interactions
+        ToggleFavorite msg when model.Session is not null =>
+            (model, msg.Favorited
+                ? new UnfavoriteArticle(model.ApiUrl, model.Session.Token, msg.Slug)
+                : new FavoriteArticle(model.ApiUrl, model.Session.Token, msg.Slug)),
 
-static Node MainContent(Model model) =>
-    model.Page switch
-    {
-        Page.Home home => HomePage.View(home.Model),
-        Page.Article article => ArticlePage.View(article.Model),
-        Page.Login login => LoginPage.View(login.Model),
-        Page.Register register => RegisterPage.View(register.Model),
-        Page.Profile profile => ProfilePage.View(profile.Model),
-        Page.Settings settings => SettingsPage.View(settings.Model),
-        Page.NewArticle editor => EditorPage.View(editor.Model),
-        Page.NotFound => NotFoundView(),
-        _ => NotFoundView()
+        Logout =>
+            (model with { Session = null, Page = new Page.Home(...) },
+             Commands.Batch(
+                 new FetchArticles(model.ApiUrl, null, Constants.ArticlesPerPage, 0),
+                 new FetchTags(model.ApiUrl))),
+
+        _ => (model, Commands.None)
     };
 ```
 
-## Page Component Example: Home
+**Patterns to notice:**
 
-Here's a simplified version of the Home page:
+- **Guard clauses with `when`**: `LoginEmailChanged msg when model.Page is Page.Login login` — ensures the message is only handled when the correct page is active
+- **Nested `with` expressions**: `model with { Page = new Page.Login(login.Data with { Email = msg.Value }) }` — immutably updates nested state
+- **Auth guards**: `when model.Session is not null` — prevents authenticated actions when not logged in
+- **`Commands.Batch`**: Combines multiple side effects (fetch articles AND fetch tags on logout)
+
+## Key Pattern 5: Route-Based Data Loading
+
+Route parsing is a pure function that returns both the page state and the commands needed to load data:
 
 ```csharp
-// Page/Home.cs
-namespace Abies.Conduit.Page;
+// From Route.cs
+public static (Page Page, Command Command) FromUrl(
+    Url url, Session? session, string apiUrl) =>
+    url.Path switch
+    {
+        [] or [""] => HomeRoute(session, apiUrl),
+        ["login"]  => LoginRoute(),
+        ["article", var slug] => ArticleRoute(slug, session?.Token, apiUrl),
+        ["profile", var username] =>
+            ProfileRoute(username, false, session?.Token, apiUrl),
+        _ => (new Page.NotFound(), Commands.None)
+    };
 
-public static class HomePage
+private static (Page, Command) ArticleRoute(
+    string slug, string? token, string apiUrl)
 {
-    public record Model(
-        List<Article> Articles,
-        int ArticlesCount,
-        List<string> Tags,
-        FeedTab ActiveTab,
-        string? SelectedTag,
-        bool IsLoading,
-        int CurrentPage,
-        User? CurrentUser
-    );
-
-    public enum FeedTab { Personal, Global, Tag }
-
-    public interface Message : Abies.Message
-    {
-        public sealed record ArticlesLoaded(List<Article> Articles, int Count) : Message;
-        public sealed record TagsLoaded(List<string> Tags) : Message;
-        public sealed record TabChanged(FeedTab Tab) : Message;
-        public sealed record TagSelected(string Tag) : Message;
-        public sealed record PageChanged(int Page) : Message;
-        public sealed record ToggleFavorite(string Slug, bool Favorited) : Message;
-    }
-
-    public interface Command : Abies.Command
-    {
-        public sealed record LoadArticles(FeedTab Tab, string? Tag, int Page) : Command;
-        public sealed record LoadTags : Command;
-        public sealed record Favorite(string Slug) : Command;
-        public sealed record Unfavorite(string Slug) : Command;
-    }
-
-    public static (Model model, Abies.Command command) Update(Message msg, Model model)
-        => msg switch
-        {
-            Message.ArticlesLoaded loaded =>
-                (model with 
-                { 
-                    Articles = loaded.Articles,
-                    ArticlesCount = loaded.Count,
-                    IsLoading = false
-                }, Commands.None),
-            
-            Message.TabChanged tab =>
-                (model with { ActiveTab = tab.Tab, CurrentPage = 0, IsLoading = true },
-                 new Command.LoadArticles(tab.Tab, null, 0)),
-            
-            Message.TagSelected tag =>
-                (model with { ActiveTab = FeedTab.Tag, SelectedTag = tag.Tag, CurrentPage = 0, IsLoading = true },
-                 new Command.LoadArticles(FeedTab.Tag, tag.Tag, 0)),
-            
-            Message.PageChanged page =>
-                (model with { CurrentPage = page.Page, IsLoading = true },
-                 new Command.LoadArticles(model.ActiveTab, model.SelectedTag, page.Page)),
-            
-            _ => (model, Commands.None)
-        };
-
-    public static Node View(Model model) =>
-        div([class_("home-page")], [
-            Banner(),
-            div([class_("container")], [
-                div([class_("row")], [
-                    div([class_("col-md-9")], [
-                        FeedToggle(model),
-                        model.IsLoading
-                            ? LoadingSpinner()
-                            : ArticleList(model.Articles),
-                        Pagination(model.CurrentPage, model.ArticlesCount)
-                    ]),
-                    div([class_("col-md-3")], [
-                        TagsSidebar(model.Tags)
-                    ])
-                ])
-            ])
-        ]);
-
-    static Node FeedToggle(Model model) =>
-        div([class_("feed-toggle")], [
-            ul([class_("nav")], [
-                model.CurrentUser is not null
-                    ? TabLink("Your Feed", FeedTab.Personal, model.ActiveTab)
-                    : text(""),
-                TabLink("Global Feed", FeedTab.Global, model.ActiveTab),
-                model.ActiveTab == FeedTab.Tag
-                    ? li([class_("nav-item")], [
-                        a([class_("nav-link active")], [text($"#{model.SelectedTag}")])
-                      ])
-                    : text("")
-            ])
-        ]);
-
-    static Node TabLink(string label, FeedTab tab, FeedTab active) =>
-        li([class_("nav-item")], [
-            a([
-                class_(tab == active ? "nav-link active" : "nav-link"),
-                onclick(new Message.TabChanged(tab))
-            ], [text(label)])
-        ]);
+    var model = new ArticleModel(slug, null, [], "", true);
+    return (new Page.Article(model), Commands.Batch(
+        new FetchArticle(apiUrl, token, slug),
+        new FetchComments(apiUrl, token, slug)));
 }
 ```
+
+When the user navigates to `/article/hello-world`, the router:
+
+1. Creates a `Page.Article` with a loading state (no article data yet)
+2. Returns `Commands.Batch(FetchArticle, FetchComments)` to load both pieces of data
+3. The interpreter executes both commands concurrently
+4. The resulting `ArticleLoaded` and `CommentsLoaded` messages update the model
+
+## Key Pattern 6: The Interpreter at Scale
+
+The Conduit interpreter handles 15+ command types — all following the same structure:
+
+```csharp
+// From Interpreter.cs (simplified)
+public static async ValueTask<Result<Message[], PipelineError>> Interpret(
+    Command command)
+{
+    try
+    {
+        Message[] messages = command switch
+        {
+            FetchArticles cmd => await HandleFetchArticles(cmd),
+            FetchArticle cmd => await HandleFetchArticle(cmd),
+            LoginUser cmd => await HandleLogin(cmd),
+            RegisterUser cmd => await HandleRegister(cmd),
+            FavoriteArticle cmd => await HandleFavorite(cmd),
+            UnfavoriteArticle cmd => await HandleUnfavorite(cmd),
+            FollowUser cmd => await HandleFollow(cmd),
+            AddComment cmd => await HandleAddComment(cmd),
+            DeleteArticleCommand cmd => await HandleDeleteArticle(cmd),
+            CreateArticle cmd => await HandleCreateArticle(cmd),
+            // ... more command types
+            _ => []
+        };
+
+        return Result<Message[], PipelineError>.Ok(messages);
+    }
+    catch (Exception ex)
+    {
+        return Result<Message[], PipelineError>.Ok(
+            [new ApiError([$"Network error: {ex.Message}"])]);
+    }
+}
+
+private static async Task<Message[]> HandleFetchArticles(FetchArticles cmd)
+{
+    var query = BuildArticleQuery(cmd.Limit, cmd.Offset, cmd.Tag, cmd.Author, cmd.Favorited);
+    using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/articles{query}", cmd.Token);
+    using var response = await _http.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+        return [new ApiError(await ReadErrors(response))];
+
+    var dto = await response.Content.ReadFromJsonAsync(
+        ConduitJsonContext.Default.MultipleArticlesDto);
+    return dto is null ? [] :
+        [new ArticlesLoaded(dto.Articles.Select(MapArticlePreview).ToList(), dto.ArticlesCount)];
+}
+```
+
+**Patterns to notice:**
+
+- **DTO → Domain mapping**: The interpreter maps JSON DTOs to domain data types used by the model
+- **AOT-safe JSON**: Uses source-generated `JsonSerializerContext` for trimming/AOT compatibility
+- **Error normalization**: All HTTP errors are mapped to `ApiError(errors)` messages
+- **Auth headers**: `CreateRequest` attaches the Bearer token when present
+
+## Key Pattern 7: Delegated View Rendering
+
+The main `View` function delegates to page-specific view functions:
+
+```csharp
+// From Conduit.cs
+public static Document View(Model model)
+{
+    var content = model.Page switch
+    {
+        Page.Home home => Pages.Home.View(home.Data, model.Session),
+        Page.Login login => Pages.Login.View(login.Data),
+        Page.Register reg => Pages.Register.View(reg.Data),
+        Page.Article art => Pages.Article.View(art.Data, model.Session),
+        Page.Settings settings => Pages.Settings.View(settings.Data),
+        Page.Editor editor => Pages.Editor.View(editor.Data),
+        Page.Profile profile => Pages.Profile.View(profile.Data, model.Session),
+        Page.NotFound => div([], [text("Page not found.")]),
+        _ => div([], [text("Coming soon...")])
+    };
+
+    var title = model.Page switch
+    {
+        Page.Home => "Conduit",
+        Page.Login => "Sign in — Conduit",
+        Page.Article { Data.Article: not null } art =>
+            $"{art.Data.Article.Title} — Conduit",
+        // ...
+    };
+
+    return new Document(title,
+        Views.Layout.Page(model.Page, model.Session, content));
+}
+```
+
+Each page view function receives only the data it needs — its page sub-model and optionally the session for auth-dependent rendering.
+
+## Key Pattern 8: Navigation as Subscription
+
+URL change handling is set up as a subscription:
+
+```csharp
+public static Subscription Subscriptions(Model model) =>
+    Navigation.UrlChanges(url => new UrlChanged(url));
+```
+
+And handled as a regular message in `Transition`:
+
+```csharp
+UrlChanged url => HandleUrlChanged(model, url),
+
+private static (Model, Command) HandleUrlChanged(Model model, UrlChanged msg)
+{
+    var (page, command) = Route.FromUrl(msg.Url, model.Session, model.ApiUrl);
+    return (model with { Page = page }, command);
+}
+```
+
+Programmatic navigation uses commands:
+
+```csharp
+// After successful login: navigate to home
+var (page, command) = Route.FromUrl(Url.Root, msg.Session, model.ApiUrl);
+return (newModel with { Page = page },
+    Commands.Batch(command, Navigation.PushUrl(Url.Root)));
+```
+
+## Architecture Summary
+
+| Layer | File | Responsibility |
+| --- | --- | --- |
+| **State** | `Model.cs` | Immutable records for all application state |
+| **Events** | `Messages.cs` | What happened (user actions + API responses) |
+| **Effects** | `Commands.cs` | What side effects to perform |
+| **Logic** | `Conduit.cs` | Pure state machine (`Transition`) |
+| **Routing** | `Route.cs` | URL → (Page, Command) pure function |
+| **Side Effects** | `Interpreter.cs` | HTTP execution, DTO mapping |
+| **UI** | `Pages/*.cs` | Page-specific view functions |
+| **UI** | `Views/*.cs` | Shared view components |
+
+All business logic lives in the pure `Transition` function. All side effects live in the interpreter. All rendering is in the view functions. The boundaries are crisp.
 
 ## Testing Strategy
 
 Conduit uses multiple testing levels:
 
-### Unit Tests (Abies.Tests)
+### Unit Tests
 
-Test pure functions in isolation:
-
-```csharp
-[Fact]
-public void TabChanged_SetsActiveTab_AndReturnsLoadCommand()
-{
-    var model = new HomePage.Model(/* ... */);
-    
-    var (newModel, command) = HomePage.Update(
-        new HomePage.Message.TabChanged(FeedTab.Personal), 
-        model);
-    
-    Assert.Equal(FeedTab.Personal, newModel.ActiveTab);
-    Assert.True(newModel.IsLoading);
-    Assert.IsType<HomePage.Command.LoadArticles>(command);
-}
-```
-
-### Integration Tests (Abies.Conduit.IntegrationTests)
-
-Test complete user journeys with fake HTTP:
+Test the pure `Transition` function and route parsing:
 
 ```csharp
 [Fact]
-public async Task User_CanLogin_AndSeePersonalFeed()
+public void LoginSubmitted_SetsSubmittingState_AndReturnsLoginCommand()
 {
-    // Arrange
-    var fakeHttp = new FakeHttpHandler();
-    fakeHttp.SetupLogin("user@test.com", "password", validToken);
-    
-    // Act
-    var model = await SimulateLogin("user@test.com", "password");
-    
-    // Assert
-    Assert.NotNull(model.CurrentUser);
-    Assert.Equal("user", model.CurrentUser.Username);
+    var model = CreateModel(page: new Page.Login(
+        new LoginModel("user@test.com", "password", [], false)));
+
+    var (newModel, command) = ConduitProgram.Transition(model, new LoginSubmitted());
+
+    var login = Assert.IsType<Page.Login>(newModel.Page);
+    Assert.True(login.Data.IsSubmitting);
+    Assert.IsType<LoginUser>(command);
+}
+
+[Fact]
+public void FromUrl_ArticlePath_ReturnsArticlePage_WithFetchCommands()
+{
+    var url = new Url(["article", "hello-world"],
+        new Dictionary<string, string>(), Option<string>.None);
+
+    var (page, command) = Route.FromUrl(url, session: null, apiUrl: "http://api");
+
+    var article = Assert.IsType<Page.Article>(page);
+    Assert.Equal("hello-world", article.Data.Slug);
+    Assert.True(article.Data.IsLoading);
 }
 ```
 
-### E2E Tests (Abies.Conduit.E2E)
+### Integration Tests
+
+Test the interpreter with mocked HTTP:
+
+```csharp
+[Fact]
+public async Task Interpret_LoginUser_ReturnsUserAuthenticated()
+{
+    var handler = SetupLoginResponse("token123");
+    var command = new LoginUser("http://api", "user@test.com", "password");
+
+    var result = await ConduitInterpreter.Interpret(command);
+
+    var messages = result.Match(ok => ok, _ => []);
+    var auth = Assert.IsType<UserAuthenticated>(Assert.Single(messages));
+    Assert.Equal("token123", auth.Session.Token);
+}
+```
+
+### E2E Tests
 
 Test in a real browser with Playwright:
 
@@ -476,55 +450,38 @@ public async Task CanRegisterAndCreateArticle()
     await Page.FillAsync("[name=email]", "test@test.com");
     await Page.FillAsync("[name=password]", "password123");
     await Page.ClickAsync("button[type=submit]");
-    
+
     await Expect(Page).ToHaveURLAsync("/");
-    
-    await Page.ClickAsync("text=New Article");
-    // ...
 }
 ```
 
-## Key Takeaways
-
-| Pattern | Purpose |
-| ------- | ------- |
-| Global + Page state | Separate concerns, share user/route |
-| Nested messages | Organize by feature |
-| Route-based init | Load data when route changes |
-| Protected routes | Redirect unauthenticated users |
-| Delegated updates | Each page handles its messages |
-| Service layer | Encapsulate API calls |
-| Central command handler | One place for side effects |
-
 ## Explore the Code
 
-1. **Start with `Main.cs`** — See how routing and delegation work
-2. **Study `Page/Home.cs`** — Understand page component structure
-3. **Read `Commands.cs`** — See how effects are handled
-4. **Check `Services/`** — Understand API abstraction
+1. **Start with `Conduit.cs`** — Read the `Transition` function to see how all messages are handled
+2. **Study `Model.cs`** — See the page discriminated union and sub-models
+3. **Read `Interpreter.cs`** — Understand how commands become HTTP calls
+4. **Check `Route.cs`** — See how URLs map to pages with initial data loading
+5. **Browse `Pages/`** — See page-specific view functions
 
 ## Exercises
 
-1. **Add article editing** — Modify the editor for updates
-2. **Add comment deletion** — Implement the missing feature
-3. **Add article search** — Add a search box to the home page
-4. **Add error boundaries** — Handle and display errors gracefully
+1. **Add article search** — Add a search input to the home page that filters articles by title
+2. **Add comment editing** — Allow users to edit their own comments
+3. **Add dark mode** — Add a toggle that switches CSS classes, stored in the model
+4. **Add loading skeletons** — Replace "Loading..." text with skeleton UI components
 
-## Conclusion
+## Key Concepts
 
-You've completed the Abies tutorial series! You now understand:
+| Pattern | Purpose |
+| --- | --- |
+| Page discriminated union | One active page at a time, each with its own state |
+| Flat messages/commands | Simple record types, organized by domain in source |
+| Route-based data loading | URL → (Page, Command) pure function |
+| Guard patterns in Transition | `when model.Page is Page.Login login` |
+| Nested `with` expressions | Immutably update deeply nested state |
+| Interpreter at scale | One function handling 15+ command types |
+| `Commands.Batch` | Combine multiple side effects per transition |
 
-- ✅ MVU architecture
-- ✅ Pure functional state management
-- ✅ Virtual DOM rendering
-- ✅ Commands for side effects
-- ✅ Subscriptions for events
-- ✅ Routing and navigation
-- ✅ Form handling
-- ✅ Real-world application structure
+## Next Steps
 
-Continue exploring:
-
-- [API Reference](../api/program.md) — Detailed API documentation
-- [Concepts](../concepts/mvu-architecture.md) — Deep dives
-- [ADRs](../adr/README.md) — Design decisions
+→ [Tutorial 8: Distributed Tracing](08-tracing.md) — Learn how to monitor and debug your application with OpenTelemetry
