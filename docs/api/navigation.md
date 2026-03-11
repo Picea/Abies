@@ -1,310 +1,210 @@
-# Navigation API Reference
+# Navigation API
 
-The `Navigation` module provides commands for browser history manipulation.
-
-## Usage
-
-```csharp
-using Abies;
-```
+The `Navigation` static class provides commands and subscriptions for client-side URL management. Navigation in Abies is modeled as regular commands and messages — there are no special framework hooks for routing.
 
 ## Navigation Commands
 
-All navigation is done through commands returned from `Update`:
+Navigation commands are returned from `Transition` like any other command. The runtime's built-in navigation executor handles them — your interpreter never sees them.
+
+### Navigation.PushUrl
 
 ```csharp
-public static (Model, Command) Update(Message msg, Model model)
-    => msg switch
+public static Command PushUrl(Url url)
+```
+
+Navigates to a new URL by pushing it onto the browser's history stack (equivalent to `history.pushState`).
+
+```csharp
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
     {
-        GoHome => (model, new Navigation.Command.PushState(Url.Create("/"))),
+        ClickedArticle(var slug) =>
+            (model, Navigation.PushUrl(new Url(["article", slug], new Dictionary<string, string>(), Option<string>.None))),
         _ => (model, Commands.None)
     };
 ```
 
-## Command Types
-
-### Navigation.Command.PushState
-
-Navigates to a new URL, adding an entry to browser history (SPA navigation):
+### Navigation.ReplaceUrl
 
 ```csharp
-new Navigation.Command.PushState(Url.Create("/profile/johndoe"))
+public static Command ReplaceUrl(Url url)
 ```
 
-**When to use:**
-
-- Standard navigation between pages
-- User-initiated navigation
-- Links and buttons that change pages
-
-**Behavior:**
-
-- Adds new entry to history stack
-- User can go back to previous page
-- Dispatches URL change message
-
-### Navigation.Command.ReplaceState
-
-Replaces the current URL without adding to history:
+Replaces the current URL without adding a history entry (equivalent to `history.replaceState`).
 
 ```csharp
-new Navigation.Command.ReplaceState(Url.Create("/login"))
+// Replace URL when redirecting after login — no back-button entry
+(model with { Page = Page.Home }, Navigation.ReplaceUrl(Url.Root))
 ```
 
-**When to use:**
-
-- Redirects (e.g., after login/logout)
-- Correcting URLs without adding history
-- Replacing error pages
-
-**Behavior:**
-
-- Replaces current history entry
-- User cannot go back to replaced URL
-- Dispatches URL change message
-
-### Navigation.Command.Load
-
-Performs a full page navigation (not SPA):
+### Navigation.Back
 
 ```csharp
-new Navigation.Command.Load(Url.Create("https://external-site.com"))
+public static readonly Command Back
 ```
 
-**When to use:**
-
-- External links
-- Full page refresh needed
-- OAuth redirects
-
-**Behavior:**
-
-- Full browser navigation
-- Page reloads completely
-- WebAssembly app restarts (if navigating within app)
-
-### Navigation.Command.Back
-
-Navigates back in history:
+Navigates back in the browser history (equivalent to `history.back()`). This is a `readonly` field, not a method.
 
 ```csharp
-new Navigation.Command.Back(1)   // Go back 1 page
-new Navigation.Command.Back(2)   // Go back 2 pages
+(model, Navigation.Back)
 ```
 
-**Behavior:**
-
-- Same as browser back button
-- Does nothing if no history
-
-### Navigation.Command.Forward
-
-Navigates forward in history:
+### Navigation.Forward
 
 ```csharp
-new Navigation.Command.Forward(1)   // Go forward 1 page
+public static readonly Command Forward
 ```
 
-**Behavior:**
-
-- Same as browser forward button
-- Does nothing if at end of history
-
-### Navigation.Command.Go
-
-Navigates by a relative position in history:
+Navigates forward in the browser history (equivalent to `history.forward()`). This is a `readonly` field, not a method.
 
 ```csharp
-new Navigation.Command.Go(-2)   // Go back 2 pages
-new Navigation.Command.Go(1)    // Go forward 1 page
-new Navigation.Command.Go(0)    // Reload current page
+(model, Navigation.Forward)
 ```
 
-### Navigation.Command.Reload
-
-Reloads the current page:
+### Navigation.ExternalUrl
 
 ```csharp
-new Navigation.Command.Reload()
+public static Command ExternalUrl(string href)
 ```
 
-**Behavior:**
-
-- Full page reload
-- WebAssembly app restarts
-
-## Complete Examples
-
-### Basic Navigation
+Navigates to an external URL, causing a full page load (leaves the SPA).
 
 ```csharp
-public static (Model, Command) Update(Message msg, Model model)
-    => msg switch
+(model, Navigation.ExternalUrl("https://github.com/picea/abies"))
+```
+
+## Navigation Subscription
+
+### Navigation.UrlChanges
+
+```csharp
+public static Subscription UrlChanges(Func<Url, Message> toMessage)
+```
+
+Subscribes to browser URL changes (popstate events, programmatic navigation). When the URL changes, the provided function maps the new `Url` to a `Message` that is dispatched into the MVU loop.
+
+```csharp
+public static Subscription Subscriptions(Model model) =>
+    Navigation.UrlChanges(url => new UrlChanged(url));
+```
+
+This subscription is keyed as `"navigation:urlChanges"` internally, so only one URL change subscription can be active at a time.
+
+## Navigation Messages
+
+Navigation-related messages are regular `Message` types defined in the Abies framework. Handle them in `Transition` like any other message.
+
+### UrlChanged
+
+```csharp
+public record UrlChanged(Url Url) : Message;
+```
+
+Dispatched when the URL changes — either from the `Navigation.UrlChanges` subscription, a programmatic navigation command, or the initial page load.
+
+```csharp
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
     {
-        NavigateToHome => 
-            (model, new Navigation.Command.PushState(Url.Create("/"))),
-        
-        NavigateToArticle article => 
-            (model, new Navigation.Command.PushState(Url.Create($"/article/{article.Slug}"))),
-        
-        NavigateToProfile profile => 
-            (model, new Navigation.Command.PushState(Url.Create($"/profile/{profile.Username}"))),
-        
+        UrlChanged(var url) => Route(model, url),
         _ => (model, Commands.None)
     };
 ```
 
-### Redirect After Action
+### UrlRequest
 
 ```csharp
-case LoginSuccess success:
-    // Replace login page with home (can't go back to login)
-    return (
-        model with { User = success.User },
-        new Navigation.Command.ReplaceState(Url.Create("/"))
-    );
-
-case LogoutClicked:
-    return (
-        model with { User = null },
-        new Navigation.Command.ReplaceState(Url.Create("/login"))
-    );
-```
-
-### External Navigation
-
-```csharp
-case OpenExternalLink link:
-    return (model, new Navigation.Command.Load(Url.Create(link.Url)));
-```
-
-### Handle Link Clicks
-
-The `OnLinkClicked` callback receives `UrlRequest` for all link clicks:
-
-```csharp
-public static Message OnLinkClicked(UrlRequest urlRequest)
-    => urlRequest switch
-    {
-        // Internal link - navigate within app
-        UrlRequest.Internal @internal => new InternalNavigation(@internal.Url),
-        
-        // External link - open in new tab or navigate away
-        UrlRequest.External external => new ExternalNavigation(external.Url),
-        
-        _ => throw new NotImplementedException()
-    };
-```
-
-Then handle in Update:
-
-```csharp
-case InternalNavigation nav:
-    // Process URL and update route
-    var route = ParseRoute(nav.Url);
-    return (model with { Route = route }, new Navigation.Command.PushState(nav.Url));
-
-case ExternalNavigation nav:
-    // Could open in new tab via JS interop, or navigate away
-    return (model, new Navigation.Command.Load(Url.Create(nav.Url)));
-```
-
-### Handle URL Changes
-
-The `OnUrlChanged` callback handles browser back/forward:
-
-```csharp
-public static Message OnUrlChanged(Url url)
-    => new UrlChanged(url);
-
-// In Update
-case UrlChanged changed:
-    var route = ParseRoute(changed.Url);
-    return (model with { Route = route }, Commands.None);
-```
-
-### Building URLs with Parameters
-
-```csharp
-// Simple path parameter
-var url = Url.Create($"/article/{article.Slug}");
-
-// Multiple parameters
-var url = Url.Create($"/user/{userId}/posts/{postId}");
-
-// Query parameters
-var query = Uri.EscapeDataString(searchTerm);
-var url = Url.Create($"/search?q={query}&page={page}");
-
-// Complex URL building
-var builder = new UriBuilder
+public interface UrlRequest : Message
 {
-    Path = "/articles",
-    Query = $"tag={tag}&author={author}&page={page}"
-};
-var url = Url.Create(builder.ToString());
+    record Internal(Url Url) : UrlRequest;
+    record External(string Href) : UrlRequest;
+}
 ```
 
-## Navigation Patterns
+Dispatched when a link is clicked. The application decides how to handle it:
 
-### Tab/Section Navigation
-
-For tabs within a page, update model state without URL:
+| Variant | Description |
+|---------|-------------|
+| `UrlRequest.Internal` | A link within the application. The `Url` is already parsed. |
+| `UrlRequest.External` | A link to an external site. Contains the raw URL string. |
 
 ```csharp
-case TabClicked tab:
-    return (model with { ActiveTab = tab.Index }, Commands.None);
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
+    {
+        UrlRequest.Internal(var url) => (model, Navigation.PushUrl(url)),
+        UrlRequest.External(var href) => (model, Navigation.ExternalUrl(href)),
+        UrlChanged(var url) => Route(model, url),
+        _ => (model, Commands.None)
+    };
 ```
 
-For URL-tracked tabs:
+## Url Type
 
 ```csharp
-case TabClicked tab:
-    return (
-        model with { ActiveTab = tab.Index },
-        new Navigation.Command.PushState(Url.Create($"/settings/{tab.Name}"))
-    );
+public record Url(
+    IReadOnlyList<string> Path,
+    IReadOnlyDictionary<string, string> Query,
+    Option<string> Fragment)
 ```
 
-### Scroll Position
+A parsed URL with path segments, query parameters, and an optional fragment.
 
-Navigation doesn't automatically scroll. Handle in command:
+| Property | Type | Description |
+|----------|------|-------------|
+| `Path` | `IReadOnlyList<string>` | Path segments (e.g., `["articles", "my-slug"]`) |
+| `Query` | `IReadOnlyDictionary<string, string>` | Query parameters as key-value pairs |
+| `Fragment` | `Option<string>` | The URL fragment (hash), if present |
+
+### Static Members
 
 ```csharp
-public record ScrollToTopCommand : Command;
-
-case NavigateToPage:
-    return (model with { Page = page }, Commands.Batch([
-        new Navigation.Command.PushState(url),
-        new ScrollToTopCommand()
-    ]));
-
-// In HandleCommand
-case ScrollToTopCommand:
-    await js.InvokeVoidAsync("window.scrollTo", 0, 0);
-    break;
+public static readonly Url Root       // Empty path, no query, no fragment
+public static Url FromUri(Uri uri)     // Parse a System.Uri into a Url
+public string ToRelativeUri()          // Convert back to a relative URI string
 ```
 
-### Modal URLs
+## Routing Pattern
 
-Modals can have URLs for direct linking:
+Abies has no built-in router component. Routing is implemented through URL pattern matching in `Transition`:
 
 ```csharp
-case OpenModal modal:
-    return (
-        model with { Modal = modal },
-        new Navigation.Command.PushState(Url.Create($"/article/{slug}/edit"))
-    );
-
-case CloseModal:
-    return (
-        model with { Modal = null },
-        new Navigation.Command.Back(1)  // Or ReplaceState to article URL
-    );
+private static (Model, Command) Route(Model model, Url url) =>
+    url.Path.ToArray() switch
+    {
+        [] => (model with { Page = Page.Home }, new LoadFeed()),
+        ["login"] => (model with { Page = Page.Login }, Commands.None),
+        ["register"] => (model with { Page = Page.Register }, Commands.None),
+        ["article", var slug] => (model with { Page = Page.Article }, new LoadArticle(slug)),
+        ["profile", var username] => (model with { Page = Page.Profile }, new LoadProfile(username)),
+        ["settings"] => (model with { Page = Page.Settings }, Commands.None),
+        ["editor"] => (model with { Page = Page.Editor }, Commands.None),
+        ["editor", var slug] => (model with { Page = Page.Editor }, new LoadArticle(slug)),
+        _ => (model with { Page = Page.NotFound }, Commands.None)
+    };
 ```
+
+This approach uses C# pattern matching directly — no framework routing DSL, no route tables, no convention-based routing. The compiler verifies exhaustiveness, and refactoring is safe with IDE support.
+
+## Internal Types
+
+The following types exist in the source code but are framework internals — application code should not reference them directly:
+
+| Type | Purpose |
+|------|----------|
+| `NavigationCommand` | Interface for navigation command variants |
+| `NavigationCommand.Push(Url)` | Internal representation of `PushUrl` |
+| `NavigationCommand.Replace(Url)` | Internal representation of `ReplaceUrl` |
+| `NavigationCommand.GoBack` | Internal representation of `Back` |
+| `NavigationCommand.GoForward` | Internal representation of `Forward` |
+| `NavigationCommand.External(string)` | Internal representation of `ExternalUrl` |
+| `NavigationCallbacks` | Static class bridging JS popstate events to subscription dispatch |
+
+The `Navigation` static class is the public API — it creates `NavigationCommand` instances internally, but consumers only interact with `Command` values.
 
 ## See Also
 
-- [URL API](./url.md) — URL types
-- [Route API](./route.md) — URL routing
-- [Concepts: Routing](../concepts/routing.md) — Deep dive
+- [Program](program.md) — Where navigation commands are returned from `Transition`
+- [Command](command.md) — The command system that navigation builds on
+- [Subscription](subscription.md) — The subscription system that `UrlChanges` uses
+- [Url](url.md) — Detailed reference for the `Url` record type

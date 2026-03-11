@@ -1,392 +1,120 @@
-# Route API Reference
+# Routing in Abies
 
-The `Route` module provides type-safe URL routing using parser combinators.
+Abies does not include a built-in router component, route table, or routing DSL. Instead, routing is implemented through **URL pattern matching** in the `Transition` function using standard C# pattern matching.
 
-## Usage
+This is a deliberate design decision: routing is just message handling, and URLs are just data.
 
-```csharp
-using Abies;
-using static Abies.Route.Parse;
+## How Routing Works
+
+Routing in Abies is the combination of three features:
+
+1. **`Navigation.UrlChanges`** — A subscription that dispatches a message when the URL changes
+2. **`UrlChanged`** — A message carrying the new `Url`
+3. **Pattern matching in `Transition`** — C# `switch` expressions on `Url.Path`
+
+```
+URL changes → UrlChanged(url) message → Transition → pattern match on url.Path → new model + commands
 ```
 
-## Overview
-
-Abies offers two routing styles:
-
-1. **Parser Combinators** — Functional, composable route parsers
-2. **Templates** — ASP.NET-style route templates (e.g., `/article/{slug}`)
-
-## Template Routing (Recommended)
-
-The simplest way to define routes:
-
-### Route.Templates.Path
-
-Compiles a route template:
+## Basic Example
 
 ```csharp
-var articleRoute = Route.Templates.Path("/article/{slug}");
-
-if (articleRoute.Parse("/article/my-post").Success)
-{
-    // Matched!
-}
-```
-
-### Template Syntax
-
-| Pattern | Description | Example |
-| ------- | ----------- | ------- |
-| `/literal` | Exact match | `/home`, `/about` |
-| `/{param}` | String parameter | `/{slug}`, `/{username}` |
-| `/{param:int}` | Integer parameter | `/{id:int}` |
-| `/{param:double}` | Float parameter | `/{price:double}` |
-| `/{param?}` | Optional parameter | `/{page?}` |
-
-### Route.Templates.Build
-
-Creates a type-safe router:
-
-```csharp
-public interface Page
-{
-    record Home : Page;
-    record Article(string Slug) : Page;
-    record Profile(string Username) : Page;
-    record User(int Id) : Page;
-    record NotFound : Page;
-}
-
-var router = Route.Templates.Build<Page>(r => r
-    .Map("/", _ => new Page.Home())
-    .Map("/article/{slug}", m => new Page.Article(m.GetRequired<string>("slug")))
-    .Map("/profile/{username}", m => new Page.Profile(m.GetRequired<string>("username")))
-    .Map("/user/{id:int}", m => new Page.User(m.GetRequired<int>("id")))
-);
-```
-
-### Using the Router
-
-```csharp
-if (router.TryMatch("/article/hello-world", out var page))
-{
-    // page is Page.Article("hello-world")
-}
-
-if (router.TryMatch("/user/42", out page, out var match))
-{
-    // page is Page.User(42)
-    // match.Values contains {"id": 42}
-}
-```
-
-### Complete Program Integration
-
-```csharp
-public class MyProgram : Program<Model, Unit>
-{
-    static readonly TemplateRouter<Page> Router = Route.Templates.Build<Page>(r => r
-        .Map("/", _ => new Page.Home())
-        .Map("/article/{slug}", m => new Page.Article(m.GetRequired<string>("slug")))
-        .Map("/login", _ => new Page.Login())
-    );
-
-    public static (Model, Command) Initialize(Url url, Unit _)
+public static (Model, Command) Transition(Model model, Message message) =>
+    message switch
     {
-        var page = Router.TryMatch(url.Path.Value, out var p) ? p : new Page.NotFound();
-        return (new Model(Page: page), Commands.None);
-    }
+        UrlChanged(var url) => Route(model, url),
+        UrlRequest.Internal(var url) => (model, Navigation.PushUrl(url)),
+        UrlRequest.External(var href) => (model, Navigation.ExternalUrl(href)),
+        // ... other messages
+        _ => (model, Commands.None)
+    };
 
-    public static Message OnUrlChanged(Url url)
-        => new UrlChanged(url);
-
-    public static (Model, Command) Update(Message msg, Model model)
-        => msg switch
-        {
-            UrlChanged changed => 
-            {
-                var page = Router.TryMatch(changed.Url.Path.Value, out var p) 
-                    ? p 
-                    : new Page.NotFound();
-                return (model with { Page = page }, Commands.None);
-            },
-            NavigateTo nav =>
-                (model, new Navigation.Command.PushState(Url.Create(nav.Path))),
-            _ => (model, Commands.None)
-        };
-}
+private static (Model, Command) Route(Model model, Url url) =>
+    url.Path.ToArray() switch
+    {
+        [] => (model with { Page = Page.Home }, Commands.None),
+        ["login"] => (model with { Page = Page.Login }, Commands.None),
+        ["register"] => (model with { Page = Page.Register }, Commands.None),
+        ["article", var slug] => (model with { Page = Page.Article(slug) }, new LoadArticle(slug)),
+        ["profile", var username] => (model with { Page = Page.Profile(username) }, new LoadProfile(username)),
+        _ => (model with { Page = Page.NotFound }, Commands.None)
+    };
 ```
 
-## RouteMatch
+## Setting Up Navigation
 
-Result of a successful route match:
-
-### Properties
+To receive URL change notifications, subscribe to `Navigation.UrlChanges` in your `Subscriptions` function:
 
 ```csharp
-public readonly struct RouteMatch
+public static Subscription Subscriptions(Model model) =>
+    Navigation.UrlChanges(url => new UrlChanged(url));
+```
+
+The runtime also dispatches `UrlChanged(initialUrl)` automatically after `Initialize` completes, so your application routes correctly on the initial page load without any additional setup.
+
+## Handling Link Clicks
+
+When a user clicks a link within the application, the runtime dispatches a `UrlRequest` message. Handle it in `Transition` to decide whether to navigate:
+
+```csharp
+UrlRequest.Internal(var url) => (model, Navigation.PushUrl(url)),
+UrlRequest.External(var href) => (model, Navigation.ExternalUrl(href)),
+```
+
+For internal links, `Navigation.PushUrl` updates the browser URL (via `history.pushState`), which triggers the `Navigation.UrlChanges` subscription, which dispatches `UrlChanged`, which hits your `Route` function.
+
+## URL Parameters
+
+### Path Parameters
+
+Extract path parameters using C# list patterns:
+
+```csharp
+url.Path.ToArray() switch
 {
-    public IReadOnlyDictionary<string, object?> Values { get; }
-    public object? this[string name] { get; }
-}
+    ["article", var slug] => /* slug = "my-article" for /article/my-article */,
+    ["profile", var username, "favorites"] => /* nested route */,
+    ["page", var pageStr] when int.TryParse(pageStr, out var page) => /* typed parameter */,
+    _ => /* not found */
+};
 ```
 
-### Methods
+### Query Parameters
 
-#### GetRequired<T>
-
-Gets a required parameter (throws if missing):
+Access query parameters via the `Url.Query` dictionary:
 
 ```csharp
-string slug = match.GetRequired<string>("slug");
-int id = match.GetRequired<int>("id");
+private static (Model, Command) Route(Model model, Url url) =>
+    url.Path.ToArray() switch
+    {
+        [] =>
+            url.Query.TryGetValue("tag", out var tag)
+                ? (model with { Page = Page.Home, Filter = tag }, new LoadTaggedArticles(tag))
+                : (model with { Page = Page.Home }, new LoadGlobalFeed()),
+        // ...
+    };
 ```
 
-#### TryGetValue<T>
+### Fragment (Hash)
 
-Gets an optional parameter:
+Access the URL fragment via `Url.Fragment`:
 
 ```csharp
-if (match.TryGetValue<int>("page", out var page))
-{
-    // Use page
-}
-else
-{
-    // Default to 1
-    page = 1;
-}
+var section = url.Fragment.Match(
+    some: fragment => fragment,  // e.g., "section-2"
+    none: () => "top");
 ```
 
-#### Indexer
+## Why No Built-In Router?
 
-Access by name (returns null if missing):
-
-```csharp
-var value = match["slug"];  // object? 
-```
-
-## Parser Combinator Routing
-
-For more complex routing needs:
-
-### Route.Parse.Root
-
-Matches root path only:
-
-```csharp
-var rootRoute = Route.Parse.Root;
-rootRoute.Parse("/").Success  // true
-rootRoute.Parse("/home").Success  // false
-```
-
-### Route.Parse.Path
-
-Builds from segments:
-
-```csharp
-using Seg = Route.Parse.Segment;
-
-var route = Route.Parse.Path(
-    Seg.Literal("article"),
-    Seg.Parameter("slug")
-);
-
-var result = route.Parse("/article/my-post");
-if (result.Success)
-{
-    var slug = result.Value.GetRequired<string>("slug");
-}
-```
-
-### Segment Types
-
-#### Literal
-
-Exact match segment:
-
-```csharp
-Seg.Literal("articles")  // Matches "articles" exactly
-Seg.Literal("API", StringComparison.Ordinal)  // Case-sensitive
-```
-
-#### Parameter
-
-String parameter:
-
-```csharp
-Seg.Parameter("slug")  // Captures any string
-Seg.Parameter("slug", optional: true)  // Optional parameter
-```
-
-#### Typed Parameters
-
-```csharp
-Seg.Parameter<int>("id", Route.Parse.Int)  // Integer
-Seg.Parameter<double>("price", Route.Parse.Double)  // Floating point
-```
-
-#### Custom Parser
-
-```csharp
-Seg.Parameter<Guid>("id", new GuidParser())
-```
-
-### Combining Routes
-
-```csharp
-var homeRoute = Route.Parse.Root;
-var articlesRoute = Route.Parse.Path(Seg.Literal("articles"));
-var articleRoute = Route.Parse.Path(
-    Seg.Literal("article"),
-    Seg.Parameter("slug")
-);
-
-// Try routes in order
-Page MatchRoute(string path)
-{
-    if (homeRoute.Parse(path).Success) return new Page.Home();
-    if (articlesRoute.Parse(path).Success) return new Page.Articles();
-    
-    var articleResult = articleRoute.Parse(path);
-    if (articleResult.Success) 
-        return new Page.Article(articleResult.Value.GetRequired<string>("slug"));
-    
-    return new Page.NotFound();
-}
-```
-
-## Built-in Parsers
-
-### Route.Parse.String
-
-Parses any non-slash characters:
-
-```csharp
-var parser = Route.Parse.String;
-parser.Parse("hello-world").Value  // "hello-world"
-```
-
-### Route.Parse.Int
-
-Parses integers:
-
-```csharp
-var parser = Route.Parse.Int;
-parser.Parse("42").Value  // 42
-parser.Parse("abc").Success  // false
-```
-
-### Route.Parse.Double
-
-Parses floating-point numbers:
-
-```csharp
-var parser = Route.Parse.Double;
-parser.Parse("3.14").Value  // 3.14
-```
-
-### Route.Parse.Strict.Int
-
-Returns null for invalid integers instead of failing:
-
-```csharp
-var parser = Route.Parse.Strict.Int;
-parser.Parse("42").Value  // 42
-parser.Parse("abc").Value  // null (but Success is true)
-```
-
-## Route Generation
-
-For generating URLs from routes:
-
-```csharp
-public static class Routes
-{
-    public static string Home => "/";
-    public static string Articles => "/articles";
-    public static string Article(string slug) => $"/article/{slug}";
-    public static string Profile(string username) => $"/profile/{username}";
-    public static string User(int id) => $"/user/{id}";
-}
-
-// Usage
-var url = Url.Create(Routes.Article("my-post"));
-```
-
-## Query Parameters
-
-Routes focus on paths. For query parameters, access the URL directly:
-
-```csharp
-public static (Model, Command) Initialize(Url url, Unit _)
-{
-    // Parse path
-    var page = Router.TryMatch(url.Path.Value, out var p) ? p : new Page.NotFound();
-    
-    // Parse query parameters
-    var query = System.Web.HttpUtility.ParseQueryString(url.Query.Value);
-    var searchTerm = query["q"];
-    var pageNum = int.TryParse(query["page"], out var n) ? n : 1;
-    
-    return (new Model(Page: page, Search: searchTerm, PageNumber: pageNum), Commands.None);
-}
-```
-
-## Best Practices
-
-### 1. Define Routes Centrally
-
-```csharp
-public static class AppRoutes
-{
-    public static readonly TemplateRouter<Page> Router = Route.Templates.Build<Page>(r => r
-        .Map("/", _ => new Page.Home())
-        .Map("/article/{slug}", m => new Page.Article(m.GetRequired<string>("slug")))
-        // ... all routes
-    );
-    
-    // URL generation
-    public static string Home => "/";
-    public static string Article(string slug) => $"/article/{slug}";
-}
-```
-
-### 2. Use Sum Types for Pages
-
-```csharp
-public interface Page
-{
-    record Home : Page;
-    record Article(string Slug) : Page;
-    record NotFound : Page;
-}
-```
-
-### 3. Handle Not Found
-
-Always have a fallback:
-
-```csharp
-var page = router.TryMatch(path, out var p) ? p : new Page.NotFound();
-```
-
-### 4. Keep Routes Simple
-
-Complex logic belongs in Update, not routing:
-
-```csharp
-// Route just captures the ID
-.Map("/user/{id:int}", m => new Page.User(m.GetRequired<int>("id")))
-
-// Update loads user data
-case Page.User userPage:
-    return (model, new LoadUserCommand(userPage.Id));
-```
+1. **Pattern matching is more powerful** — C# switch expressions handle complex routing logic (guards, nested patterns, type checks) that a route-table DSL cannot express.
+2. **Compiler-verified** — The C# compiler checks pattern exhaustiveness. Typos in route strings are caught at compile time via the pattern structure.
+3. **Refactoring-safe** — IDE rename/find-references works on route handler methods. No magic strings or convention-based routing.
+4. **No framework lock-in** — Routing is just code in your `Transition` function. No framework types to learn, no routing middleware to configure.
+5. **Composable** — Route matching is a pure function that returns `(Model, Command)`. You can compose, delegate, and test routing logic like any other function.
 
 ## See Also
 
-- [URL API](./url.md) — URL types
-- [Navigation API](./navigation.md) — Navigation commands
-- [Concepts: Routing](../concepts/routing.md) — Deep dive
-- [Tutorial: Navigation](../tutorials/05-navigation.md) — Hands-on examples
+- [Navigation](navigation.md) — The navigation API (commands + subscription)
+- [Program](program.md) — Where `Transition` handles URL messages
+- [Url](url.md) — The `Url` record type
