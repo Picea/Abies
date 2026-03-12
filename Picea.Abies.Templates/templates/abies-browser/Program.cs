@@ -1,11 +1,12 @@
 using Picea.Abies;
 using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
 // Start the Abies runtime with the Counter program
-await Runtime.Run<Counter, Arguments, Model>(new Arguments());
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Arguments>();
 
 /// <summary>
 /// Application startup arguments.
@@ -35,13 +36,13 @@ public class Counter : Program<Model, Arguments>
     /// <summary>
     /// Initialize the application with an initial model and optional command.
     /// </summary>
-    public static (Model, Command) Initialize(Url url, Arguments argument)
+    public static (Model, Command) Initialize(Arguments argument)
         => (new Model(0), Commands.None);
 
     /// <summary>
-    /// Update the model based on incoming messages.
+    /// Transition the model based on incoming messages.
     /// </summary>
-    public static (Model model, Command command) Update(Message message, Model model)
+    public static (Model, Command) Transition(Model model, Message message)
         => message switch
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
@@ -92,7 +93,7 @@ public class Counter : Program<Model, Arguments>
 
                     div([class_("info-panel")],
                     [
-                        p([], [text("Each button click dispatches a message. The Update function creates a new immutable model. The View renders the current state.")])
+                        p([], [text("Each button click dispatches a message. The Transition function creates a new immutable model. The View renders the current state.")])
                     ])
                 ]),
 
@@ -107,18 +108,8 @@ public class Counter : Program<Model, Arguments>
         );
 
     /// <summary>
-    /// Handle URL changes (for routing).
-    /// </summary>
-    public static Message OnUrlChanged(Url url) => new Increment();
-
-    /// <summary>
-    /// Handle link clicks (for navigation).
-    /// </summary>
-    public static Message OnLinkClicked(UrlRequest urlRequest) => new Increment();
-
-    /// <summary>
     /// Define subscriptions for external events (timers, websockets, etc.).
     /// </summary>
     public static Subscription Subscriptions(Model model)
-        => SubscriptionModule.None;
+        => new Subscription.None();
 }
