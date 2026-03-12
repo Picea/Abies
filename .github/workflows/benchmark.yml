@@ -202,7 +202,7 @@ jobs:
   # ============================================================================
   # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
   # ============================================================================
-  # Uses the js-framework-benchmark submodule for benchmark infrastructure
+  # Clones the upstream js-framework-benchmark for benchmark infrastructure
   # (server, webdriver-ts, CSS) and builds Picea.Abies.Benchmark.Wasm from
   # the repo for the framework-under-test.
   # ============================================================================
@@ -221,7 +221,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true
+          fetch-depth: 0
+
+      - name: Clone js-framework-benchmark
+        run: |
+          # Remove uninitialized submodule placeholder directory
+          rm -rf js-framework-benchmark
+          # Clone upstream benchmark infrastructure (shallow for speed)
+          git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git js-framework-benchmark
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
