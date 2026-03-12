@@ -200,9 +200,9 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
 ### Added
 
 - **Core Framework**
-  - Model-View-Update (MVU) architecture for Blazor WebAssembly
+  - Model-View-Update (MVU) architecture for .NET
   - Virtual DOM with efficient diffing and patching algorithm
-  - Type-safe routing with parser combinators
+  - Type-safe routing with C# pattern matching on URL segments
   - Command pattern for side effects (HTTP, navigation, etc.)
   - Subscription system for external events (timers, WebSockets, browser events)
   - Pure functional architecture with immutable state
@@ -214,8 +214,8 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
   - Compile-time unique ID generation via Praefixum
 
 - **Project Templates**
-  - `dotnet new abies` — Full counter example with MVU pattern
-  - `dotnet new abies-empty` — Minimal empty application
+  - `dotnet new abies-browser` — Full counter example with MVU pattern
+  - `dotnet new abies-browser-empty` — Minimal empty application
 
 - **Documentation**
   - Getting Started guide

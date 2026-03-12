@@ -1,6 +1,19 @@
 # Render Modes
 
-Abies supports four render modes that control where initial HTML is generated and where the MVU loop runs after the first render. This is the same spectrum as Blazor's render modes, but implemented on top of the pure functional MVU architecture.
+Abies supports four render modes that control where initial HTML is generated and where the MVU loop runs after the first render.
+
+```csharp
+public class MyApp : Program<MyModel, Unit>
+{
+    // These four functions are the same regardless of render mode:
+    public static (MyModel, Command) Initialize(Unit _) => ...;
+    public static (MyModel, Command) Transition(MyModel model, Message message) => ...;
+    public static Document View(MyModel model) => ...;
+    public static Subscription Subscriptions(MyModel model) => ...;
+}
+```
+
+This is the same spectrum as Blazor's render modes, but implemented on top of the pure functional MVU architecture.
 
 ## The Four Modes
 
@@ -146,11 +159,10 @@ public class MyApp : Program<MyModel, Unit>
     public static (MyModel, Command) Transition(MyModel model, Message message) => ...;
     public static Document View(MyModel model) => ...;
     public static Subscription Subscriptions(MyModel model) => ...;
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch) => ...;
 }
 ```
 
-The `Runtime` class is parameterized by an `Apply` delegate — this is the seam between the pure MVU core and the platform:
+The `Runtime` class is parameterized by an `Apply` delegate — this is the seam between the pure MVU core and the platform. The command interpreter is provided separately at the application boundary.
 
 | Platform | Apply Implementation |
 | --- | --- |
