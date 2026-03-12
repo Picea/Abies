@@ -241,14 +241,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Build the benchmark WASM app from the repo's own project
       - name: Build Abies benchmark WASM app
         run: |
           dotnet publish Picea.Abies.Benchmark.Wasm/Picea.Abies.Benchmark.Wasm.csproj -c Release
 
-      # Set up the framework entry in the js-framework-benchmark directory
+      # Set up the framework entry in the js-framework-benchmark directory.
+      # The upstream server's isFrameworkDir() requires BOTH package.json AND
+      # package-lock.json to exist for framework discovery via the /ls endpoint.
       - name: Setup Abies framework in benchmark
         run: |
           # Ensure framework directory structure exists
@@ -268,6 +270,20 @@ jobs:
           }
           PACKAGE_EOF
 
+          # Write package-lock.json (required by upstream isFrameworkDir() check).
+          # The server checks fs.existsSync(package-lock.json) before including a
+          # framework in the /ls response. Since we use frameworkVersion (not
+          # frameworkVersionFromPackage), the lock file contents are not read —
+          # only its existence matters.
+          cat > js-framework-benchmark/frameworks/keyed/abies/package-lock.json << 'LOCKFILE_EOF'
+          {
+            "name": "js-framework-benchmark-abies",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "packages": {}
+          }
+          LOCKFILE_EOF
+
           # Find the AppBundle output directory (location varies by .NET SDK version)
           APPBUNDLE=$(find Picea.Abies.Benchmark.Wasm/bin -path "*/AppBundle" -type d | head -1)
           if [ -z "$APPBUNDLE" ]; then
@@ -285,7 +301,9 @@ jobs:
             js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot/index.html
 
           # Verify the framework files are in place
-          echo "Framework files:"
+          echo "=== Framework directory contents ==="
+          ls -la js-framework-benchmark/frameworks/keyed/abies/
+          echo "=== Bundled dist contents ==="
           ls -la js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot/ | head -20
 
       # Cache npm dependencies
@@ -332,6 +350,27 @@ jobs:
             fi
             sleep 1
           done
+
+      # Verify the server discovered our framework via the /ls endpoint.
+      # Without this check, a missing package-lock.json or misconfigured
+      # package.json causes zero frameworks to match silently (exit 0,
+      # no results, compare script fails).
+      - name: Verify framework discovery
+        run: |
+          echo "=== Checking /ls endpoint for framework discovery ==="
+          LS_RESPONSE=$(curl -s http://localhost:8080/ls)
+          echo "$LS_RESPONSE" | python3 -m json.tool | head -30
+          if echo "$LS_RESPONSE" | grep -q '"abies"'; then
+            echo "✅ Framework 'abies' discovered by benchmark server"
+          else
+            echo "❌ Framework 'abies' NOT found in /ls response!"
+            echo "Full /ls response:"
+            echo "$LS_RESPONSE" | python3 -m json.tool
+            echo ""
+            echo "Checking framework directory:"
+            ls -la js-framework-benchmark/frameworks/keyed/abies/
+            exit 1
+          fi
 
       - name: Run E2E benchmarks (all CPU benchmarks)
         run: |
