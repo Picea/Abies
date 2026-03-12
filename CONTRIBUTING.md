@@ -35,6 +35,69 @@ All PRs must pass:
 - Administrators **must follow these rules** (no bypass)
 - **Linear history** enforced (squash or rebase merging only)
 
+## 🏗️ Repository Setup
+
+### Cloning with Submodules
+
+This repository uses a **git submodule** for the js-framework-benchmark suite. When cloning, use the `--recurse-submodules` flag:
+
+```bash
+# Clone with submodules
+git clone --recurse-submodules https://github.com/picea/abies.git
+
+# Or if you already cloned without submodules:
+git submodule update --init --recursive
+```
+
+### js-framework-benchmark Submodule
+
+The `js-framework-benchmark/` directory is a git submodule pointing to [`MCGPPeters/js-framework-benchmark`](https://github.com/MCGPPeters/js-framework-benchmark). This is the standard benchmark suite for comparing frontend framework performance.
+
+**Working with the submodule:**
+
+```bash
+# From the repository root, update the submodule to the latest commit
+# on its tracked branch (as configured in .gitmodules)
+git submodule update --remote --merge js-framework-benchmark
+
+# Record the updated submodule pointer in this repository
+git add js-framework-benchmark
+git commit -m "chore: Update js-framework-benchmark submodule"
+
+# Check submodule status
+git submodule status
+```
+
+**Building Abies for benchmark:**
+
+```bash
+cd js-framework-benchmark/frameworks/keyed/abies/src
+
+# Clean rebuild
+rm -rf bin obj
+dotnet publish -c Release
+
+# Copy to bundled-dist
+rm -rf ../bundled-dist/*
+cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+```
+
+**Running benchmarks:**
+
+```bash
+# From repo root
+cd js-framework-benchmark
+npm ci                   # First time only
+npm run start &          # Start server on port 8080
+
+# In another terminal
+cd js-framework-benchmark/webdriver-ts
+npm ci                   # First time only
+npm run bench -- --headless --framework abies-keyed
+```
+
+See the [benchmarking guide](docs/guides/performance.md) for detailed instructions.
+
 ## 🚀 Workflow
 
 ### 1. Create a Feature Branch
@@ -58,11 +121,11 @@ git checkout -b fix/issue-description
 - Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 
 ```
-feat: add new component for article comments
-fix: resolve pagination navigation issue
-docs: update API documentation
-test: add E2E tests for profile page
-refactor: simplify article update logic
+feat: Add new component for article comments
+fix: Resolve pagination navigation issue
+docs: Update API documentation
+test: Add E2E tests for profile page
+refactor: Simplify article update logic
 ```
 
 ### 3. Keep Your Branch Up-to-Date
@@ -102,7 +165,7 @@ dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.cspr
 git push origin feature/your-feature-name
 
 # Create PR via GitHub UI or CLI
-gh pr create --title "feat: your feature description" --body "Description of changes"
+gh pr create --title "feat: Your feature description" --body "Description of changes"
 ```
 
 ### 6. Address Review Feedback
@@ -125,12 +188,12 @@ Once approved and all checks pass:
 Use [Conventional Commits](https://www.conventionalcommits.org/) format:
 
 ```
-feat: add article favoriting functionality
-fix: resolve navigation issue on profile page
-docs: update installation instructions
-test: add E2E tests for comment deletion
-refactor: simplify routing logic
-perf: optimize DOM diffing algorithm
+feat: Add article favoriting functionality
+fix: Resolve navigation issue on profile page
+docs: Update installation instructions
+test: Add E2E tests for comment deletion
+refactor: Simplify routing logic
+perf: Optimize DOM diffing algorithm
 ```
 
 ### PR Description
