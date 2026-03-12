@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773310005763,
+  "lastUpdate": 1773310006996,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12312,6 +12312,42 @@ window.BENCHMARK_DATA = {
             "value": 38.25711250305176,
             "unit": "MB",
             "extra": "mean: 38.3MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "a1ee811ec6154b91f53cd75246836ca471606ef4",
+          "message": "fix: add package-lock.json for framework discovery\n\nThe upstream js-framework-benchmark server requires both package.json\nAND package-lock.json to exist in a framework directory for\nisFrameworkDir() to return true. Without package-lock.json, the\nframework is silently skipped by the /ls endpoint, causing zero\nframeworks to match, zero benchmarks to run, and the compare script\nto fail with \"No result files found\".\n\nAlso adds a verification step after server startup that checks\n/ls returns the abies framework, catching this class of issue\nimmediately instead of failing silently.",
+          "timestamp": "2026-03-12T10:57:23+01:00",
+          "tree_id": "14c9f1b803024e729f1e57a64f30170b1925157f",
+          "url": "https://github.com/Picea/Abies/commit/a1ee811ec6154b91f53cd75246836ca471606ef4"
+        },
+        "date": 1773310006626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.10816287994385,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.87982940673828,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
           }
         ]
       }
