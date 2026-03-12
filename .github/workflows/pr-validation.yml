@@ -259,6 +259,126 @@ jobs:
             echo "✅ No critical or high severity vulnerabilities in transitive dependencies"
           fi
 
+  # Template smoke test — scaffold and build each dotnet new template
+  template-smoke-test:
+    name: Template Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Nerdbank.GitVersioning requires full git history to compute versions
+          fetch-depth: 0
+      
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+      
+      - name: Pack framework packages to local feed
+        run: |
+          LOCAL_FEED=$(pwd)/local-packages
+          mkdir -p "$LOCAL_FEED"
+          
+          # Use a version that matches the template's 1.0.0-* floating constraint
+          PACK_VERSION="1.0.0-ci"
+          
+          # Pack framework projects in dependency order.
+          # -p:Version overrides Nerdbank.GitVersioning so ProjectReference
+          # dependencies also resolve as 1.0.0-ci in the local feed.
+          for project in \
+            Picea.Abies/Picea.Abies.csproj \
+            Picea.Abies.Browser/Picea.Abies.Browser.csproj \
+            Picea.Abies.Server/Picea.Abies.Server.csproj \
+            Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj; do
+            echo "📦 Packing $project as $PACK_VERSION..."
+            dotnet pack "$project" -c Release -o "$LOCAL_FEED" \
+              -p:Version="$PACK_VERSION" \
+              -p:PackageVersion="$PACK_VERSION"
+          done
+          
+          echo ""
+          echo "📦 Local packages:"
+          ls -la "$LOCAL_FEED"
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+      
+      - name: Create NuGet config for template builds
+        run: |
+          # Create a nuget.config that prioritises the local feed for framework
+          # packages but falls back to nuget.org for transitive dependencies
+          # (e.g. Picea, Praefixum, Microsoft.AspNetCore.App).
+          cat > /tmp/template-nuget.config <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="local" value="$(pwd)/local-packages" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+          EOF
+          
+          echo "📄 NuGet config:"
+          cat /tmp/template-nuget.config
+      
+      - name: Install template pack from source
+        run: |
+          dotnet new install Picea.Abies.Templates/
+          echo ""
+          echo "📋 Installed templates:"
+          dotnet new list abies
+      
+      - name: Smoke test — abies-browser
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          echo "🧪 Scaffolding abies-browser into $TEMP_DIR..."
+          dotnet new abies-browser -o "$TEMP_DIR"
+          
+          echo "🔨 Restoring scaffolded project..."
+          dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
+          
+          echo "🔨 Building scaffolded project..."
+          dotnet build "$TEMP_DIR" --no-restore
+          
+          echo "✅ abies-browser template compiles successfully"
+          rm -rf "$TEMP_DIR"
+      
+      - name: Smoke test — abies-browser-empty
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          echo "🧪 Scaffolding abies-browser-empty into $TEMP_DIR..."
+          dotnet new abies-browser-empty -o "$TEMP_DIR"
+          
+          echo "🔨 Restoring scaffolded project..."
+          dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
+          
+          echo "🔨 Building scaffolded project..."
+          dotnet build "$TEMP_DIR" --no-restore
+          
+          echo "✅ abies-browser-empty template compiles successfully"
+          rm -rf "$TEMP_DIR"
+      
+      - name: Smoke test — abies-server
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          echo "🧪 Scaffolding abies-server into $TEMP_DIR..."
+          dotnet new abies-server -o "$TEMP_DIR"
+          
+          echo "🔨 Restoring scaffolded project..."
+          dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
+          
+          echo "🔨 Building scaffolded project..."
+          dotnet build "$TEMP_DIR" --no-restore
+          
+          echo "✅ abies-server template compiles successfully"
+          rm -rf "$TEMP_DIR"
+
   # Bundle size quality gate
   bundle-size-check:
     name: Bundle Size Check
@@ -407,7 +527,7 @@ jobs:
     name: PR Validation Summary
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, bundle-size-check, check-todos]
+    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, template-smoke-test, bundle-size-check, check-todos]
     
     steps:
       - name: Check if automated PR
@@ -426,6 +546,7 @@ jobs:
             echo "✅ PR size is reasonable"
             echo "✅ Code formatting is correct"
             echo "✅ No security vulnerabilities"
+            echo "✅ Templates scaffold and compile"
             echo "✅ Bundle size within limits"
             echo "✅ No untracked TODOs"
             echo ""
@@ -437,6 +558,7 @@ jobs:
             echo "✅ PR size is reasonable"
             echo "✅ Code formatting is correct"
             echo "✅ No security vulnerabilities"
+            echo "✅ Templates scaffold and compile"
             echo "✅ Bundle size within limits"
             echo "✅ No untracked TODOs"
             echo ""
