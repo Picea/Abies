@@ -1,3 +1,4 @@
+using Picea;
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
@@ -6,28 +7,28 @@ using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
 // Start the Abies runtime with your application
-await Picea.Abies.Browser.Runtime.Run<App, Model, Arguments>();
+await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 
 /// <summary>
-/// Application startup arguments.
-/// </summary>
-public record Arguments;
-
-/// <summary>
-/// The application model (state).
+/// Application model — immutable state container.
 /// Add your application state properties here.
 /// </summary>
 public record Model;
 
+// ─── Messages ───────────────────────────────────────────────────────────────
+// Add your message types here. Each message represents a user action or event.
+
+// ─── Program ────────────────────────────────────────────────────────────────
+
 /// <summary>
-/// The main application implementing the MVU pattern.
+/// Your Abies application implementing the MVU pattern.
 /// </summary>
-public class App : Program<Model, Arguments>
+public class App : Program<Model, Unit>
 {
     /// <summary>
     /// Initialize the application with an initial model and optional command.
     /// </summary>
-    public static (Model, Command) Initialize(Arguments argument)
+    public static (Model, Command) Initialize(Unit argument)
         => (new Model(), Commands.None);
 
     /// <summary>
@@ -37,19 +38,14 @@ public class App : Program<Model, Arguments>
         => (model, Commands.None);
 
     /// <summary>
-    /// Render the view based on the current model.
+    /// Render the current model as HTML.
     /// </summary>
     public static Document View(Model model)
-        => new("AbiesApp",
-            div([class_("container")],
+        => new("Abies App",
+            div([class_("app")],
             [
-                h1([], [text("Welcome to Abies!")]),
-                p([], [text("Start building your MVU application.")]),
-                p([],
-                [
-                    text("Learn more at "),
-                    a([href("https://github.com/Picea/Abies")], [text("github.com/Picea/Abies")])
-                ])
+                h1([], [text("🌲 Welcome to Abies")]),
+                p([], [text("Start building your MVU application!")])
             ])
         );
 
