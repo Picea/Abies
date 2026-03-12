@@ -462,6 +462,35 @@ jobs:
           summary-always: true
           alert-comment-cc-users: '@MCGPPeters'
 
+      # ============================================================================
+      # AUTO-UPDATE README BENCHMARK TABLES (main only)
+      # ============================================================================
+      # After benchmarks complete on main, regenerate the Duration and Memory
+      # tables in README.md using the latest results and the static Blazor baseline.
+      # Commits with [skip ci] to prevent infinite workflow loops.
+      # ============================================================================
+      - name: Update README benchmark tables (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          python3 scripts/update-readme-benchmarks.py \
+            --results-dir js-framework-benchmark/webdriver-ts/results \
+            --blazor-baseline benchmark-results/blazor-baseline.json \
+            --readme README.md \
+            --framework abies
+
+      - name: Commit README updates (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "No README changes to commit"
+          else
+            git commit -m "docs: update benchmark results in README [skip ci]"
+            git push
+          fi
+
       - name: Copy results to workspace for upload
         if: always()
         run: |
