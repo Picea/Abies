@@ -79,7 +79,6 @@ From code analysis:
 
 | Component | Risk Level | CodeQL Coverage |
 |-----------|-----------|-----------------|
-| **Parser.cs** | Medium | ✅ Input validation |
 | **Interop.cs** | **HIGH** | ✅ JS interop safety |
 | **Navigation.cs** | Medium | ✅ URL validation |
 | **DOM manipulation** | **HIGH** | ✅ XSS prevention |
@@ -257,7 +256,7 @@ public class UnsafeExample
         // XSS vulnerability: unsanitized HTML
         await Interop.SetAppContent(userHtml);
     }
-    
+
     public void Navigate(string userUrl)
     {
         // Open redirect: unvalidated URL
@@ -274,11 +273,11 @@ public class SafeExample
         var escaped = System.Net.WebUtility.HtmlEncode(userText);
         await Interop.SetAppContent($"<div>{escaped}</div>");
     }
-    
+
     public void Navigate(string userUrl)
     {
         // Safe: validated URL
-        if (Uri.TryCreate(userUrl, UriKind.Absolute, out var uri) 
+        if (Uri.TryCreate(userUrl, UriKind.Absolute, out var uri)
             && (uri.Scheme == "http" || uri.Scheme == "https"))
         {
             await Interop.Load(userUrl);
@@ -289,11 +288,11 @@ public class SafeExample
 
 ## Conclusion
 
-**CodeQL is sensible and recommended for Abies.** 
+**CodeQL is sensible and recommended for Abies.**
 
 The combination of:
 - C# framework code
-- JavaScript interop layer  
+- JavaScript interop layer
 - Dynamic HTML generation
 - Public distribution (NuGet)
 
@@ -303,5 +302,5 @@ The combination of:
 
 ---
 
-*Analysis Date: February 5, 2026*  
+*Analysis Date: February 5, 2026*
 *For questions, see [SECURITY.md](../SECURITY.md)*

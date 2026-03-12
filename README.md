@@ -15,7 +15,7 @@ Abies brings the [Elm Architecture](https://guide.elm-lang.org/architecture/) to
 
 - **Pure functional architecture** — no side effects in your domain logic
 - **Virtual DOM** with efficient keyed diffing and binary batch patching
-- **Type-safe routing** with parser combinators
+- **Type-safe routing** with C# pattern matching on URL segments
 - **Full-stack tracing** with OpenTelemetry (browser → server)
 - **Built on [Picea](https://github.com/Picea/Picea)** — the Mealy machine kernel that powers MVU, Event Sourcing, and Actor runtimes
 
@@ -56,9 +56,6 @@ dotnet new install Picea.Abies.Templates
 
 # Create a browser (WASM) app
 dotnet new abies-browser -n MyApp
-
-# Or create a server-rendered app
-dotnet new abies-server -n MyApp
 
 cd MyApp
 dotnet run
@@ -102,9 +99,6 @@ public class Counter : Program<Model, Arguments>
             ]));
 
     public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
-
-    public static Task HandleCommand(Command command, Func<Message, ValueTuple> dispatch)
-        => Task.CompletedTask;
 }
 ```
 
@@ -116,7 +110,7 @@ Abies is built on the **[Picea](https://github.com/Picea/Picea)** kernel — a M
 Message
   → Transition(model, message) → (model', command)
     → Observer: View(model') → Document → Diff → Patches → Apply
-    → Interpreter: HandleCommand(command) → feedback Messages
+    → Interpreter: command → Result<Message[], PipelineError>
       → Dispatch each feedback message (recurse)
 ```
 
@@ -208,7 +202,7 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 
 ```bash
 # Run with .NET Aspire (recommended)
-dotnet run --project Picea.Abies.AppHost
+dotnet run --project Picea.Abies.Conduit.AppHost
 
 # Or run individually
 dotnet run --project Picea.Abies.Conduit.Api &
@@ -225,7 +219,7 @@ dotnet run --project Picea.Abies.Conduit.Wasm
 | `Picea.Abies.Browser` | Browser runtime — WASM host, JS interop, real DOM patching |
 | `Picea.Abies.Server` | Server runtime — SSR, Session, Page, RenderMode, Transport |
 | `Picea.Abies.Server.Kestrel` | Kestrel integration — WebSocket endpoints, static files |
-| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-server`) |
+| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`) |
 | `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time HTML checks |
 
 ### Sample Applications
@@ -246,10 +240,10 @@ dotnet run --project Picea.Abies.Conduit.Wasm
 
 | Project | Description |
 | --- | --- |
-| `Picea.Abies.AppHost` | .NET Aspire orchestration |
+| `Picea.Abies.Conduit.AppHost` | .NET Aspire orchestration |
 | `Picea.Abies.ServiceDefaults` | Shared defaults (OpenTelemetry, health checks) |
 | `Picea.Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
-| `Picea.Abies.Benchmark.Wasm` | js-framework-benchmark entry point |
+| `contrib/js-framework-benchmark` | js-framework-benchmark entry point |
 | `Picea.Abies.Tests` | Unit tests |
 | `Picea.Abies.Server.Tests` | Server runtime tests |
 | `Picea.Abies.Server.Kestrel.Tests` | Kestrel integration tests |

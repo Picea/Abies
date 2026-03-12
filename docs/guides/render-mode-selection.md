@@ -112,7 +112,7 @@ var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveServer())
 
 Your `Initialize`, `Transition`, `View`, and `Subscriptions` functions remain identical.
 
-> **Note:** The `HandleCommand` interpreter may need different implementations for browser vs. server. Browser-side commands use browser APIs (fetch, localStorage); server-side commands use server APIs (HttpClient, database). The MVU logic itself is unchanged.
+> **Note:** The command interpreter may need different implementations for browser vs. server. Browser-side interpreters use browser APIs (fetch, localStorage); server-side interpreters use server APIs (HttpClient, database). The MVU logic itself is unchanged.
 
 ## Next
 
