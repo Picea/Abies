@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773310006996,
+  "lastUpdate": 1773313620468,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11914,6 +11914,84 @@ window.BENCHMARK_DATA = {
             "value": 62.9,
             "unit": "ms",
             "extra": "mean: 63.4ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "0f5c999c85660ed92120b3bf86b435f6d436b6c5",
+          "message": "fix: address review comments on PR #116\n\n- Replace direct commit to main with peter-evans/create-pull-request\n  to avoid triggering other on:push workflows (CD, E2E, etc.)\n- Fix 25_clear-memory label: \"Run-clear memory\" → \"Clear memory\"\n  (25 is clear-memory, not 26 run-clear-memory)\n- Make parse_result_file() return None on missing/invalid/non-positive\n  median to prevent log(0) crashes in geometric mean\n- Validate all expected benchmark IDs are present; exit 1 if missing\n- Make replace_between_markers() raise RuntimeError on missing markers\n  instead of silently returning original content\n- Fix README label and note to match corrected benchmark name",
+          "timestamp": "2026-03-12T11:57:52+01:00",
+          "tree_id": "18cc955bf035141b2cf21abbdf98820b79c674c6",
+          "url": "https://github.com/Picea/Abies/commit/0f5c999c85660ed92120b3bf86b435f6d436b6c5"
+        },
+        "date": 1773313619932,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 164.1,
+            "unit": "ms",
+            "extra": "mean: 165.6ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 172.9,
+            "unit": "ms",
+            "extra": "mean: 173.2ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 215.9,
+            "unit": "ms",
+            "extra": "mean: 216.6ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 25.9,
+            "unit": "ms",
+            "extra": "mean: 25.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 73.8,
+            "unit": "ms",
+            "extra": "mean: 72.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 49.8,
+            "unit": "ms",
+            "extra": "mean: 50.0ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1598.1,
+            "unit": "ms",
+            "extra": "mean: 1597.0ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 206.9,
+            "unit": "ms",
+            "extra": "mean: 205.0ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 55.3,
+            "unit": "ms",
+            "extra": "mean: 55.0ms, samples: 15"
           }
         ]
       }
