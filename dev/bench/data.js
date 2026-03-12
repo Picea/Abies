@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773313620468,
+  "lastUpdate": 1773313621914,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12424,6 +12424,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.87982940673828,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "0f5c999c85660ed92120b3bf86b435f6d436b6c5",
+          "message": "fix: address review comments on PR #116\n\n- Replace direct commit to main with peter-evans/create-pull-request\n  to avoid triggering other on:push workflows (CD, E2E, etc.)\n- Fix 25_clear-memory label: \"Run-clear memory\" → \"Clear memory\"\n  (25 is clear-memory, not 26 run-clear-memory)\n- Make parse_result_file() return None on missing/invalid/non-positive\n  median to prevent log(0) crashes in geometric mean\n- Validate all expected benchmark IDs are present; exit 1 if missing\n- Make replace_between_markers() raise RuntimeError on missing markers\n  instead of silently returning original content\n- Fix README label and note to match corrected benchmark name",
+          "timestamp": "2026-03-12T11:57:52+01:00",
+          "tree_id": "18cc955bf035141b2cf21abbdf98820b79c674c6",
+          "url": "https://github.com/Picea/Abies/commit/0f5c999c85660ed92120b3bf86b435f6d436b6c5"
+        },
+        "date": 1773313621371,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.06935977935791,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.89742660522461,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
