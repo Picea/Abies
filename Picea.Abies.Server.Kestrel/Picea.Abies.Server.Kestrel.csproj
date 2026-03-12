@@ -9,7 +9,7 @@
 
   <!-- Embed wwwroot as static web assets so consuming apps can serve them -->
   <ItemGroup>
-    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" PackageCopyToOutput="true" PackageFlatten="false" />
   </ItemGroup>
 
   <!-- NuGet package metadata -->
