@@ -1,3 +1,4 @@
+using Picea;
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
@@ -6,37 +7,43 @@ using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
 // Start the Abies runtime with the Counter program
-await Picea.Abies.Browser.Runtime.Run<Counter, Model, Arguments>();
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 
 /// <summary>
-/// Application startup arguments.
-/// </summary>
-public record Arguments;
-
-/// <summary>
-/// The application model (state).
+/// Application model — immutable state container.
 /// </summary>
 public record Model(int Count);
 
+// ─── Messages ───────────────────────────────────────────────────────────────
+// Messages represent all possible events in your application.
+// Each message type triggers a specific state transition.
+
 /// <summary>
-/// Message to increment the counter.
+/// Increment the counter by 1.
 /// </summary>
 public record Increment : Message;
 
 /// <summary>
-/// Message to decrement the counter.
+/// Decrement the counter by 1.
 /// </summary>
 public record Decrement : Message;
 
 /// <summary>
-/// The Counter program implementing the MVU pattern.
+/// Reset the counter to 0.
 /// </summary>
-public class Counter : Program<Model, Arguments>
+public record Reset : Message;
+
+// ─── Program ────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Counter application implementing the MVU pattern.
+/// </summary>
+public class Counter : Program<Model, Unit>
 {
     /// <summary>
     /// Initialize the application with an initial model and optional command.
     /// </summary>
-    public static (Model, Command) Initialize(Arguments argument)
+    public static (Model, Command) Initialize(Unit argument)
         => (new Model(0), Commands.None);
 
     /// <summary>
@@ -47,48 +54,35 @@ public class Counter : Program<Model, Arguments>
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            Reset => (new Model(0), Commands.None),
             _ => (model, Commands.None)
         };
 
     /// <summary>
-    /// Render the view based on the current model.
+    /// Render the current model as HTML.
     /// </summary>
     public static Document View(Model model)
-        => new("AbiesApp",
+        => new("Abies Counter",
             div([class_("app")],
             [
-                // Header
-                header([class_("topbar")],
+                div([class_("header")],
                 [
-                    div([class_("brand")],
-                    [
-                        img([class_("brand-logo"), src("https://avatars.githubusercontent.com/u/188364441?v=4"), alt("Abies logo")]),
-                        div([class_("brand-meta")],
-                        [
-                            span([class_("brand-wordmark")], [text("Abies")]),
-                            span([class_("brand-subtitle")], [text("MVU Counter Example")])
-                        ])
-                    ]),
-                    span([class_("badge")], [text("Demo")])
+                    h1([], [text("🌲 Abies Counter")]),
+                    p([class_("subtitle")], [text("Model-View-Update for .NET WebAssembly")])
                 ]),
 
-                // Main content
-                main([class_("content")],
+                div([class_("counter-section")],
                 [
-                    h1([], [text("Counter")]),
-                    p([class_("subtitle")], [text("Model-View-Update in action")]),
-
-                    div([class_("counter")],
+                    div([class_("counter-display")],
                     [
-                        button(
-                            [type("button"), onclick(new Decrement()), class_("btn")],
-                            [text("\u2212")]
-                        ),
-                        span([class_("count")], [text(model.Count.ToString())]),
-                        button(
-                            [type("button"), onclick(new Increment()), class_("btn")],
-                            [text("+")]
-                        )
+                        span([class_("counter-value")], [text(model.Count.ToString())])
+                    ]),
+
+                    div([class_("button-group")],
+                    [
+                        button([class_("btn btn-decrement"), onclick<Decrement>()], [text("− Decrease")]),
+                        button([class_("btn btn-reset"), onclick<Reset>()], [text("↺ Reset")]),
+                        button([class_("btn btn-increment"), onclick<Increment>()], [text("+ Increase")])
                     ]),
 
                     div([class_("info-panel")],
@@ -97,12 +91,9 @@ public class Counter : Program<Model, Arguments>
                     ])
                 ]),
 
-                // Footer
-                footer([class_("footer")],
+                div([class_("footer")],
                 [
-                    text("Built with "),
-                    a([href("https://github.com/Picea/Abies")], [text("Abies")]),
-                    text(" \u2014 Functional web apps in .NET")
+                    p([], [text("Built with Abies — The Elm Architecture for .NET")])
                 ])
             ])
         );
