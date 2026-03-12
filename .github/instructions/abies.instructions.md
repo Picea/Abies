@@ -5,7 +5,7 @@ applyTo: '**/*'
 
 # Abies Framework
 
-The Abies framework is a Model-View-Update (MVU) architecture implementation for Blazor WebAssembly.
+The Abies framework is a Model-View-Update (MVU) architecture implementation for .NET, supporting browser (WASM), server, and auto render modes.
 
 ## Build System
 
@@ -58,7 +58,7 @@ window.__otel.setVerbosity('debug');
 
 The `Runtime.cs` file creates spans for:
 - `Message: {Type}` - MVU message processing
-- `Command: {Type}` - Command execution  
+- `Command: {Type}` - Command execution
 - `Update` - Model updates
 
 ## Conduit Application
@@ -67,7 +67,7 @@ The Conduit application is a real-world example of a web application built to sh
 
 ### Specification
 
-All specifications for the Conduit application can be found at the website: https://docs.realworld.show/ . The implementation of the showcase app MUST follow these specifications. 
+All specifications for the Conduit application can be found at the website: https://docs.realworld.show/ . The implementation of the showcase app MUST follow these specifications.
 
 ### Testing
 

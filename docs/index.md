@@ -15,7 +15,7 @@ New to Abies? Start here.
 | Guide | Description |
 | --- | --- |
 | [Installation](./getting-started/installation.md) | Prerequisites, SDK setup, and package installation |
-| [Project Templates](./getting-started/templates.md) | `dotnet new abies-browser` and `dotnet new abies-server` for quick scaffolding |
+| [Project Templates](./getting-started/templates.md) | `dotnet new abies-browser` and `dotnet new abies-browser-empty` for quick scaffolding |
 | [Your First App](./getting-started/your-first-app.md) | Build a counter app step-by-step |
 | [Project Structure](./getting-started/project-structure.md) | Understanding the Abies project layout |
 | [Next Steps](./getting-started/next-steps.md) | Where to go from here |
@@ -86,7 +86,7 @@ Comprehensive documentation for all public types.
 | --- | --- |
 | [Url](./api/url.md) | URL representation and parsing |
 | [Navigation](./api/navigation.md) | Navigation commands |
-| [Route](./api/route.md) | Parser combinators and template routing |
+| [Route](./api/route.md) | URL pattern matching and navigation |
 
 ### HTML API
 
@@ -137,7 +137,7 @@ Design decisions and their rationale.
 | [ADR-001](./adr/ADR-001-mvu-architecture.md) | MVU Architecture |
 | [ADR-002](./adr/ADR-002-pure-functional-programming.md) | Pure Functional Programming |
 | [ADR-003](./adr/ADR-003-virtual-dom.md) | Virtual DOM |
-| [ADR-004](./adr/ADR-004-parser-combinators.md) | Parser Combinators |
+| [ADR-004](./adr/ADR-004-parser-combinators.md) | Parser Combinators *(Superseded)* |
 | [ADR-005](./adr/ADR-005-webassembly-runtime.md) | WebAssembly Runtime |
 | [ADR-006](./adr/ADR-006-command-pattern.md) | Command Pattern |
 | [ADR-007](./adr/ADR-007-subscriptions.md) | Subscriptions |

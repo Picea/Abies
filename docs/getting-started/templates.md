@@ -13,7 +13,6 @@ dotnet new install Picea.Abies.Templates
 | Template | Short Name | Description |
 | --- | --- | --- |
 | Abies Browser App | `abies-browser` | Client-side WebAssembly application |
-| Abies Server App | `abies-server` | Server-rendered application with interactive modes |
 | Abies Browser (Empty) | `abies-browser-empty` | Minimal WASM app with no example code |
 
 ## Abies Browser App (`abies-browser`)
@@ -43,46 +42,6 @@ MyApp/
   wwwroot/
     index.html            ← HTML shell with WASM bootstrap
     site.css              ← Abies design system CSS
-```
-
-## Abies Server App (`abies-server`)
-
-Creates a server-rendered application with configurable render mode. The default uses `InteractiveServer` (WebSocket-based interactivity).
-
-```bash
-dotnet new abies-server -n MyApp
-cd MyApp
-dotnet run
-```
-
-**What's included:**
-- Counter example (same MVU code as the browser template)
-- Server-side rendering via `Page.Render<TProgram, TModel, TArgument>()`
-- WebSocket transport for interactive server mode
-- Kestrel integration via `MapAbies<TProgram>()`
-- Abies design system CSS
-- OpenTelemetry configuration
-
-**Project structure:**
-
-```text
-MyApp/
-  Program.cs              ← ASP.NET Core host with MapAbies()
-  Counter.cs              ← Counter program (shared with browser template)
-  MyApp.csproj            ← Server project file (references Picea.Abies.Server.Kestrel)
-  wwwroot/
-    site.css              ← Abies design system CSS
-```
-
-**Switching render modes** in the server template:
-
-```csharp
-// In Program.cs, change the render mode:
-app.MapAbies<Counter, CounterModel, Unit>(
-    mode: new RenderMode.InteractiveServer());  // WebSocket
-    // mode: new RenderMode.Static());          // Static HTML, no JS
-    // mode: new RenderMode.InteractiveWasm()); // Client-side WASM
-    // mode: new RenderMode.InteractiveAuto()); // Server → WASM handoff
 ```
 
 ## Abies Browser Empty (`abies-browser-empty`)
