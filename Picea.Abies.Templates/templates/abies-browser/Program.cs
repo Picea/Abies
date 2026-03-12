@@ -67,7 +67,7 @@ public class Counter : Program<Model, Unit>
             [
                 div([class_("header")],
                 [
-                    h1([], [text("🌲 Abies Counter")]),
+                    h1([], [text("\ud83c\udf32 Abies Counter")]),
                     p([class_("subtitle")], [text("Model-View-Update for .NET WebAssembly")])
                 ]),
 
@@ -80,9 +80,9 @@ public class Counter : Program<Model, Unit>
 
                     div([class_("button-group")],
                     [
-                        button([class_("btn btn-decrement"), onclick<Decrement>()], [text("− Decrease")]),
-                        button([class_("btn btn-reset"), onclick<Reset>()], [text("↺ Reset")]),
-                        button([class_("btn btn-increment"), onclick<Increment>()], [text("+ Increase")])
+                        button([class_("btn btn-decrement"), onclick(new Decrement())], [text("\u2212 Decrease")]),
+                        button([class_("btn btn-reset"), onclick(new Reset())], [text("\u21ba Reset")]),
+                        button([class_("btn btn-increment"), onclick(new Increment())], [text("+ Increase")])
                     ]),
 
                     div([class_("info-panel")],
@@ -93,7 +93,7 @@ public class Counter : Program<Model, Unit>
 
                 div([class_("footer")],
                 [
-                    p([], [text("Built with Abies — The Elm Architecture for .NET")])
+                    p([], [text("Built with Abies \u2014 The Elm Architecture for .NET")])
                 ])
             ])
         );
