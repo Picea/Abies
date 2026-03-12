@@ -49,50 +49,50 @@ namespace Picea.Abies.Server.Kestrel;
 /// </summary>
 public static class OtlpProxyEndpoint
 {
-    private static readonly ActivitySource ActivitySource = new("Picea.Abies.Server.Kestrel.OtlpProxy");
+    private static readonly ActivitySource _activitySource = new("Picea.Abies.Server.Kestrel.OtlpProxy");
 
     /// <summary>
     /// Rate limiter: tracks request timestamps per client IP.
     /// Uses a sliding window of 1 minute.
     /// </summary>
-    private static readonly ConcurrentDictionary<string, Queue<DateTime>> RateLimitBuckets = new();
+    private static readonly ConcurrentDictionary<string, Queue<DateTime>> _rateLimitBuckets = new();
 
     /// <summary>
     /// Time-to-live for inactive rate limit buckets.
     /// Buckets with no requests newer than this TTL are removed to avoid unbounded growth.
     /// </summary>
-    private static readonly TimeSpan RateLimitBucketTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _rateLimitBucketTtl = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Background timer that periodically scans and cleans up stale rate limit buckets.
     /// Stored in a static field to prevent garbage collection.
     /// </summary>
-    private static readonly Timer RateLimitCleanupTimer = new(
+    private static readonly Timer _rateLimitCleanupTimer = new(
         _ => CleanupRateLimitBuckets(),
         state: null,
-        dueTime: RateLimitBucketTtl,
-        period: RateLimitBucketTtl);
+        dueTime: _rateLimitBucketTtl,
+        period: _rateLimitBucketTtl);
 
     /// <summary>
     /// Static fallback HttpClient used when IHttpClientFactory is not registered.
     /// Avoids creating a new HttpClient per request (socket exhaustion).
     /// </summary>
-    private static readonly HttpClient FallbackHttpClient = new()
+    private static readonly HttpClient _fallbackHttpClient = new()
     {
         Timeout = TimeSpan.FromSeconds(10),
     };
 
     /// <summary>
     /// Periodically invoked to trim old timestamps from each bucket and remove buckets
-    /// that have been inactive longer than <see cref="RateLimitBucketTtl"/>.
-    /// This prevents the static <see cref="RateLimitBuckets"/> dictionary from growing
+    /// that have been inactive longer than <see cref="_rateLimitBucketTtl"/>.
+    /// This prevents the static <see cref="_rateLimitBuckets"/> dictionary from growing
     /// without bound in long-running processes with many unique client IPs.
     /// </summary>
     private static void CleanupRateLimitBuckets()
     {
-        var cutoff = DateTime.UtcNow - RateLimitBucketTtl;
+        var cutoff = DateTime.UtcNow - _rateLimitBucketTtl;
 
-        foreach (var (key, timestamps) in RateLimitBuckets)
+        foreach (var (key, timestamps) in _rateLimitBuckets)
         {
             lock (timestamps)
             {
@@ -103,7 +103,7 @@ public static class OtlpProxyEndpoint
 
                 if (timestamps.Count == 0)
                 {
-                    RateLimitBuckets.TryRemove(key, out _);
+                    _rateLimitBuckets.TryRemove(key, out _);
                 }
             }
         }
@@ -200,7 +200,7 @@ public static class OtlpProxyEndpoint
         IHttpClientFactory? httpClientFactory,
         ILogger? logger)
     {
-        using var activity = ActivitySource.StartActivity($"Picea.Abies.OtlpProxy.{signalType}");
+        using var activity = _activitySource.StartActivity($"Picea.Abies.OtlpProxy.{signalType}");
         activity?.SetTag("otlp.signal_type", signalType);
 
         // --- Validate Content-Type ---
@@ -267,7 +267,7 @@ public static class OtlpProxyEndpoint
 
         try
         {
-            var client = httpClientFactory?.CreateClient("OtlpProxy") ?? FallbackHttpClient;
+            var client = httpClientFactory?.CreateClient("OtlpProxy") ?? _fallbackHttpClient;
 
             using var forwardRequest = new HttpRequestMessage(HttpMethod.Post, targetUrl);
             memoryStream.Position = 0;
@@ -343,7 +343,7 @@ public static class OtlpProxyEndpoint
         var now = DateTime.UtcNow;
         var windowStart = now.AddMinutes(-1);
 
-        var bucket = RateLimitBuckets.GetOrAdd(clientId, _ => new Queue<DateTime>());
+        var bucket = _rateLimitBuckets.GetOrAdd(clientId, _ => new Queue<DateTime>());
 
         lock (bucket)
         {
@@ -364,5 +364,5 @@ public static class OtlpProxyEndpoint
     /// <summary>
     /// Resets rate limit state. Intended for testing only.
     /// </summary>
-    internal static void ResetRateLimits() => RateLimitBuckets.Clear();
+    internal static void ResetRateLimits() => _rateLimitBuckets.Clear();
 }
