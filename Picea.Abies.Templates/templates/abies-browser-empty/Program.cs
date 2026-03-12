@@ -1,11 +1,12 @@
 using Picea.Abies;
 using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
 // Start the Abies runtime with your application
-await Runtime.Run<App, Arguments, Model>(new Arguments());
+await Picea.Abies.Browser.Runtime.Run<App, Model, Arguments>();
 
 /// <summary>
 /// Application startup arguments.
@@ -26,13 +27,13 @@ public class App : Program<Model, Arguments>
     /// <summary>
     /// Initialize the application with an initial model and optional command.
     /// </summary>
-    public static (Model, Command) Initialize(Url url, Arguments argument)
+    public static (Model, Command) Initialize(Arguments argument)
         => (new Model(), Commands.None);
 
     /// <summary>
-    /// Update the model based on incoming messages.
+    /// Transition the model based on incoming messages.
     /// </summary>
-    public static (Model model, Command command) Update(Message message, Model model)
+    public static (Model, Command) Transition(Model model, Message message)
         => (model, Commands.None);
 
     /// <summary>
@@ -53,20 +54,8 @@ public class App : Program<Model, Arguments>
         );
 
     /// <summary>
-    /// Handle URL changes (for routing).
-    /// </summary>
-    public static Message OnUrlChanged(Url url)
-        => throw new NotImplementedException("Add your URL change message here");
-
-    /// <summary>
-    /// Handle link clicks (for navigation).
-    /// </summary>
-    public static Message OnLinkClicked(UrlRequest urlRequest)
-        => throw new NotImplementedException("Add your link click message here");
-
-    /// <summary>
     /// Define subscriptions for external events (timers, websockets, etc.).
     /// </summary>
     public static Subscription Subscriptions(Model model)
-        => SubscriptionModule.None;
+        => new Subscription.None();
 }
