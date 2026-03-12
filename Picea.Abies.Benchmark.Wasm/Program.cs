@@ -224,12 +224,37 @@ public sealed class BenchmarkApp : Program<BenchmarkModel, Unit>
                 span([class_("preloadicon glyphicon glyphicon-remove"), ariaHidden("true")], [])
             ]));
 
+    // =========================================================================
+    // Lazy Row ID Cache
+    // =========================================================================
+    // Lazy cache identifiers are allocated once per unique row ID and reused
+    // across render cycles. This avoids per-render string interpolation
+    // allocations ($"lazy-row-{id}") that could skew benchmark results away
+    // from DOM/diff costs.
+
+    private static readonly Dictionary<int, string> _lazyRowIdCache = new();
+
+    /// <summary>
+    /// Get a stable lazy cache identifier for a given row id, allocating only once.
+    /// </summary>
+    private static string GetLazyRowId(int id)
+    {
+        if (_lazyRowIdCache.TryGetValue(id, out var cached))
+        {
+            return cached;
+        }
+
+        var value = $"lazy-row-{id}";
+        _lazyRowIdCache[id] = value;
+        return value;
+    }
+
     /// <summary>
     /// Memoize table rows for select performance.
     /// Key is (Row, isSelected) — only re-diff when row data or selection changes.
     /// </summary>
     private static Node MemoizedRow(Row row, bool isSelected) =>
-        lazy((row, isSelected), () => TableRow(row, isSelected), id: $"lazy-row-{row.Id}");
+        lazy((row, isSelected), () => TableRow(row, isSelected), id: GetLazyRowId(row.Id));
 
     private static Node Jumbotron() =>
         div([class_("jumbotron")],
