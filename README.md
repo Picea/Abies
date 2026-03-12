@@ -183,10 +183,10 @@ Abies outperforms Blazor WASM across every duration benchmark. Measured with [js
 | --- | --- | --- | --- |
 | Ready memory | **34.4 MB** | 41.1 MB | **−16%** |
 | Run memory | **36.2 MB** | 52.7 MB | **−31%** |
-| Run-clear memory | 58.6 MB | **49.4 MB** | +19% |
+| Clear memory | 58.6 MB | **49.4 MB** | +19% |
 <!-- BENCHMARK:MEMORY:END -->
 
-> **Note:** Run-clear memory is higher in Abies due to lazy GC in the WASM runtime. All other metrics show Abies ahead.
+> **Note:** Clear memory is higher in Abies due to lazy GC in the WASM runtime. All other metrics show Abies ahead.
 
 📊 **[Interactive Benchmark Charts](https://picea.github.io/Abies/dev/bench/)** — Historical trends on GitHub Pages
 
