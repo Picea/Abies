@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772555109253,
+  "lastUpdate": 1773310005763,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11836,6 +11836,84 @@ window.BENCHMARK_DATA = {
             "value": 77.4,
             "unit": "ms",
             "extra": "mean: 77.8ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "a1ee811ec6154b91f53cd75246836ca471606ef4",
+          "message": "fix: add package-lock.json for framework discovery\n\nThe upstream js-framework-benchmark server requires both package.json\nAND package-lock.json to exist in a framework directory for\nisFrameworkDir() to return true. Without package-lock.json, the\nframework is silently skipped by the /ls endpoint, causing zero\nframeworks to match, zero benchmarks to run, and the compare script\nto fail with \"No result files found\".\n\nAlso adds a verification step after server startup that checks\n/ls returns the abies framework, catching this class of issue\nimmediately instead of failing silently.",
+          "timestamp": "2026-03-12T10:57:23+01:00",
+          "tree_id": "14c9f1b803024e729f1e57a64f30170b1925157f",
+          "url": "https://github.com/Picea/Abies/commit/a1ee811ec6154b91f53cd75246836ca471606ef4"
+        },
+        "date": 1773310005386,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 186.2,
+            "unit": "ms",
+            "extra": "mean: 185.3ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 195.6,
+            "unit": "ms",
+            "extra": "mean: 193.4ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 225.8,
+            "unit": "ms",
+            "extra": "mean: 225.7ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 30.2,
+            "unit": "ms",
+            "extra": "mean: 30.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 94.6,
+            "unit": "ms",
+            "extra": "mean: 94.7ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 67.1,
+            "unit": "ms",
+            "extra": "mean: 66.0ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1657.3,
+            "unit": "ms",
+            "extra": "mean: 1663.0ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 219.8,
+            "unit": "ms",
+            "extra": "mean: 219.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 62.9,
+            "unit": "ms",
+            "extra": "mean: 63.4ms, samples: 15"
           }
         ]
       }
