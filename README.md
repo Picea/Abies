@@ -153,6 +153,7 @@ Abies outperforms Blazor WASM across every duration benchmark. Measured with [js
 
 ### Duration Benchmarks (lower is better)
 
+<!-- BENCHMARK:DURATION:START -->
 | Benchmark | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | Create 1,000 rows | **51.7 ms** | 84.9 ms | **−39%** |
@@ -165,6 +166,7 @@ Abies outperforms Blazor WASM across every duration benchmark. Measured with [js
 | Append 1,000 rows | **76.2 ms** | 102.9 ms | **−26%** |
 | Clear 1,000 rows ×8 | **18.3 ms** | 36.5 ms | **−50%** |
 | **Geometric mean** | **1.00×** | **1.98×** | |
+<!-- BENCHMARK:DURATION:END -->
 
 ### Startup & Size (lower is better)
 
@@ -176,11 +178,13 @@ Abies outperforms Blazor WASM across every duration benchmark. Measured with [js
 
 ### Memory (lower is better)
 
+<!-- BENCHMARK:MEMORY:START -->
 | Metric | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | Ready memory | **34.4 MB** | 41.1 MB | **−16%** |
 | Run memory | **36.2 MB** | 52.7 MB | **−31%** |
 | Run-clear memory | 58.6 MB | **49.4 MB** | +19% |
+<!-- BENCHMARK:MEMORY:END -->
 
 > **Note:** Run-clear memory is higher in Abies due to lazy GC in the WASM runtime. All other metrics show Abies ahead.
 

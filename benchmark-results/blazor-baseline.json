@@ -1,0 +1,26 @@
+{
+  "version": "Blazor 10.0",
+  "source": "js-framework-benchmark, same-session comparison, March 2026",
+  "notes": "Static baseline — Blazor is not run in CI. Update manually when a new Blazor version ships.",
+  "duration": {
+    "01_run1k": 84.9,
+    "02_replace1k": 99.5,
+    "03_update10th1k": 94.5,
+    "04_select1k": 82.5,
+    "05_swap1k": 94.6,
+    "06_remove-one-1k": 40.2,
+    "07_create10k": 766.1,
+    "08_create1k-after1k_x2": 102.9,
+    "09_clear1k": 36.5
+  },
+  "startup": {
+    "first_paint_ms": 78.0,
+    "bundle_compressed_kb": 1377,
+    "bundle_uncompressed_kb": 4208
+  },
+  "memory": {
+    "21_ready-memory": 41.1,
+    "22_run-memory": 52.7,
+    "25_clear-memory": 49.4
+  }
+}
