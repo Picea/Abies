@@ -44,7 +44,7 @@ DURATION_BENCHMARKS = [
 MEMORY_BENCHMARKS = [
     ("21_ready-memory", "Ready memory"),
     ("22_run-memory", "Run memory"),
-    ("25_clear-memory", "Run-clear memory"),
+    ("25_clear-memory", "Clear memory"),
 ]
 
 
@@ -62,6 +62,8 @@ def parse_result_file(file_path: Path) -> dict | None:
     """Parse a single js-framework-benchmark result file.
 
     Returns dict with 'name' and 'median' keys, or None on failure.
+    Returns None (rather than 0) when data is missing or invalid,
+    to prevent silent bad data propagation and log(0) crashes.
     """
     try:
         with open(file_path) as f:
@@ -76,25 +78,44 @@ def parse_result_file(file_path: Path) -> dict | None:
 
         # Handle nested format (CPU benchmarks use "total", memory uses "DEFAULT")
         if isinstance(values_obj, dict):
+            median = None
+            values = []
             for key in ("total", "DEFAULT"):
                 if key in values_obj:
                     inner = values_obj[key]
                     if isinstance(inner, dict):
-                        values = inner.get("values", [])
-                        median = inner.get(
-                            "median",
-                            sorted(values)[len(values) // 2] if values else 0,
-                        )
+                        # Prefer an explicit median if provided; fall back to values.
+                        median = inner.get("median")
+                        if median is None:
+                            values = inner.get("values", [])
                     else:
+                        # Some formats may store raw samples directly as a list.
                         values = inner if isinstance(inner, list) else []
-                        median = sorted(values)[len(values) // 2] if values else 0
+                        median = None
                     break
             else:
                 print(f"Warning: Unknown values format in {file_path}", file=sys.stderr)
                 return None
+
+            # If no median was provided, derive it from the values list.
+            if median is None:
+                if not values:
+                    print(f"Warning: Missing or empty values for median in {file_path}", file=sys.stderr)
+                    return None
+                sorted_values = sorted(values)
+                median = sorted_values[len(sorted_values) // 2]
         else:
-            values = values_obj
-            median = sorted(values)[len(values) // 2] if values else 0
+            values = values_obj if isinstance(values_obj, list) else []
+            if not values:
+                print(f"Warning: Missing or empty values for median in {file_path}", file=sys.stderr)
+                return None
+            sorted_values = sorted(values)
+            median = sorted_values[len(sorted_values) // 2]
+
+        # Reject invalid or non-positive medians to avoid log(0) / bad stats later.
+        if not isinstance(median, (int, float)) or median <= 0:
+            print(f"Warning: Invalid or non-positive median ({median}) in {file_path}", file=sys.stderr)
+            return None
 
         # Extract benchmark name from filename
         # e.g. abies-keyed_01_run1k.json -> 01_run1k
@@ -110,6 +131,36 @@ def parse_result_file(file_path: Path) -> dict | None:
 
 
 # ============================================================================
+# Validation
+# ============================================================================
+
+def validate_benchmarks(
+    results: dict[str, dict],
+    blazor_duration: dict[str, float],
+    blazor_memory: dict[str, float],
+) -> list[str]:
+    """Validate that all expected benchmark IDs are present.
+
+    Returns a list of error messages. Empty list means all valid.
+    """
+    errors: list[str] = []
+
+    for bench_id, label in DURATION_BENCHMARKS:
+        if bench_id not in results:
+            errors.append(f"Missing CI result for duration benchmark: {bench_id} ({label})")
+        if bench_id not in blazor_duration:
+            errors.append(f"Missing Blazor baseline for duration benchmark: {bench_id} ({label})")
+
+    for bench_id, label in MEMORY_BENCHMARKS:
+        if bench_id not in results:
+            errors.append(f"Missing CI result for memory benchmark: {bench_id} ({label})")
+        if bench_id not in blazor_memory:
+            errors.append(f"Missing Blazor baseline for memory benchmark: {bench_id} ({label})")
+
+    return errors
+
+
+# ============================================================================
 # Table generation
 # ============================================================================
 
@@ -119,7 +170,7 @@ def compute_delta(abies: float, blazor: float) -> str:
         return "—"
     pct = (abies - blazor) / blazor * 100
     if pct < -0.5:
-        return f"**\u2212{abs(pct):.0f}%**"
+        return f"**−{abs(pct):.0f}%**"
     if pct > 0.5:
         return f"+{pct:.0f}%"
     return "—"
@@ -153,6 +204,7 @@ def generate_duration_table(
         blazor_val = blazor.get(bench_id)
 
         if abies_val is None or blazor_val is None:
+            # Validation should have caught this; skip defensively.
             continue
 
         abies_medians.append(abies_val)
@@ -174,7 +226,7 @@ def generate_duration_table(
             sum(math.log(v) for v in blazor_medians) / len(blazor_medians)
         )
         ratio = blazor_geo / abies_geo
-        lines.append(f"| **Geometric mean** | **1.00\u00d7** | **{ratio:.2f}\u00d7** | |")
+        lines.append(f"| **Geometric mean** | **1.00×** | **{ratio:.2f}×** | |")
 
     return "\n".join(lines)
 
@@ -193,6 +245,7 @@ def generate_memory_table(
         blazor_val = blazor.get(bench_id)
 
         if abies_val is None or blazor_val is None:
+            # Validation should have caught this; skip defensively.
             continue
 
         abies_wins = abies_val <= blazor_val
@@ -212,7 +265,12 @@ def generate_memory_table(
 def replace_between_markers(
     content: str, start_marker: str, end_marker: str, new_content: str
 ) -> str:
-    """Replace content between HTML comment markers in a string."""
+    """Replace content between HTML comment markers in a string.
+
+    Raises RuntimeError if markers are not found, since a missing marker
+    means the README structure is broken and we should fail loudly rather
+    than silently no-op and commit an unchanged file.
+    """
     pattern = re.compile(
         f"({re.escape(start_marker)}\n)(.*?)(\n{re.escape(end_marker)})",
         re.DOTALL,
@@ -220,10 +278,9 @@ def replace_between_markers(
     replacement = f"\\1{new_content}\\3"
     result, count = pattern.subn(replacement, content)
     if count == 0:
-        print(
-            f"Warning: Markers not found: {start_marker} / {end_marker}",
-            file=sys.stderr,
-        )
+        message = f"Markers not found: {start_marker} / {end_marker}"
+        print(message, file=sys.stderr)
+        raise RuntimeError(message)
     return result
 
 
@@ -299,7 +356,17 @@ def main():
     print(f"Parsed {len(results)} benchmark results")
 
     # ------------------------------------------------------------------
-    # 3. Generate tables
+    # 3. Validate all expected benchmarks are present
+    # ------------------------------------------------------------------
+    validation_errors = validate_benchmarks(results, blazor_duration, blazor_memory)
+    if validation_errors:
+        print("\u274c Missing benchmark data:", file=sys.stderr)
+        for error in validation_errors:
+            print(f"  - {error}", file=sys.stderr)
+        sys.exit(1)
+
+    # ------------------------------------------------------------------
+    # 4. Generate tables
     # ------------------------------------------------------------------
     duration_table = generate_duration_table(results, blazor_duration)
     memory_table = generate_memory_table(results, blazor_memory)
@@ -312,7 +379,7 @@ def main():
         return
 
     # ------------------------------------------------------------------
-    # 4. Update README.md
+    # 5. Update README.md
     # ------------------------------------------------------------------
     if not args.readme.exists():
         print(f"\u274c README not found: {args.readme}", file=sys.stderr)

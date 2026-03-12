@@ -467,7 +467,8 @@ jobs:
       # ============================================================================
       # After benchmarks complete on main, regenerate the Duration and Memory
       # tables in README.md using the latest results and the static Blazor baseline.
-      # Commits with [skip ci] to prevent infinite workflow loops.
+      # Opens a PR instead of pushing directly to main to avoid triggering other
+      # on:push workflows (CD, E2E, etc.).
       # ============================================================================
       - name: Update README benchmark tables (main only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -478,18 +479,21 @@ jobs:
             --readme README.md \
             --framework abies
 
-      - name: Commit README updates (main only)
+      - name: Create PR for README benchmark updates (main only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          if git diff --cached --quiet; then
-            echo "No README changes to commit"
-          else
-            git commit -m "docs: update benchmark results in README [skip ci]"
-            git push
-          fi
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update benchmark results in README"
+          title: "docs: update benchmark results in README"
+          body: |
+            Automated update of benchmark tables in README.md based on the latest js-framework-benchmark results.
+
+            This PR was created by the Benchmark workflow after running on `main`.
+          branch: benchmark/readme-auto-update
+          base: main
+          add-paths: |
+            README.md
 
       - name: Copy results to workspace for upload
         if: always()
