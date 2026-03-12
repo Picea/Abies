@@ -61,6 +61,9 @@ jobs:
     - name: Pack Picea.Abies.Server
       if: github.event_name != 'pull_request'
       run: dotnet pack ./Picea.Abies.Server/Picea.Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+    - name: Pack Picea.Abies.Server.Kestrel
+      if: github.event_name != 'pull_request'
+      run: dotnet pack ./Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
     - name: Pack Picea.Abies.Templates
       if: github.event_name != 'pull_request'
       run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
