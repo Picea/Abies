@@ -46,6 +46,7 @@ public sealed class FeedTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
         await _page.Locator(".feed-toggle").GetByText("Global Feed").ClickAsync();
@@ -71,6 +72,7 @@ public sealed class FeedTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
         await Expect(_page.Locator(".sidebar .tag-list")).ToContainTextAsync(uniqueTag,
@@ -98,6 +100,7 @@ public sealed class FeedTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(taggedArticle.Slug);
 
         await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
         var tagLocator = _page.Locator($".sidebar .tag-list >> text={uniqueTag}");
@@ -152,6 +155,7 @@ public sealed class FeedTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
         await _page.Locator(".feed-toggle").GetByText("Global Feed").ClickAsync();
         await _page.WaitForTimeoutAsync(2000);
@@ -167,6 +171,7 @@ public sealed class FeedTests : IAsyncLifetime
     public async Task HomeBanner_ShouldShowConduitBranding()
     {
         await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
         await Expect(_page.Locator(".banner h1")).ToContainTextAsync("conduit");
@@ -177,6 +182,7 @@ public sealed class FeedTests : IAsyncLifetime
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);

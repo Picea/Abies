@@ -41,7 +41,7 @@ public sealed class ArticleServerTests : IAsyncLifetime
 
         await _page.GotoAsync($"/article/{article.Slug}");
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync(article.Title,
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title,
             new() { Timeout = 15000 });
     }
 
@@ -65,7 +65,7 @@ public sealed class ArticleServerTests : IAsyncLifetime
         await LoginViaUi(readerEmail, "password123");
 
         await _page.NavigateInApp($"/article/{article.Slug}");
-        await Expect(_page.Locator("h1")).ToContainTextAsync(article.Title,
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title,
             new() { Timeout = 15000 });
 
         var favBtn = _page.Locator("button:has-text('Favorite Article')").First;

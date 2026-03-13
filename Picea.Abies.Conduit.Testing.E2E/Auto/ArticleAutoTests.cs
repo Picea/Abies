@@ -42,7 +42,7 @@ public sealed class ArticleAutoTests : IAsyncLifetime
         await _page.GotoAsync($"/article/{article.Slug}");
         await _page.WaitForWasmReady();
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync(article.Title,
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title,
             new() { Timeout = 15000 });
     }
 

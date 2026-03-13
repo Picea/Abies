@@ -47,8 +47,9 @@ public sealed class ArticleTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync($"/article/{article.Slug}");
+        await _page.WaitForWasmReady();
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync(article.Title, new() { Timeout = 15000 });
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title, new() { Timeout = 15000 });
 
         await Expect(_page.Locator(".article-meta").First).ToContainTextAsync(username);
     }
@@ -130,8 +131,9 @@ public sealed class ArticleTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync($"/article/{article.Slug}");
+        await _page.WaitForWasmReady();
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync(article.Title, new() { Timeout = 15000 });
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title, new() { Timeout = 15000 });
 
         await Expect(_page.Locator(".tag-list")).ToContainTextAsync("testingtag", new() { Timeout = 10000 });
         await Expect(_page.Locator(".tag-list")).ToContainTextAsync("e2etag", new() { Timeout = 10000 });
@@ -140,6 +142,7 @@ public sealed class ArticleTests : IAsyncLifetime
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
