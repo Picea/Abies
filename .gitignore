@@ -148,6 +148,9 @@ Thumbs.db
 # Local scratch
 .trash/
 
+# Template test scaffolding output
+.test-output/
+
 # TFS 2012 Local Workspace
 $tf/
 
