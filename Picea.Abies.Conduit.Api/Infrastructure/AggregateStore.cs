@@ -21,13 +21,12 @@
 // =============================================================================
 
 using System.Collections.Concurrent;
+using Npgsql;
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadStore.PostgreSQL;
-using Picea;
 using Picea.Glauca;
-using Npgsql;
 
 namespace Picea.Abies.Conduit.Api.Infrastructure;
 

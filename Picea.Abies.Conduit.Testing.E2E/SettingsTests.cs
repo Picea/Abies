@@ -2,9 +2,9 @@
 // Settings E2E Tests — Update profile, change password, logout
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 

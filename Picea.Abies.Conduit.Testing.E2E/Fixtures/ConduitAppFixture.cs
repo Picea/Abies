@@ -8,12 +8,12 @@
 // The server renders initial HTML, then the WASM runtime takes over client-side.
 // =============================================================================
 
-using Picea.Abies.Conduit.App;
-using Picea.Abies.Server;
-using Picea.Abies.Server.Kestrel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
+using Picea.Abies.Conduit.App;
+using Picea.Abies.Server;
+using Picea.Abies.Server.Kestrel;
 
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
@@ -62,11 +62,8 @@ public sealed class ConduitAppFixture : IAsyncLifetime
     {
         _infra = await SharedInfra.GetAsync();
 
-        const int port = 5000;
-        BaseUrl = $"http://localhost:{port}";
-
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(BaseUrl);
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
 
         _app = builder.Build();
 
@@ -81,7 +78,9 @@ public sealed class ConduitAppFixture : IAsyncLifetime
             "Release";
 #endif
 
-        var wasmAppBundlePath = Path.GetFullPath(Path.Combine(
+        // Path.Join never drops earlier segments (unlike Path.Combine which
+        // silently discards everything before a rooted argument).
+        var wasmAppBundlePath = Path.GetFullPath(Path.Join(
             solutionDir,
             "Picea.Abies.Conduit.Wasm", "bin", configuration,
             "net10.0", "browser-wasm", "AppBundle"));
@@ -94,17 +93,9 @@ public sealed class ConduitAppFixture : IAsyncLifetime
             new RenderMode.InteractiveWasm(),
             interpreter: ConduitInterpreter.Interpret);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _app.RunAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ConduitAppFixture] Kestrel error: {ex}");
-            }
-        });
+        await _app.StartAsync();
+        BaseUrl = _app.Urls.First();
+        Console.WriteLine($"[ConduitAppFixture] Kestrel started on {BaseUrl}");
         await WaitForServerReady(BaseUrl);
 
         _playwright = await Playwright.CreateAsync();
@@ -131,27 +122,28 @@ public sealed class ConduitAppFixture : IAsyncLifetime
     {
         using var http = new HttpClient();
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        string lastError = "no attempts made";
 
         while (DateTime.UtcNow < deadline)
         {
             try
             {
                 var response = await http.GetAsync(url);
-                var status = (int)response.StatusCode;
-                Console.WriteLine($"[ConduitAppFixture] Health check {url} → {status}");
-                if (status < 500)
+                Console.WriteLine(
+                    $"[ConduitAppFixture] Health check {url} → {(int)response.StatusCode} {response.StatusCode}");
+                if (response.IsSuccessStatusCode)
                     return;
             }
-            catch
+            catch (HttpRequestException ex)
             {
-                // Server not ready yet
+                lastError = ex.Message;
             }
 
             await Task.Delay(200);
         }
 
         throw new TimeoutException(
-            $"Conduit server at {url} did not start within {timeoutSeconds} seconds.");
+            $"Conduit server at {url} did not become healthy within {timeoutSeconds}s. Last error: {lastError}");
     }
 
     private static string FindSolutionDirectory()

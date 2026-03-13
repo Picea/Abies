@@ -2,9 +2,9 @@
 // Feed E2E Tests — Global feed, your feed, tag filter, pagination
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
