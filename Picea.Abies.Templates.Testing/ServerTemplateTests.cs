@@ -55,7 +55,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await WaitForServerInteractivity(page);
 
         // The server template uses "+" text for the increment button.
-        await page.Locator("button.btn", new() { HasTextString = "+" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
 
         var count = page.Locator(".count");
         await Assertions.Expect(count).ToHaveTextAsync("1");
@@ -68,9 +68,8 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForServerInteractivity(page);
 
-        // The server template uses "−" (U+2212) for the button label,
-        // but the counter value is rendered as a plain integer (e.g. "-1").
-        await page.Locator("button.btn").First.ClickAsync();
+        // The server template uses "−" (U+2212) for the decrement button label.
+        await page.GetByRole(AriaRole.Button, new() { Name = "\u2212" }).ClickAsync();
 
         var count = page.Locator(".count");
         await Assertions.Expect(count).ToHaveTextAsync("-1");
@@ -84,13 +83,13 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await WaitForServerInteractivity(page);
 
         // Increment a few times first.
-        var incrementBtn = page.Locator("button.btn", new() { HasTextString = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
         await incrementBtn.ClickAsync();
         await incrementBtn.ClickAsync();
         await Assertions.Expect(page.Locator(".count")).ToHaveTextAsync("2");
 
         // Reset.
-        await page.Locator(".btn-reset").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Reset" }).ClickAsync();
         await Assertions.Expect(page.Locator(".count")).ToHaveTextAsync("0");
     }
 
@@ -101,7 +100,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForServerInteractivity(page);
 
-        var incrementBtn = page.Locator("button.btn", new() { HasTextString = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
         for (var i = 0; i < 5; i++)
             await incrementBtn.ClickAsync();
 
@@ -123,7 +122,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         var deadline = DateTime.UtcNow + timeout;
 
         var count = page.Locator(".count");
-        var incrementBtn = page.Locator("button.btn", new() { HasTextString = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
 
         while (DateTime.UtcNow < deadline)
         {
@@ -137,7 +136,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
                 if (text is not null and not "0")
                 {
                     // Interactive! Reset and return.
-                    var resetBtn = page.Locator(".btn-reset");
+                    var resetBtn = page.GetByRole(AriaRole.Button, new() { Name = "Reset" });
                     await resetBtn.ClickAsync(
                         new LocatorClickOptions { Timeout = 2_000 });
                     await Assertions.Expect(count)
@@ -145,9 +144,9 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
                     return;
                 }
             }
-            catch (TimeoutException)
+            catch (PlaywrightException)
             {
-                // Not ready yet — retry.
+                // Playwright operation timed out — server not interactive yet.
             }
 
             await Task.Delay(200);

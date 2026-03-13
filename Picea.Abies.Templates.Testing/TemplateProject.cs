@@ -21,10 +21,10 @@ namespace Picea.Abies.Templates.Testing;
 public sealed partial class TemplateProject : IAsyncDisposable
 {
     private static readonly string _repoRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        Path.Join(AppContext.BaseDirectory, "..", "..", "..", ".."));
 
     private static readonly string _templatesDir =
-        Path.Combine(_repoRoot, "Picea.Abies.Templates", "templates");
+        Path.Join(_repoRoot, "Picea.Abies.Templates", "templates");
 
     /// <summary>
     /// Maps NuGet package names to their corresponding project file paths
@@ -33,14 +33,22 @@ public sealed partial class TemplateProject : IAsyncDisposable
     private static readonly Dictionary<string, string> _packageToProjectMap = new()
     {
         ["Picea.Abies.Server.Kestrel"] =
-            Path.Combine(_repoRoot, "Picea.Abies.Server.Kestrel", "Picea.Abies.Server.Kestrel.csproj"),
+            Path.Join(_repoRoot, "Picea.Abies.Server.Kestrel", "Picea.Abies.Server.Kestrel.csproj"),
         ["Picea.Abies.Browser"] =
-            Path.Combine(_repoRoot, "Picea.Abies.Browser", "Picea.Abies.Browser.csproj"),
+            Path.Join(_repoRoot, "Picea.Abies.Browser", "Picea.Abies.Browser.csproj"),
     };
+
+    /// <summary>
+    /// Serializes <c>dotnet new install</c> / <c>dotnet new uninstall</c> calls.
+    /// Template installation is global machine state and is not safe to run
+    /// concurrently (xUnit runs tests in parallel by default).
+    /// </summary>
+    private static readonly SemaphoreSlim _templateLock = new(1, 1);
 
     private readonly string _tempDir;
     private readonly string _projectDir;
     private readonly string _projectName;
+    private readonly string _templateShortName;
     private Process? _runProcess;
     private bool _disposed;
 
@@ -50,11 +58,12 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// <summary>Absolute path to the scaffolded project directory.</summary>
     public string ProjectDir => _projectDir;
 
-    private TemplateProject(string tempDir, string projectDir, string projectName)
+    private TemplateProject(string tempDir, string projectDir, string projectName, string templateShortName)
     {
         _tempDir = tempDir;
         _projectDir = projectDir;
         _projectName = projectName;
+        _templateShortName = templateShortName;
     }
 
     // -----------------------------------------------------------------------
@@ -77,26 +86,55 @@ public sealed partial class TemplateProject : IAsyncDisposable
         string projectName,
         CancellationToken ct = default)
     {
-        var tempDir = Path.Combine(_repoRoot, ".test-output", $"template-{Guid.NewGuid():N}");
+        var tempDir = Path.Join(_repoRoot, ".test-output", $"template-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
-        var projectDir = Path.Combine(tempDir, projectName);
+        var projectDir = Path.Join(tempDir, projectName);
 
         try
         {
-            var templateDir = Path.Combine(_templatesDir, templateShortName);
-            await RunDotnetAsync($"new install \"{templateDir}\" --force", tempDir, ct);
+            var templateDir = Path.Join(_templatesDir, templateShortName);
+
+            await _templateLock.WaitAsync(ct);
+            try
+            {
+                await RunDotnetAsync($"new install \"{templateDir}\" --force", tempDir, ct);
+            }
+            finally
+            {
+                _templateLock.Release();
+            }
+
             await RunDotnetAsync($"new {templateShortName} -n {projectName} -o \"{projectDir}\"", tempDir, ct);
 
             PatchCsproj(projectDir, projectName);
 
             await RunDotnetAsync($"build \"{projectDir}\" -c Debug", tempDir, ct);
 
-            return new TemplateProject(tempDir, projectDir, projectName);
+            return new TemplateProject(tempDir, projectDir, projectName, templateShortName);
         }
         catch
         {
-            // Clean up on failure.
+            // Clean up on failure — uninstall template and remove temp dir.
+            var templateDir = Path.Join(_templatesDir, templateShortName);
+            try
+            {
+                await _templateLock.WaitAsync(CancellationToken.None);
+                try
+                {
+                    await RunDotnetAsync(
+                        $"new uninstall \"{templateDir}\"", _repoRoot, CancellationToken.None);
+                }
+                finally
+                {
+                    _templateLock.Release();
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Best-effort template uninstall.
+            }
+
             TryDeleteDirectory(tempDir);
             throw;
         }
@@ -236,9 +274,9 @@ public sealed partial class TemplateProject : IAsyncDisposable
                 p.Kill(entireProcessTree: true);
                 p.WaitForExit(5_000);
             }
-            catch
+            catch (InvalidOperationException)
             {
-                // Best-effort cleanup.
+                // Process already exited between the HasExited check and Kill().
             }
         }
     }
@@ -255,13 +293,22 @@ public sealed partial class TemplateProject : IAsyncDisposable
 
         Stop();
 
-        // Uninstall the template (best-effort).
-        var templateDir = Path.Combine(_templatesDir, DetectTemplateShortName());
+        // Uninstall the template (best-effort, serialized with other install/uninstall).
+        var templateDir = Path.Join(_templatesDir, _templateShortName);
         try
         {
-            await RunDotnetAsync($"new uninstall \"{templateDir}\"", _tempDir, CancellationToken.None);
+            await _templateLock.WaitAsync(CancellationToken.None);
+            try
+            {
+                await RunDotnetAsync(
+                    $"new uninstall \"{templateDir}\"", _tempDir, CancellationToken.None);
+            }
+            finally
+            {
+                _templateLock.Release();
+            }
         }
-        catch
+        catch (InvalidOperationException)
         {
             // Template uninstall is best-effort.
         }
@@ -272,20 +319,6 @@ public sealed partial class TemplateProject : IAsyncDisposable
     // -----------------------------------------------------------------------
     // Internals
     // -----------------------------------------------------------------------
-
-    private string DetectTemplateShortName()
-    {
-        // Derive the template name from the project dir name by convention.
-        // The temp dir structure is: <tmpDir>/<projectName>/
-        // The template was installed from the templates directory.
-        // We stored nothing, so scan the csproj for the SDK to infer:
-        var csproj = File.ReadAllText(Path.Combine(_projectDir, $"{_projectName}.csproj"));
-        if (csproj.Contains("Sdk.Web\"") || csproj.Contains("Server.Kestrel"))
-            return "abies-server";
-        if (csproj.Contains("Sdk.WebAssembly"))
-            return csproj.Contains("Counter") || csproj.Contains("button") ? "abies-browser" : "abies-browser-empty";
-        return "abies-server"; // fallback
-    }
 
     /// <summary>
     /// Replaces NuGet <c>PackageReference</c> elements with local <c>ProjectReference</c>
@@ -301,7 +334,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </remarks>
     private static void PatchCsproj(string projectDir, string projectName)
     {
-        var csprojPath = Path.Combine(projectDir, $"{projectName}.csproj");
+        var csprojPath = Path.Join(projectDir, $"{projectName}.csproj");
         var content = File.ReadAllText(csprojPath);
 
         var referencesBrowser = false;
@@ -311,10 +344,13 @@ public sealed partial class TemplateProject : IAsyncDisposable
             // Match: <PackageReference Include="PackageName" Version="..." />
             var pattern = $"""<PackageReference Include="{packageName}" Version="[^"]*"\s*/>""";
             var replacement = $"""<ProjectReference Include="{projectPath}" />""";
-            content = Regex.Replace(content, pattern, replacement);
+            var newContent = Regex.Replace(content, pattern, _ => replacement);
 
-            if (packageName == "Picea.Abies.Browser")
+            // Only flag browser reference if the csproj actually contained the package.
+            if (packageName == "Picea.Abies.Browser" && newContent != content)
                 referencesBrowser = true;
+
+            content = newContent;
         }
 
         File.WriteAllText(csprojPath, content);
@@ -332,15 +368,15 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     private static void CopyBrowserStaticAssets(string projectDir)
     {
-        var browserWwwroot = Path.Combine(_repoRoot, "Picea.Abies.Browser", "wwwroot");
-        var targetWwwroot = Path.Combine(projectDir, "wwwroot");
+        var browserWwwroot = Path.Join(_repoRoot, "Picea.Abies.Browser", "wwwroot");
+        var targetWwwroot = Path.Join(projectDir, "wwwroot");
         Directory.CreateDirectory(targetWwwroot);
 
         foreach (var fileName in new[] { "abies.js", "abies-otel.js" })
         {
-            var source = Path.Combine(browserWwwroot, fileName);
+            var source = Path.Join(browserWwwroot, fileName);
             if (File.Exists(source))
-                File.Copy(source, Path.Combine(targetWwwroot, fileName), overwrite: true);
+                File.Copy(source, Path.Join(targetWwwroot, fileName), overwrite: true);
         }
     }
 
@@ -350,7 +386,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     private bool IsWebAssemblyProject()
     {
-        var csprojPath = Path.Combine(_projectDir, $"{_projectName}.csproj");
+        var csprojPath = Path.Join(_projectDir, $"{_projectName}.csproj");
         var content = File.ReadAllText(csprojPath);
         return content.Contains("Sdk.WebAssembly", StringComparison.OrdinalIgnoreCase);
     }
@@ -434,9 +470,13 @@ public sealed partial class TemplateProject : IAsyncDisposable
             if (Directory.Exists(path))
                 Directory.Delete(path, recursive: true);
         }
-        catch
+        catch (IOException)
         {
-            // Best-effort cleanup.
+            // Best-effort cleanup — file may be locked.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort cleanup — insufficient permissions.
         }
     }
 }
