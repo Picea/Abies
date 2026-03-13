@@ -146,7 +146,7 @@ public class Presentation : Program<Model, Arguments>
                         p([class_("card-desc")], [text("Deep-dive into every aspect of Abies — from core MVU concepts through virtual DOM internals, the binary batching protocol, E2E benchmarks, and production deployment.")]),
                         div([class_("card-meta")],
                         [
-                            span([class_("pill")], [text($"{FullSlides.Length} slides")]),
+                            span([class_("pill")], [text($"{_fullSlides.Length} slides")]),
                             span([class_("pill")], [text("\u2248 60 min")])
                         ])
                     ]),
@@ -157,7 +157,7 @@ public class Presentation : Program<Model, Arguments>
                         p([class_("card-desc")], [text("A focused walkthrough of Abies highlighting the architecture, key differentiators from Blazor, performance results, and how to get started.")]),
                         div([class_("card-meta")],
                         [
-                            span([class_("pill")], [text($"{ExpressSlides.Length} slides")]),
+                            span([class_("pill")], [text($"{_expressSlides.Length} slides")]),
                             span([class_("pill")], [text("\u2248 30 min")])
                         ])
                     ])
@@ -167,7 +167,7 @@ public class Presentation : Program<Model, Arguments>
 
     private static Document ViewDeck(Model model)
     {
-        var slides = model.Mode == PresentationMode.Full ? FullSlides : ExpressSlides;
+        var slides = model.Mode == PresentationMode.Full ? _fullSlides : _expressSlides;
         var current = slides[model.SlideIndex];
         var progress = slides.Length > 1 ? (double)model.SlideIndex / (slides.Length - 1) * 100 : 0;
         var modeLabel = model.Mode == PresentationMode.Full ? "Full Conference" : "Express Overview";
@@ -368,7 +368,7 @@ public class Presentation : Program<Model, Arguments>
 
     private static Model SetSlide(Model model, int index)
     {
-        var slides = model.Mode == PresentationMode.Full ? FullSlides : ExpressSlides;
+        var slides = model.Mode == PresentationMode.Full ? _fullSlides : _expressSlides;
         return model with { SlideIndex = ClampSlide(index, slides.Length) };
     }
 
@@ -419,7 +419,7 @@ public class Presentation : Program<Model, Arguments>
     // FULL PRESENTATION — Deep-Dive (~36 slides)
     // ═════════════════════════════════════════════════════════════════════════════
 
-    private static readonly Slide[] FullSlides =
+    private static readonly Slide[] _fullSlides =
     [
         new("intro", "Welcome", "Abies",
             "Pure functional UI for .NET WebAssembly",
@@ -738,7 +738,7 @@ public class Presentation : Program<Model, Arguments>
     // EXPRESS PRESENTATION — Condensed Overview (~18 slides)
     // ═════════════════════════════════════════════════════════════════════════════
 
-    private static readonly Slide[] ExpressSlides =
+    private static readonly Slide[] _expressSlides =
     [
         new("x-intro", "Express", "Abies",
             "Pure functional UI for .NET WebAssembly — in 30 minutes",

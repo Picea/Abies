@@ -2,9 +2,9 @@
 // Article E2E Tests — View, delete, favorite/unfavorite articles
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
