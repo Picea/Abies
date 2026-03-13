@@ -85,6 +85,40 @@ namespace Picea.Abies.Browser;
 public static class Runtime
 {
     /// <summary>
+    /// Imports the Abies JavaScript module.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call this before <see cref="Run{TProgram,TModel,TArgument}"/> if you need access
+    /// to browser interop (e.g., <see cref="GetOrigin"/>) before the MVU loop starts.
+    /// The subsequent <c>ImportAsync</c> inside <c>Run</c> is a no-op because ES modules
+    /// are cached by the browser.
+    /// </para>
+    /// </remarks>
+    public static async Task ImportModule() =>
+        await JSHost.ImportAsync("Abies", "../abies.js");
+
+    /// <summary>
+    /// Returns the browser window's origin (e.g., <c>"http://localhost:5000"</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The Abies module must be loaded first via <see cref="ImportModule"/>.
+    /// Typical use: pass the origin as the API base URL so that the WASM
+    /// <see cref="HttpClient"/> can build absolute request URIs.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// await Runtime.ImportModule();
+    /// var apiUrl = Runtime.GetOrigin();
+    /// await Runtime.Run&lt;MyProgram, MyModel, string&gt;(argument: apiUrl);
+    /// </code>
+    /// </example>
+    /// </remarks>
+    /// <returns>The window origin, or empty string if unavailable.</returns>
+    public static string GetOrigin() => Interop.GetOrigin();
+
+    /// <summary>
     /// Runs an Abies MVU application in the browser.
     /// </summary>
     /// <remarks>

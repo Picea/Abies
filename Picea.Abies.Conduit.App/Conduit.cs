@@ -9,11 +9,10 @@ using static Picea.Abies.Html.Elements;
 
 namespace Picea.Abies.Conduit.App;
 
-public sealed class ConduitProgram : Program<Model, Unit>
+public sealed class ConduitProgram : Program<Model, string>
 {
-    public static (Model, Command) Initialize(Unit _)
+    public static (Model, Command) Initialize(string apiUrl)
     {
-        var apiUrl = "http://localhost:5000";
         var initialUrl = Url.Root;
         var (page, command) = Route.FromUrl(initialUrl, session: null, apiUrl);
         var model = new Model(page, Session: null, ApiUrl: apiUrl);

@@ -20,16 +20,16 @@
 using Picea.Abies.Conduit.App;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
-using Picea;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.UseWebSockets();
 app.UseAbiesStaticFiles();
-app.MapAbies<ConduitProgram, Model, Unit>(
+app.MapAbies<ConduitProgram, Model, string>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer(),
-    interpreter: ConduitInterpreter.Interpret);
+    interpreter: ConduitInterpreter.Interpret,
+    argument: "http://localhost:5000");
 
 app.Run();
