@@ -2,14 +2,13 @@
 // ConduitServerFixture — E2E Test Infrastructure for InteractiveServer Conduit
 // =============================================================================
 
-using Picea.Abies.Conduit.App;
-using Picea.Abies.Server;
-using Picea.Abies.Server.Kestrel;
-using Picea;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Playwright;
+using Picea.Abies.Conduit.App;
+using Picea.Abies.Server;
+using Picea.Abies.Server.Kestrel;
 
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
@@ -58,11 +57,8 @@ public sealed class ConduitServerFixture : IAsyncLifetime
     {
         _infra = await SharedInfra.GetAsync();
 
-        const int port = 5000;
-        BaseUrl = $"http://localhost:{port}";
-
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(BaseUrl);
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
 
         _app = builder.Build();
 
@@ -75,17 +71,9 @@ public sealed class ConduitServerFixture : IAsyncLifetime
             new RenderMode.InteractiveServer(),
             interpreter: ConduitInterpreter.Interpret);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _app.RunAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ServerFixture] Kestrel server crashed: {ex}");
-            }
-        });
+        await _app.StartAsync();
+        BaseUrl = _app.Urls.First();
+        Console.WriteLine($"[ServerFixture] Kestrel started on {BaseUrl}");
         await WaitForServerReady(BaseUrl);
 
         _playwright = await Playwright.CreateAsync();
@@ -150,7 +138,13 @@ public sealed class ConduitServerFixture : IAsyncLifetime
 
             Console.WriteLine($"[Proxy] {context.Request.Method} {targetUrl} (body: {bodyBytes?.Length ?? 0} bytes, ct: {context.Request.ContentType})");
             if (bodyBytes is { Length: > 0 })
-                Console.WriteLine($"[Proxy] Body: {System.Text.Encoding.UTF8.GetString(bodyBytes)}");
+            {
+                // Redact body for auth-related endpoints to avoid logging credentials.
+                var isAuthPath = remainder.StartsWith("users", StringComparison.OrdinalIgnoreCase);
+                Console.WriteLine(isAuthPath
+                    ? "[Proxy] Body: [REDACTED — auth endpoint]"
+                    : $"[Proxy] Body: {System.Text.Encoding.UTF8.GetString(bodyBytes)}");
+            }
 
             var proxyResponse = await proxyClient.SendAsync(proxyRequest);
 
@@ -188,10 +182,10 @@ public sealed class ConduitServerFixture : IAsyncLifetime
             {
                 var response = await http.GetAsync(url);
                 Console.WriteLine($"[ServerFixture] Health check {url} → {(int)response.StatusCode} {response.StatusCode}");
-                if ((int)response.StatusCode < 500)
+                if (response.IsSuccessStatusCode)
                     return;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 lastError = ex.Message;
                 Console.WriteLine($"[ServerFixture] Health check {url} → {ex.GetType().Name}: {ex.Message}");
@@ -201,6 +195,6 @@ public sealed class ConduitServerFixture : IAsyncLifetime
         }
 
         throw new TimeoutException(
-            $"Conduit server at {url} did not start within {timeoutSeconds} seconds. Last error: {lastError}");
+            $"Conduit server at {url} did not become healthy within {timeoutSeconds}s. Last error: {lastError}");
     }
 }
