@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773396256732,
+  "lastUpdate": 1773428701195,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12070,6 +12070,84 @@ window.BENCHMARK_DATA = {
             "value": 42.8,
             "unit": "ms",
             "extra": "mean: 43.0ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "bffbac91dae01d46a3854bc568f9581bb0ffec98",
+          "message": "fix: bump Picea version from 1.0.22-* to 1.0.*-* to resolve NU1605 downgrade\n\nPicea.Glauca 0.1.14 now requires Picea >= 1.0.27-rc-0002, which\nconflicts with the pinned 1.0.22-* references. Aligns all Conduit\nprojects to use the same floating version pattern (1.0.*-*) already\nused by Picea.Abies.",
+          "timestamp": "2026-03-13T19:55:44+01:00",
+          "tree_id": "c2cd91323d34e9d274a781f4ad432f3e4d9aaebb",
+          "url": "https://github.com/Picea/Abies/commit/bffbac91dae01d46a3854bc568f9581bb0ffec98"
+        },
+        "date": 1773428700818,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 176.6,
+            "unit": "ms",
+            "extra": "mean: 176.5ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 188.7,
+            "unit": "ms",
+            "extra": "mean: 187.7ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 228.4,
+            "unit": "ms",
+            "extra": "mean: 232.0ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.8,
+            "unit": "ms",
+            "extra": "mean: 29.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 90.3,
+            "unit": "ms",
+            "extra": "mean: 90.4ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 58,
+            "unit": "ms",
+            "extra": "mean: 57.8ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1661,
+            "unit": "ms",
+            "extra": "mean: 1663.2ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 215.3,
+            "unit": "ms",
+            "extra": "mean: 216.3ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 61.3,
+            "unit": "ms",
+            "extra": "mean: 60.9ms, samples: 15"
           }
         ]
       }
