@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773428701195,
+  "lastUpdate": 1773428703019,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12652,6 +12652,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.88261413574219,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "bffbac91dae01d46a3854bc568f9581bb0ffec98",
+          "message": "fix: bump Picea version from 1.0.22-* to 1.0.*-* to resolve NU1605 downgrade\n\nPicea.Glauca 0.1.14 now requires Picea >= 1.0.27-rc-0002, which\nconflicts with the pinned 1.0.22-* references. Aligns all Conduit\nprojects to use the same floating version pattern (1.0.*-*) already\nused by Picea.Abies.",
+          "timestamp": "2026-03-13T19:55:44+01:00",
+          "tree_id": "c2cd91323d34e9d274a781f4ad432f3e4d9aaebb",
+          "url": "https://github.com/Picea/Abies/commit/bffbac91dae01d46a3854bc568f9581bb0ffec98"
+        },
+        "date": 1773428702650,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11219787597656,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.872862815856934,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
