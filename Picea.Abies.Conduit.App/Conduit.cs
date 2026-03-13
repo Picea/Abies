@@ -2,9 +2,9 @@
 // Conduit — Main MVU Program
 // =============================================================================
 
+using Picea;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Picea;
 using static Picea.Abies.Html.Elements;
 
 namespace Picea.Abies.Conduit.App;
@@ -76,19 +76,28 @@ public sealed class ConduitProgram : Program<Model, string>
             EditorAddTag when model.Page is Page.Editor editor
                 && !string.IsNullOrWhiteSpace(editor.Data.TagInput)
                 && !editor.Data.TagList.Contains(editor.Data.TagInput.Trim()) =>
-                (model with { Page = new Page.Editor(editor.Data with
-                    { TagList = editor.Data.TagList.Append(editor.Data.TagInput.Trim()).ToList(), TagInput = "" }) },
+                (model with
+                {
+                    Page = new Page.Editor(editor.Data with
+                    { TagList = editor.Data.TagList.Append(editor.Data.TagInput.Trim()).ToList(), TagInput = "" })
+                },
                  Commands.None),
             EditorTagKeyDown { Key: "Enter" } when model.Page is Page.Editor editor
                 && !string.IsNullOrWhiteSpace(editor.Data.TagInput)
                 && !editor.Data.TagList.Contains(editor.Data.TagInput.Trim()) =>
-                (model with { Page = new Page.Editor(editor.Data with
-                    { TagList = editor.Data.TagList.Append(editor.Data.TagInput.Trim()).ToList(), TagInput = "" }) },
+                (model with
+                {
+                    Page = new Page.Editor(editor.Data with
+                    { TagList = editor.Data.TagList.Append(editor.Data.TagInput.Trim()).ToList(), TagInput = "" })
+                },
                  Commands.None),
             EditorTagKeyDown => (model, Commands.None),
             EditorRemoveTag msg when model.Page is Page.Editor editor =>
-                (model with { Page = new Page.Editor(editor.Data with
-                    { TagList = editor.Data.TagList.Where(t => t != msg.Tag).ToList() }) },
+                (model with
+                {
+                    Page = new Page.Editor(editor.Data with
+                    { TagList = editor.Data.TagList.Where(t => t != msg.Tag).ToList() })
+                },
                  Commands.None),
             EditorSubmitted when model.Page is Page.Editor editor && model.Session is not null =>
                 HandleEditorSubmitted(model, editor.Data),
