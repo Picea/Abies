@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Auto-imported by NuGet for PackageReference consumers.
+    Copies abies.js and abies-otel.js from the NuGet contentFiles into the
+    consuming project's wwwroot/ directory so the WebAssembly dev server can
+    serve them at the root path (matching index.html script references).
+  -->
+  <Target Name="CopyAbiesJsFromNuGet"
+          BeforeTargets="Build;ComputeFilesToPublish"
+          Inputs="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies.js;$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies-otel.js"
+          Outputs="$(ProjectDir)wwwroot/abies.js;$(ProjectDir)wwwroot/abies-otel.js">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies.js"
+          DestinationFolder="$(ProjectDir)wwwroot/" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies-otel.js"
+          DestinationFolder="$(ProjectDir)wwwroot/" />
+  </Target>
+
+</Project>
