@@ -157,6 +157,13 @@ public static partial class Interop
     [JSImport("getCurrentUrl", "Abies")]
     internal static partial string GetCurrentUrl();
 
+    /// <summary>
+    /// Gets the browser window's origin (e.g., "http://localhost:5000").
+    /// Used by WASM apps to resolve API URLs relative to the hosting server.
+    /// </summary>
+    [JSImport("getOrigin", "Abies")]
+    internal static partial string GetOrigin();
+
     // =========================================================================
     // Callback Wiring (.NET → JavaScript)
     // =========================================================================

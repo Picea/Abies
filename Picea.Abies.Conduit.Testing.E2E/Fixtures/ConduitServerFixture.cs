@@ -66,10 +66,11 @@ public sealed class ConduitServerFixture : IAsyncLifetime
 
         _app.UseWebSockets();
         _app.UseAbiesStaticFiles();
-        _app.MapAbies<ConduitProgram, Model, Unit>(
+        _app.MapAbies<ConduitProgram, Model, string>(
             "/{**catch-all}",
             new RenderMode.InteractiveServer(),
-            interpreter: ConduitInterpreter.Interpret);
+            interpreter: ConduitInterpreter.Interpret,
+            argument: _infra.ApiUrl);
 
         await _app.StartAsync();
         BaseUrl = _app.Urls.First();

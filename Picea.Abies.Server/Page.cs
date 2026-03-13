@@ -217,6 +217,7 @@ public static class Page
                 sb.Append("\" data-auto=\"true\"></script>\n");
                 sb.Append("  <script type=\"module\">\n");
                 sb.Append("    import { dotnet } from '/_framework/dotnet.js';\n");
+                sb.Append("    globalThis.__ABIES_DOTNET_STARTED = true;\n");
                 sb.Append("    await dotnet.run();\n");
                 sb.Append("  </script>\n");
                 break;
