@@ -1,16 +1,30 @@
+// =============================================================================
+// Subscriptions Demo — Abies MVU Subscription Sources
+// =============================================================================
+// Demonstrates the subscription system available in Abies:
+//   - SubscriptionModule.Every: periodic timer subscription
+//   - SubscriptionModule.Batch: combining multiple subscriptions
+//   - SubscriptionModule.Create: custom subscription sources
+//   - Navigation.UrlChanges: URL change subscription
+//
+// TODO: Re-add browser subscription demos (OnResize, OnVisibilityChange,
+//       OnMouseMove, WebSocket) when the BrowserSubscriptions module is
+//       reintroduced to the framework.
+// =============================================================================
+
 using System.Runtime.Versioning;
 using Picea.Abies;
 using Picea.Abies.Browser;
 using Picea.Abies.DOM;
-using Picea.Abies.Html;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
+using static Picea.Abies.Subscriptions.SubscriptionModule;
 
 [assembly: SupportedOSPlatform("browser")]
 
-// Bootstrap the demo app.
-await Runtime.Run<SubscriptionsDemo, Arguments, Model>(new Arguments());
+await Runtime.Run<SubscriptionsDemo, Model, Arguments>(new Arguments());
 
 /// <summary>
 /// Placeholder for startup arguments.
@@ -23,246 +37,155 @@ public record Arguments;
 public record Model(
     int TickCount,
     DateTimeOffset? LastTick,
-    bool IsVisible,
-    int Width,
-    int Height,
     bool AutoTick,
-    bool TrackMouse,
-    int MouseX,
-    int MouseY,
-    bool WebSocketEnabled,
-    bool MockWebSocketEnabled,
-    string WebSocketUrl,
+    int FastTickCount,
+    bool FastTickEnabled,
+    int CustomSubCount,
+    bool CustomSubEnabled,
     IReadOnlyList<string> Events,
-    DateTimeOffset? LastEventAt,
-    DateTimeOffset? LastMouseLogAt);
+    DateTimeOffset? LastEventAt);
 
 /// <summary>
 /// MVU messages for subscription events and UI intent.
 /// </summary>
 public interface Message : Picea.Abies.Message
 {
-    /// <summary>
-    /// Emitted on timer ticks.
-    /// </summary>
-    sealed record Tick(DateTimeOffset Now) : Message;
-    /// <summary>
-    /// Emitted on visibility changes.
-    /// </summary>
-    sealed record VisibilityChanged(VisibilityState State, DateTimeOffset At) : Message;
-    /// <summary>
-    /// Emitted on resize events.
-    /// </summary>
-    sealed record Resized(ViewportSize Size, DateTimeOffset At) : Message;
-    /// <summary>
-    /// Emitted on mouse movement.
-    /// </summary>
-    sealed record MouseMoved(PointerEventData Data, DateTimeOffset At) : Message;
-    /// <summary>
-    /// Toggles the timer subscription.
-    /// </summary>
+    /// <summary>Emitted on timer ticks (1s interval).</summary>
+    sealed record Tick : Message;
+
+    /// <summary>Emitted on fast timer ticks (250ms interval).</summary>
+    sealed record FastTick : Message;
+
+    /// <summary>Emitted by the custom subscription source.</summary>
+    sealed record CustomEvent(string Value) : Message;
+
+    /// <summary>Toggles the 1s timer subscription.</summary>
     sealed record ToggleAutoTick : Message;
-    /// <summary>
-    /// Toggles mouse tracking.
-    /// </summary>
-    sealed record ToggleMouse : Message;
-    /// <summary>
-    /// Toggles the WebSocket subscription.
-    /// </summary>
-    sealed record ToggleWebSocket : Message;
-    /// <summary>
-    /// Toggles the mock WebSocket subscription.
-    /// </summary>
-    sealed record ToggleMockWebSocket : Message;
-    /// <summary>
-    /// Updates the WebSocket URL input.
-    /// </summary>
-    sealed record WebSocketUrlChanged(string Value) : Message;
-    /// <summary>
-    /// Emitted for WebSocket events.
-    /// </summary>
-    sealed record SocketEvent(WebSocketEvent Event, DateTimeOffset At) : Message;
-    /// <summary>
-    /// Emits mock WebSocket events on a timer.
-    /// </summary>
-    sealed record MockSocketTick(DateTimeOffset At) : Message;
-    /// <summary>
-    /// Clears the event log.
-    /// </summary>
+
+    /// <summary>Toggles the 250ms fast timer subscription.</summary>
+    sealed record ToggleFastTick : Message;
+
+    /// <summary>Toggles the custom subscription.</summary>
+    sealed record ToggleCustomSub : Message;
+
+    /// <summary>Clears the event log.</summary>
     sealed record ClearEvents : Message;
-    /// <summary>
-    /// No-op message for unused hooks.
-    /// </summary>
-    sealed record NoOp : Message;
 }
 
 /// <summary>
-/// Demo program showcasing subscription sources.
+/// Demo program showcasing available subscription sources.
 /// </summary>
 public class SubscriptionsDemo : Program<Model, Arguments>
 {
     /// <summary>
     /// Builds the initial model with safe defaults.
     /// </summary>
-    public static (Model, Command) Initialize(Url url, Arguments argument)
+    public static (Model, Command) Initialize(Arguments argument)
         => (new Model(
             TickCount: 0,
             LastTick: null,
-            IsVisible: true,
-            Width: 0,
-            Height: 0,
             AutoTick: true,
-            TrackMouse: false,
-            MouseX: 0,
-            MouseY: 0,
-            WebSocketEnabled: false,
-            MockWebSocketEnabled: false,
-            WebSocketUrl: "wss://echo.websocket.events",
+            FastTickCount: 0,
+            FastTickEnabled: false,
+            CustomSubCount: 0,
+            CustomSubEnabled: false,
             Events: [],
-            LastEventAt: null,
-            LastMouseLogAt: null), Commands.None);
-
-    /// <summary>
-    /// Ignores navigation events in this demo.
-    /// </summary>
-    public static Picea.Abies.Message OnLinkClicked(UrlRequest urlRequest) => new Message.NoOp();
-
-    /// <summary>
-    /// Ignores URL changes in this demo.
-    /// </summary>
-    public static Picea.Abies.Message OnUrlChanged(Url url) => new Message.NoOp();
+            LastEventAt: null), Commands.None);
 
     /// <summary>
     /// Composes subscriptions based on current model switches.
     /// </summary>
     public static Subscription Subscriptions(Model model)
     {
-        var subscriptions = new List<Subscription>
-        {
-            BrowserSubscriptions.OnResize(size => new Message.Resized(size, DateTimeOffset.UtcNow)),
-            BrowserSubscriptions.OnVisibilityChange(evt => new Message.VisibilityChanged(evt.State, DateTimeOffset.UtcNow))
-        };
+        var subscriptions = new List<Subscription>();
 
         if (model.AutoTick)
         {
-            subscriptions.Add(SubscriptionModule.Every(TimeSpan.FromMilliseconds(250), now => new Message.Tick(now)));
+            subscriptions.Add(Every(TimeSpan.FromSeconds(1), () => new Message.Tick()));
         }
 
-        if (model.TrackMouse)
+        if (model.FastTickEnabled)
         {
-            subscriptions.Add(BrowserSubscriptions.OnMouseMove(evt => new Message.MouseMoved(evt, DateTimeOffset.UtcNow)));
+            subscriptions.Add(Every("fast-tick", TimeSpan.FromMilliseconds(250), () => new Message.FastTick()));
         }
 
-        if (model.WebSocketEnabled && !string.IsNullOrWhiteSpace(model.WebSocketUrl))
+        if (model.CustomSubEnabled)
         {
-            subscriptions.Add(BrowserSubscriptions.WebSocket(
-                new WebSocketOptions(model.WebSocketUrl),
-                evt => new Message.SocketEvent(evt, DateTimeOffset.UtcNow)));
+            subscriptions.Add(Create("custom-counter", async (dispatch, ct) =>
+            {
+                var counter = 0;
+                using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+                while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
+                {
+                    counter++;
+                    dispatch(new Message.CustomEvent($"Event #{counter}"));
+                }
+            }));
         }
 
-        if (model.MockWebSocketEnabled)
-        {
-            subscriptions.Add(SubscriptionModule.Every(
-                "mock-websocket",
-                TimeSpan.FromSeconds(2),
-                now => new Message.MockSocketTick(now)));
-        }
-
-        return SubscriptionModule.Batch(subscriptions);
+        return subscriptions.Count > 0 ? Batch(subscriptions.ToArray()) : None;
     }
 
     /// <summary>
     /// Updates the model state from messages.
     /// </summary>
-    public static (Model model, Command command) Update(Picea.Abies.Message message, Model model)
+    public static (Model, Command) Transition(Model model, Picea.Abies.Message message)
         => message switch
         {
-            Message.Tick tick => (
+            Message.Tick => (
                 model with
                 {
                     TickCount = model.TickCount + 1,
-                    LastTick = tick.Now,
-                    Events = AddEvent(model.Events, "Tick", tick.Now),
-                    LastEventAt = tick.Now
+                    LastTick = DateTimeOffset.UtcNow,
+                    Events = AddEvent(model.Events, "Tick"),
+                    LastEventAt = DateTimeOffset.UtcNow
                 },
                 Commands.None
             ),
-            Message.VisibilityChanged visibility => (
+            Message.FastTick => (
                 model with
                 {
-                    IsVisible = visibility.State == VisibilityState.Visible,
-                    Events = AddEvent(model.Events, $"Visibility {visibility.State}", visibility.At),
-                    LastEventAt = visibility.At
+                    FastTickCount = model.FastTickCount + 1,
+                    Events = AddEvent(model.Events, "Fast tick"),
+                    LastEventAt = DateTimeOffset.UtcNow
                 },
                 Commands.None
             ),
-            Message.Resized resized => (
+            Message.CustomEvent e => (
                 model with
                 {
-                    Width = resized.Size.Width,
-                    Height = resized.Size.Height,
-                    Events = AddEvent(model.Events, $"Resize {resized.Size.Width}x{resized.Size.Height}", resized.At),
-                    LastEventAt = resized.At
+                    CustomSubCount = model.CustomSubCount + 1,
+                    Events = AddEvent(model.Events, $"Custom: {e.Value}"),
+                    LastEventAt = DateTimeOffset.UtcNow
                 },
-                Commands.None
-            ),
-            Message.MouseMoved moved => (
-                UpdateMouse(model, moved),
                 Commands.None
             ),
             Message.ToggleAutoTick => (
                 model with
                 {
                     AutoTick = !model.AutoTick,
-                    Events = AddEvent(model.Events, $"Auto tick {(model.AutoTick ? "off" : "on")}", DateTimeOffset.UtcNow),
+                    Events = AddEvent(model.Events, $"Timer {(model.AutoTick ? "off" : "on")}"),
                     LastEventAt = DateTimeOffset.UtcNow
                 },
                 Commands.None
             ),
-            Message.ToggleMouse => (
+            Message.ToggleFastTick => (
                 model with
                 {
-                    TrackMouse = !model.TrackMouse,
-                    Events = AddEvent(model.Events, $"Mouse tracking {(model.TrackMouse ? "off" : "on")}", DateTimeOffset.UtcNow),
+                    FastTickEnabled = !model.FastTickEnabled,
+                    FastTickCount = 0,
+                    Events = AddEvent(model.Events, $"Fast timer {(model.FastTickEnabled ? "off" : "on")}"),
                     LastEventAt = DateTimeOffset.UtcNow
                 },
                 Commands.None
             ),
-            Message.ToggleWebSocket => (
+            Message.ToggleCustomSub => (
                 model with
                 {
-                    WebSocketEnabled = !model.WebSocketEnabled,
-                    Events = AddEvent(model.Events, $"WebSocket {(model.WebSocketEnabled ? "off" : "on")}", DateTimeOffset.UtcNow),
+                    CustomSubEnabled = !model.CustomSubEnabled,
+                    CustomSubCount = 0,
+                    Events = AddEvent(model.Events, $"Custom sub {(model.CustomSubEnabled ? "off" : "on")}"),
                     LastEventAt = DateTimeOffset.UtcNow
-                },
-                Commands.None
-            ),
-            Message.ToggleMockWebSocket => (
-                model with
-                {
-                    MockWebSocketEnabled = !model.MockWebSocketEnabled,
-                    Events = AddEvent(model.Events, $"Mock WebSocket {(model.MockWebSocketEnabled ? "off" : "on")}", DateTimeOffset.UtcNow),
-                    LastEventAt = DateTimeOffset.UtcNow
-                },
-                Commands.None
-            ),
-            Message.WebSocketUrlChanged url => (
-                model with { WebSocketUrl = url.Value },
-                Commands.None
-            ),
-            Message.SocketEvent socketEvent => (
-                model with
-                {
-                    Events = AddEvent(model.Events, DescribeSocketEvent(socketEvent.Event), socketEvent.At),
-                    LastEventAt = socketEvent.At
-                },
-                Commands.None
-            ),
-            Message.MockSocketTick tick => (
-                model with
-                {
-                    Events = AddEvent(model.Events, $"WebSocket {WebSocketMessageKind.Text}: mock {tick.At:HH:mm:ss}", tick.At),
-                    LastEventAt = tick.At
                 },
                 Commands.None
             ),
@@ -270,7 +193,6 @@ public class SubscriptionsDemo : Program<Model, Arguments>
                 model with { Events = [] },
                 Commands.None
             ),
-            Message.NoOp => (model, Commands.None),
             _ => (model, Commands.None)
         };
 
@@ -281,39 +203,27 @@ public class SubscriptionsDemo : Program<Model, Arguments>
         => new("Subscriptions Demo",
             div([class_("container")], [
                 h1([], [text("Subscriptions Demo")]),
-                p([], [text("Live updates via timer, visibility, resize, mouse, and WebSocket subscriptions.")]),
+                p([], [text("Live updates via timer and custom subscription sources.")]),
                 div([class_("controls")], [
                     button([type("button"), onclick(new Message.ToggleAutoTick())], [
-                        text($"Auto tick: {(model.AutoTick ? "on" : "off")}")
+                        text($"Timer (1s): {(model.AutoTick ? "on" : "off")}")
                     ]),
-                    button([type("button"), onclick(new Message.ToggleMouse())], [
-                        text($"Mouse tracking: {(model.TrackMouse ? "on" : "off")}")
+                    button([type("button"), onclick(new Message.ToggleFastTick())], [
+                        text($"Fast timer (250ms): {(model.FastTickEnabled ? "on" : "off")}")
                     ]),
-                    button([type("button"), onclick(new Message.ToggleWebSocket())], [
-                        text($"WebSocket: {(model.WebSocketEnabled ? "on" : "off")}")
-                    ]),
-                    button([type("button"), onclick(new Message.ToggleMockWebSocket())], [
-                        text($"Mock WebSocket: {(model.MockWebSocketEnabled ? "on" : "off")}")
+                    button([type("button"), onclick(new Message.ToggleCustomSub())], [
+                        text($"Custom sub (3s): {(model.CustomSubEnabled ? "on" : "off")}")
                     ]),
                     button([type("button"), onclick(new Message.ClearEvents())], [
                         text("Clear events")
                     ])
                 ]),
                 div([class_("stats")], [
-                    p([], [text($"Visible: {model.IsVisible}")]),
-                    p([], [text($"Viewport: {model.Width}x{model.Height}")]),
-                    p([], [text($"Mouse: {model.MouseX}, {model.MouseY}")]),
                     p([], [text($"Ticks: {model.TickCount}")]),
+                    p([], [text($"Fast ticks: {model.FastTickCount}")]),
+                    p([], [text($"Custom events: {model.CustomSubCount}")]),
                     p([], [text($"Last tick: {(model.LastTick?.ToString("HH:mm:ss.fff") ?? "n/a")}")]),
                     p([], [text($"Last event: {(model.LastEventAt?.ToString("HH:mm:ss.fff") ?? "n/a")}")])
-                ]),
-                div([class_("websocket")], [
-                    label([], [text("WebSocket URL")]),
-                    input([
-                        type("text"),
-                        value(model.WebSocketUrl),
-                        oninput(data => new Message.WebSocketUrlChanged(data?.Value ?? string.Empty))
-                    ])
                 ]),
                 h2([], [text("Event log")]),
                 ul([class_("events")],
@@ -321,46 +231,14 @@ public class SubscriptionsDemo : Program<Model, Arguments>
             ])
         );
 
-    // Add a timestamped entry to the event log.
-    private static IReadOnlyList<string> AddEvent(IReadOnlyList<string> events, string entry, DateTimeOffset? at = null)
+    /// <summary>
+    /// Adds a timestamped entry to the event log.
+    /// </summary>
+    private static IReadOnlyList<string> AddEvent(IReadOnlyList<string> events, string entry)
     {
-        var stamp = at?.ToString("HH:mm:ss.fff");
-        var formatted = stamp is null ? entry : $"{stamp} {entry}";
+        var stamp = DateTimeOffset.UtcNow.ToString("HH:mm:ss.fff");
+        var formatted = $"{stamp} {entry}";
         var next = (string[])[formatted, .. events];
         return next.Length > 12 ? next[..12] : next;
     }
-
-    // Throttle mouse move logging while keeping coordinates fresh.
-    private static Model UpdateMouse(Model model, Message.MouseMoved moved)
-    {
-        var next = model with
-        {
-            MouseX = (int)moved.Data.ClientX,
-            MouseY = (int)moved.Data.ClientY
-        };
-
-        var last = model.LastMouseLogAt;
-        if (last is not null && moved.At - last.Value < TimeSpan.FromMilliseconds(200))
-        {
-            return next;
-        }
-
-        return next with
-        {
-            Events = AddEvent(next.Events, $"Mouse {next.MouseX}, {next.MouseY}", moved.At),
-            LastEventAt = moved.At,
-            LastMouseLogAt = moved.At
-        };
-    }
-
-    // Summarize WebSocket events for the log.
-    private static string DescribeSocketEvent(WebSocketEvent evt)
-        => evt switch
-        {
-            WebSocketEvent.Opened => "WebSocket opened",
-            WebSocketEvent.Errored => "WebSocket error",
-            WebSocketEvent.Closed closed => $"WebSocket closed ({closed.Code}) {closed.Reason}",
-            WebSocketEvent.MessageReceived message => $"WebSocket {message.Kind}: {message.Data}",
-            _ => "WebSocket event"
-        };
 }
