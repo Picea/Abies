@@ -12,6 +12,14 @@
     <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
   </ItemGroup>
 
+  <!-- Copy the canonical counter.css from the shared Counter project before build/publish. -->
+  <Target Name="SyncCounterCss" BeforeTargets="Build;ComputeFilesToPublish"
+          Inputs="..\Picea.Abies.Counter\wwwroot\counter.css"
+          Outputs="wwwroot\counter.css">
+    <Copy SourceFiles="..\Picea.Abies.Counter\wwwroot\counter.css"
+          DestinationFiles="wwwroot\counter.css" />
+  </Target>
+
   <!--
     Publish the WASM project before build so that its AppBundle is available
     for UseAbiesWasmFiles() to serve at runtime.

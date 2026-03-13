@@ -59,7 +59,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForWasmInteractivity(page);
 
-        await page.Locator("button.btn-increment").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Increase" }).ClickAsync();
 
         var count = page.Locator(".counter-value");
         await Assertions.Expect(count).ToHaveTextAsync("1");
@@ -72,7 +72,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForWasmInteractivity(page);
 
-        await page.Locator("button.btn-decrement").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Decrease" }).ClickAsync();
 
         var count = page.Locator(".counter-value");
         await Assertions.Expect(count).ToHaveTextAsync("-1");
@@ -85,12 +85,12 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForWasmInteractivity(page);
 
-        var incrementBtn = page.Locator("button.btn-increment");
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
         await incrementBtn.ClickAsync();
         await incrementBtn.ClickAsync();
         await Assertions.Expect(page.Locator(".counter-value")).ToHaveTextAsync("2");
 
-        await page.Locator("button.btn-reset").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Reset" }).ClickAsync();
         await Assertions.Expect(page.Locator(".counter-value")).ToHaveTextAsync("0");
     }
 
@@ -101,7 +101,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForWasmInteractivity(page);
 
-        var incrementBtn = page.Locator("button.btn-increment");
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
         for (var i = 0; i < 5; i++)
             await incrementBtn.ClickAsync();
 
@@ -122,7 +122,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         var deadline = DateTime.UtcNow + timeout;
 
         var count = page.Locator(".counter-value");
-        var incrementBtn = page.Locator("button.btn-increment");
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
 
         while (DateTime.UtcNow < deadline)
         {
@@ -136,7 +136,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
                 if (text is not null and not "0")
                 {
                     // Interactive! Reset and return.
-                    var resetBtn = page.Locator("button.btn-reset");
+                    var resetBtn = page.GetByRole(AriaRole.Button, new() { Name = "Reset" });
                     await resetBtn.ClickAsync(
                         new LocatorClickOptions { Timeout = 2_000 });
                     await Assertions.Expect(count)
@@ -144,9 +144,9 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
                     return;
                 }
             }
-            catch (TimeoutException)
+            catch (PlaywrightException)
             {
-                // Not ready yet — retry.
+                // Playwright operation timed out — WASM not interactive yet.
             }
 
             await Task.Delay(500);
