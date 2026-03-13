@@ -196,13 +196,16 @@ public static class Page
 
             case RenderMode.InteractiveWasm:
                 // Inline module that imports dotnet.js and starts the .NET runtime.
-                // This replaces the standalone main.js used in pure-WASM hosting.
+                // Sets __ABIES_DOTNET_STARTED so that when Runtime.Run() later imports
+                // abies.js (which also contains bootstrap code), the guard in abies.js
+                // skips the redundant dotnet.run() call.
                 // The import path MUST be absolute (leading /) so it resolves
                 // correctly regardless of the current page URL. A relative path
                 // like "./_framework/dotnet.js" would resolve to
                 // "/article/_framework/dotnet.js" when the page is at "/article/slug".
                 sb.Append("  <script type=\"module\">\n");
                 sb.Append("    import { dotnet } from '/_framework/dotnet.js';\n");
+                sb.Append("    globalThis.__ABIES_DOTNET_STARTED = true;\n");
                 sb.Append("    await dotnet.run();\n");
                 sb.Append("  </script>\n");
                 break;
