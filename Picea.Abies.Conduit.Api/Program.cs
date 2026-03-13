@@ -19,6 +19,8 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using KurrentDB.Client;
+using Npgsql;
 using Picea.Abies.Conduit.Api.Authentication;
 using Picea.Abies.Conduit.Api.Endpoints;
 using Picea.Abies.Conduit.Api.Infrastructure;
@@ -28,8 +30,6 @@ using Picea.Abies.Conduit.ReadStore.PostgreSQL;
 using Picea.Abies.Conduit.ServiceDefaults;
 using Picea.Glauca;
 using Picea.Glauca.KurrentDB;
-using KurrentDB.Client;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 

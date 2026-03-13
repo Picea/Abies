@@ -2,9 +2,9 @@
 // Profile E2E Tests — View profile, follow/unfollow, article tabs
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
