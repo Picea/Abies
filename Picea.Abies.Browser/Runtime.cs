@@ -17,20 +17,44 @@
 // All of this is now a single line:
 //   await Runtime.Run<CounterProgram, CounterModel, Unit>();
 //
-// This also eliminates main.js — the .NET side wires all callbacks directly
-// via JSImport, so the consumer's index.html only needs:
-//   <script type="module" src="./_framework/dotnet.js"></script>
+// Boot chain:
+//   1. Consumer index.html has: <script type="module" src="abies.js"></script>
+//   2. abies.js defines exports, imports dotnet.js, calls dotnet.run() (NO await)
+//      → Module evaluation completes immediately (exports available)
+//      → dotnet.run() fires asynchronously in the background
+//   3. .NET runtime starts → Program.Main() → Runtime.Run<>()
+//   4. Runtime.Run() calls JSHost.ImportAsync("Abies", "../abies.js")
+//      → Module already fully evaluated → returns cached namespace instantly
+//   5. Runtime.Run() wires callbacks, sets up events/navigation
+//   6. MVU loop starts, initial render paints the UI
+//
+// CRITICAL: dotnet.run() must NOT be awaited in abies.js.
+//   If it were, the module evaluation would block until dotnet.run() returns.
+//   But dotnet.run() → Runtime.Run() → JSHost.ImportAsync("abies.js") which
+//   waits for the module evaluation to finish → DEADLOCK.
+//
+// InteractiveWasm/Auto guard:
+//   In server-rendered mode (Page.cs), the server inlines its own bootstrap
+//   <script> that sets globalThis.__ABIES_DOTNET_STARTED = true before calling
+//   dotnet.run(). When Runtime.Run() later imports abies.js (first evaluation),
+//   the guard at the bottom of abies.js skips dotnet.run() to avoid
+//   double-bootstrap.
+//
+// The consumer's index.html only needs:
+//   <script type="module" src="abies.js"></script>
+//
+// No separate main.js or dotnet.js script tag is required — abies.js handles
+// the entire WASM bootstrap internally.
 //
 // See also:
+//   - abies.js — browser-side runtime + WASM bootstrap
 //   - Picea.Abies/Runtime.cs — platform-agnostic MVU execution loop
 //   - Interop.cs — JavaScript ↔ .NET bridge
-//   - abies.js — browser-side runtime
 // =============================================================================
 
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
-using Picea;
 
 namespace Picea.Abies.Browser;
 
@@ -109,7 +133,7 @@ public static class Runtime
         await JSHost.ImportAsync("Abies", "../abies.js");
 
         // Step 2: Wire callbacks from JS → .NET.
-        // This replaces the role previously played by main.js:
+        // The .NET side wires callbacks directly via JSImport:
         //   - DOM events fire → abies.js calls dispatchDomEvent → DispatchDomEvent [JSExport]
         //   - URL changes → abies.js calls onUrlChangedCallback → OnUrlChanged [JSExport]
         Interop.SetDispatchCallback(Interop.DispatchDomEvent);

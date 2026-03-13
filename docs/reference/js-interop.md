@@ -31,7 +31,7 @@ Key design decisions:
 
 - **One binary batch per render cycle** — all DOM mutations from a single transition are serialized into one `Span<byte>` and applied in a single `JSImport` call
 - **Event delegation** — one document-level listener per event type, not per-element listeners
-- **No main.js** — the .NET side wires all callbacks via `JSImport`, so the consumer's `index.html` only needs `<script type="module" src="./_framework/dotnet.js"></script>`
+- **Self-bootstrapping** — `abies.js` imports `dotnet.js` and calls `dotnet.run()` automatically, so the consumer's `index.html` only needs `<script type="module" src="abies.js"></script>`
 
 ## Module Loading
 

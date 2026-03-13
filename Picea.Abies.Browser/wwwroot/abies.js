@@ -1,7 +1,40 @@
 // =============================================================================
 // abies.js — Browser-Side Runtime for Abies
 // =============================================================================
-// This module is loaded by .NET WASM via JSHost.ImportAsync("Abies", "../abies.js").
+//
+// WASM Bootstrap:
+//   This module is both the browser-side runtime AND the WASM entry point.
+//   Consumer applications only need a single script tag in their index.html:
+//
+//     <script type="module" src="abies.js"></script>
+//
+//   The last lines of this file import dotnet.js and call dotnet.run(),
+//   which downloads WASM assets, starts the .NET runtime, and invokes
+//   Program.Main(). No separate main.js or dotnet.js script tag is needed.
+//
+//   Boot chain:
+//     1. Browser loads abies.js as an ES module (from <script> tag)
+//     2. abies.js defines all exports (DOM mutations, events, navigation)
+//     3. abies.js imports ./_framework/dotnet.js and calls dotnet.run()
+//     4. .NET runtime starts → Program.Main() runs
+//     5. Program.Main() calls Runtime.Run<TProgram, TModel, TArgument>()
+//     6. Runtime.Run() calls JSHost.ImportAsync("Abies", "../abies.js")
+//        → browser returns the CACHED module (ES modules evaluate once)
+//        → no re-execution of bootstrap code
+//     7. Runtime.Run() wires callbacks, sets up events/navigation
+//     8. MVU loop starts, initial render paints the UI
+//
+//   ES Module Idempotency (ECMAScript §15.2.1.16.5):
+//     Modules are evaluated exactly once per URL. When Runtime.Run() re-imports
+//     abies.js via JSHost.ImportAsync, the browser returns the cached module
+//     namespace without re-evaluating any top-level code. The bootstrap
+//     (import dotnet + dotnet.run()) runs once and only once.
+//
+//   InteractiveWasm/Auto guard:
+//     In server-rendered mode, the server inlines its own <script> that calls
+//     dotnet.run() and sets globalThis.__ABIES_DOTNET_STARTED = true. When
+//     Runtime.Run() later imports abies.js for the first time, the guard at
+//     the bottom of this file skips dotnet.run() to avoid double-bootstrap.
 //
 // Architecture:
 //   .NET produces binary patch batches (RenderBatchWriter.cs)
@@ -32,7 +65,6 @@
 //   The .NET side wires all callbacks via JSImport during Runtime.Run():
 //     setDispatchCallback(fn)    — passes DispatchDomEvent [JSExport]
 //     setOnUrlChangedCallback(fn) — passes OnUrlChanged [JSExport]
-//   This eliminates the need for a separate main.js bootstrap script.
 //
 // OpenTelemetry Integration:
 //   When <meta name="otel-verbosity"> (or legacy <meta name="abies-otel-verbosity">)
@@ -49,6 +81,7 @@
 //   If CDN loading fails, a no-op shim is used — the app still works.
 //
 // See also:
+//   - Picea.Abies.Browser/Runtime.cs — C# bootstrap (callback wiring, MVU start)
 //   - Picea.Abies.Browser/Interop.cs — JSImport/JSExport declarations
 //   - Picea.Abies/RenderBatchWriter.cs — binary serialization (.NET side)
 //   - Picea.Abies/DOM/Patch.cs — patch type definitions
@@ -954,7 +987,7 @@ let onUrlChangedDotNet = null;
 
 /**
  * Sets the .NET callback for URL change notifications.
- * Called from main.js after getting assembly exports.
+ * Called by Runtime.Run() via JSImport during initialization.
  * @param {Function} callback - The OnUrlChanged function from .NET.
  */
 export function setOnUrlChangedCallback(callback) {
@@ -963,9 +996,51 @@ export function setOnUrlChangedCallback(callback) {
 
 /**
  * Sets the .NET callback for dispatching DOM events.
- * Called from main.js after getting assembly exports.
+ * Called by Runtime.Run() via JSImport during initialization.
  * @param {Function} callback - The DispatchDomEvent function from .NET.
  */
 export function setDispatchCallback(callback) {
     dispatchDomEvent = callback;
+}
+
+// =============================================================================
+// WASM Bootstrap — Self-Initializing Module
+// =============================================================================
+// This section makes abies.js the single entry point for browser WASM apps.
+// Consumer index.html only needs: <script type="module" src="abies.js"></script>
+//
+// IMPORTANT: Do NOT use top-level `await` here!
+//
+// If abies.js uses `await dotnet.run()`, the module evaluation blocks until
+// dotnet.run() completes. But dotnet.run() starts the .NET runtime, which
+// calls Runtime.Run() → JSHost.ImportAsync("../abies.js"). JSHost.ImportAsync
+// waits for abies.js module evaluation to finish — creating a DEADLOCK:
+//
+//   abies.js awaits dotnet.run()
+//     → dotnet.run() starts .NET → Runtime.Run() → JSHost.ImportAsync("abies.js")
+//       → JSHost.ImportAsync waits for abies.js evaluation to complete
+//         → abies.js is waiting for dotnet.run() → DEADLOCK
+//
+// By calling dotnet.run() WITHOUT await, the module evaluation completes
+// immediately (all exports are available). When JSHost.ImportAsync later
+// requests abies.js, the browser returns the fully-evaluated cached module.
+//
+// Guard (__ABIES_DOTNET_STARTED):
+//   In InteractiveWasm/Auto render mode, the server inlines its own bootstrap
+//   script that calls dotnet.run() before abies.js is loaded. When Runtime.Run()
+//   later imports abies.js for the first time, the guard prevents a second
+//   dotnet.run() call which would fail (runtime already running).
+//
+//   Pure browser mode:  flag unset → bootstrap runs normally.
+//   Server-rendered:    flag set by inline script → bootstrap skipped.
+//
+// The import path './_framework/dotnet.js' is resolved relative to this module's
+// URL (the wwwroot root), which is where the .NET WASM SDK places dotnet.js.
+// =============================================================================
+
+import { dotnet } from './_framework/dotnet.js';
+
+if (!globalThis.__ABIES_DOTNET_STARTED) {
+    globalThis.__ABIES_DOTNET_STARTED = true;
+    dotnet.run();
 }
