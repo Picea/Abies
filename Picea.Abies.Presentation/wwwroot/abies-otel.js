@@ -92,12 +92,22 @@ function installFetchWrapper() {
             span.setAttribute("http.method", method);
             span.setAttribute("http.url", url);
 
-            // Inject traceparent header
-            const ctx = span.spanContext();
-            const headers = new Headers(init?.headers || {});
-            headers.set("traceparent", generateTraceparent(ctx));
-
-            const patchedInit = { ...init, headers };
+            // Inject traceparent header only for same-origin requests.
+            // Cross-origin injection can trigger CORS preflights (traceparent
+            // is not a CORS-safelisted header) and leaks trace context to
+            // third parties.
+            let patchedInit = init;
+            try {
+                const resolved = new URL(url, location.href);
+                if (resolved.origin === location.origin) {
+                    const ctx = span.spanContext();
+                    const headers = new Headers(init?.headers || {});
+                    headers.set("traceparent", generateTraceparent(ctx));
+                    patchedInit = { ...init, headers };
+                }
+            } catch {
+                // Invalid URL — skip header injection, let fetch handle the error
+            }
 
             return originalFetch
                 .call(this, input, patchedInit)
