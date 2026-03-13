@@ -9,22 +9,29 @@
     <ProjectReference Include="..\Picea.Abies.Browser\Picea.Abies.Browser.csproj" />
     <PackageReference Include="Praefixum" Version="2.0.1" />
   </ItemGroup>
-  <!-- Ensure a physical wwwroot/abies.js exists for the dev server -->
+  <!-- Ensure physical wwwroot/abies.js and abies-otel.js exist for the dev server -->
   <ItemGroup>
     <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
+    <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
     <Watch Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
+    <Watch Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
   </ItemGroup>
-  
-  <!-- Copy the canonical abies.js before build/publish -->
-  <Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish" Inputs="..\Picea.Abies.Browser\wwwroot\abies.js" Outputs="wwwroot\abies.js">
+
+  <!-- Copy the canonical abies.js and abies-otel.js before build/publish -->
+  <Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish"
+          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          Outputs="wwwroot\abies.js;wwwroot\abies-otel.js">
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies-otel.js" DestinationFiles="wwwroot\abies-otel.js" />
   </Target>
-  
+
   <!-- Remove the Picea.Abies.Browser project's copy from publish to avoid NETSDK1152 duplicate -->
   <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('\Picea.Abies.Browser\wwwroot\abies.js'))" />
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('/Picea.Abies.Browser/wwwroot/abies.js'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies-otel.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('\Picea.Abies.Browser\wwwroot\abies-otel.js'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies-otel.js' AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('/Picea.Abies.Browser/wwwroot/abies-otel.js'))" />
     </ItemGroup>
   </Target>
 </Project>
