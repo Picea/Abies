@@ -30,10 +30,10 @@
 //     The WASM project is automatically published during build via MSBuild.
 // =============================================================================
 
+using Picea;
 using Picea.Abies.Counter;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
-using Picea;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -53,6 +53,7 @@ var wasmAppBundlePath = Path.GetFullPath(Path.Combine(
     "Picea.Abies.Counter.Wasm", "bin", configuration,
     "net10.0", "browser-wasm", "AppBundle"));
 
+app.UseStaticFiles();
 app.UseAbiesWasmFiles(wasmAppBundlePath);
 
 // Map the Counter app in InteractiveWasm mode — serves initial HTML, no WebSocket.

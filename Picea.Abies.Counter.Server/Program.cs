@@ -16,15 +16,16 @@
 //     → http://localhost:5000
 // =============================================================================
 
+using Picea;
 using Picea.Abies.Counter;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
-using Picea;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.UseWebSockets();
+app.UseStaticFiles();
 app.UseAbiesStaticFiles();
 app.MapAbies<CounterProgram, CounterModel, Unit>(
     "/{**catch-all}",
