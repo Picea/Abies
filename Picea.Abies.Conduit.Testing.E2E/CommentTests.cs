@@ -83,7 +83,10 @@ public sealed class CommentTests : IAsyncLifetime
         await Expect(_page.Locator(".card .card-block p").First)
             .ToContainTextAsync(comment.Body, new() { Timeout = 15000 });
 
-        await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First.ClickAsync();
+        // The <i> icon element has zero dimensions (icon font may not load in headless),
+        // so use DispatchEventAsync which doesn't require the element to be visible.
+        await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First
+            .DispatchEventAsync("click");
 
         await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
             new() { Timeout = 10000 });
@@ -121,6 +124,7 @@ public sealed class CommentTests : IAsyncLifetime
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);

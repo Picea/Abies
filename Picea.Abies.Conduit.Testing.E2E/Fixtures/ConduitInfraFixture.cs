@@ -70,7 +70,7 @@ public sealed class ConduitInfraFixture
     public async Task InitializeAsync()
     {
         var builder = await DistributedApplicationTestingBuilder
-            .CreateAsync<Projects.Picea_Abies_AppHost>();
+            .CreateAsync<Projects.Picea_Abies_Conduit_AppHost>();
 
         _app = await builder.BuildAsync();
         await _app.StartAsync();

@@ -36,6 +36,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
     public async Task Register_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         await _page.GotoAsync("/register");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign up')");
 
         var uniqueName = $"e2euser{Guid.NewGuid():N}"[..20];
@@ -64,6 +65,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
         await _seeder.RegisterUserAsync(username, email, password);
 
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
 
         await _page.GetByPlaceholder("Email").FillAsync(email);
@@ -78,6 +80,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
     public async Task Login_WithInvalidCredentials_ShouldShowErrors()
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
 
         await _page.GetByPlaceholder("Email").FillAsync("nonexistent@test.com");
@@ -96,6 +99,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
         await _seeder.RegisterUserAsync(username, email, "password123");
 
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync("password123");

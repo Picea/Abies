@@ -48,7 +48,7 @@ public sealed class ProfileTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync($"/profile/{username}");
-
+        await _page.WaitForWasmReady();
         await Expect(_page.Locator(".user-info h4")).ToContainTextAsync(username, new() { Timeout = 15000 });
     }
 
@@ -171,6 +171,7 @@ public sealed class ProfileTests : IAsyncLifetime
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
