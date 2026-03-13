@@ -17,7 +17,7 @@
 
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Picea;
+using static Picea.Abies.Head;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -80,8 +80,9 @@ public sealed class CounterProgram : Program<CounterModel, Unit>
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The view is a pure function of the model. The CSS classes reference
-    /// styles defined in the host's index.html stylesheet.
+    /// The view is a pure function of the model. The stylesheet reference
+    /// uses the Abies brand palette defined in counter.css, served by
+    /// the host project's static file middleware.
     /// </para>
     /// </remarks>
     public static Document View(CounterModel model) =>
@@ -96,7 +97,8 @@ public sealed class CounterProgram : Program<CounterModel, Unit>
                     button([class_("btn"), onclick(new Increment())], [text("+")])
                 ]),
                 button([class_("reset"), onclick(new Reset())], [text("Reset")])
-            ]));
+            ]),
+            stylesheet("/counter.css"));
 
     /// <summary>
     /// No subscriptions needed for the counter.

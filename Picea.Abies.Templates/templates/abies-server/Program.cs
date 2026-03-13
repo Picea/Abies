@@ -7,6 +7,7 @@ using Picea;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
+using static Picea.Abies.Head;
 
 // =============================================================================
 // AbiesServerApp — Server-Rendered MVU Counter
@@ -25,6 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.UseWebSockets();
+app.UseStaticFiles();
 app.UseAbiesStaticFiles();
 app.MapAbies<Counter, CounterModel, Unit>(
     "/{**catch-all}",
@@ -149,7 +151,8 @@ public sealed class Counter : Program<CounterModel, Unit>
                     a([href("https://github.com/Picea/Abies")], [text("Abies")]),
                     text(" \u2014 Functional web apps in .NET")
                 ])
-            ])
+            ]),
+            stylesheet("/site.css")
         );
 
     /// <summary>
