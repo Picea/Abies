@@ -1,5 +1,3 @@
-using Picea.Abies;
-using Picea.Abies.Benchmarks;
 using BenchmarkDotNet.Attributes;
 
 namespace Picea.Abies.Benchmarks;
@@ -32,9 +30,7 @@ public class UrlParsingBenchmarks
         }
         foreach (var url in _testUrls)
         {
-#pragma warning disable CA1416 // Validate platform compatibility
-            Url.Create(new(url));
-#pragma warning restore CA1416 // Validate platform compatibility
+            Navigation.ParseUrl(url);
             // Perform operations if necessary
         }
     }

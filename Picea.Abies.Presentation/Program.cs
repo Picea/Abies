@@ -12,17 +12,18 @@
 
 using System.Runtime.Versioning;
 using Picea.Abies;
+using Picea.Abies.Browser;
 using Picea.Abies.DOM;
 using Picea.Abies.Html;
-using static Picea.Abies.Browser.BrowserSubscriptions;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
-using static Picea.Abies.SubscriptionModule;
+using static Picea.Abies.Subscriptions.SubscriptionModule;
 
 [assembly: SupportedOSPlatform("browser")]
 
-await Runtime.Run<Presentation, Arguments, Model>(new Arguments());
+await Runtime.Run<Presentation, Model, Arguments>(new Arguments());
 
 // ─── Data types ─────────────────────────────────────────────────────────────────
 
@@ -83,29 +84,10 @@ public interface Message : Picea.Abies.Message
 
 public class Presentation : Program<Model, Arguments>
 {
-    public static (Model, Command) Initialize(Url url, Arguments _)
-    {
-        var mode = PresentationMode.Menu;
-        var slideIndex = 0;
+    public static (Model, Command) Initialize(Arguments _) =>
+        (new Model(PresentationMode.Menu, 0, 0, 0, null, false, false, 0, 0, [], null, ""), Commands.None);
 
-        if (TryGetSlideIndex(url, FullSlides, out var fi))
-        {
-            mode = PresentationMode.Full;
-            slideIndex = fi;
-        }
-        else if (TryGetSlideIndex(url, ExpressSlides, out var ei))
-        {
-            mode = PresentationMode.Express;
-            slideIndex = ei;
-        }
-
-        return (new Model(mode, slideIndex, 0, 0, null, false, false, 0, 0, [], null, ""), Commands.None);
-    }
-
-    public static Picea.Abies.Message OnUrlChanged(Url url) => new Message.NoOp();
-    public static Picea.Abies.Message OnLinkClicked(UrlRequest urlRequest) => new Message.NoOp();
-
-    public static (Model model, Command command) Update(Picea.Abies.Message message, Model model) => message switch
+    public static (Model, Command) Transition(Model model, Picea.Abies.Message message) => message switch
     {
         Message.SelectPresentation m => (model with { Mode = m.Mode, SlideIndex = 0, Log = [], DemoCount = 0, TickCount = 0, LastTick = null, DemoTimer = false, TrackMouse = false, DemoInput = "" }, Commands.None),
         Message.BackToMenu => (model with { Mode = PresentationMode.Menu, SlideIndex = 0, Log = [], DemoCount = 0, TickCount = 0, LastTick = null, DemoTimer = false, TrackMouse = false, DemoInput = "" }, Commands.None),
@@ -126,20 +108,14 @@ public class Presentation : Program<Model, Arguments>
 
     public static Subscription Subscriptions(Model model)
     {
-        var subs = new List<Subscription>
-        {
-            OnKeyDown(data => new Message.KeyPressed(data))
-        };
+        var subs = new List<Subscription>();
+
         if (model.DemoTimer)
         {
-            subs.Add(Every(TimeSpan.FromSeconds(1), at => new Message.Tick(at)));
+            subs.Add(Every(TimeSpan.FromSeconds(1), () => new Message.Tick(DateTimeOffset.UtcNow)));
         }
 
-        if (model.TrackMouse)
-        {
-            subs.Add(OnMouseMove(data => new Message.MouseMoved((int)data.ClientX, (int)data.ClientY)));
-        }
-        return Batch(subs);
+        return subs.Count > 0 ? Batch(subs.ToArray()) : None;
     }
 
     // ── View ──
@@ -401,13 +377,12 @@ public class Presentation : Program<Model, Arguments>
     private static bool TryGetSlideIndex(Url url, Slide[] slides, out int index)
     {
         index = 0;
-        var fragment = url.Fragment;
-        if (fragment is null)
+        if (!url.Fragment.IsSome)
         {
             return false;
         }
 
-        string frag = fragment;
+        var frag = url.Fragment.Value;
         if (!frag.StartsWith("slide-"))
         {
             return false;

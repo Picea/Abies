@@ -13,16 +13,15 @@
 // =============================================================================
 
 using System.Collections.Concurrent;
-using Picea.Abies.Conduit.Api.Infrastructure;
-using Picea.Abies.Conduit.Domain.Article;
-using Picea.Abies.Conduit.Domain.User;
-using Picea.Abies.Conduit.ReadModel;
-using Picea;
-using Picea.Glauca.EventSourcing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Picea.Abies.Conduit.Api.Infrastructure;
+using Picea.Abies.Conduit.Domain.Article;
+using Picea.Abies.Conduit.Domain.User;
+using Picea.Abies.Conduit.ReadModel;
+using Picea.Glauca;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
