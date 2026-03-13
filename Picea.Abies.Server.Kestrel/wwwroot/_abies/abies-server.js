@@ -461,7 +461,19 @@
     const registeredEventTypes = new Set();
     let ws = null;
 
+    // =========================================================================
+    // WASM Handoff (InteractiveAuto)
+    // =========================================================================
+    // In Auto mode, the server renders interactively via WebSocket while WASM
+    // downloads. Once WASM boots and applies its first patch batch (signaled
+    // by data-abies-mode="wasm" on <body>), the server session is no longer
+    // needed. We close the WebSocket and stop all server-side event handling
+    // so that only WASM controls the DOM from that point forward.
+    // =========================================================================
+    let wasmActive = false;
+
     function sendEvent(commandId, eventName, eventData) {
+        if (wasmActive) return;
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
                 commandId: commandId,
@@ -519,12 +531,14 @@
     function setupNavigation() {
         // Listen for popstate events (back/forward)
         window.addEventListener("popstate", function () {
+            if (wasmActive) return; // WASM's own listener handles this
             const path = window.location.pathname + window.location.search + window.location.hash;
             sendEvent(URL_CHANGED_COMMAND_ID, "urlchange", path);
         });
 
         // Intercept clicks on <a> elements for client-side routing
         document.addEventListener("click", function (event) {
+            if (wasmActive) return; // WASM's own listener handles this
             if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
                 return;
             }
@@ -608,7 +622,7 @@
     // WebSocket Connection
     // =========================================================================
 
-    function connect(wsPath) {
+    function connect(wsPath, isAutoMode) {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         // Append the current page path as a query parameter so the server
         // can initialize the MVU session at the correct route. The Origin
@@ -628,6 +642,14 @@
         };
 
         ws.onmessage = function (event) {
+            // In Auto mode, stop applying server patches once WASM has taken
+            // over rendering. The MutationObserver (below) is the primary
+            // mechanism; this guard is a safety net for patches that arrive
+            // between the attribute change and the observer firing.
+            if (wasmActive) {
+                return;
+            }
+
             if (event.data instanceof ArrayBuffer) {
                 // Binary frame: patch batch from server
                 const bytes = new Uint8Array(event.data);
@@ -654,6 +676,27 @@
         ws.onerror = function () {
             // Error will be followed by onclose, so cleanup happens there.
         };
+
+        // In Auto mode, watch for the WASM handoff signal. Once WASM has
+        // applied its first render batch (setting data-abies-mode="wasm"
+        // on <body>), the server session is no longer needed. We close
+        // the WebSocket immediately so no further server patches arrive
+        // and collide with the WASM-rendered DOM.
+        if (isAutoMode) {
+            const observer = new MutationObserver(function () {
+                if (document.body.getAttribute("data-abies-mode") === "wasm") {
+                    wasmActive = true;
+                    if (ws) {
+                        ws.close();
+                    }
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, {
+                attributes: true,
+                attributeFilter: ["data-abies-mode"]
+            });
+        }
     }
 
     // =========================================================================
@@ -674,6 +717,11 @@
             return;
         }
 
+        // In Auto mode (data-auto="true"), the server provides interactivity
+        // via WebSocket while WASM downloads. Once WASM is ready, we hand
+        // off to it and tear down the server connection.
+        const isAutoMode = scriptTag.getAttribute("data-auto") === "true";
+
         // Register all common event types for delegation
         COMMON_EVENT_TYPES.forEach(registerEventType);
 
@@ -681,7 +729,7 @@
         setupNavigation();
 
         // Connect to the server
-        connect(wsPath);
+        connect(wsPath, isAutoMode);
     }
 
     // Run on script load (this is a regular <script>, not type="module",

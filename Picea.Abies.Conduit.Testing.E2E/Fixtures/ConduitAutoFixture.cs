@@ -5,7 +5,6 @@
 using Picea.Abies.Conduit.App;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
-using Picea;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
@@ -55,11 +54,8 @@ public sealed class ConduitAutoFixture : IAsyncLifetime
     {
         _infra = await SharedInfra.GetAsync();
 
-        const int port = 5000;
-        BaseUrl = $"http://localhost:{port}";
-
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(BaseUrl);
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
 
         _app = builder.Build();
 
@@ -84,22 +80,15 @@ public sealed class ConduitAutoFixture : IAsyncLifetime
         _app.UseAbiesWasmFiles(wasmAppBundlePath);
         _app.UseAbiesStaticFiles();
 
-        _app.MapAbies<ConduitProgram, Model, Unit>(
+        _app.MapAbies<ConduitProgram, Model, string>(
             "/{**catch-all}",
             new RenderMode.InteractiveAuto(),
-            interpreter: ConduitInterpreter.Interpret);
+            interpreter: ConduitInterpreter.Interpret,
+            argument: _infra.ApiUrl);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _app.RunAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ConduitAutoFixture] Kestrel error: {ex}");
-            }
-        });
+        await _app.StartAsync();
+        BaseUrl = _app.Urls.First();
+        Console.WriteLine($"[ConduitAutoFixture] Kestrel started on {BaseUrl}");
         await WaitForServerReady(BaseUrl);
 
         _playwright = await Playwright.CreateAsync();
