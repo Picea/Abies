@@ -2,12 +2,12 @@
 // ConduitAutoFixture — E2E Test Infrastructure for InteractiveAuto Conduit
 // =============================================================================
 
-using Picea.Abies.Conduit.App;
-using Picea.Abies.Server;
-using Picea.Abies.Server.Kestrel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
+using Picea.Abies.Conduit.App;
+using Picea.Abies.Server;
+using Picea.Abies.Server.Kestrel;
 
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
