@@ -22,7 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Conduit\Picea.Abies.Conduit.csproj" />
     <ProjectReference Include="..\Picea.Abies.Conduit.ReadStore.PostgreSQL\Picea.Abies.Conduit.ReadStore.PostgreSQL.csproj" />
-    <PackageReference Include="Picea" Version="1.0.22-*" />
+    <PackageReference Include="Picea" Version="1.0.*-*" />
     <PackageReference Include="Picea.Glauca" Version="0.1.*-*" />
   </ItemGroup>
 
