@@ -25,8 +25,9 @@ using Picea.Abies.Conduit.Api.Infrastructure;
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadStore.PostgreSQL;
-using Picea.Glauca.EventSourcing;
-using Picea.Glauca.EventSourcing.KurrentDB;
+using Picea.Abies.Conduit.ServiceDefaults;
+using Picea.Glauca;
+using Picea.Glauca.KurrentDB;
 using KurrentDB.Client;
 using Npgsql;
 
