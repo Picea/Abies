@@ -25,4 +25,11 @@
     <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
   </ItemGroup>
 
+  <!-- Pack abies.js files into NuGet contentFiles and ship the .targets that copies them -->
+  <ItemGroup>
+    <None Include="wwwroot/abies.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
+    <None Include="wwwroot/abies-otel.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
+    <None Include="build/Picea.Abies.Browser.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
 </Project>

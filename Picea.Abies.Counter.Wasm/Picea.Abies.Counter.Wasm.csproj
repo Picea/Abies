@@ -36,12 +36,14 @@
           SkipUnchangedFiles="true" />
   </Target>
 
-  <!-- Copy the canonical abies.js from the Picea.Abies.Browser library to AppBundle. -->
+  <!-- Copy the canonical abies.js and abies-otel.js from the Picea.Abies.Browser library to AppBundle. -->
   <Target Name="CopyAbiesJs" AfterTargets="CopyWwwrootToAppBundle"
-          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js"
-          Outputs="$(OutputPath)AppBundle\abies.js">
+          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          Outputs="$(OutputPath)AppBundle\abies.js;$(OutputPath)AppBundle\abies-otel.js">
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js"
           DestinationFiles="$(OutputPath)AppBundle\abies.js" />
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          DestinationFiles="$(OutputPath)AppBundle\abies-otel.js" />
   </Target>
 
 </Project>
