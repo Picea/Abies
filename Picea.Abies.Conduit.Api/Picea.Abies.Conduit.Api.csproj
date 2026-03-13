@@ -10,10 +10,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Conduit\Picea.Abies.Conduit.csproj" />
     <ProjectReference Include="..\Picea.Abies.Conduit.ReadStore.PostgreSQL\Picea.Abies.Conduit.ReadStore.PostgreSQL.csproj" />
-    <PackageReference Include="Picea" Version="1.0.0-*" />
-    <PackageReference Include="Picea.Glauca" Version="1.0.0-*" />
-    <PackageReference Include="Picea.Glauca.KurrentDB" Version="1.0.0-*" />
-    <ProjectReference Include="..\Picea.Abies.ServiceDefaults\Picea.Abies.ServiceDefaults.csproj" />
+    <PackageReference Include="Picea" Version="1.0.22-*" />
+    <PackageReference Include="Picea.Glauca" Version="0.1.*-*" />
+    <PackageReference Include="Picea.Glauca.KurrentDB" Version="0.1.*-*" />
+    <ProjectReference Include="..\Picea.Abies.Conduit.ServiceDefaults\Picea.Abies.Conduit.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -26,7 +26,7 @@ using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadStore.PostgreSQL;
 using Picea;
-using Picea.Glauca.EventSourcing;
+using Picea.Glauca;
 using Npgsql;
 
 namespace Picea.Abies.Conduit.Api.Infrastructure;
@@ -46,7 +46,7 @@ public sealed class UserRunner()
     public static ValueTask<AggregateRunner<User, UserState, UserCommand, UserEvent, UserEffect, UserError, Unit>> Load(
         EventStore<UserEvent> store, string streamId, CancellationToken ct = default) =>
         AggregateRunner<User, UserState, UserCommand, UserEvent, UserEffect, UserError, Unit>
-            .Load(store, streamId, default, cancellationToken: ct);
+            .Load(store, streamId, default, ct);
 }
 
 /// <summary>
@@ -64,7 +64,7 @@ public sealed class ArticleRunner()
     public static ValueTask<AggregateRunner<Article, ArticleState, ArticleCommand, ArticleEvent, ArticleEffect, ArticleError, Unit>> Load(
         EventStore<ArticleEvent> store, string streamId, CancellationToken ct = default) =>
         AggregateRunner<Article, ArticleState, ArticleCommand, ArticleEvent, ArticleEffect, ArticleError, Unit>
-            .Load(store, streamId, default, cancellationToken: ct);
+            .Load(store, streamId, default, ct);
 }
 
 /// <summary>
