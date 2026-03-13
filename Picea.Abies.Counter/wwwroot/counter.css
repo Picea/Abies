@@ -1,0 +1,272 @@
+/* =============================================================================
+ * Abies Counter — Fluent Design 2 / Abies Brand Palette
+ * =============================================================================
+ * Matches the Abies Presentation design system: light theme, Mica background,
+ * Fluent-inspired tokens, Abies brand accent green.
+ *
+ * Token architecture:
+ *   Primitive → Brand / Neutral ramps
+ *   Semantic  → colorNeutral*, colorBrand*
+ *   Component → .counter, .btn, .reset
+ *
+ * Ratio: 70% neutrals · 20% Abies greens · 10% accents
+ * ========================================================================== */
+
+/* ── Design Tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* Typography */
+  --font-family-base: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-family-mono: "Cascadia Mono", "Fira Code", ui-monospace, monospace;
+  --font-size-100: 12px;
+  --font-size-200: 13px;
+  --font-size-300: 14px;
+  --font-size-400: 16px;
+  --font-size-500: 20px;
+  --font-size-600: 30px;
+  --font-size-700: 40px;
+  --font-size-900: 56px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+
+  /* Radius */
+  --radius-1: 4px;
+  --radius-2: 6px;
+  --radius-3: 10px;
+  --radius-4: 14px;
+  --radius-round: 9999px;
+
+  /* Stroke */
+  --stroke-1: 1px;
+  --stroke-2: 2px;
+
+  /* Brand ramp */
+  --abies-brand-50: #F4F8EA;
+  --abies-brand-100: #E7F1CC;
+  --abies-brand-200: #D0E39B;
+  --abies-brand-300: #B7D56A;
+  --abies-brand-400: #9FC744;
+  --abies-brand-500: #89B42B;
+  --abies-brand-600: #71922D;
+  --abies-brand-700: #6D9026;
+  --abies-brand-800: #4C641A;
+  --abies-brand-900: #2E3D10;
+
+  /* Neutrals */
+  --abies-neutral-0: #FFFFFF;
+  --abies-neutral-50: #FAFAFA;
+  --abies-neutral-100: #F2F4F7;
+  --abies-neutral-200: #E4E7EC;
+  --abies-neutral-300: #D0D5DD;
+  --abies-neutral-400: #98A2B3;
+  --abies-neutral-500: #667085;
+  --abies-neutral-600: #475467;
+  --abies-neutral-700: #344054;
+  --abies-neutral-800: #1D2939;
+  --abies-neutral-900: #101828;
+
+  /* Mica wash */
+  --abies-mica: radial-gradient(
+    circle at 20% 20%,
+    rgba(137,180,43,0.18) 0%,
+    rgba(46,144,250,0.10) 35%,
+    rgba(0,0,0,0.00) 70%
+  );
+
+  --abies-focus-ring: rgba(137,180,43,0.42);
+  --abies-on-accent: #0B1220;
+
+  /* Semantic aliases (light theme) */
+  --colorNeutralBackground1: var(--abies-neutral-0);
+  --colorNeutralBackground2: #F8FAFC;
+  --colorNeutralBackground3: var(--abies-neutral-100);
+  --colorNeutralForeground1: var(--abies-neutral-900);
+  --colorNeutralForeground2: var(--abies-neutral-600);
+  --colorNeutralForeground3: var(--abies-neutral-500);
+  --colorNeutralStroke1: var(--abies-neutral-200);
+  --colorNeutralStroke2: var(--abies-neutral-300);
+
+  --colorBrandBackground: var(--abies-brand-500);
+  --colorBrandBackgroundHover: var(--abies-brand-600);
+  --colorBrandBackgroundActive: var(--abies-brand-700);
+  --colorBrandForeground1: var(--abies-on-accent);
+  --colorBrandForeground2: var(--abies-brand-500);
+  --colorBrandStroke1: var(--abies-brand-500);
+  --colorBrandTint: var(--abies-brand-100);
+  --colorBrandTintStroke: var(--abies-brand-200);
+  --colorFocusRing: var(--abies-focus-ring);
+
+  /* Shadows */
+  --shadow-2: 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-4: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-8: 0 12px 32px rgba(0,0,0,0.12);
+
+  /* Motion */
+  --transition-fast: 0.2s ease;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+
+body {
+  margin: 0;
+  font-family: var(--font-family-base);
+  color: var(--colorNeutralForeground1);
+  background:
+    var(--abies-mica),
+    radial-gradient(
+      circle at top,
+      var(--colorNeutralBackground1) 0%,
+      var(--colorNeutralBackground2) 45%,
+      var(--colorNeutralBackground3) 100%
+    );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* ── Counter Card ─────────────────────────────────────────────────────────── */
+
+.counter {
+  text-align: center;
+  padding: var(--space-9) var(--space-9);
+  background: var(--colorNeutralBackground1);
+  border: var(--stroke-1) solid var(--colorNeutralStroke1);
+  border-radius: var(--radius-4);
+  box-shadow: var(--shadow-8);
+  animation: rise var(--transition-fast);
+}
+
+h1 {
+  margin: 0 0 var(--space-7);
+  font-size: var(--font-size-600);
+  font-weight: 600;
+  color: var(--abies-brand-800);
+  letter-spacing: -0.01em;
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-7);
+}
+
+.count {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-900);
+  font-weight: 700;
+  min-width: 100px;
+  color: var(--colorNeutralForeground1);
+  user-select: none;
+  line-height: 1;
+}
+
+/* ── Primary Buttons (±) ─────────────────────────────────────────────────── */
+
+.btn {
+  font-size: var(--font-size-500);
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: var(--radius-round);
+  background: var(--colorBrandBackground);
+  color: var(--colorBrandForeground1);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 0.1s ease;
+}
+
+.btn:hover {
+  background: var(--colorBrandBackgroundHover);
+  box-shadow: var(--shadow-4);
+  transform: scale(1.06);
+}
+
+.btn:active {
+  background: var(--colorBrandBackgroundActive);
+  transform: scale(0.96);
+}
+
+.btn:focus-visible {
+  outline: var(--stroke-2) solid var(--colorFocusRing);
+  outline-offset: var(--space-1);
+}
+
+/* ── Reset Button ─────────────────────────────────────────────────────────── */
+
+.reset {
+  padding: var(--space-2) var(--space-6);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-300);
+  font-weight: 600;
+  border: var(--stroke-1) solid var(--colorBrandStroke1);
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--colorBrandForeground2);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.reset:hover {
+  background: var(--colorBrandTint);
+  border-color: var(--colorBrandTintStroke);
+  box-shadow: var(--shadow-2);
+}
+
+.reset:active {
+  background: var(--colorBrandBackground);
+  border-color: var(--colorBrandStroke1);
+  color: var(--colorBrandForeground1);
+}
+
+.reset:focus-visible {
+  outline: var(--stroke-2) solid var(--colorFocusRing);
+  outline-offset: var(--space-1);
+}
+
+/* ── Loading Placeholder ──────────────────────────────────────────────────── */
+
+#loading {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--font-size-400);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(var(--space-2)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .counter { animation: none; }
+  .btn, .reset { transition: none; }
+}

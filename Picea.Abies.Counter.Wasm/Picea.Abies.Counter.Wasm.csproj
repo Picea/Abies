@@ -18,6 +18,14 @@
     <ProjectReference Include="..\Picea.Abies.Counter\Picea.Abies.Counter.csproj" />
   </ItemGroup>
 
+  <!-- Copy the canonical counter.css from the shared Counter project before build. -->
+  <Target Name="SyncCounterCss" BeforeTargets="Build"
+          Inputs="..\Picea.Abies.Counter\wwwroot\counter.css"
+          Outputs="wwwroot\counter.css">
+    <Copy SourceFiles="..\Picea.Abies.Counter\wwwroot\counter.css"
+          DestinationFiles="wwwroot\counter.css" />
+  </Target>
+
   <!-- Copy wwwroot files to the AppBundle output directory after WASM bundle generation. -->
   <Target Name="CopyWwwrootToAppBundle" AfterTargets="WasmGenerateAppBundle">
     <ItemGroup>

@@ -1042,5 +1042,5 @@ import { dotnet } from './_framework/dotnet.js';
 
 if (!globalThis.__ABIES_DOTNET_STARTED) {
     globalThis.__ABIES_DOTNET_STARTED = true;
-    dotnet.run();
+    dotnet.run().catch(err => console.error('[abies] .NET WASM startup failed:', err));
 }
