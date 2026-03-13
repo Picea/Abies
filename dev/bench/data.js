@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773396255602,
+  "lastUpdate": 1773396256732,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12538,6 +12538,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.89742660522461,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "1ad5919c00ed59cd8d5c0c11b983233c334cd166",
+          "message": "style: fix lint — format E2E tests and rename private static fields with _ prefix",
+          "timestamp": "2026-03-13T10:55:36+01:00",
+          "tree_id": "e8e940ad08ca53307ad2ed3248113560ba18218f",
+          "url": "https://github.com/Picea/Abies/commit/1ad5919c00ed59cd8d5c0c11b983233c334cd166"
+        },
+        "date": 1773396256387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.07511234283447,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.88261413574219,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
