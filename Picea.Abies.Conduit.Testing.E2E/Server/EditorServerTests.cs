@@ -70,7 +70,7 @@ public sealed class EditorServerTests : IAsyncLifetime
         await _seeder.WaitForArticleAsync(slug);
         await _page.NavigateInApp($"/article/{slug}");
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync(title, new() { Timeout = 15000 });
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(title, new() { Timeout = 15000 });
     }
 
     [Fact]

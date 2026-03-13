@@ -74,6 +74,7 @@ public sealed class SettingsTests : IAsyncLifetime
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
+        await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
