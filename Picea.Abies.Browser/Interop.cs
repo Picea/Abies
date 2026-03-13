@@ -160,9 +160,9 @@ public static partial class Interop
     // =========================================================================
     // Callback Wiring (.NET → JavaScript)
     // =========================================================================
-    // These methods wire the [JSExport] callbacks into abies.js, replacing
-    // the role previously played by main.js. The .NET side passes managed
-    // delegates to JS, eliminating the need for a separate bootstrap script.
+    // These methods wire the [JSExport] callbacks into abies.js. The .NET side
+    // passes managed delegates to JS during Runtime.Run(), so the consumer's
+    // index.html only needs: <script type="module" src="abies.js"></script>
     // =========================================================================
 
     /// <summary>
