@@ -5,11 +5,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Embed wwwroot files as manifest-based resources inside the DLL.
+         This ensures abies-server.js is always available regardless of how
+         the consumer references the package (project ref or NuGet).
+         UseAbiesStaticFiles() serves from these embedded resources with a
+         physical-file fallback for development hot-reload scenarios. -->
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
-  <!-- Embed wwwroot as static web assets so consuming apps can serve them -->
   <ItemGroup>
-    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" PackageCopyToOutput="true" PackageFlatten="false" />
+    <!-- Embed wwwroot into the assembly for ManifestEmbeddedFileProvider -->
+    <EmbeddedResource Include="wwwroot\**" />
+    <!-- Copy to output for project-reference consumers (development).
+         Pack="false" prevents NuGet contentFiles conflict with template-bundled copies. -->
+    <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" Pack="false" />
   </ItemGroup>
 
   <!-- NuGet package metadata -->
@@ -27,6 +36,10 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- Required for GenerateEmbeddedFilesManifest MSBuild targets.
+         PrivateAssets="all" keeps this as a build-time-only dependency;
+         the types are already available via the FrameworkReference. -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.0-*" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
