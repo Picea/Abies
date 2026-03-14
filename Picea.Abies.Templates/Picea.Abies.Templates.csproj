@@ -47,17 +47,11 @@
   </Target>
 
   <!--
-    Sync abies-server.js from the canonical source (Picea.Abies.Server.Kestrel/wwwroot/_abies/)
-    into the server template's wwwroot/_abies/ before build/pack.
-    While UseAbiesStaticFiles() now serves from embedded resources (no file copying needed),
-    bundling the JS directly ensures the template works even if the user removes that call
-    and relies on standard UseStaticFiles() only.
+    NOTE: The server template does NOT bundle abies-server.js.
+    The Picea.Abies.Server.Kestrel package embeds it in the DLL and
+    UseAbiesStaticFiles() serves it via ManifestEmbeddedFileProvider.
+    Bundling a copy in the template's wwwroot/ would conflict with the
+    NuGet package's copy, causing NETSDK1152 (duplicate static web asset).
   -->
-  <Target Name="SyncAbiesServerJsToTemplates" BeforeTargets="Build;Pack"
-          Inputs="..\Picea.Abies.Server.Kestrel\wwwroot\_abies\abies-server.js"
-          Outputs="templates\abies-server\wwwroot\_abies\abies-server.js">
-    <Copy SourceFiles="..\Picea.Abies.Server.Kestrel\wwwroot\_abies\abies-server.js"
-          DestinationFolder="templates\abies-server\wwwroot\_abies\" />
-  </Target>
 
 </Project>
