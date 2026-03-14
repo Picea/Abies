@@ -14,26 +14,15 @@ await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 /// </summary>
 public record Model(int Count);
 
-// ─── Messages ───────────────────────────────────────────────────────────────
-// Messages represent all possible events in your application.
-// Each message type triggers a specific state transition.
-
 /// <summary>
-/// Increment the counter by 1.
+/// Message to increment the counter.
 /// </summary>
 public record Increment : Message;
 
 /// <summary>
-/// Decrement the counter by 1.
+/// Message to decrement the counter.
 /// </summary>
 public record Decrement : Message;
-
-/// <summary>
-/// Reset the counter to 0.
-/// </summary>
-public record Reset : Message;
-
-// ─── Program ────────────────────────────────────────────────────────────────
 
 /// <summary>
 /// Counter application implementing the MVU pattern.
@@ -54,7 +43,6 @@ public class Counter : Program<Model, Unit>
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
-            Reset => (new Model(0), Commands.None),
             _ => (model, Commands.None)
         };
 
@@ -62,27 +50,41 @@ public class Counter : Program<Model, Unit>
     /// Render the current model as HTML.
     /// </summary>
     public static Document View(Model model)
-        => new("Abies Counter",
+        => new("AbiesApp",
             div([class_("app")],
             [
-                div([class_("header")],
+                // Header
+                header([class_("topbar")],
                 [
-                    h1([], [text("\ud83c\udf32 Abies Counter")]),
-                    p([class_("subtitle")], [text("Model-View-Update for .NET WebAssembly")])
+                    div([class_("brand")],
+                    [
+                        img([class_("brand-logo"), src("https://avatars.githubusercontent.com/u/188364441?v=4"), alt("Abies logo")]),
+                        div([class_("brand-meta")],
+                        [
+                            span([class_("brand-wordmark")], [text("Abies")]),
+                            span([class_("brand-subtitle")], [text("MVU Counter Example")])
+                        ])
+                    ]),
+                    span([class_("badge")], [text("Demo")])
                 ]),
 
-                div([class_("counter-section")],
+                // Main content
+                main([class_("content")],
                 [
-                    div([class_("counter-display")],
-                    [
-                        span([class_("counter-value")], [text(model.Count.ToString())])
-                    ]),
+                    h1([], [text("Counter")]),
+                    p([class_("subtitle")], [text("Model-View-Update in action")]),
 
-                    div([class_("button-group")],
+                    div([class_("counter")],
                     [
-                        button([class_("btn btn-decrement"), onclick(new Decrement())], [text("\u2212 Decrease")]),
-                        button([class_("btn btn-reset"), onclick(new Reset())], [text("\u21ba Reset")]),
-                        button([class_("btn btn-increment"), onclick(new Increment())], [text("+ Increase")])
+                        button(
+                            [type("button"), onclick(new Decrement()), class_("btn")],
+                            [text("\u2212")]
+                        ),
+                        span([class_("count")], [text(model.Count.ToString())]),
+                        button(
+                            [type("button"), onclick(new Increment()), class_("btn")],
+                            [text("+")]
+                        )
                     ]),
 
                     div([class_("info-panel")],
@@ -91,9 +93,12 @@ public class Counter : Program<Model, Unit>
                     ])
                 ]),
 
-                div([class_("footer")],
+                // Footer
+                footer([class_("footer")],
                 [
-                    p([], [text("Built with Abies \u2014 The Elm Architecture for .NET")])
+                    text("Built with "),
+                    a([href("https://github.com/Picea/Abies")], [text("Abies")]),
+                    text(" \u2014 Functional web apps in .NET")
                 ])
             ])
         );
