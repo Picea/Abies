@@ -15,7 +15,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>https://github.com/Picea/Abies/releases</PackageReleaseNotes>
     <TargetFramework>netstandard2.0</TargetFramework>
-    
+
     <!-- Template package settings -->
     <IncludeContentInPack>true</IncludeContentInPack>
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -27,7 +27,7 @@
     <Content Include="templates\**\*" Exclude="templates\**\bin\**;templates\**\obj\**" />
     <Compile Remove="**\*" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
@@ -44,6 +44,20 @@
           DestinationFolder="templates\abies-browser\wwwroot\" />
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
           DestinationFolder="templates\abies-browser-empty\wwwroot\" />
+  </Target>
+
+  <!--
+    Sync abies-server.js from the canonical source (Picea.Abies.Server.Kestrel/wwwroot/_abies/)
+    into the server template's wwwroot/_abies/ before build/pack.
+    While UseAbiesStaticFiles() now serves from embedded resources (no file copying needed),
+    bundling the JS directly ensures the template works even if the user removes that call
+    and relies on standard UseStaticFiles() only.
+  -->
+  <Target Name="SyncAbiesServerJsToTemplates" BeforeTargets="Build;Pack"
+          Inputs="..\Picea.Abies.Server.Kestrel\wwwroot\_abies\abies-server.js"
+          Outputs="templates\abies-server\wwwroot\_abies\abies-server.js">
+    <Copy SourceFiles="..\Picea.Abies.Server.Kestrel\wwwroot\_abies\abies-server.js"
+          DestinationFolder="templates\abies-server\wwwroot\_abies\" />
   </Target>
 
 </Project>
