@@ -32,4 +32,18 @@
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
+  <!--
+    Sync abies.js and abies-otel.js from the canonical source (Picea.Abies.Browser/wwwroot/)
+    into every browser template's wwwroot/ before build/pack.
+    This ensures templates always ship the latest JS matching the framework version.
+  -->
+  <Target Name="SyncAbiesJsToTemplates" BeforeTargets="Build;Pack"
+          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          Outputs="templates\abies-browser\wwwroot\abies.js;templates\abies-browser\wwwroot\abies-otel.js;templates\abies-browser-empty\wwwroot\abies.js;templates\abies-browser-empty\wwwroot\abies-otel.js">
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          DestinationFolder="templates\abies-browser\wwwroot\" />
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js"
+          DestinationFolder="templates\abies-browser-empty\wwwroot\" />
+  </Target>
+
 </Project>
