@@ -78,7 +78,7 @@ public static class InteractivityHelpers
                 await page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
                 var countText = await page.Locator(".count").TextContentAsync();
 
-                if (countText is not null && countText != "0")
+                if (countText is not null and not "0")
                 {
                     // Runtime is interactive!
                     if (hasReset)

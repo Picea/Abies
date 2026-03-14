@@ -84,7 +84,7 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
         BaseUrl = $"http://localhost:{port}";
 
         // 1. Scaffold the project from the template
-        _projectDir = Path.Combine(
+        _projectDir = Path.Join(
             Path.GetTempPath(), $"abies-e2e-{TemplateName}-{Guid.NewGuid():N}");
 
         Console.WriteLine($"[{TemplateName}] Scaffolding to {_projectDir}");
@@ -152,8 +152,15 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
                         .WaitAsync(TimeSpan.FromSeconds(10));
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
+                // Process already exited between HasExited check and Kill() (TOCTOU race)
+                Console.WriteLine(
+                    $"[{TemplateName}] Warning: Could not kill app process: {ex.Message}");
+            }
+            catch (TimeoutException ex)
+            {
+                // WaitForExitAsync timed out — process is stuck
                 Console.WriteLine(
                     $"[{TemplateName}] Warning: Could not kill app process: {ex.Message}");
             }
@@ -214,7 +221,7 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
             </configuration>
             """;
 
-        File.WriteAllText(Path.Combine(_projectDir, "nuget.config"), config);
+        File.WriteAllText(Path.Join(_projectDir, "nuget.config"), config);
     }
 
     /// <summary>
@@ -225,8 +232,8 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
     /// </summary>
     private void PatchLaunchSettings(int port)
     {
-        var launchSettingsDir = Path.Combine(_projectDir, "Properties");
-        var launchSettingsPath = Path.Combine(launchSettingsDir, "launchSettings.json");
+        var launchSettingsDir = Path.Join(_projectDir, "Properties");
+        var launchSettingsPath = Path.Join(launchSettingsDir, "launchSettings.json");
 
         if (!File.Exists(launchSettingsPath))
         {
@@ -279,9 +286,13 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
                 if (response.IsSuccessStatusCode)
                     return;
             }
-            catch
+            catch (HttpRequestException)
             {
-                // Server not ready yet
+                // Server not ready yet — connection refused or network error
+            }
+            catch (TaskCanceledException)
+            {
+                // Request timed out — server not ready yet
             }
 
             await Task.Delay(500);
@@ -293,7 +304,7 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
 
     private static int GetAvailablePort()
     {
-        var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
+        using var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
         listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
