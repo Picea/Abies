@@ -10,18 +10,13 @@ using static Picea.Abies.Html.Events;
 await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 
 /// <summary>
-/// Application model — immutable state container.
+/// The application model (state).
 /// Add your application state properties here.
 /// </summary>
 public record Model;
 
-// ─── Messages ───────────────────────────────────────────────────────────────
-// Add your message types here. Each message represents a user action or event.
-
-// ─── Program ────────────────────────────────────────────────────────────────
-
 /// <summary>
-/// Your Abies application implementing the MVU pattern.
+/// The main application implementing the MVU pattern.
 /// </summary>
 public class App : Program<Model, Unit>
 {
@@ -38,14 +33,19 @@ public class App : Program<Model, Unit>
         => (model, Commands.None);
 
     /// <summary>
-    /// Render the current model as HTML.
+    /// Render the view based on the current model.
     /// </summary>
     public static Document View(Model model)
-        => new("Abies App",
-            div([class_("app")],
+        => new("AbiesApp",
+            div([class_("container")],
             [
-                h1([], [text("🌲 Welcome to Abies")]),
-                p([], [text("Start building your MVU application!")])
+                h1([], [text("Welcome to Abies!")]),
+                p([], [text("Start building your MVU application.")]),
+                p([],
+                [
+                    text("Learn more at "),
+                    a([href("https://github.com/Picea/Abies")], [text("github.com/Picea/Abies")])
+                ])
             ])
         );
 
