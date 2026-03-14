@@ -132,6 +132,12 @@ ipch/
 Picea.Abies.Conduit.Testing.E2E/bin/
 Picea.Abies.Conduit.Testing.E2E/obj/
 Picea.Abies.Conduit.Testing.E2E/TestResults/
+!Picea.Abies.Templates.Testing.E2E/
+!Picea.Abies.Templates.Testing.E2E/**/*.cs
+!Picea.Abies.Templates.Testing.E2E/**/*.csproj
+Picea.Abies.Templates.Testing.E2E/bin/
+Picea.Abies.Templates.Testing.E2E/obj/
+Picea.Abies.Templates.Testing.E2E/TestResults/
 
 # Local runtime artifacts
 .apphost.pid
