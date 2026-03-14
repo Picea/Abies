@@ -25,8 +25,6 @@
 // =============================================================================
 
 using System.Diagnostics;
-using Picea;
-using Picea.Abies.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -237,21 +235,32 @@ public static class Endpoints
 
     /// <summary>
     /// Serves the Abies static files (e.g., <c>abies-server.js</c>) from the
-    /// <c>Picea.Abies.Server.Kestrel</c> package's embedded <c>wwwroot</c> directory.
+    /// <c>Picea.Abies.Server.Kestrel</c> assembly.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Files are served under the <c>/_abies</c> path prefix, matching the
-    /// script references in <see cref="Page.RenderDocument"/>:
+    /// Uses a hybrid resolution strategy:
+    /// <list type="number">
+    ///   <item>
+    ///     <b>Physical files (development)</b>: Checks for a <c>wwwroot/</c> directory
+    ///     next to the assembly DLL. This path is populated by project references
+    ///     via <c>CopyToOutputDirectory</c>, enabling hot-reload during development.
+    ///   </item>
+    ///   <item>
+    ///     <b>Embedded resources (production/NuGet)</b>: Falls back to
+    ///     <see cref="ManifestEmbeddedFileProvider"/> which serves the files embedded
+    ///     inside the DLL itself. This ensures the JS is always available regardless
+    ///     of how the consumer references the package.
+    ///   </item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Files are served without a path prefix, matching the script references
+    /// in <see cref="Page"/>:
     /// </para>
     /// <code>
     ///   &lt;script src="/_abies/abies-server.js" ...&gt;
     /// </code>
-    /// <para>
-    /// This method is idempotent — calling it multiple times (e.g., from
-    /// multiple <see cref="MapAbies{TProgram,TModel,TArgument}"/> calls)
-    /// only registers the static files middleware once.
-    /// </para>
     /// </remarks>
     /// <param name="app">The application builder to add the static files middleware to.</param>
     /// <returns>The application builder for chaining.</returns>
@@ -261,12 +270,23 @@ public static class Endpoints
         var contentRoot = Path.GetDirectoryName(assembly.Location)!;
         var wwwrootPath = Path.Combine(contentRoot, "wwwroot");
 
-        if (!Directory.Exists(wwwrootPath))
-            return app;
+        // Hybrid strategy: physical files first (dev), embedded fallback (NuGet)
+        IFileProvider fileProvider;
+
+        if (Directory.Exists(wwwrootPath))
+        {
+            // Development: project reference copies wwwroot to output directory
+            fileProvider = new PhysicalFileProvider(wwwrootPath);
+        }
+        else
+        {
+            // Production/NuGet: serve from embedded resources inside the DLL
+            fileProvider = new ManifestEmbeddedFileProvider(assembly, "wwwroot");
+        }
 
         app.UseStaticFiles(new StaticFileOptions
         {
-            FileProvider = new PhysicalFileProvider(wwwrootPath),
+            FileProvider = fileProvider,
             RequestPath = ""
         });
 
