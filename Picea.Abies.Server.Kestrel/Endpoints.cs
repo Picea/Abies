@@ -271,18 +271,9 @@ public static class Endpoints
         var wwwrootPath = Path.Combine(contentRoot, "wwwroot");
 
         // Hybrid strategy: physical files first (dev), embedded fallback (NuGet)
-        IFileProvider fileProvider;
-
-        if (Directory.Exists(wwwrootPath))
-        {
-            // Development: project reference copies wwwroot to output directory
-            fileProvider = new PhysicalFileProvider(wwwrootPath);
-        }
-        else
-        {
-            // Production/NuGet: serve from embedded resources inside the DLL
-            fileProvider = new ManifestEmbeddedFileProvider(assembly, "wwwroot");
-        }
+        IFileProvider fileProvider = Directory.Exists(wwwrootPath)
+            ? new PhysicalFileProvider(wwwrootPath)             // Development: project reference copies wwwroot to output
+            : new ManifestEmbeddedFileProvider(assembly, "wwwroot"); // Production/NuGet: embedded resources
 
         app.UseStaticFiles(new StaticFileOptions
         {

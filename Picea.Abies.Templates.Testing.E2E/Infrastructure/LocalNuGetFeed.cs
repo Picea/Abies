@@ -24,7 +24,7 @@ namespace Picea.Abies.Templates.Testing.E2E.Infrastructure;
 /// </summary>
 public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
 {
-    private static readonly string[] ProjectsToPack =
+    private static readonly string[] _projectsToPack =
     [
         "Picea.Abies",
         "Picea.Abies.Browser",
@@ -45,7 +45,7 @@ public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
     /// <inheritdoc />
     public async Task InitializeAsync()
     {
-        FeedDir = Path.Combine(Path.GetTempPath(), $"abies-e2e-feed-{Guid.NewGuid():N}");
+        FeedDir = Path.Join(Path.GetTempPath(), $"abies-e2e-feed-{Guid.NewGuid():N}");
         Directory.CreateDirectory(FeedDir);
 
         var solutionDir = FindSolutionDirectory();
@@ -53,9 +53,9 @@ public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
         Console.WriteLine($"[LocalNuGetFeed] Packing to {FeedDir}");
 
         // Pack each project sequentially (dotnet pack accepts one project at a time)
-        foreach (var project in ProjectsToPack)
+        foreach (var project in _projectsToPack)
         {
-            var projectPath = Path.Combine(solutionDir, project, $"{project}.csproj");
+            var projectPath = Path.Join(solutionDir, project, $"{project}.csproj");
             Console.WriteLine($"[LocalNuGetFeed] Packing {project}...");
             await DotNetCli.PackAsync(projectPath, FeedDir);
         }
@@ -134,7 +134,7 @@ public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
         var dir = Directory.GetCurrentDirectory();
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir, "Picea.Abies.sln")))
+            if (File.Exists(Path.Join(dir, "Picea.Abies.sln")))
                 return dir;
             dir = Directory.GetParent(dir)?.FullName;
         }
