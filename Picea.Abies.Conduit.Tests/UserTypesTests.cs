@@ -15,224 +15,224 @@ public class UserTypesTests
     // EmailAddress
     // =========================================================================
 
-    [Theory]
-    [InlineData("user@example.com")]
-    [InlineData("USER@EXAMPLE.COM")]
-    [InlineData("a@b.c")]
-    [InlineData("test.user+tag@domain.co.uk")]
-    public void EmailAddress_ValidEmails_ReturnsOk(string email)
+    [Test]
+    [Arguments("user@example.com")]
+    [Arguments("USER@EXAMPLE.COM")]
+    [Arguments("a@b.c")]
+    [Arguments("test.user+tag@domain.co.uk")]
+    public async Task EmailAddress_ValidEmails_ReturnsOk(string email)
     {
         var result = EmailAddress.Create(email);
 
-        Assert.True(result.IsOk);
-        Assert.Equal(email.Trim().ToLowerInvariant(), result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo(email.Trim().ToLowerInvariant());
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void EmailAddress_EmptyOrWhitespace_ReturnsErr(string? email)
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    [Arguments(null)]
+    public async Task EmailAddress_EmptyOrWhitespace_ReturnsErr(string? email)
     {
         var result = EmailAddress.Create(email!);
 
-        Assert.True(result.IsErr);
-        var error = Assert.IsType<UserError.Validation>(result.Error);
-        Assert.Contains("required", error.Message, StringComparison.OrdinalIgnoreCase);
+        await Assert.That(result.IsErr).IsTrue();
+        var error = await Assert.That(result.Error).IsTypeOf<UserError.Validation>();
+        await Assert.That(error.Message).Contains("required");
     }
 
-    [Theory]
-    [InlineData("notanemail")]
-    [InlineData("@missing-local.com")]
-    [InlineData("missing-domain@")]
-    [InlineData("missing@.com")]
-    public void EmailAddress_InvalidFormat_ReturnsErr(string email)
+    [Test]
+    [Arguments("notanemail")]
+    [Arguments("@missing-local.com")]
+    [Arguments("missing-domain@")]
+    [Arguments("missing@.com")]
+    public async Task EmailAddress_InvalidFormat_ReturnsErr(string email)
     {
         var result = EmailAddress.Create(email);
 
-        Assert.True(result.IsErr);
-        var error = Assert.IsType<UserError.Validation>(result.Error);
-        Assert.Contains("format", error.Message, StringComparison.OrdinalIgnoreCase);
+        await Assert.That(result.IsErr).IsTrue();
+        var error = await Assert.That(result.Error).IsTypeOf<UserError.Validation>();
+        await Assert.That(error.Message).Contains("format");
     }
 
-    [Fact]
-    public void EmailAddress_NormalizesToLowercase()
+    [Test]
+    public async Task EmailAddress_NormalizesToLowercase()
     {
         var result = EmailAddress.Create("USER@EXAMPLE.COM");
 
-        Assert.True(result.IsOk);
-        Assert.Equal("user@example.com", result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo("user@example.com");
     }
 
     // =========================================================================
     // Username
     // =========================================================================
 
-    [Theory]
-    [InlineData("alice")]
-    [InlineData("bob123")]
-    [InlineData("user-name")]
-    [InlineData("user_name")]
-    [InlineData("a")]
-    public void Username_ValidNames_ReturnsOk(string username)
+    [Test]
+    [Arguments("alice")]
+    [Arguments("bob123")]
+    [Arguments("user-name")]
+    [Arguments("user_name")]
+    [Arguments("a")]
+    public async Task Username_ValidNames_ReturnsOk(string username)
     {
         var result = Username.Create(username);
 
-        Assert.True(result.IsOk);
-        Assert.Equal(username.Trim(), result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo(username.Trim());
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Username_EmptyOrWhitespace_ReturnsErr(string? username)
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    [Arguments(null)]
+    public async Task Username_EmptyOrWhitespace_ReturnsErr(string? username)
     {
         var result = Username.Create(username!);
 
-        Assert.True(result.IsErr);
+        await Assert.That(result.IsErr).IsTrue();
     }
 
-    [Theory]
-    [InlineData("-startswithhyphen")]
-    [InlineData("_startsunderscore")]
-    [InlineData("has spaces")]
-    [InlineData("has@special!chars")]
-    [InlineData("toolongusernamethatexceedstwentycharacters")]
-    public void Username_InvalidFormat_ReturnsErr(string username)
+    [Test]
+    [Arguments("-startswithhyphen")]
+    [Arguments("_startsunderscore")]
+    [Arguments("has spaces")]
+    [Arguments("has@special!chars")]
+    [Arguments("toolongusernamethatexceedstwentycharacters")]
+    public async Task Username_InvalidFormat_ReturnsErr(string username)
     {
         var result = Username.Create(username);
 
-        Assert.True(result.IsErr);
+        await Assert.That(result.IsErr).IsTrue();
     }
 
     // =========================================================================
     // Password
     // =========================================================================
 
-    [Theory]
-    [InlineData("password")]
-    [InlineData("12345678")]
-    [InlineData("a very long password with many characters")]
-    public void Password_ValidPasswords_ReturnsOk(string password)
+    [Test]
+    [Arguments("password")]
+    [Arguments("12345678")]
+    [Arguments("a very long password with many characters")]
+    public async Task Password_ValidPasswords_ReturnsOk(string password)
     {
         var result = Password.Create(password);
 
-        Assert.True(result.IsOk);
-        Assert.Equal(password, result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo(password);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Password_EmptyOrWhitespace_ReturnsErr(string? password)
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    [Arguments(null)]
+    public async Task Password_EmptyOrWhitespace_ReturnsErr(string? password)
     {
         var result = Password.Create(password!);
 
-        Assert.True(result.IsErr);
+        await Assert.That(result.IsErr).IsTrue();
     }
 
-    [Theory]
-    [InlineData("short")]
-    [InlineData("1234567")]
-    public void Password_TooShort_ReturnsErr(string password)
+    [Test]
+    [Arguments("short")]
+    [Arguments("1234567")]
+    public async Task Password_TooShort_ReturnsErr(string password)
     {
         var result = Password.Create(password);
 
-        Assert.True(result.IsErr);
-        var error = Assert.IsType<UserError.Validation>(result.Error);
-        Assert.Contains("8", error.Message);
+        await Assert.That(result.IsErr).IsTrue();
+        var error = await Assert.That(result.Error).IsTypeOf<UserError.Validation>();
+        await Assert.That(error.Message).Contains("8");
     }
 
-    [Fact]
-    public void Password_ToString_MasksValue()
+    [Test]
+    public async Task Password_ToString_MasksValue()
     {
         var result = Password.Create("supersecret");
 
-        Assert.True(result.IsOk);
-        Assert.Equal("****", result.Value.ToString());
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.ToString()).IsEqualTo("****");
     }
 
     // =========================================================================
     // Bio
     // =========================================================================
 
-    [Fact]
-    public void Bio_ValidText_ReturnsOk()
+    [Test]
+    public async Task Bio_ValidText_ReturnsOk()
     {
         var result = Bio.Create("I am a developer.");
 
-        Assert.True(result.IsOk);
-        Assert.Equal("I am a developer.", result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo("I am a developer.");
     }
 
-    [Fact]
-    public void Bio_EmptyString_ReturnsOk()
+    [Test]
+    public async Task Bio_EmptyString_ReturnsOk()
     {
         var result = Bio.Create("");
 
-        Assert.True(result.IsOk);
-        Assert.Equal("", result.Value.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value.Value).IsEqualTo("");
     }
 
-    [Fact]
-    public void Bio_TooLong_ReturnsErr()
+    [Test]
+    public async Task Bio_TooLong_ReturnsErr()
     {
         var longBio = new string('a', 301);
 
         var result = Bio.Create(longBio);
 
-        Assert.True(result.IsErr);
-        var error = Assert.IsType<UserError.Validation>(result.Error);
-        Assert.Contains("300", error.Message);
+        await Assert.That(result.IsErr).IsTrue();
+        var error = await Assert.That(result.Error).IsTypeOf<UserError.Validation>();
+        await Assert.That(error.Message).Contains("300");
     }
 
     // =========================================================================
     // ImageUrl
     // =========================================================================
 
-    [Theory]
-    [InlineData("https://example.com/avatar.png")]
-    [InlineData("http://example.com/image.jpg")]
-    public void ImageUrl_ValidUrls_ReturnsOk(string url)
+    [Test]
+    [Arguments("https://example.com/avatar.png")]
+    [Arguments("http://example.com/image.jpg")]
+    public async Task ImageUrl_ValidUrls_ReturnsOk(string url)
     {
         var result = ImageUrl.Create(url);
 
-        Assert.True(result.IsOk);
+        await Assert.That(result.IsOk).IsTrue();
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void ImageUrl_EmptyOrWhitespace_ReturnsErr(string? url)
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    [Arguments(null)]
+    public async Task ImageUrl_EmptyOrWhitespace_ReturnsErr(string? url)
     {
         var result = ImageUrl.Create(url!);
 
-        Assert.True(result.IsErr);
+        await Assert.That(result.IsErr).IsTrue();
     }
 
-    [Theory]
-    [InlineData("ftp://example.com/file")]
-    [InlineData("not a url")]
-    [InlineData("file:///etc/passwd")]
-    public void ImageUrl_InvalidScheme_ReturnsErr(string url)
+    [Test]
+    [Arguments("ftp://example.com/file")]
+    [Arguments("not a url")]
+    [Arguments("file:///etc/passwd")]
+    public async Task ImageUrl_InvalidScheme_ReturnsErr(string url)
     {
         var result = ImageUrl.Create(url);
 
-        Assert.True(result.IsErr);
+        await Assert.That(result.IsErr).IsTrue();
     }
 
     // =========================================================================
     // Token
     // =========================================================================
 
-    [Fact]
-    public void Token_ToString_MasksValue()
+    [Test]
+    public async Task Token_ToString_MasksValue()
     {
         var token = new Token("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature");
 
-        Assert.Equal("jwt.***", token.ToString());
+        await Assert.That(token.ToString()).IsEqualTo("jwt.***");
     }
 }

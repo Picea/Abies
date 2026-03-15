@@ -9,12 +9,13 @@ using Picea.Abies.Conduit.App;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
 
+using TUnit.Core.Interfaces;
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Conduit app in InteractiveAuto mode for E2E testing.
 /// </summary>
-public sealed class ConduitAutoFixture : IAsyncLifetime
+public sealed class ConduitAutoFixture : IAsyncInitializer, IAsyncDisposable
 {
     private ConduitInfraFixture? _infra;
     private WebApplication? _app;
@@ -100,7 +101,7 @@ public sealed class ConduitAutoFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

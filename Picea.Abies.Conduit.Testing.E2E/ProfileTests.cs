@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class ProfileTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class ProfileTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class ProfileTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task ViewProfile_ShouldShowUsernameAndArticles()
     {
         var username = $"profvw{Guid.NewGuid():N}"[..20];
@@ -52,7 +53,7 @@ public sealed class ProfileTests : IAsyncLifetime
         await Expect(_page.Locator(".user-info h4")).ToContainTextAsync(username, new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task FollowUser_WhenLoggedIn_ShouldToggleFollowButton()
     {
         var target = $"proftgt{Guid.NewGuid():N}"[..20];
@@ -79,7 +80,7 @@ public sealed class ProfileTests : IAsyncLifetime
             .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task UnfollowUser_WhenFollowing_ShouldToggleBackToFollow()
     {
         var target = $"profunf{Guid.NewGuid():N}"[..20];
@@ -108,7 +109,7 @@ public sealed class ProfileTests : IAsyncLifetime
             .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task ProfileTabs_ShouldSwitchBetweenMyArticlesAndFavorited()
     {
         var author = $"prftab{Guid.NewGuid():N}"[..20];
@@ -149,7 +150,7 @@ public sealed class ProfileTests : IAsyncLifetime
         await _page.WaitForTimeoutAsync(2000);
     }
 
-    [Fact]
+    [Test]
     public async Task OwnProfile_ShouldShowEditSettingsLink()
     {
         var username = $"prfown{Guid.NewGuid():N}"[..20];

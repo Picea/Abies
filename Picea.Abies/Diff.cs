@@ -26,6 +26,7 @@
 // =============================================================================
 
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Picea.Abies.DOM;
 
@@ -72,11 +73,11 @@ public static class Operations
     // Object Pools — Stack<T> (WASM is single-threaded)
     // =========================================================================
 
-    private static readonly Stack<List<Patch>> PatchListPool = new();
-    private static readonly Stack<Dictionary<string, DOM.Attribute>> AttributeMapPool = new();
-    private static readonly Stack<Dictionary<string, int>> KeyIndexMapPool = new();
-    private static readonly Stack<List<int>> IntListPool = new();
-    private static readonly Stack<List<(int, int)>> IntPairListPool = new();
+    private static readonly ConcurrentStack<List<Patch>> PatchListPool = new();
+    private static readonly ConcurrentStack<Dictionary<string, DOM.Attribute>> AttributeMapPool = new();
+    private static readonly ConcurrentStack<Dictionary<string, int>> KeyIndexMapPool = new();
+    private static readonly ConcurrentStack<List<int>> IntListPool = new();
+    private static readonly ConcurrentStack<List<(int, int)>> IntPairListPool = new();
 
     private static List<Patch> RentPatchList()
     {

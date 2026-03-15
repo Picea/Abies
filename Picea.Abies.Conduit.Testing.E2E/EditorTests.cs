@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class EditorTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class EditorTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class EditorTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task CreateArticle_WithAllFields_ShouldNavigateToArticlePage()
     {
         var username = $"editor{Guid.NewGuid():N}"[..20];
@@ -41,6 +42,7 @@ public sealed class EditorTests : IAsyncLifetime
         await LoginViaUi(email, "password123");
 
         var apiRequests = new System.Collections.Concurrent.ConcurrentBag<(string Method, string Url, int Status, string Body)>();
+        #pragma warning disable TUnit0031
         _page.Response += async (_, response) =>
         {
             if (response.Url.Contains("/api/"))
@@ -52,6 +54,7 @@ public sealed class EditorTests : IAsyncLifetime
                 apiRequests.Add((response.Request.Method, response.Url, response.Status, body.Length > 500 ? body[..500] : body));
             }
         };
+        #pragma warning restore TUnit0031
 
         await _page.NavigateInApp("/editor");
         await _page.WaitForSelectorAsync(".editor-page", new() { Timeout = 10000 });
@@ -100,7 +103,7 @@ public sealed class EditorTests : IAsyncLifetime
         await Expect(_page.Locator(".banner h1")).ToContainTextAsync(title, new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task EditArticle_ChangeTitle_ShouldReflectUpdatedTitle()
     {
         var username = $"editart{Guid.NewGuid():N}"[..20];
@@ -138,7 +141,7 @@ public sealed class EditorTests : IAsyncLifetime
         await Expect(_page.Locator(".banner h1")).ToContainTextAsync(newTitle, new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task CreateArticle_WithTags_ShouldShowTagPillsBeforePublish()
     {
         var username = $"tagart{Guid.NewGuid():N}"[..20];

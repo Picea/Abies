@@ -7,7 +7,6 @@
 // =============================================================================
 
 using Picea.Abies.Conduit.App;
-using FluentAssertions;
 
 namespace Picea.Abies.Conduit.Wasm.Tests;
 
@@ -46,21 +45,21 @@ public class ProfileTransitionTests
             Session: _testSession,
             ApiUrl: "http://localhost:5000");
 
-    [Fact]
-    public void TabChanged_ToFavorites_UpdatesShowFavorites()
+    [Test]
+    public async Task TabChanged_ToFavorites_UpdatesShowFavorites()
     {
         var model = CreateProfileModel();
 
         var (newModel, command) = ConduitProgram.Transition(model, new ProfileTabChanged(true));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.ShowFavorites.Should().BeTrue();
-        profile.Data.CurrentPage.Should().Be(1);
-        command.Should().NotBe(Commands.None);
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.ShowFavorites).IsTrue();
+        await Assert.That(profile.Data.CurrentPage).IsEqualTo(1);
+        await Assert.That(command).IsNotEqualTo(Commands.None);
     }
 
-    [Fact]
-    public void TabChanged_ToMyArticles_UpdatesShowFavorites()
+    [Test]
+    public async Task TabChanged_ToMyArticles_UpdatesShowFavorites()
     {
         var model = CreateProfileModel();
         var profilePage = (Page.Profile)model.Page;
@@ -71,12 +70,12 @@ public class ProfileTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(onFavorites, new ProfileTabChanged(false));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.ShowFavorites.Should().BeFalse();
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.ShowFavorites).IsFalse();
     }
 
-    [Fact]
-    public void TabChanged_ResetsCurrentPageTo1()
+    [Test]
+    public async Task TabChanged_ResetsCurrentPageTo1()
     {
         var model = CreateProfileModel();
         var profilePage = (Page.Profile)model.Page;
@@ -87,46 +86,46 @@ public class ProfileTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(onPage3, new ProfileTabChanged(true));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.CurrentPage.Should().Be(1);
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.CurrentPage).IsEqualTo(1);
     }
 
-    [Fact]
-    public void TabChanged_FetchesArticlesCommand()
+    [Test]
+    public async Task TabChanged_FetchesArticlesCommand()
     {
         var model = CreateProfileModel();
 
         var (_, command) = ConduitProgram.Transition(model, new ProfileTabChanged(true));
 
-        command.Should().BeOfType<FetchArticles>();
+        await Assert.That(command).IsTypeOf<FetchArticles>();
     }
 
-    [Fact]
-    public void FollowToggled_UpdatesProfileFollowingState()
+    [Test]
+    public async Task FollowToggled_UpdatesProfileFollowingState()
     {
         var model = CreateProfileModel(_otherProfile with { Following = false });
         var followedProfile = _otherProfile with { Following = true };
 
         var (newModel, _) = ConduitProgram.Transition(model, new FollowToggled(followedProfile));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.Profile!.Following.Should().BeTrue();
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.Profile!.Following).IsTrue();
     }
 
-    [Fact]
-    public void FollowToggled_Unfollow_UpdatesProfileFollowingState()
+    [Test]
+    public async Task FollowToggled_Unfollow_UpdatesProfileFollowingState()
     {
         var model = CreateProfileModel(_otherProfile with { Following = true });
         var unfollowedProfile = _otherProfile with { Following = false };
 
         var (newModel, _) = ConduitProgram.Transition(model, new FollowToggled(unfollowedProfile));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.Profile!.Following.Should().BeFalse();
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.Profile!.Following).IsFalse();
     }
 
-    [Fact]
-    public void ArticlesLoaded_UpdatesArticlesList()
+    [Test]
+    public async Task ArticlesLoaded_UpdatesArticlesList()
     {
         var model = CreateProfileModel();
         var articles = new List<ArticlePreviewData>
@@ -138,43 +137,43 @@ public class ProfileTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(model, new ArticlesLoaded(articles, 1));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.Articles.Should().HaveCount(1);
-        profile.Data.ArticlesCount.Should().Be(1);
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.Articles).Count().IsEqualTo(1);
+        await Assert.That(profile.Data.ArticlesCount).IsEqualTo(1);
     }
 
-    [Fact]
-    public void ProfileLoaded_UpdatesProfileData()
+    [Test]
+    public async Task ProfileLoaded_UpdatesProfileData()
     {
         var model = CreateProfileModel();
         var loadedProfile = _otherProfile with { Bio = "Updated bio", Following = true };
 
         var (newModel, _) = ConduitProgram.Transition(model, new ProfileLoaded(loadedProfile));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.Profile!.Bio.Should().Be("Updated bio");
-        profile.Data.Profile.Following.Should().BeTrue();
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.Profile!.Bio).IsEqualTo("Updated bio");
+        await Assert.That(profile.Data.Profile.Following).IsTrue();
     }
 
-    [Fact]
-    public void PageChanged_UpdatesCurrentPage()
+    [Test]
+    public async Task PageChanged_UpdatesCurrentPage()
     {
         var model = CreateProfileModel();
 
         var (newModel, command) = ConduitProgram.Transition(model, new PageChanged(2));
 
-        var profile = newModel.Page.Should().BeOfType<Page.Profile>().Subject;
-        profile.Data.CurrentPage.Should().Be(2);
-        command.Should().NotBe(Commands.None);
+        var profile = await Assert.That(newModel.Page).IsTypeOf<Page.Profile>();
+        await Assert.That(profile!.Data.CurrentPage).IsEqualTo(2);
+        await Assert.That(command).IsNotEqualTo(Commands.None);
     }
 
-    [Fact]
-    public void PageChanged_FetchesArticlesForNewPage()
+    [Test]
+    public async Task PageChanged_FetchesArticlesForNewPage()
     {
         var model = CreateProfileModel();
 
         var (_, command) = ConduitProgram.Transition(model, new PageChanged(3));
 
-        command.Should().BeOfType<FetchArticles>();
+        await Assert.That(command).IsTypeOf<FetchArticles>();
     }
 }

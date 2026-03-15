@@ -70,165 +70,165 @@ public class PageTests
     // Structure Tests — DOCTYPE, html, head, body
     // =========================================================================
 
-    [Fact]
-    public void Render_ProducesCompleteHtmlDocument()
+    [Test]
+    public async Task Render_ProducesCompleteHtmlDocument()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.StartsWith("<!DOCTYPE html>", html);
-        Assert.Contains("<html>", html);
-        Assert.Contains("</html>", html);
-        Assert.Contains("<head>", html);
-        Assert.Contains("</head>", html);
-        Assert.Contains("<body>", html);
-        Assert.Contains("</body>", html);
+        await Assert.That(html).StartsWith("<!DOCTYPE html>");
+        await Assert.That(html).Contains("<html>");
+        await Assert.That(html).Contains("</html>");
+        await Assert.That(html).Contains("<head>");
+        await Assert.That(html).Contains("</head>");
+        await Assert.That(html).Contains("<body>");
+        await Assert.That(html).Contains("</body>");
     }
 
-    [Fact]
-    public void Render_IncludesCharsetAndViewportMeta()
+    [Test]
+    public async Task Render_IncludesCharsetAndViewportMeta()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.Contains("""<meta charset="utf-8">""", html);
-        Assert.Contains("""<meta name="viewport" content="width=device-width, initial-scale=1">""", html);
+        await Assert.That(html).Contains("""<meta charset="utf-8">""");
+        await Assert.That(html).Contains("""<meta name="viewport" content="width=device-width, initial-scale=1">""");
     }
 
     // =========================================================================
     // Title Tests
     // =========================================================================
 
-    [Fact]
-    public void Render_IncludesDocumentTitle()
+    [Test]
+    public async Task Render_IncludesDocumentTitle()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.Contains("<title>Test Counter</title>", html);
+        await Assert.That(html).Contains("<title>Test Counter</title>");
     }
 
     // =========================================================================
     // Head Content Tests
     // =========================================================================
 
-    [Fact]
-    public void Render_IncludesHeadElements()
+    [Test]
+    public async Task Render_IncludesHeadElements()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.Contains("""<meta name="description" content="A test counter app" data-abies-head="meta:description">""", html);
-        Assert.Contains("""<link rel="stylesheet" href="/styles.css" data-abies-head="link:stylesheet:/styles.css">""", html);
+        await Assert.That(html).Contains("""<meta name="description" content="A test counter app" data-abies-head="meta:description">""");
+        await Assert.That(html).Contains("""<link rel="stylesheet" href="/styles.css" data-abies-head="link:stylesheet:/styles.css">""");
     }
 
     // =========================================================================
     // Body Content Tests
     // =========================================================================
 
-    [Fact]
-    public void Render_IncludesBodyContent()
+    [Test]
+    public async Task Render_IncludesBodyContent()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.Contains("Count: 0", html);
-        Assert.Contains("Page: home", html);
+        await Assert.That(html).Contains("Count: 0");
+        await Assert.That(html).Contains("Page: home");
     }
 
-    [Fact]
-    public void Render_BodyUsesRenderHtml()
+    [Test]
+    public async Task Render_BodyUsesRenderHtml()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
         // Verify the body HTML contains proper element structure from Render.Html()
-        Assert.Contains("""class="counter""", html);
-        Assert.Contains("<h1", html);
+        await Assert.That(html).Contains("""class="counter""");
+        await Assert.That(html).Contains("<h1");
     }
 
     // =========================================================================
     // Render Mode: Static — No Scripts
     // =========================================================================
 
-    [Fact]
-    public void Render_StaticMode_NoScripts()
+    [Test]
+    public async Task Render_StaticMode_NoScripts()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.DoesNotContain("<script", html);
+        await Assert.That(html).DoesNotContain("<script");
     }
 
     // =========================================================================
     // Render Mode: InteractiveServer — WebSocket Script
     // =========================================================================
 
-    [Fact]
-    public void Render_InteractiveServerMode_IncludesWebSocketScript()
+    [Test]
+    public async Task Render_InteractiveServerMode_IncludesWebSocketScript()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveServer());
 
-        Assert.Contains("abies-server.js", html);
-        Assert.Contains("""data-ws-path="/_abies/ws""", html);
+        await Assert.That(html).Contains("abies-server.js");
+        await Assert.That(html).Contains("""data-ws-path="/_abies/ws""");
     }
 
-    [Fact]
-    public void Render_InteractiveServerMode_CustomWebSocketPath()
+    [Test]
+    public async Task Render_InteractiveServerMode_CustomWebSocketPath()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveServer(WebSocketPath: "/custom/ws"));
 
-        Assert.Contains("""data-ws-path="/custom/ws""", html);
+        await Assert.That(html).Contains("""data-ws-path="/custom/ws""");
     }
 
-    [Fact]
-    public void Render_InteractiveServerMode_DoesNotIncludeWasmScript()
+    [Test]
+    public async Task Render_InteractiveServerMode_DoesNotIncludeWasmScript()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveServer());
 
-        Assert.DoesNotContain("dotnet.js", html);
+        await Assert.That(html).DoesNotContain("dotnet.js");
     }
 
     // =========================================================================
     // Render Mode: InteractiveWasm — WASM Bootstrap Script
     // =========================================================================
 
-    [Fact]
-    public void Render_InteractiveWasmMode_IncludesWasmScript()
+    [Test]
+    public async Task Render_InteractiveWasmMode_IncludesWasmScript()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveWasm());
 
-        Assert.Contains("import { dotnet } from '/_framework/dotnet.js'", html);
-        Assert.Contains("await dotnet.run()", html);
+        await Assert.That(html).Contains("import { dotnet } from '/_framework/dotnet.js'");
+        await Assert.That(html).Contains("await dotnet.run()");
     }
 
-    [Fact]
-    public void Render_InteractiveWasmMode_DoesNotIncludeWebSocketScript()
+    [Test]
+    public async Task Render_InteractiveWasmMode_DoesNotIncludeWebSocketScript()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveWasm());
 
-        Assert.DoesNotContain("abies-server.js", html);
+        await Assert.That(html).DoesNotContain("abies-server.js");
     }
 
     // =========================================================================
     // Render Mode: InteractiveAuto — Both Scripts
     // =========================================================================
 
-    [Fact]
-    public void Render_InteractiveAutoMode_IncludesBothScripts()
+    [Test]
+    public async Task Render_InteractiveAutoMode_IncludesBothScripts()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(
             new RenderMode.InteractiveAuto());
 
-        Assert.Contains("abies-server.js", html);
-        Assert.Contains("dotnet.js", html);
-        Assert.Contains("""data-auto="true""", html);
+        await Assert.That(html).Contains("abies-server.js");
+        await Assert.That(html).Contains("dotnet.js");
+        await Assert.That(html).Contains("""data-auto="true""");
     }
 
     // =========================================================================
     // URL Routing — Initial URL Applied Before Render
     // =========================================================================
 
-    [Fact]
-    public void Render_WithInitialUrl_RoutesBeforeRendering()
+    [Test]
+    public async Task Render_WithInitialUrl_RoutesBeforeRendering()
     {
         var url = Url.FromUri(new Uri("http://localhost/articles"));
 
@@ -237,46 +237,46 @@ public class PageTests
             initialUrl: url);
 
         // The TestCounter program sets CurrentPage from the URL path
-        Assert.Contains("Page: articles", html);
+        await Assert.That(html).Contains("Page: articles");
     }
 
-    [Fact]
-    public void Render_WithoutInitialUrl_UsesDefaultState()
+    [Test]
+    public async Task Render_WithoutInitialUrl_UsesDefaultState()
     {
         var html = Page.Render<TestCounter, TestModel, Unit>(new RenderMode.Static());
 
-        Assert.Contains("Page: home", html);
+        await Assert.That(html).Contains("Page: home");
     }
 
     // =========================================================================
     // RenderDocument — Direct Document Rendering
     // =========================================================================
 
-    [Fact]
-    public void RenderDocument_ProducesValidHtml()
+    [Test]
+    public async Task RenderDocument_ProducesValidHtml()
     {
         var document = new Document("Direct Test",
             div([], [text("Hello")]));
 
         var html = Page.RenderDocument(document, new RenderMode.Static());
 
-        Assert.Contains("<title>Direct Test</title>", html);
-        Assert.Contains("Hello", html);
+        await Assert.That(html).Contains("<title>Direct Test</title>");
+        await Assert.That(html).Contains("Hello");
     }
 
-    [Fact]
-    public void RenderDocument_EscapesTitleSpecialChars()
+    [Test]
+    public async Task RenderDocument_EscapesTitleSpecialChars()
     {
         var document = new Document("Title <with> & \"quotes\"",
             div([], [text("body")]));
 
         var html = Page.RenderDocument(document, new RenderMode.Static());
 
-        Assert.Contains("Title &lt;with&gt; &amp; &quot;quotes&quot;", html);
+        await Assert.That(html).Contains("Title &lt;with&gt; &amp; &quot;quotes&quot;");
     }
 
-    [Fact]
-    public void RenderDocument_WithHeadContent_RendersInHead()
+    [Test]
+    public async Task RenderDocument_WithHeadContent_RendersInHead()
     {
         var document = new Document("Test",
             div([], [text("body")]),
@@ -285,7 +285,7 @@ public class PageTests
 
         var html = Page.RenderDocument(document, new RenderMode.Static());
 
-        Assert.Contains("""<link rel="canonical" href="https://example.com/page""", html);
-        Assert.Contains("""<meta property="og:title" content="My Page""", html);
+        await Assert.That(html).Contains("""<link rel="canonical" href="https://example.com/page""");
+        await Assert.That(html).Contains("""<meta property="og:title" content="My Page""");
     }
 }

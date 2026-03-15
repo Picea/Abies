@@ -8,9 +8,10 @@ using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitServer")]
-public sealed class ProfileServerTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitServerFixture>(Shared = SharedType.Keyed, Key = "ConduitServer")]
+[NotInParallel("ConduitServer")]
+public sealed class ProfileServerTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitServerFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class ProfileServerTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task ViewProfile_ShouldShowUsername()
     {
         var username = $"srvprf{Guid.NewGuid():N}"[..20];
@@ -45,7 +46,7 @@ public sealed class ProfileServerTests : IAsyncLifetime
             new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task FollowUser_WhenLoggedIn_ShouldToggleFollowButton()
     {
         var target = $"srvtgt{Guid.NewGuid():N}"[..20];

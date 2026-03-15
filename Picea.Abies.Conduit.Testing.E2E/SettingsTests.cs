@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class SettingsTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class SettingsTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class SettingsTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task Settings_WhenLoggedIn_ShouldShowCurrentUserInfo()
     {
         var username = $"settuser{Guid.NewGuid():N}"[..20];
@@ -47,7 +48,7 @@ public sealed class SettingsTests : IAsyncLifetime
         await Expect(_page.GetByPlaceholder("Your Name")).ToHaveValueAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task UpdateSettings_WithNewBioAndImage_ShouldPersistChanges()
     {
         var username = $"updsett{Guid.NewGuid():N}"[..20];

@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class ArticleTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class ArticleTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task ViewArticle_WithContent_ShouldDisplayTitleAndBody()
     {
         var username = $"artview{Guid.NewGuid():N}"[..20];
@@ -54,7 +55,7 @@ public sealed class ArticleTests : IAsyncLifetime
         await Expect(_page.Locator(".article-meta").First).ToContainTextAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteArticle_AsAuthor_ShouldNavigateToHome()
     {
         var username = $"artdel{Guid.NewGuid():N}"[..20];
@@ -79,7 +80,7 @@ public sealed class ArticleTests : IAsyncLifetime
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task FavoriteArticle_WhenLoggedIn_ShouldIncrementCounter()
     {
         var author = $"favauth{Guid.NewGuid():N}"[..20];
@@ -115,7 +116,7 @@ public sealed class ArticleTests : IAsyncLifetime
         ).ToContainTextAsync("1", new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task ViewArticle_WithTags_ShouldDisplayTagList()
     {
         var username = $"arttag{Guid.NewGuid():N}"[..20];
