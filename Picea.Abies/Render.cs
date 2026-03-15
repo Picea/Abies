@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -35,7 +36,7 @@ internal static class HtmlSpec
 
 public static class Render
 {
-    private static readonly Stack<StringBuilder> _stringBuilderPool = new();
+    private static readonly ConcurrentStack<StringBuilder> _stringBuilderPool = new();
     private const int MaxPooledStringBuilderCapacity = 8192;
 
     private static readonly SearchValues<char> HtmlSpecialChars =

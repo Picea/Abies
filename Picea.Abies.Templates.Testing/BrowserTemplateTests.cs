@@ -8,12 +8,12 @@ namespace Picea.Abies.Templates.Testing;
 /// runs correctly: serves HTML, delivers CSS, and supports full counter
 /// interactivity via WASM.
 /// </summary>
-[Collection("BrowserTemplate")]
-[Trait("Category", "E2E")]
-[Trait("Category", "Template")]
+[Category("E2E"), Category("Template")]
+[NotInParallel("BrowserTemplate")]
+[ClassDataSource<BrowserTemplateFixture>(Shared = SharedType.Keyed, Key = "BrowserTemplate")]
 public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
 {
-    [Fact]
+    [Test]
     public async Task Renders_CounterPage()
     {
         var page = await fixture.CreatePageAsync();
@@ -41,7 +41,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await Assertions.Expect(heading).ToContainTextAsync("Abies Counter");
     }
 
-    [Fact]
+    [Test]
     public async Task Initial_Count_Is_Zero()
     {
         var page = await fixture.CreatePageAsync();
@@ -52,7 +52,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("0");
     }
 
-    [Fact]
+    [Test]
     public async Task Increment_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -65,7 +65,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("1");
     }
 
-    [Fact]
+    [Test]
     public async Task Decrement_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -78,7 +78,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("-1");
     }
 
-    [Fact]
+    [Test]
     public async Task Reset_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -94,7 +94,7 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         await Assertions.Expect(page.Locator(".counter-value")).ToHaveTextAsync("0");
     }
 
-    [Fact]
+    [Test]
     public async Task Multiple_Clicks_Accumulate()
     {
         var page = await fixture.CreatePageAsync();

@@ -18,12 +18,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
 
+using TUnit.Core.Interfaces;
 namespace Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Counter in Static mode for E2E testing.
 /// </summary>
-public sealed class CounterStaticFixture : IAsyncLifetime
+public sealed class CounterStaticFixture : IAsyncInitializer, IAsyncDisposable
 {
     private WebApplication? _app;
     private IPlaywright? _playwright;
@@ -82,7 +83,7 @@ public sealed class CounterStaticFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

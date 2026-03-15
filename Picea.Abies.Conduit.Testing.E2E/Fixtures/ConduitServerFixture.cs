@@ -10,13 +10,14 @@ using Picea.Abies.Conduit.App;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
 
+using TUnit.Core.Interfaces;
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Conduit app in InteractiveServer mode
 /// with API reverse proxying to the shared Aspire backend.
 /// </summary>
-public sealed class ConduitServerFixture : IAsyncLifetime
+public sealed class ConduitServerFixture : IAsyncInitializer, IAsyncDisposable
 {
     private ConduitInfraFixture? _infra;
     private WebApplication? _app;
@@ -86,7 +87,7 @@ public sealed class ConduitServerFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

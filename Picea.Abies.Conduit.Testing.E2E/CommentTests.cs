@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class CommentTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class CommentTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task AddComment_WithText_ShouldAppearInCommentList()
     {
         var author = $"cmtauth{Guid.NewGuid():N}"[..20];
@@ -59,7 +60,7 @@ public sealed class CommentTests : IAsyncLifetime
             .ToContainTextAsync(commentText, new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteComment_AsAuthor_ShouldRemoveFromList()
     {
         var username = $"cmtdel{Guid.NewGuid():N}"[..20];
@@ -92,7 +93,7 @@ public sealed class CommentTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task AddMultipleComments_ShouldShowAllInOrder()
     {
         var username = $"cmtmul{Guid.NewGuid():N}"[..20];

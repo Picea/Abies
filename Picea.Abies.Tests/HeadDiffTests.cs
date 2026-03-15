@@ -12,26 +12,27 @@
 
 namespace Picea.Abies.Tests;
 
+[NotInParallel("shared-dom-state")]
 public class HeadDiffTests
 {
     // =========================================================================
     // Empty ↔ Empty
     // =========================================================================
 
-    [Fact]
-    public void Diff_BothEmpty_ReturnsNoPatches()
+    [Test]
+    public async Task Diff_BothEmpty_ReturnsNoPatches()
     {
         var patches = HeadDiff.Diff([], []);
 
-        Assert.Empty(patches);
+        await Assert.That(patches).IsEmpty();
     }
 
     // =========================================================================
     // Empty → Non-Empty (all adds)
     // =========================================================================
 
-    [Fact]
-    public void Diff_OldEmpty_ReturnsAddForEachNewElement()
+    [Test]
+    public async Task Diff_OldEmpty_ReturnsAddForEachNewElement()
     {
         HeadContent[] newHead =
         [
@@ -41,36 +42,41 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff([], newHead);
 
-        Assert.Equal(2, patches.Count);
-        Assert.All(patches, p => Assert.IsType<AddHeadElement>(p));
+        await Assert.That(patches).Count().IsEqualTo(2);
+        foreach (var p in patches)
+        {
+            await Assert.That(p).IsTypeOf<AddHeadElement>();
+        }
 
         var add0 = (AddHeadElement)patches[0];
-        Assert.IsType<HeadContent.Meta>(add0.Content);
-        Assert.Equal("meta:description", add0.Content.Key);
+        await Assert.That(add0.Content).IsTypeOf<HeadContent.Meta>();
+        await Assert.That(add0.Content.Key).IsEqualTo("meta:description");
 
         var add1 = (AddHeadElement)patches[1];
-        Assert.IsType<HeadContent.Link>(add1.Content);
-        Assert.Equal("link:canonical:https://example.com", add1.Content.Key);
+        await Assert.That(add1.Content).IsTypeOf<HeadContent.Link>();
+        await Assert.That(add1.Content.Key).IsEqualTo("link:canonical:https://example.com");
     }
 
-    [Fact]
-    public void Diff_OldEmpty_SingleElement_ReturnsSingleAdd()
+    [Test]
+    public async Task Diff_OldEmpty_SingleElement_ReturnsSingleAdd()
     {
         HeadContent[] newHead = [Head.og("title", "My Page")];
 
         var patches = HeadDiff.Diff([], newHead);
 
-        var patch = Assert.Single(patches);
-        var add = Assert.IsType<AddHeadElement>(patch);
-        Assert.Equal("property:og:title", add.Content.Key);
+        await Assert.That(patches).Count().IsEqualTo(1);
+        var patch = patches[0];
+        await Assert.That(patch).IsTypeOf<AddHeadElement>();
+        var add = (AddHeadElement)patch;
+        await Assert.That(add.Content.Key).IsEqualTo("property:og:title");
     }
 
     // =========================================================================
     // Non-Empty → Empty (all removes)
     // =========================================================================
 
-    [Fact]
-    public void Diff_NewEmpty_ReturnsRemoveForEachOldElement()
+    [Test]
+    public async Task Diff_NewEmpty_ReturnsRemoveForEachOldElement()
     {
         HeadContent[] oldHead =
         [
@@ -80,22 +86,25 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff(oldHead, []);
 
-        Assert.Equal(2, patches.Count);
-        Assert.All(patches, p => Assert.IsType<RemoveHeadElement>(p));
+        await Assert.That(patches).Count().IsEqualTo(2);
+        foreach (var p in patches)
+        {
+            await Assert.That(p).IsTypeOf<RemoveHeadElement>();
+        }
 
         var remove0 = (RemoveHeadElement)patches[0];
-        Assert.Equal("meta:description", remove0.Key);
+        await Assert.That(remove0.Key).IsEqualTo("meta:description");
 
         var remove1 = (RemoveHeadElement)patches[1];
-        Assert.Equal("link:stylesheet:/style.css", remove1.Key);
+        await Assert.That(remove1.Key).IsEqualTo("link:stylesheet:/style.css");
     }
 
     // =========================================================================
     // Same content — no patches
     // =========================================================================
 
-    [Fact]
-    public void Diff_IdenticalContent_ReturnsNoPatches()
+    [Test]
+    public async Task Diff_IdenticalContent_ReturnsNoPatches()
     {
         HeadContent[] head =
         [
@@ -106,70 +115,74 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff(head, head);
 
-        Assert.Empty(patches);
+        await Assert.That(patches).IsEmpty();
     }
 
-    [Fact]
-    public void Diff_EqualButDifferentInstances_ReturnsNoPatches()
+    [Test]
+    public async Task Diff_EqualButDifferentInstances_ReturnsNoPatches()
     {
         HeadContent[] oldHead = [Head.meta("description", "Test")];
         HeadContent[] newHead = [Head.meta("description", "Test")];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        Assert.Empty(patches);
+        await Assert.That(patches).IsEmpty();
     }
 
     // =========================================================================
     // Updates — same key, different content
     // =========================================================================
 
-    [Fact]
-    public void Diff_MetaContentChanged_ReturnsUpdate()
+    [Test]
+    public async Task Diff_MetaContentChanged_ReturnsUpdate()
     {
         HeadContent[] oldHead = [Head.meta("description", "Old description")];
         HeadContent[] newHead = [Head.meta("description", "New description")];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        var patch = Assert.Single(patches);
-        var update = Assert.IsType<UpdateHeadElement>(patch);
-        Assert.Equal("meta:description", update.Content.Key);
-        Assert.Equal("New description", ((HeadContent.Meta)update.Content).Content);
+        await Assert.That(patches).Count().IsEqualTo(1);
+        var patch = patches[0];
+        await Assert.That(patch).IsTypeOf<UpdateHeadElement>();
+        var update = (UpdateHeadElement)patch;
+        await Assert.That(update.Content.Key).IsEqualTo("meta:description");
+        await Assert.That(((HeadContent.Meta)update.Content).Content).IsEqualTo("New description");
     }
 
-    [Fact]
-    public void Diff_OgPropertyContentChanged_ReturnsUpdate()
+    [Test]
+    public async Task Diff_OgPropertyContentChanged_ReturnsUpdate()
     {
         HeadContent[] oldHead = [Head.og("title", "Old Title")];
         HeadContent[] newHead = [Head.og("title", "New Title")];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        var patch = Assert.Single(patches);
-        var update = Assert.IsType<UpdateHeadElement>(patch);
-        Assert.Equal("New Title", ((HeadContent.MetaProperty)update.Content).Content);
+        await Assert.That(patches).Count().IsEqualTo(1);
+        var patch = patches[0];
+        await Assert.That(patch).IsTypeOf<UpdateHeadElement>();
+        var update = (UpdateHeadElement)patch;
+        await Assert.That(((HeadContent.MetaProperty)update.Content).Content).IsEqualTo("New Title");
     }
 
-    [Fact]
-    public void Diff_CanonicalHrefChanged_ReturnsUpdate()
+    [Test]
+    public async Task Diff_CanonicalHrefChanged_ReturnsUpdate()
     {
         HeadContent[] oldHead = [Head.canonical("https://old.com")];
         HeadContent[] newHead = [Head.canonical("https://new.com")];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        Assert.Equal(2, patches.Count);
-        Assert.IsType<AddHeadElement>(patches[0]);
-        Assert.IsType<RemoveHeadElement>(patches[1]);
+        await Assert.That(patches).Count().IsEqualTo(2);
+        await Assert.That(patches[0]).IsTypeOf<AddHeadElement>();
+        await Assert.That(patches[1]).IsTypeOf<RemoveHeadElement>();
     }
 
     // =========================================================================
     // Mixed operations — add, update, and remove in one diff
     // =========================================================================
 
-    [Fact]
-    public void Diff_MixedChanges_ReturnsCorrectPatches()
+    [Test]
+    public async Task Diff_MixedChanges_ReturnsCorrectPatches()
     {
         HeadContent[] oldHead =
         [
@@ -187,24 +200,24 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        Assert.Equal(3, patches.Count);
+        await Assert.That(patches).Count().IsEqualTo(3);
 
         var update = patches.OfType<UpdateHeadElement>().Single();
-        Assert.Equal("meta:description", update.Content.Key);
+        await Assert.That(update.Content.Key).IsEqualTo("meta:description");
 
         var add = patches.OfType<AddHeadElement>().Single();
-        Assert.Equal("link:canonical:https://example.com", add.Content.Key);
+        await Assert.That(add.Content.Key).IsEqualTo("link:canonical:https://example.com");
 
         var remove = patches.OfType<RemoveHeadElement>().Single();
-        Assert.Equal("property:og:title", remove.Key);
+        await Assert.That(remove.Key).IsEqualTo("property:og:title");
     }
 
     // =========================================================================
     // All HeadContent variants
     // =========================================================================
 
-    [Fact]
-    public void Diff_AllVariants_AddedCorrectly()
+    [Test]
+    public async Task Diff_AllVariants_AddedCorrectly()
     {
         HeadContent[] newHead =
         [
@@ -222,42 +235,49 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff([], newHead);
 
-        Assert.Equal(10, patches.Count);
-        Assert.All(patches, p => Assert.IsType<AddHeadElement>(p));
+        await Assert.That(patches).Count().IsEqualTo(10);
+        foreach (var p in patches)
+        {
+            await Assert.That(p).IsTypeOf<AddHeadElement>();
+        }
     }
 
-    [Fact]
-    public void Diff_ScriptContentChanged_ReturnsUpdate()
+    [Test]
+    public async Task Diff_ScriptContentChanged_ReturnsUpdate()
     {
         HeadContent[] oldHead = [Head.jsonLd(new { type = "Article", name = "Old" })];
         HeadContent[] newHead = [Head.jsonLd(new { type = "Article", name = "New" })];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        var patch = Assert.Single(patches);
-        var update = Assert.IsType<UpdateHeadElement>(patch);
-        Assert.Equal("script:application/ld+json", update.Content.Key);
+        await Assert.That(patches).Count().IsEqualTo(1);
+        var patch = patches[0];
+        await Assert.That(patch).IsTypeOf<UpdateHeadElement>();
+        var update = (UpdateHeadElement)patch;
+        await Assert.That(update.Content.Key).IsEqualTo("script:application/ld+json");
     }
 
-    [Fact]
-    public void Diff_BaseHrefChanged_ReturnsUpdate()
+    [Test]
+    public async Task Diff_BaseHrefChanged_ReturnsUpdate()
     {
         HeadContent[] oldHead = [Head.@base("/old/")];
         HeadContent[] newHead = [Head.@base("/new/")];
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        var patch = Assert.Single(patches);
-        var update = Assert.IsType<UpdateHeadElement>(patch);
-        Assert.Equal("base", update.Content.Key);
+        await Assert.That(patches).Count().IsEqualTo(1);
+        var patch = patches[0];
+        await Assert.That(patch).IsTypeOf<UpdateHeadElement>();
+        var update = (UpdateHeadElement)patch;
+        await Assert.That(update.Content.Key).IsEqualTo("base");
     }
 
     // =========================================================================
     // Order independence
     // =========================================================================
 
-    [Fact]
-    public void Diff_ReorderedSameContent_ReturnsNoPatches()
+    [Test]
+    public async Task Diff_ReorderedSameContent_ReturnsNoPatches()
     {
         HeadContent[] oldHead =
         [
@@ -275,55 +295,55 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        Assert.Empty(patches);
+        await Assert.That(patches).IsEmpty();
     }
 
     // =========================================================================
     // ToHtml correctness (used by binary protocol to serialize elements)
     // =========================================================================
 
-    [Fact]
-    public void Meta_ToHtml_IncludesDataAbiesHeadAttribute()
+    [Test]
+    public async Task Meta_ToHtml_IncludesDataAbiesHeadAttribute()
     {
         var meta = Head.meta("description", "Test page");
 
         var html = meta.ToHtml();
 
-        Assert.Contains("""data-abies-head="meta:description""", html);
-        Assert.Contains("""content="Test page""", html);
+        await Assert.That(html).Contains("""data-abies-head="meta:description""");
+        await Assert.That(html).Contains("""content="Test page""");
     }
 
-    [Fact]
-    public void Link_ToHtml_IncludesDataAbiesHeadAttribute()
+    [Test]
+    public async Task Link_ToHtml_IncludesDataAbiesHeadAttribute()
     {
         var link = Head.stylesheet("/style.css");
 
         var html = link.ToHtml();
 
-        Assert.Contains("""data-abies-head="link:stylesheet:/style.css""", html);
-        Assert.Contains("""href="/style.css""", html);
+        await Assert.That(html).Contains("""data-abies-head="link:stylesheet:/style.css""");
+        await Assert.That(html).Contains("""href="/style.css""");
     }
 
-    [Fact]
-    public void Meta_ToHtml_EncodesSpecialCharacters()
+    [Test]
+    public async Task Meta_ToHtml_EncodesSpecialCharacters()
     {
         var meta = Head.meta("description", """He said "hello" & <goodbye>""");
 
         var html = meta.ToHtml();
 
-        Assert.Contains("&amp;", html);
-        Assert.Contains("&quot;", html);
-        Assert.Contains("&lt;", html);
-        Assert.Contains("&gt;", html);
-        Assert.DoesNotContain("<goodbye>", html);
+        await Assert.That(html).Contains("&amp;");
+        await Assert.That(html).Contains("&quot;");
+        await Assert.That(html).Contains("&lt;");
+        await Assert.That(html).Contains("&gt;");
+        await Assert.That(html).DoesNotContain("<goodbye>");
     }
 
     // =========================================================================
     // Duplicate keys — last one wins
     // =========================================================================
 
-    [Fact]
-    public void Diff_DuplicateKeysInNew_LastOneWins()
+    [Test]
+    public async Task Diff_DuplicateKeysInNew_LastOneWins()
     {
         HeadContent[] oldHead = [Head.meta("description", "Old")];
         HeadContent[] newHead =
@@ -334,6 +354,6 @@ public class HeadDiffTests
 
         var patches = HeadDiff.Diff(oldHead, newHead);
 
-        Assert.Contains(patches, p => p is UpdateHeadElement);
+        await Assert.That(patches.Any(p => p is UpdateHeadElement)).IsTrue();
     }
 }

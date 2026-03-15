@@ -16,34 +16,29 @@ using Picea.Abies.Conduit.ReadModel;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class ArticleEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class ArticleEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public ArticleEndpointTests(ConduitApiFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task ListArticles_NoAuth_ReturnsOk()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/articles");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<MultipleArticlesResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.NotNull(body.Articles);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.Articles).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task GetArticle_Exists_ReturnsArticle()
     {
         var author = new ProfileReadModel("author", "bio", "", false);
@@ -63,24 +58,24 @@ public sealed class ArticleEndpointTests : IClassFixture<ConduitApiFactory>
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/articles/test-article");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<SingleArticleResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.Equal("Test Article", body.Article.Title);
-        Assert.Equal("test-article", body.Article.Slug);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.Article.Title).IsEqualTo("Test Article");
+        await Assert.That(body.Article.Slug).IsEqualTo("test-article");
     }
 
-    [Fact]
+    [Test]
     public async Task GetArticle_NotFound_Returns404()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/articles/nonexistent-slug");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task CreateArticle_Authenticated_ReturnsCreated()
     {
         var user = _factory.SeedUser(
@@ -98,12 +93,11 @@ public sealed class ArticleEndpointTests : IClassFixture<ConduitApiFactory>
 
         // The command goes through the aggregate (in-memory event store).
         // The read model may not reflect the article since we use fakes.
-        Assert.True(
-            response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK,
-            $"Expected Created or OK, got {response.StatusCode}");
+        await Assert.That(
+            response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task CreateArticle_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
@@ -116,19 +110,19 @@ public sealed class ArticleEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await client.PostAsJsonAsync("/api/articles", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task GetFeed_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/articles/feed");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task GetFeed_Authenticated_ReturnsOk()
     {
         var user = _factory.SeedUser(
@@ -138,24 +132,24 @@ public sealed class ArticleEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await client.GetAsync("/api/articles/feed");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteArticle_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
         var response = await client.DeleteAsync("/api/articles/some-slug");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task FavoriteArticle_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
         var response = await client.PostAsync("/api/articles/some-slug/favorite", null);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 }

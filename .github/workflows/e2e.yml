@@ -74,12 +74,11 @@ jobs:
         id: e2e-tests
         continue-on-error: true
         run: |
-          dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
-            --no-build -c Debug -v minimal -m:1 \
+          dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
+            --no-build -c Debug \
             --filter "Category!=Performance" \
-            -l "trx;LogFileName=conduit-e2e.trx" \
-            -l "console;verbosity=normal" \
-            -- RunConfiguration.TestSessionTimeout=3600000
+            --report-trx --report-trx-filename conduit-e2e.trx \
+            -- --maximum-parallel-test-count 1 --timeout 3600000
       
       - name: Analyze test results
         if: always() && steps.check-e2e.outputs.in_solution == 'true'

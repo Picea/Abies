@@ -14,21 +14,16 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class UserEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class UserEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public UserEndpointTests(ConduitApiFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetCurrentUser_Authenticated_ReturnsUser()
     {
         var user = _factory.SeedUser(
@@ -38,26 +33,26 @@ public sealed class UserEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await client.GetAsync("/api/user");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<UserResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.Equal("current@example.com", body.User.Email);
-        Assert.Equal("currentuser", body.User.Username);
-        Assert.NotNull(body.User.Token);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.User.Email).IsEqualTo("current@example.com");
+        await Assert.That(body.User.Username).IsEqualTo("currentuser");
+        await Assert.That(body.User.Token).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task GetCurrentUser_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
 
         var response = await client.GetAsync("/api/user");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task UpdateUser_ValidInput_ReturnsUpdatedUser()
     {
         var user = _factory.SeedUser(
@@ -80,12 +75,11 @@ public sealed class UserEndpointTests : IClassFixture<ConduitApiFactory>
         //   - OK if the aggregate processed the update
         //   - 422 if validation failed
         //   - 404 if the user stream doesn't exist yet (NotRegistered)
-        Assert.True(
-            response.StatusCode is HttpStatusCode.OK or HttpStatusCode.UnprocessableEntity or HttpStatusCode.NotFound,
-            $"Expected OK, 422, or 404, got {response.StatusCode}");
+        await Assert.That(
+            response.StatusCode is HttpStatusCode.OK or HttpStatusCode.UnprocessableEntity or HttpStatusCode.NotFound).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task UpdateUser_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
@@ -96,6 +90,6 @@ public sealed class UserEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 }

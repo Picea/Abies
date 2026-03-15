@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitServer")]
-public sealed class ArticleServerTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitServerFixture>(Shared = SharedType.Keyed, Key = "ConduitServer")]
+[NotInParallel("ConduitServer")]
+public sealed class ArticleServerTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitServerFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class ArticleServerTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task ViewArticle_ShouldShowTitleAndBody()
     {
         var username = $"srvartvw{Guid.NewGuid():N}"[..20];
@@ -45,7 +46,7 @@ public sealed class ArticleServerTests : IAsyncLifetime
             new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task FavoriteArticle_WhenLoggedIn_ShouldToggleFavoriteButton()
     {
         var author = $"srvfavau{Guid.NewGuid():N}"[..20];

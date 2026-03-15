@@ -1,13 +1,14 @@
 using Microsoft.Playwright;
+using TUnit.Core.Interfaces;
 
 namespace Picea.Abies.Templates.Testing.Fixtures;
 
 /// <summary>
-/// xUnit collection fixture that scaffolds the <c>abies-browser</c> template,
+/// TUnit shared fixture that scaffolds the <c>abies-browser</c> template,
 /// builds it, runs it via the WebAssembly SDK dev server, and provides a
 /// Playwright browser for E2E testing.
 /// </summary>
-public sealed class BrowserTemplateFixture : IAsyncLifetime
+public sealed class BrowserTemplateFixture : IAsyncInitializer, IAsyncDisposable
 {
     private TemplateProject? _project;
     private IPlaywright? _playwright;
@@ -48,7 +49,7 @@ public sealed class BrowserTemplateFixture : IAsyncLifetime
             new BrowserTypeLaunchOptions { Headless = headless });
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

@@ -25,13 +25,14 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
 
+using TUnit.Core.Interfaces;
 namespace Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Counter in InteractiveWasm mode for E2E testing.
-/// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
+/// Implements <see cref="IAsyncInitializer"/> for xUnit lifecycle management.
 /// </summary>
-public sealed class CounterWasmFixture : IAsyncLifetime
+public sealed class CounterWasmFixture : IAsyncInitializer, IAsyncDisposable
 {
     private WebApplication? _app;
     private IPlaywright? _playwright;
@@ -115,7 +116,7 @@ public sealed class CounterWasmFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

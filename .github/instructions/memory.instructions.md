@@ -15,6 +15,34 @@ Key reminders:
 - Follow the PR template at `.github/pull_request_template.md`
 - Use Conventional Commits format for PR titles
 
+## Terminal Command Rules
+
+**CRITICAL**: The VS Code integrated terminal has buffering and signal-handling quirks. Follow these rules:
+
+### The Golden Rule
+**The VS Code integrated terminal is NOT a normal shell.** It has signal handling, buffering, quoting, and process lifecycle quirks that silently kill commands. Treat every terminal command as potentially hostile and follow the safe patterns below. When in doubt, keep it simple — one command, no pipes, no compound expressions.
+
+### Forbidden Patterns
+1. **NEVER pipe long-running commands through `tail`, `head`, `tee`, or `grep`** — pipes cause SIGPIPE when the reader closes, silently killing the producer process (e.g. `act`, `dotnet test`). Use file redirection (`> file.log 2>&1`) instead.
+2. **NEVER use `sleep N && ...` compound commands** — VS Code terminals may interrupt `sleep` with ^C, killing the entire command chain.
+3. **NEVER run Python scripts in the terminal** — Python processes frequently hang in the VS Code terminal environment. Use `dotnet` or shell builtins instead.
+4. **NEVER use `| head -N`** — this kills the producer after N lines via SIGPIPE.
+5. **NEVER use unclosed quotes or multi-line string literals** — the VS Code terminal sometimes fails to properly pass multi-line or complex quoting to the shell, resulting in a `dquote>` or `quote>` prompt that hangs forever. If you see `dquote>` in output, the command is stuck and must be killed.
+6. **NEVER construct complex inline scripts with nested quotes** — e.g. `bash -c 'echo "hello 'world'"`. Use file redirection or simple single-purpose commands instead.
+
+### Safe Patterns
+- **Redirect to file**: `command > /tmp/output.log 2>&1`
+- **Check file contents**: `cat /tmp/output.log` (after command completes)
+- **Check process alive**: `kill -0 $PID 2>/dev/null && echo ALIVE || echo DEAD`
+- **Check file size**: `wc -l < /tmp/output.log`
+- **Background + wait**: `command > /tmp/out.log 2>&1 & PID=$!; echo "PID=$PID"`
+- **Keep commands atomic**: one command per terminal invocation when possible
+- **Avoid chaining**: prefer separate `run_in_terminal` calls over `&&` chains
+
+### Lessons Learned (2026-03-14)
+- Running `act push -j build ... 2>&1 | tee /tmp/log` caused act to silently die when the tee pipe broke. Running `act ... | head -200` killed act after 200 lines via SIGPIPE. Both failures wasted ~5 minutes of container setup each time. Always use direct file redirection for long-running commands.
+- Complex `grep` patterns with special characters or multi-line `echo` statements can trigger `dquote>` hangs. Keep grep patterns simple and avoid inline multi-line strings.
+
 ## ⚠️ Benchmark Environment: Power State Awareness (M4 Pro MacBook)
 
 **CRITICAL**: Always ask "Is your MacBook plugged in or on battery?" before running benchmarks.
@@ -155,7 +183,7 @@ The following Toub-inspired optimizations have been applied:
 - The binary data is processed very efficiently in JavaScript
 - JSON's text serialization overhead negates the innerHTML parsing savings
 
-**Conclusion**: 
+**Conclusion**:
 - HTML string rendering via innerHTML is the correct approach for Abies
 - Browser HTML parsers are highly optimized and very hard to beat
 - Do NOT revisit this approach unless moving to a binary protocol like Blazor's RenderBatch
@@ -268,10 +296,10 @@ The following Toub-inspired optimizations have been applied:
 
 ```xml
 <!-- Copy the canonical abies.js before build/publish -->
-<Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish" 
-        Inputs="..\Abies\wwwroot\abies.js" 
+<Target Name="SyncAbiesJs" BeforeTargets="Build;ComputeFilesToPublish"
+        Inputs="..\Abies\wwwroot\abies.js"
         Outputs="wwwroot\abies.js">
-  <Copy SourceFiles="..\Abies\wwwroot\abies.js" 
+  <Copy SourceFiles="..\Abies\wwwroot\abies.js"
         DestinationFiles="wwwroot\abies.js" />
 </Target>
 
@@ -279,11 +307,11 @@ The following Toub-inspired optimizations have been applied:
 <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
   <ItemGroup>
     <!-- Use Identity metadata (full path) to identify and remove Abies project's copy -->
-    <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" 
-      Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js' 
+    <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+      Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot\abies.js'
                  AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('\Abies\wwwroot\abies.js'))" />
-    <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" 
-      Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js' 
+    <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+      Condition="'%(ResolvedFileToPublish.RelativePath)' == 'wwwroot/abies.js'
                  AND $([System.String]::new('%(ResolvedFileToPublish.Identity)').Contains('/Abies/wwwroot/abies.js'))" />
   </ItemGroup>
 </Target>
@@ -301,7 +329,7 @@ The following Toub-inspired optimizations have been applied:
 
 **Problem**: Running `dotnet format` on the solution creates merge conflict markers in some files (e.g., `Parser.cs`) due to the multi-targeted nature of the solution (net10.0 and potentially other targets).
 
-**Workaround**: 
+**Workaround**:
 - **DO NOT** run `dotnet format` on the entire solution
 - Instead, manually format only the files you changed
 - If you accidentally run `dotnet format` and it corrupts files, revert with:
@@ -969,9 +997,9 @@ public static Document View(Model model) => ...
 // TO stateful component:
 public class RowComponent : Component<RowProps>
 {
-    public override bool ShouldRender(RowProps old, RowProps new) 
+    public override bool ShouldRender(RowProps old, RowProps new)
         => !ReferenceEquals(old.Row, new.Row);
-    
+
     public override Node Render(RowProps props) => TableRow(props.Row);
 }
 ```
@@ -983,7 +1011,7 @@ public class RowComponent : Component<RowProps>
 
 **Cons:**
 - Breaks pure MVU architecture
-- Components need lifecycle management  
+- Components need lifecycle management
 - More complex mental model
 - Loses referential transparency
 
@@ -1019,7 +1047,7 @@ lazy(memoKey, ...)
 public static Document View(Model model, Document? previous)
 {
     return new Document("Title",
-        tbody([], model.Data.Select((row, i) => 
+        tbody([], model.Data.Select((row, i) =>
             GetCachedRowNode(row, model.Selected == row.Id, previous)
         ))
     );
@@ -1071,7 +1099,7 @@ Use source generators to analyze View functions and generate optimized code:
 
 ```csharp
 // Developer writes:
-public static Node ViewRow(Row row, bool selected) => 
+public static Node ViewRow(Row row, bool selected) =>
     tr([class_(selected ? "danger" : "")], [...]);
 
 // Generator produces:

@@ -5,27 +5,43 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="TUnit.Core.Interfaces" />
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
+    <PackageReference Include="TUnit" Version="1.19.57" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Counter\Picea.Abies.Counter.csproj" />
     <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
+    <!-- Build-order dependency: ensure Counter.Wasm is built before our
+         PublishWasmProject target runs dotnet publish on it. Without this,
+         parallel MSBuild can trigger two simultaneous publishes that race
+         on ILLinker file locks. ReferenceOutputAssembly=false means we
+         don't actually reference its output — just enforce ordering. -->
+    <ProjectReference Include="..\Picea.Abies.Counter.Wasm\Picea.Abies.Counter.Wasm.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      Private="false" />
+    <!-- Build-order dependency on Host: Host also publishes Counter.Wasm via
+         its own PublishWasmProject target. Without this ordering constraint,
+         both Host and E2E race on the same WASM publish output directory.
+         By depending on Host, it publishes first and our PublishWasmProject
+         target sees the existing output and skips (via Inputs/Outputs). -->
+    <ProjectReference Include="..\Picea.Abies.Counter.Wasm.Host\Picea.Abies.Counter.Wasm.Host.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      Private="false" />
   </ItemGroup>
 
   <!--

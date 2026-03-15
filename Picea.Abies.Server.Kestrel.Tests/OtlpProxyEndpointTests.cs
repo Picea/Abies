@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Picea.Abies.Server.Kestrel.Tests;
 
+[NotInParallel("rate-limit-state")]
 public class OtlpProxyEndpointTests : IDisposable
 {
     private readonly IHost _host;
@@ -57,7 +58,7 @@ public class OtlpProxyEndpointTests : IDisposable
         OtlpProxyEndpoint.ResetRateLimits();
     }
 
-    [Fact]
+    [Test]
     public async Task Traces_Endpoint_Returns_204_When_No_Collector_Configured()
     {
         // Arrange
@@ -68,10 +69,10 @@ public class OtlpProxyEndpointTests : IDisposable
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
         // Assert
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
-    [Fact]
+    [Test]
     public async Task Metrics_Endpoint_Returns_204_When_No_Collector_Configured()
     {
         using var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
@@ -79,10 +80,10 @@ public class OtlpProxyEndpointTests : IDisposable
 
         var response = await _client.PostAsync("/otlp/v1/metrics", content);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
-    [Fact]
+    [Test]
     public async Task Logs_Endpoint_Returns_204_When_No_Collector_Configured()
     {
         using var content = new ByteArrayContent([0x0A, 0x01, 0x02]);
@@ -90,10 +91,10 @@ public class OtlpProxyEndpointTests : IDisposable
 
         var response = await _client.PostAsync("/otlp/v1/logs", content);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
-    [Fact]
+    [Test]
     public async Task Rejects_Unsupported_Content_Type()
     {
         using var content = new StringContent("not protobuf");
@@ -101,10 +102,10 @@ public class OtlpProxyEndpointTests : IDisposable
 
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
-        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnsupportedMediaType);
     }
 
-    [Fact]
+    [Test]
     public async Task Accepts_Application_Json_Content_Type()
     {
         using var content = new StringContent("{}");
@@ -113,10 +114,10 @@ public class OtlpProxyEndpointTests : IDisposable
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
         // Should get 204 (no collector) not 415 (unsupported)
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
-    [Fact]
+    [Test]
     public async Task Rejects_Oversized_Request()
     {
         // MaxRequestSizeBytes = 1024 in test setup
@@ -127,10 +128,10 @@ public class OtlpProxyEndpointTests : IDisposable
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
         // HttpStatusCode uses the HTTP/1.0 name RequestEntityTooLarge for 413
-        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.RequestEntityTooLarge);
     }
 
-    [Fact]
+    [Test]
     public async Task Rate_Limiting_Blocks_Excess_Requests()
     {
         // RateLimitPerMinute = 5 in test setup
@@ -141,39 +142,39 @@ public class OtlpProxyEndpointTests : IDisposable
             using var c = new ByteArrayContent([0x0A]);
             c.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
             var response = await _client.PostAsync("/otlp/v1/traces", c);
-            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
         }
 
         // 6th request should be rate limited
         using var rateLimitContent = new ByteArrayContent([0x0A]);
         rateLimitContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
         var rateLimitedResponse = await _client.PostAsync("/otlp/v1/traces", rateLimitContent);
-        Assert.Equal(HttpStatusCode.TooManyRequests, rateLimitedResponse.StatusCode);
-        Assert.Equal("60", rateLimitedResponse.Headers.GetValues("Retry-After").First());
+        await Assert.That(rateLimitedResponse.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
+        await Assert.That(rateLimitedResponse.Headers.GetValues("Retry-After").First()).IsEqualTo("60");
     }
 
-    [Fact]
-    public void CheckRateLimit_Allows_Within_Limit()
+    [Test]
+    public async Task CheckRateLimit_Allows_Within_Limit()
     {
         for (var i = 0; i < 10; i++)
         {
-            Assert.True(OtlpProxyEndpoint.CheckRateLimit("test-client", 10));
+            await Assert.That(OtlpProxyEndpoint.CheckRateLimit("test-client", 10)).IsTrue();
         }
     }
 
-    [Fact]
-    public void CheckRateLimit_Blocks_Over_Limit()
+    [Test]
+    public async Task CheckRateLimit_Blocks_Over_Limit()
     {
         for (var i = 0; i < 5; i++)
         {
             OtlpProxyEndpoint.CheckRateLimit("test-client-2", 5);
         }
 
-        Assert.False(OtlpProxyEndpoint.CheckRateLimit("test-client-2", 5));
+        await Assert.That(OtlpProxyEndpoint.CheckRateLimit("test-client-2", 5)).IsFalse();
     }
 
-    [Fact]
-    public void CheckRateLimit_Isolates_Clients()
+    [Test]
+    public async Task CheckRateLimit_Isolates_Clients()
     {
         // Fill up client A
         for (var i = 0; i < 3; i++)
@@ -182,16 +183,17 @@ public class OtlpProxyEndpointTests : IDisposable
         }
 
         // Client B should still be allowed
-        Assert.True(OtlpProxyEndpoint.CheckRateLimit("client-b", 3));
+        await Assert.That(OtlpProxyEndpoint.CheckRateLimit("client-b", 3)).IsTrue();
 
         // Client A should be blocked
-        Assert.False(OtlpProxyEndpoint.CheckRateLimit("client-a", 3));
+        await Assert.That(OtlpProxyEndpoint.CheckRateLimit("client-a", 3)).IsFalse();
     }
 }
 
 /// <summary>
 /// Tests for the OTLP proxy with a mock collector backend.
 /// </summary>
+[NotInParallel("rate-limit-state")]
 public class OtlpProxyForwardingTests : IDisposable
 {
     private readonly IHost _collectorHost;
@@ -265,7 +267,7 @@ public class OtlpProxyForwardingTests : IDisposable
         OtlpProxyEndpoint.ResetRateLimits();
     }
 
-    [Fact]
+    [Test]
     public async Task Forwards_Protobuf_Body_To_Collector()
     {
         // Arrange
@@ -277,12 +279,12 @@ public class OtlpProxyForwardingTests : IDisposable
         var response = await _client.PostAsync("/otlp/v1/traces", content);
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Single(_receivedBodies);
-        Assert.Equal(traceData, _receivedBodies[0]);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_receivedBodies).Count().IsEqualTo(1);
+        await Assert.That(_receivedBodies[0]).IsEquivalentTo(traceData);
     }
 
-    [Fact]
+    [Test]
     public async Task Preserves_Content_Type_When_Forwarding()
     {
         using var content = new ByteArrayContent([0x0A]);
@@ -290,11 +292,11 @@ public class OtlpProxyForwardingTests : IDisposable
 
         await _client.PostAsync("/otlp/v1/traces", content);
 
-        Assert.Single(_receivedContentTypes);
-        Assert.Contains("application/x-protobuf", _receivedContentTypes[0]);
+        await Assert.That(_receivedContentTypes).Count().IsEqualTo(1);
+        await Assert.That(_receivedContentTypes[0]).Contains("application/x-protobuf");
     }
 
-    [Fact]
+    [Test]
     public async Task Forwards_Multiple_Requests()
     {
         for (var i = 0; i < 3; i++)
@@ -304,9 +306,9 @@ public class OtlpProxyForwardingTests : IDisposable
             await _client.PostAsync("/otlp/v1/traces", content);
         }
 
-        Assert.Equal(3, _receivedBodies.Count);
-        Assert.Equal([0], _receivedBodies[0]);
-        Assert.Equal([1], _receivedBodies[1]);
-        Assert.Equal([2], _receivedBodies[2]);
+        await Assert.That(_receivedBodies.Count).IsEqualTo(3);
+        await Assert.That(_receivedBodies[0]).IsEquivalentTo(new byte[] { 0 });
+        await Assert.That(_receivedBodies[1]).IsEquivalentTo(new byte[] { 1 });
+        await Assert.That(_receivedBodies[2]).IsEquivalentTo(new byte[] { 2 });
     }
 }

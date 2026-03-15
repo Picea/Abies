@@ -14,21 +14,16 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class ProfileEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class ProfileEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public ProfileEndpointTests(ConduitApiFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetProfile_ExistingUser_ReturnsProfile()
     {
         var user = _factory.SeedUser(
@@ -39,25 +34,25 @@ public sealed class ProfileEndpointTests : IClassFixture<ConduitApiFactory>
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/profiles/profileuser");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<ProfileResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.Equal("profileuser", body.Profile.Username);
-        Assert.Equal("A bio", body.Profile.Bio);
-        Assert.False(body.Profile.Following);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.Profile.Username).IsEqualTo("profileuser");
+        await Assert.That(body.Profile.Bio).IsEqualTo("A bio");
+        await Assert.That(body.Profile.Following).IsFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task GetProfile_NonexistentUser_Returns404()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/profiles/nobody_here");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task FollowUser_Unauthenticated_Returns401()
     {
         _factory.SeedUser(username: "followtarget", email: "followtarget@example.com");
@@ -65,10 +60,10 @@ public sealed class ProfileEndpointTests : IClassFixture<ConduitApiFactory>
         using var client = _factory.CreateClient();
         var response = await client.PostAsync("/api/profiles/followtarget/follow", null);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task UnfollowUser_Unauthenticated_Returns401()
     {
         _factory.SeedUser(username: "unfollowtarget", email: "unfollowtarget@example.com");
@@ -76,6 +71,6 @@ public sealed class ProfileEndpointTests : IClassFixture<ConduitApiFactory>
         using var client = _factory.CreateClient();
         var response = await client.DeleteAsync("/api/profiles/unfollowtarget/follow");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 }
