@@ -64,8 +64,9 @@ jobs:
       run: dotnet test --project Picea.Abies.Conduit.Api.Tests/Picea.Abies.Conduit.Api.Tests.csproj --no-build --verbosity normal
     - name: Test Picea.Abies.Analyzers.Tests
       run: dotnet test --project Picea.Abies.Analyzers.Tests/Picea.Abies.Analyzers.Tests.csproj --no-build --verbosity normal
-    - name: Test Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests
-      run: dotnet test --project Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests/Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests.csproj --no-build --verbosity normal
+    # PostgreSQL integration tests are skipped in CD — they require a
+    # PostgreSQL service container that is not provisioned in this workflow.
+    # Run locally with: CONDUIT_POSTGRES_CONNECTION="..." dotnet test --project ...
     - name: Pack Picea.Abies
       if: github.event_name != 'pull_request'
       run: dotnet pack ./Picea.Abies/Picea.Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}

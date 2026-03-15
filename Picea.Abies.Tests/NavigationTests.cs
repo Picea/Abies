@@ -14,7 +14,6 @@
 // =============================================================================
 
 using Picea.Abies.Subscriptions;
-using Picea;
 
 namespace Picea.Abies.Tests;
 

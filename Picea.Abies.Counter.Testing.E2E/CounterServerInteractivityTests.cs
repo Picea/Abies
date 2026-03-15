@@ -13,9 +13,9 @@
 // The MVU loop runs server-side, so each interaction incurs a round-trip.
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Counter.Testing.E2E.Fixtures;
 using Picea.Abies.Counter.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Counter.Testing.E2E;
 

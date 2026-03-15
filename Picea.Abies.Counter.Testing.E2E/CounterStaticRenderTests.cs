@@ -13,8 +13,8 @@
 // and that no interactive infrastructure (scripts, WebSocket) is present.
 // =============================================================================
 
-using Picea.Abies.Counter.Testing.E2E.Fixtures;
 using Microsoft.Playwright;
+using Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 namespace Picea.Abies.Counter.Testing.E2E;
 
