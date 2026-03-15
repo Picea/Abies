@@ -20,7 +20,6 @@
 // =============================================================================
 
 using Picea.Abies.DOM;
-using Picea.Abies.Html;
 using Attribute = Picea.Abies.DOM.Attribute;
 
 namespace Picea.Abies.Tests;
