@@ -17,44 +17,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if E2E project is in solution
+      - name: Check E2E projects in solution
         id: check-e2e
         run: |
-          # The E2E project was temporarily removed from the solution
-          # because its Aspire AppHost reference is broken.
-          # Skip gracefully if it's not in the solution.
-          # Use grep instead of `dotnet sln list` to avoid requiring
-          # the .NET SDK before the setup-dotnet step.
-          if grep -q 'Picea.Abies.Conduit.Testing.E2E' Picea.Abies.sln; then
-            echo "in_solution=true" >> $GITHUB_OUTPUT
-            echo "✅ E2E project found in solution"
-          else
-            echo "in_solution=false" >> $GITHUB_OUTPUT
-            echo "⚠️  E2E project not in solution — skipping E2E tests"
-            echo "The Conduit E2E project was temporarily removed from the solution."
-            echo "To re-enable: fix AppHost references and run 'dotnet sln add Picea.Abies.Conduit.Testing.E2E'"
-          fi
+          # Detect which E2E projects are available in the solution.
+          for proj in Picea.Abies.Conduit.Testing.E2E \
+                      Picea.Abies.Counter.Testing.E2E \
+                      Picea.Abies.Templates.Testing.E2E; do
+            key=$(echo "$proj" | tr '.' '_' | tr '-' '_')
+            if grep -q "$proj" Picea.Abies.sln; then
+              echo "${key}=true" >> $GITHUB_OUTPUT
+              echo "✅ $proj found in solution"
+            else
+              echo "${key}=false" >> $GITHUB_OUTPUT
+              echo "⚠️  $proj not in solution — skipping"
+            fi
+          done
 
       - name: Setup .NET 10
-        if: steps.check-e2e.outputs.in_solution == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Install WASM workloads
-        if: steps.check-e2e.outputs.in_solution == 'true'
         run: dotnet workload install wasm-experimental wasm-tools
 
       - name: Restore
-        if: steps.check-e2e.outputs.in_solution == 'true'
         run: dotnet restore
 
       - name: Build
-        if: steps.check-e2e.outputs.in_solution == 'true'
         run: dotnet build --no-restore -c Debug
-      
+
       - name: Cache Playwright browsers
-        if: steps.check-e2e.outputs.in_solution == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -62,16 +56,28 @@ jobs:
           restore-keys: |
             ms-playwright-${{ runner.os }}-
 
-      # Install Playwright browsers for .NET (must run AFTER build)
-      # See: https://playwright.dev/dotnet/docs/ci-intro
-      - name: Install Playwright browsers
-        if: steps.check-e2e.outputs.in_solution == 'true'
+      # ── Playwright browser install (one per E2E project) ──────────
+
+      - name: Install Playwright browsers (Conduit E2E)
+        if: steps.check-e2e.outputs.Picea_Abies_Conduit_Testing_E2E == 'true'
         run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
         working-directory: Picea.Abies.Conduit.Testing.E2E
 
-      - name: Run E2E tests (sequential)
-        if: steps.check-e2e.outputs.in_solution == 'true'
-        id: e2e-tests
+      - name: Install Playwright browsers (Counter E2E)
+        if: steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
+        working-directory: Picea.Abies.Counter.Testing.E2E
+
+      - name: Install Playwright browsers (Templates E2E)
+        if: steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
+        working-directory: Picea.Abies.Templates.Testing.E2E
+
+      # ── Conduit E2E ───────────────────────────────────────────────
+
+      - name: Run Conduit E2E tests
+        if: steps.check-e2e.outputs.Picea_Abies_Conduit_Testing_E2E == 'true'
+        id: conduit-e2e
         continue-on-error: true
         run: |
           dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
@@ -79,24 +85,67 @@ jobs:
             -- --treenode-filter "/*/*/*/*[Category!=Performance]" \
             --report-trx --report-trx-filename conduit-e2e.trx \
             --maximum-parallel-tests 1 --timeout 1h
-      
-      - name: Analyze test results
-        if: always() && steps.check-e2e.outputs.in_solution == 'true'
-        id: analyze-results
+
+      - name: Analyze Conduit E2E results
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Conduit_Testing_E2E == 'true'
         run: |
-          python3 scripts/analyze_e2e_results.py \
-            Picea.Abies.Conduit.Testing.E2E/TestResults/conduit-e2e.trx
+          TRX_FILE=$(find Picea.Abies.Conduit.Testing.E2E -name "conduit-e2e.trx" -type f | head -1)
+          if [ -z "$TRX_FILE" ]; then
+            echo "❌ TRX file not found for Conduit E2E"
+            exit 2
+          fi
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+
+      # ── Counter E2E ───────────────────────────────────────────────
+
+      - name: Run Counter E2E tests
+        if: steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
+        id: counter-e2e
+        continue-on-error: true
+        run: |
+          dotnet test --project Picea.Abies.Counter.Testing.E2E/Picea.Abies.Counter.Testing.E2E.csproj \
+            --no-build -c Debug \
+            -- --report-trx --report-trx-filename counter-e2e.trx \
+            --maximum-parallel-tests 1 --timeout 1h
+
+      - name: Analyze Counter E2E results
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
+        run: |
+          TRX_FILE=$(find Picea.Abies.Counter.Testing.E2E -name "counter-e2e.trx" -type f | head -1)
+          if [ -z "$TRX_FILE" ]; then
+            echo "❌ TRX file not found for Counter E2E"
+            exit 2
+          fi
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+
+      # ── Templates E2E ─────────────────────────────────────────────
+
+      - name: Run Templates E2E tests
+        if: steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
+        id: templates-e2e
+        continue-on-error: true
+        run: |
+          dotnet test --project Picea.Abies.Templates.Testing.E2E/Picea.Abies.Templates.Testing.E2E.csproj \
+            --no-build -c Debug \
+            -- --report-trx --report-trx-filename templates-e2e.trx \
+            --maximum-parallel-tests 1 --timeout 1h
+
+      - name: Analyze Templates E2E results
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
+        run: |
+          TRX_FILE=$(find Picea.Abies.Templates.Testing.E2E -name "templates-e2e.trx" -type f | head -1)
+          if [ -z "$TRX_FILE" ]; then
+            echo "❌ TRX file not found for Templates E2E"
+            exit 2
+          fi
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+
+      # ── Artifacts & Summary ───────────────────────────────────────
 
       - name: Upload test results
-        if: always() && steps.check-e2e.outputs.in_solution == 'true'
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-test-results
           path: |
             **/TestResults/*.trx
-            Picea.Abies.Conduit.Testing.E2E/bin/**/.playwright/**
-
-      - name: E2E skipped summary
-        if: steps.check-e2e.outputs.in_solution == 'false'
-        run: |
-          echo "::warning::E2E tests skipped — Picea.Abies.Conduit.Testing.E2E is not in the solution. Fix AppHost references to re-enable."
