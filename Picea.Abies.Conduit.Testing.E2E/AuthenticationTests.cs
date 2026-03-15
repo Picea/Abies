@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class AuthenticationTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class AuthenticationTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class AuthenticationTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task Register_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         await _page.GotoAsync("/register");
@@ -56,7 +57,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("New Article");
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         var username = $"loginuser{Guid.NewGuid():N}"[..20];
@@ -76,7 +77,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithInvalidCredentials_ShouldShowErrors()
     {
         await _page.GotoAsync("/login");
@@ -91,7 +92,7 @@ public sealed class AuthenticationTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task Logout_FromSettings_ShouldClearSessionAndNavigateToHome()
     {
         var username = $"logoutuser{Guid.NewGuid():N}"[..20];

@@ -14,34 +14,29 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class CommentEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class CommentEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public CommentEndpointTests(ConduitApiFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetComments_NoAuth_ReturnsOk()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/articles/any-slug/comments");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<MultipleCommentsResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.NotNull(body.Comments);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.Comments).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task AddComment_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
@@ -50,10 +45,10 @@ public sealed class CommentEndpointTests : IClassFixture<ConduitApiFactory>
         var response = await client.PostAsJsonAsync(
             "/api/articles/any-slug/comments", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteComment_Unauthenticated_Returns401()
     {
         using var client = _factory.CreateClient();
@@ -61,6 +56,6 @@ public sealed class CommentEndpointTests : IClassFixture<ConduitApiFactory>
         var response = await client.DeleteAsync(
             $"/api/articles/any-slug/comments/{commentId}");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 }

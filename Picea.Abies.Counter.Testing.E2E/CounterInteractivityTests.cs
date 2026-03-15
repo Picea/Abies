@@ -20,9 +20,10 @@ using Microsoft.Playwright;
 
 namespace Picea.Abies.Counter.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("CounterWasm")]
-public sealed class CounterWasmInteractivityTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<CounterWasmFixture>(Shared = SharedType.Keyed, Key = "CounterWasm")]
+[NotInParallel("CounterWasm")]
+public sealed class CounterWasmInteractivityTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly CounterWasmFixture _fixture;
     private IPage _page = null!;
@@ -37,12 +38,12 @@ public sealed class CounterWasmInteractivityTests : IAsyncLifetime
         _page = await _fixture.CreatePageAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task InitialLoad_ShouldShowServerRenderedCounter()
     {
         await _page.GotoAsync("/");
@@ -54,7 +55,7 @@ public sealed class CounterWasmInteractivityTests : IAsyncLifetime
             .ToHaveTextAsync("0", new() { Timeout = 10_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task Increment_ShouldIncreaseCount()
     {
         await _page.GotoAsync("/");
@@ -66,7 +67,7 @@ public sealed class CounterWasmInteractivityTests : IAsyncLifetime
             .ToHaveTextAsync("1", new() { Timeout = 5_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task Decrement_ShouldDecreaseCount()
     {
         await _page.GotoAsync("/");
@@ -78,7 +79,7 @@ public sealed class CounterWasmInteractivityTests : IAsyncLifetime
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task Reset_ShouldReturnCountToZero()
     {
         await _page.GotoAsync("/");
@@ -98,7 +99,7 @@ public sealed class CounterWasmInteractivityTests : IAsyncLifetime
             .ToHaveTextAsync("0", new() { Timeout = 5_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task MultipleClicks_ShouldTrackCountAccurately()
     {
         await _page.GotoAsync("/");

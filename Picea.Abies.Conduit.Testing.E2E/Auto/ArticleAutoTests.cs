@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitAuto")]
-public sealed class ArticleAutoTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAutoFixture>(Shared = SharedType.Keyed, Key = "ConduitAuto")]
+[NotInParallel("ConduitAuto")]
+public sealed class ArticleAutoTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAutoFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class ArticleAutoTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task ViewArticle_ShouldShowTitleAndBody()
     {
         var username = $"autoartvw{Guid.NewGuid():N}"[..20];

@@ -7,7 +7,6 @@
 // =============================================================================
 
 using Picea.Abies.Conduit.App;
-using FluentAssertions;
 
 namespace Picea.Abies.Conduit.Wasm.Tests;
 
@@ -34,59 +33,59 @@ public class SettingsTransitionTests
             Session: _testSession,
             ApiUrl: "http://localhost:5000");
 
-    [Fact]
-    public void ImageChanged_UpdatesImageField()
+    [Test]
+    public async Task ImageChanged_UpdatesImageField()
     {
         var model = CreateSettingsModel();
         var (newModel, command) = ConduitProgram.Transition(model, new SettingsImageChanged("https://new-image.jpg"));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Image.Should().Be("https://new-image.jpg");
-        command.Should().Be(Commands.None);
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Image).IsEqualTo("https://new-image.jpg");
+        await Assert.That(command).IsEqualTo(Commands.None);
     }
 
-    [Fact]
-    public void UsernameChanged_UpdatesUsernameField()
+    [Test]
+    public async Task UsernameChanged_UpdatesUsernameField()
     {
         var model = CreateSettingsModel();
         var (newModel, _) = ConduitProgram.Transition(model, new SettingsUsernameChanged("newname"));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Username.Should().Be("newname");
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Username).IsEqualTo("newname");
     }
 
-    [Fact]
-    public void BioChanged_UpdatesBioField()
+    [Test]
+    public async Task BioChanged_UpdatesBioField()
     {
         var model = CreateSettingsModel();
         var (newModel, _) = ConduitProgram.Transition(model, new SettingsBioChanged("New bio text"));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Bio.Should().Be("New bio text");
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Bio).IsEqualTo("New bio text");
     }
 
-    [Fact]
-    public void EmailChanged_UpdatesEmailField()
+    [Test]
+    public async Task EmailChanged_UpdatesEmailField()
     {
         var model = CreateSettingsModel();
         var (newModel, _) = ConduitProgram.Transition(model, new SettingsEmailChanged("new@email.com"));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Email.Should().Be("new@email.com");
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Email).IsEqualTo("new@email.com");
     }
 
-    [Fact]
-    public void PasswordChanged_UpdatesPasswordField()
+    [Test]
+    public async Task PasswordChanged_UpdatesPasswordField()
     {
         var model = CreateSettingsModel();
         var (newModel, _) = ConduitProgram.Transition(model, new SettingsPasswordChanged("newpass123"));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Password.Should().Be("newpass123");
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Password).IsEqualTo("newpass123");
     }
 
-    [Fact]
-    public void Submitted_SetsSubmittingAndClearsErrors()
+    [Test]
+    public async Task Submitted_SetsSubmittingAndClearsErrors()
     {
         var model = CreateSettingsModel();
         var settingsPage = (Page.Settings)model.Page;
@@ -97,14 +96,14 @@ public class SettingsTransitionTests
 
         var (newModel, command) = ConduitProgram.Transition(withErrors, new SettingsSubmitted());
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.IsSubmitting.Should().BeTrue();
-        settings.Data.Errors.Should().BeEmpty();
-        command.Should().BeOfType<UpdateUser>();
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.IsSubmitting).IsTrue();
+        await Assert.That(settings.Data.Errors).IsEmpty();
+        await Assert.That(command).IsTypeOf<UpdateUser>();
     }
 
-    [Fact]
-    public void Submitted_SendsUpdateUserCommand_WithFormData()
+    [Test]
+    public async Task Submitted_SendsUpdateUserCommand_WithFormData()
     {
         var model = CreateSettingsModel();
         var settingsPage = (Page.Settings)model.Page;
@@ -122,28 +121,28 @@ public class SettingsTransitionTests
 
         var (_, command) = ConduitProgram.Transition(withUpdatedFields, new SettingsSubmitted());
 
-        var updateCmd = command.Should().BeOfType<UpdateUser>().Subject;
-        updateCmd.Image.Should().Be("https://new.jpg");
-        updateCmd.Username.Should().Be("updated");
-        updateCmd.Bio.Should().Be("Updated bio");
-        updateCmd.Email.Should().Be("updated@test.com");
-        updateCmd.Password.Should().Be("newpass");
-        updateCmd.Token.Should().Be(_testSession.Token);
+        var updateCmd = await Assert.That(command).IsTypeOf<UpdateUser>();
+        await Assert.That(updateCmd!.Image).IsEqualTo("https://new.jpg");
+        await Assert.That(updateCmd.Username).IsEqualTo("updated");
+        await Assert.That(updateCmd.Bio).IsEqualTo("Updated bio");
+        await Assert.That(updateCmd.Email).IsEqualTo("updated@test.com");
+        await Assert.That(updateCmd.Password).IsEqualTo("newpass");
+        await Assert.That(updateCmd.Token).IsEqualTo(_testSession.Token);
     }
 
-    [Fact]
-    public void Submitted_EmptyPassword_SendsNullPassword()
+    [Test]
+    public async Task Submitted_EmptyPassword_SendsNullPassword()
     {
         var model = CreateSettingsModel();
 
         var (_, command) = ConduitProgram.Transition(model, new SettingsSubmitted());
 
-        var updateCmd = command.Should().BeOfType<UpdateUser>().Subject;
-        updateCmd.Password.Should().BeNull();
+        var updateCmd = await Assert.That(command).IsTypeOf<UpdateUser>();
+        await Assert.That(updateCmd!.Password).IsNull();
     }
 
-    [Fact]
-    public void Submitted_WhitespacePassword_SendsNullPassword()
+    [Test]
+    public async Task Submitted_WhitespacePassword_SendsNullPassword()
     {
         var model = CreateSettingsModel();
         var settingsPage = (Page.Settings)model.Page;
@@ -154,30 +153,30 @@ public class SettingsTransitionTests
 
         var (_, command) = ConduitProgram.Transition(withWhitespace, new SettingsSubmitted());
 
-        var updateCmd = command.Should().BeOfType<UpdateUser>().Subject;
-        updateCmd.Password.Should().BeNull();
+        var updateCmd = await Assert.That(command).IsTypeOf<UpdateUser>();
+        await Assert.That(updateCmd!.Password).IsNull();
     }
 
-    [Fact]
-    public void UserUpdated_UpdatesSessionAndResetsForm()
+    [Test]
+    public async Task UserUpdated_UpdatesSessionAndResetsForm()
     {
         var model = CreateSettingsModel();
         var updatedSession = new Session("new-token", "newuser", "new@test.com", "New bio", "https://new.jpg");
 
         var (newModel, _) = ConduitProgram.Transition(model, new UserUpdated(updatedSession));
 
-        newModel.Session.Should().Be(updatedSession);
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Username.Should().Be("newuser");
-        settings.Data.Email.Should().Be("new@test.com");
-        settings.Data.Bio.Should().Be("New bio");
-        settings.Data.Image.Should().Be("https://new.jpg");
-        settings.Data.Password.Should().BeEmpty();
-        settings.Data.IsSubmitting.Should().BeFalse();
+        await Assert.That(newModel.Session).IsEqualTo(updatedSession);
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Username).IsEqualTo("newuser");
+        await Assert.That(settings.Data.Email).IsEqualTo("new@test.com");
+        await Assert.That(settings.Data.Bio).IsEqualTo("New bio");
+        await Assert.That(settings.Data.Image).IsEqualTo("https://new.jpg");
+        await Assert.That(settings.Data.Password).IsEmpty();
+        await Assert.That(settings.Data.IsSubmitting).IsFalse();
     }
 
-    [Fact]
-    public void ApiError_ShowsErrorsAndStopsSubmitting()
+    [Test]
+    public async Task ApiError_ShowsErrorsAndStopsSubmitting()
     {
         var model = CreateSettingsModel();
         var settingsPage = (Page.Settings)model.Page;
@@ -189,19 +188,19 @@ public class SettingsTransitionTests
         var errors = new List<string> { "Username taken", "Email invalid" };
         var (newModel, _) = ConduitProgram.Transition(submitting, new ApiError(errors));
 
-        var settings = newModel.Page.Should().BeOfType<Page.Settings>().Subject;
-        settings.Data.Errors.Should().BeEquivalentTo(errors);
-        settings.Data.IsSubmitting.Should().BeFalse();
+        var settings = await Assert.That(newModel.Page).IsTypeOf<Page.Settings>();
+        await Assert.That(settings!.Data.Errors).IsEquivalentTo(errors);
+        await Assert.That(settings.Data.IsSubmitting).IsFalse();
     }
 
-    [Fact]
-    public void Logout_ClearsSessionAndNavigatesToHome()
+    [Test]
+    public async Task Logout_ClearsSessionAndNavigatesToHome()
     {
         var model = CreateSettingsModel();
 
         var (newModel, _) = ConduitProgram.Transition(model, new Logout());
 
-        newModel.Session.Should().BeNull();
-        newModel.Page.Should().BeOfType<Page.Home>();
+        await Assert.That(newModel.Session).IsNull();
+        await Assert.That(newModel.Page).IsTypeOf<Page.Home>();
     }
 }

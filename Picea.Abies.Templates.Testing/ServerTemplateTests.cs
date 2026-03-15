@@ -8,12 +8,12 @@ namespace Picea.Abies.Templates.Testing;
 /// runs correctly: serves HTML, delivers CSS, and supports full counter
 /// interactivity over WebSocket.
 /// </summary>
-[Collection("ServerTemplate")]
-[Trait("Category", "E2E")]
-[Trait("Category", "Template")]
+[Category("E2E"), Category("Template")]
+[NotInParallel("ServerTemplate")]
+[ClassDataSource<ServerTemplateFixture>(Shared = SharedType.Keyed, Key = "ServerTemplate")]
 public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
 {
-    [Fact]
+    [Test]
     public async Task Renders_CounterPage()
     {
         var page = await fixture.CreatePageAsync();
@@ -24,19 +24,17 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await Assertions.Expect(heading).ToHaveTextAsync("Counter");
     }
 
-    [Fact]
+    [Test]
     public async Task Serves_Stylesheet()
     {
         using var http = new HttpClient();
         var response = await http.GetAsync($"{fixture.BaseUrl}/site.css");
 
-        Assert.True(response.IsSuccessStatusCode,
-            $"Expected 200 for /site.css but got {(int)response.StatusCode}");
-        Assert.Contains("text/css",
-            response.Content.Headers.ContentType?.MediaType ?? "");
+        await Assert.That(response.IsSuccessStatusCode).IsTrue();
+        await Assert.That(response.Content.Headers.ContentType?.MediaType ?? "").Contains("text/css");
     }
 
-    [Fact]
+    [Test]
     public async Task Initial_Count_Is_Zero()
     {
         var page = await fixture.CreatePageAsync();
@@ -47,7 +45,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("0");
     }
 
-    [Fact]
+    [Test]
     public async Task Increment_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -61,7 +59,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("1");
     }
 
-    [Fact]
+    [Test]
     public async Task Decrement_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -75,7 +73,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await Assertions.Expect(count).ToHaveTextAsync("-1");
     }
 
-    [Fact]
+    [Test]
     public async Task Reset_Works()
     {
         var page = await fixture.CreatePageAsync();
@@ -93,7 +91,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await Assertions.Expect(page.Locator(".count")).ToHaveTextAsync("0");
     }
 
-    [Fact]
+    [Test]
     public async Task Multiple_Clicks_Accumulate()
     {
         var page = await fixture.CreatePageAsync();

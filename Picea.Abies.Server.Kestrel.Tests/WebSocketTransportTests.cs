@@ -24,7 +24,7 @@ public class WebSocketTransportTests
     // SendPatches — Binary Frames
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task SendPatches_SendsBinaryFrame()
     {
         await using var pair = WebSocketPair.Create();
@@ -37,16 +37,16 @@ public class WebSocketTransportTests
         var buffer = new byte[1024];
         var result = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
 
-        Assert.Equal(WebSocketMessageType.Binary, result.MessageType);
-        Assert.True(result.EndOfMessage);
-        Assert.Equal(data, buffer[..result.Count]);
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
+        await Assert.That(result.EndOfMessage).IsTrue();
+        await Assert.That(buffer[..result.Count]).IsEquivalentTo(data);
     }
 
     // =========================================================================
     // ReceiveEvent — JSON Text Frames
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task ReceiveEvent_ParsesJsonTextFrame()
     {
         await using var pair = WebSocketPair.Create();
@@ -60,13 +60,13 @@ public class WebSocketTransportTests
 
         var domEvent = await receiveEvent(CancellationToken.None);
 
-        Assert.NotNull(domEvent);
-        Assert.Equal("cmd-1", domEvent.Value.CommandId);
-        Assert.Equal("click", domEvent.Value.EventName);
-        Assert.Equal("{}", domEvent.Value.EventData);
+        await Assert.That(domEvent).IsNotNull();
+        await Assert.That(domEvent.Value.CommandId).IsEqualTo("cmd-1");
+        await Assert.That(domEvent.Value.EventName).IsEqualTo("click");
+        await Assert.That(domEvent.Value.EventData).IsEqualTo("{}");
     }
 
-    [Fact]
+    [Test]
     public async Task ReceiveEvent_CloseFrame_ReturnsNull()
     {
         await using var pair = WebSocketPair.Create();
@@ -78,10 +78,10 @@ public class WebSocketTransportTests
 
         var domEvent = await receiveEvent(CancellationToken.None);
 
-        Assert.Null(domEvent);
+        await Assert.That(domEvent).IsNull();
     }
 
-    [Fact]
+    [Test]
     public async Task ReceiveEvent_NullEventData_DefaultsToEmptyString()
     {
         await using var pair = WebSocketPair.Create();
@@ -95,16 +95,16 @@ public class WebSocketTransportTests
 
         var domEvent = await receiveEvent(CancellationToken.None);
 
-        Assert.NotNull(domEvent);
-        Assert.Equal("cmd-2", domEvent.Value.CommandId);
-        Assert.Equal(string.Empty, domEvent.Value.EventData);
+        await Assert.That(domEvent).IsNotNull();
+        await Assert.That(domEvent.Value.CommandId).IsEqualTo("cmd-2");
+        await Assert.That(domEvent.Value.EventData).IsEqualTo(string.Empty);
     }
 
     // =========================================================================
     // CloseAsync — Graceful Shutdown
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task CloseAsync_SendsCloseFrame()
     {
         await using var pair = WebSocketPair.Create();
@@ -116,7 +116,7 @@ public class WebSocketTransportTests
         // Client receives the close frame and responds
         var buffer = new byte[1024];
         var result = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
-        Assert.Equal(WebSocketMessageType.Close, result.MessageType);
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Close);
 
         await pair.Client.CloseOutputAsync(
             WebSocketCloseStatus.NormalClosure, "ack", CancellationToken.None);
@@ -124,7 +124,7 @@ public class WebSocketTransportTests
         await closeTask;
     }
 
-    [Fact]
+    [Test]
     public async Task SendPatches_EmptyData_Succeeds()
     {
         await using var pair = WebSocketPair.Create();
@@ -136,9 +136,9 @@ public class WebSocketTransportTests
         var buffer = new byte[1024];
         var result = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
 
-        Assert.Equal(WebSocketMessageType.Binary, result.MessageType);
-        Assert.True(result.EndOfMessage);
-        Assert.Equal(0, result.Count);
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
+        await Assert.That(result.EndOfMessage).IsTrue();
+        await Assert.That(result.Count).IsEqualTo(0);
     }
 }
 

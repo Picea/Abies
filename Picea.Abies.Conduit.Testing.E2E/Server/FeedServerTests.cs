@@ -8,9 +8,10 @@ using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitServer")]
-public sealed class FeedServerTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitServerFixture>(Shared = SharedType.Keyed, Key = "ConduitServer")]
+[NotInParallel("ConduitServer")]
+public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitServerFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class FeedServerTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task GlobalFeed_WithArticles_ShouldShowArticlePreviews()
     {
         var username = $"srvfeed{Guid.NewGuid():N}"[..20];
@@ -48,7 +49,7 @@ public sealed class FeedServerTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task HomeBanner_ShouldShowConduitBranding()
     {
         await _page.GotoAsync("/");
@@ -59,7 +60,7 @@ public sealed class FeedServerTests : IAsyncLifetime
             "A place to share your knowledge.");
     }
 
-    [Fact]
+    [Test]
     public async Task TagSidebar_ShouldShowPopularTags()
     {
         var username = $"srvtag{Guid.NewGuid():N}"[..20];

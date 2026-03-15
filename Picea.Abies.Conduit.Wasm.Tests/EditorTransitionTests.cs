@@ -7,7 +7,6 @@
 // =============================================================================
 
 using Picea.Abies.Conduit.App;
-using FluentAssertions;
 
 namespace Picea.Abies.Conduit.Wasm.Tests;
 
@@ -35,49 +34,49 @@ public class EditorTransitionTests
             Session: _testSession,
             ApiUrl: "http://localhost:5000");
 
-    [Fact]
-    public void TitleChanged_UpdatesTitleField()
+    [Test]
+    public async Task TitleChanged_UpdatesTitleField()
     {
         var model = CreateEditorModel();
         var (newModel, command) = ConduitProgram.Transition(model, new EditorTitleChanged("New Title"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.Title.Should().Be("New Title");
-        command.Should().Be(Commands.None);
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.Title).IsEqualTo("New Title");
+        await Assert.That(command).IsEqualTo(Commands.None);
     }
 
-    [Fact]
-    public void DescriptionChanged_UpdatesDescriptionField()
+    [Test]
+    public async Task DescriptionChanged_UpdatesDescriptionField()
     {
         var model = CreateEditorModel();
         var (newModel, _) = ConduitProgram.Transition(model, new EditorDescriptionChanged("New description"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.Description.Should().Be("New description");
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.Description).IsEqualTo("New description");
     }
 
-    [Fact]
-    public void BodyChanged_UpdatesBodyField()
+    [Test]
+    public async Task BodyChanged_UpdatesBodyField()
     {
         var model = CreateEditorModel();
         var (newModel, _) = ConduitProgram.Transition(model, new EditorBodyChanged("Article body content"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.Body.Should().Be("Article body content");
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.Body).IsEqualTo("Article body content");
     }
 
-    [Fact]
-    public void TagInputChanged_UpdatesTagInputField()
+    [Test]
+    public async Task TagInputChanged_UpdatesTagInputField()
     {
         var model = CreateEditorModel();
         var (newModel, _) = ConduitProgram.Transition(model, new EditorTagInputChanged("newtag"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagInput.Should().Be("newtag");
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagInput).IsEqualTo("newtag");
     }
 
-    [Fact]
-    public void AddTag_AppendsTagAndClearsInput()
+    [Test]
+    public async Task AddTag_AppendsTagAndClearsInput()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -88,24 +87,24 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withInput, new EditorAddTag());
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().Contain("csharp");
-        editor.Data.TagInput.Should().BeEmpty();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).Contains("csharp");
+        await Assert.That(editor.Data.TagInput).IsEmpty();
     }
 
-    [Fact]
-    public void AddTag_EmptyInput_DoesNotAddTag()
+    [Test]
+    public async Task AddTag_EmptyInput_DoesNotAddTag()
     {
         var model = CreateEditorModel();
 
         var (newModel, _) = ConduitProgram.Transition(model, new EditorAddTag());
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().BeEmpty();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).IsEmpty();
     }
 
-    [Fact]
-    public void AddTag_WhitespaceInput_DoesNotAddTag()
+    [Test]
+    public async Task AddTag_WhitespaceInput_DoesNotAddTag()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -116,12 +115,12 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withWhitespace, new EditorAddTag());
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().BeEmpty();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).IsEmpty();
     }
 
-    [Fact]
-    public void AddTag_DuplicateTag_DoesNotDuplicate()
+    [Test]
+    public async Task AddTag_DuplicateTag_DoesNotDuplicate()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -136,12 +135,12 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withExistingTag, new EditorAddTag());
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().HaveCount(1);
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).Count().IsEqualTo(1);
     }
 
-    [Fact]
-    public void RemoveTag_RemovesSpecificTag()
+    [Test]
+    public async Task RemoveTag_RemovesSpecificTag()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -155,12 +154,12 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withTags, new EditorRemoveTag("dotnet"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().BeEquivalentTo(["csharp", "blazor"]);
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).IsEquivalentTo(new[] { "csharp", "blazor" });
     }
 
-    [Fact]
-    public void TagKeyDown_EnterKey_AddsTagAndClearsInput()
+    [Test]
+    public async Task TagKeyDown_EnterKey_AddsTagAndClearsInput()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -171,13 +170,13 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withInput, new EditorTagKeyDown("Enter"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().Contain("functional");
-        editor.Data.TagInput.Should().BeEmpty();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).Contains("functional");
+        await Assert.That(editor.Data.TagInput).IsEmpty();
     }
 
-    [Fact]
-    public void TagKeyDown_NonEnterKey_DoesNotAddTag()
+    [Test]
+    public async Task TagKeyDown_NonEnterKey_DoesNotAddTag()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -188,13 +187,13 @@ public class EditorTransitionTests
 
         var (newModel, _) = ConduitProgram.Transition(withInput, new EditorTagKeyDown("a"));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().BeEmpty();
-        editor.Data.TagInput.Should().Be("partial");
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).IsEmpty();
+        await Assert.That(editor.Data.TagInput).IsEqualTo("partial");
     }
 
-    [Fact]
-    public void Submitted_NoSlug_SendsCreateArticleCommand()
+    [Test]
+    public async Task Submitted_NoSlug_SendsCreateArticleCommand()
     {
         var model = CreateEditorModel(slug: null);
         var editorPage = (Page.Editor)model.Page;
@@ -211,20 +210,20 @@ public class EditorTransitionTests
 
         var (newModel, command) = ConduitProgram.Transition(withContent, new EditorSubmitted());
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.IsSubmitting.Should().BeTrue();
-        editor.Data.Errors.Should().BeEmpty();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.IsSubmitting).IsTrue();
+        await Assert.That(editor.Data.Errors).IsEmpty();
 
-        var createCmd = command.Should().BeOfType<CreateArticle>().Subject;
-        createCmd.Title.Should().Be("My Article");
-        createCmd.Description.Should().Be("About stuff");
-        createCmd.Body.Should().Be("Content here");
-        createCmd.TagList.Should().BeEquivalentTo(["csharp", "dotnet"]);
-        createCmd.Token.Should().Be(_testSession.Token);
+        var createCmd = await Assert.That(command).IsTypeOf<CreateArticle>();
+        await Assert.That(createCmd!.Title).IsEqualTo("My Article");
+        await Assert.That(createCmd.Description).IsEqualTo("About stuff");
+        await Assert.That(createCmd.Body).IsEqualTo("Content here");
+        await Assert.That(createCmd.TagList).IsEquivalentTo(new[] { "csharp", "dotnet" });
+        await Assert.That(createCmd.Token).IsEqualTo(_testSession.Token);
     }
 
-    [Fact]
-    public void Submitted_WithSlug_SendsUpdateArticleCommand()
+    [Test]
+    public async Task Submitted_WithSlug_SendsUpdateArticleCommand()
     {
         var model = CreateEditorModel(slug: "existing-article");
         var editorPage = (Page.Editor)model.Page;
@@ -241,26 +240,26 @@ public class EditorTransitionTests
 
         var (_, command) = ConduitProgram.Transition(withContent, new EditorSubmitted());
 
-        var updateCmd = command.Should().BeOfType<UpdateArticle>().Subject;
-        updateCmd.Slug.Should().Be("existing-article");
-        updateCmd.Title.Should().Be("Updated Title");
-        updateCmd.Description.Should().Be("Updated desc");
-        updateCmd.Body.Should().Be("Updated body");
-        updateCmd.TagList.Should().BeEquivalentTo(["updated"]);
+        var updateCmd = await Assert.That(command).IsTypeOf<UpdateArticle>();
+        await Assert.That(updateCmd!.Slug).IsEqualTo("existing-article");
+        await Assert.That(updateCmd.Title).IsEqualTo("Updated Title");
+        await Assert.That(updateCmd.Description).IsEqualTo("Updated desc");
+        await Assert.That(updateCmd.Body).IsEqualTo("Updated body");
+        await Assert.That(updateCmd.TagList).IsEquivalentTo(new[] { "updated" });
     }
 
-    [Fact]
-    public void ArticleSaved_NavigatesToArticlePage()
+    [Test]
+    public async Task ArticleSaved_NavigatesToArticlePage()
     {
         var model = CreateEditorModel();
 
         var (newModel, _) = ConduitProgram.Transition(model, new ArticleSaved("my-new-article"));
 
-        newModel.Page.Should().BeOfType<Page.Article>();
+        await Assert.That(newModel.Page).IsTypeOf<Page.Article>();
     }
 
-    [Fact]
-    public void ApiError_ShowsErrorsAndStopsSubmitting()
+    [Test]
+    public async Task ApiError_ShowsErrorsAndStopsSubmitting()
     {
         var model = CreateEditorModel();
         var editorPage = (Page.Editor)model.Page;
@@ -272,13 +271,13 @@ public class EditorTransitionTests
         var errors = new List<string> { "Title can't be blank", "Body can't be blank" };
         var (newModel, _) = ConduitProgram.Transition(submitting, new ApiError(errors));
 
-        var editor = newModel.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.Errors.Should().BeEquivalentTo(errors);
-        editor.Data.IsSubmitting.Should().BeFalse();
+        var editor = await Assert.That(newModel.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.Errors).IsEquivalentTo(errors);
+        await Assert.That(editor.Data.IsSubmitting).IsFalse();
     }
 
-    [Fact]
-    public void MultipleTags_AddedSequentially_AllPreserved()
+    [Test]
+    public async Task MultipleTags_AddedSequentially_AllPreserved()
     {
         var model = CreateEditorModel();
         var tags = new[] { "csharp", "dotnet", "blazor", "wasm" };
@@ -294,7 +293,7 @@ public class EditorTransitionTests
             (current, _) = ConduitProgram.Transition(current, new EditorAddTag());
         }
 
-        var editor = current.Page.Should().BeOfType<Page.Editor>().Subject;
-        editor.Data.TagList.Should().BeEquivalentTo(tags);
+        var editor = await Assert.That(current.Page).IsTypeOf<Page.Editor>();
+        await Assert.That(editor!.Data.TagList).IsEquivalentTo(tags);
     }
 }
