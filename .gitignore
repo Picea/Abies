@@ -434,3 +434,4 @@ FodyWeavers.xsd
 *.sln.iml
 dotnet-install.sh
 test-results/
+nohup.out

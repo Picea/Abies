@@ -15,12 +15,11 @@
 // =============================================================================
 
 using System.Net;
-using Picea.Abies.DOM;
-using Picea.Abies.Subscriptions;
-using Picea;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.TestHost;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;

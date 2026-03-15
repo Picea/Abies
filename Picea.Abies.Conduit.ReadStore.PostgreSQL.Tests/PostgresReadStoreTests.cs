@@ -12,11 +12,11 @@
 // and avoid cross-contamination.
 // =============================================================================
 
+using Npgsql;
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadModel;
-using Npgsql;
 using TUnit.Core.Interfaces;
 
 namespace Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests;
