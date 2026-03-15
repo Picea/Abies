@@ -78,7 +78,7 @@ jobs:
             --no-build -c Debug \
             -- --treenode-filter "/*/*/*/*[Category!=Performance]" \
             --report-trx --report-trx-filename conduit-e2e.trx \
-            --maximum-parallel-tests 1 --timeout 3600000
+            --maximum-parallel-tests 1 --timeout 1h
       
       - name: Analyze test results
         if: always() && steps.check-e2e.outputs.in_solution == 'true'
