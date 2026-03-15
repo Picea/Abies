@@ -176,8 +176,14 @@ jobs:
           echo "🔍 Checking formatting for changed files..."
           echo "Files: $FILES"
           
-          # Run format check with --include for each file
-          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic
+          # Run format check with --include for each file.
+          # --exclude-diagnostics IDE1006: Exclude naming-rule violations
+          # (e.g. "Missing prefix: '_'") because dotnet format can detect but
+          # NOT auto-fix them (renaming is a refactoring, not formatting).
+          # Without this flag, --verify-no-changes reports false positives for
+          # files that would be "Formatted" yet produce zero diff.
+          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic \
+            --exclude-diagnostics IDE1006
           
           if [ $? -ne 0 ]; then
             echo ""
