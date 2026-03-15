@@ -17,9 +17,9 @@
 // from the WebSocket side immediately — no need to wait for WASM boot.
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Counter.Testing.E2E.Fixtures;
 using Picea.Abies.Counter.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Counter.Testing.E2E;
 

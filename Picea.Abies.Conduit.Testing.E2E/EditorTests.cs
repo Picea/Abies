@@ -42,7 +42,7 @@ public sealed class EditorTests : IAsyncInitializer, IAsyncDisposable
         await LoginViaUi(email, "password123");
 
         var apiRequests = new System.Collections.Concurrent.ConcurrentBag<(string Method, string Url, int Status, string Body)>();
-        #pragma warning disable TUnit0031
+#pragma warning disable TUnit0031
         _page.Response += async (_, response) =>
         {
             if (response.Url.Contains("/api/"))
@@ -54,7 +54,7 @@ public sealed class EditorTests : IAsyncInitializer, IAsyncDisposable
                 apiRequests.Add((response.Request.Method, response.Url, response.Status, body.Length > 500 ? body[..500] : body));
             }
         };
-        #pragma warning restore TUnit0031
+#pragma warning restore TUnit0031
 
         await _page.NavigateInApp("/editor");
         await _page.WaitForSelectorAsync(".editor-page", new() { Timeout = 10000 });
