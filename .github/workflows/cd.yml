@@ -64,6 +64,8 @@ jobs:
       run: dotnet test --project Picea.Abies.Conduit.Api.Tests/Picea.Abies.Conduit.Api.Tests.csproj --no-build --verbosity normal
     - name: Test Picea.Abies.Analyzers.Tests
       run: dotnet test --project Picea.Abies.Analyzers.Tests/Picea.Abies.Analyzers.Tests.csproj --no-build --verbosity normal
+    - name: Test Picea.Abies.Templates.Testing (build-smoke only)
+      run: dotnet test --project Picea.Abies.Templates.Testing/Picea.Abies.Templates.Testing.csproj --no-build --verbosity normal -- --treenode-filter "/*/*/*/*[Category!=E2E]"
     # PostgreSQL integration tests are skipped in CD — they require a
     # PostgreSQL service container that is not provisioned in this workflow.
     # Run locally with: CONDUIT_POSTGRES_CONNECTION="..." dotnet test --project ...
