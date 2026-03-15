@@ -15,12 +15,11 @@
 // =============================================================================
 
 using System.Net;
-using Picea.Abies.DOM;
-using Picea.Abies.Subscriptions;
-using Picea;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.TestHost;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -123,7 +122,7 @@ public class EndpointTests
     // Static Mode — HTML Page Serving
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task Static_ServesHtmlWithCorrectContentType()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -131,12 +130,12 @@ public class EndpointTests
 
         var response = await client.GetAsync("/");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("text/html; charset=utf-8",
-            response.Content.Headers.ContentType?.ToString());
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.ToString())
+            .IsEqualTo("text/html; charset=utf-8");
     }
 
-    [Fact]
+    [Test]
     public async Task Static_ServesCompleteHtmlDocument()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -144,12 +143,12 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.StartsWith("<!DOCTYPE html>", html);
-        Assert.Contains("<title>Test Counter</title>", html);
-        Assert.Contains("Count: 0", html);
+        await Assert.That(html).StartsWith("<!DOCTYPE html>");
+        await Assert.That(html).Contains("<title>Test Counter</title>");
+        await Assert.That(html).Contains("Count: 0");
     }
 
-    [Fact]
+    [Test]
     public async Task Static_NoScriptsInOutput()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -157,10 +156,10 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.DoesNotContain("<script", html);
+        await Assert.That(html).DoesNotContain("<script");
     }
 
-    [Fact]
+    [Test]
     public async Task Static_RoutesFromRequestPath()
     {
         await using var host = await AbiesTestHost.Create(
@@ -169,14 +168,14 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/articles");
 
-        Assert.Contains("Page: articles", html);
+        await Assert.That(html).Contains("Page: articles");
     }
 
     // =========================================================================
     // InteractiveServer Mode — HTML + WebSocket
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task InteractiveServer_ServesHtmlWithWebSocketScript()
     {
         await using var host = await AbiesTestHost.Create(
@@ -185,11 +184,11 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("abies-server.js", html);
-        Assert.Contains("data-ws-path", html);
+        await Assert.That(html).Contains("abies-server.js");
+        await Assert.That(html).Contains("data-ws-path");
     }
 
-    [Fact]
+    [Test]
     public async Task InteractiveServer_WebSocketEndpoint_RejectsNonWebSocket()
     {
         await using var host = await AbiesTestHost.Create(
@@ -198,10 +197,10 @@ public class EndpointTests
 
         var response = await client.GetAsync("/_abies/ws");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
-    [Fact]
+    [Test]
     public async Task InteractiveServer_CustomWebSocketPath()
     {
         await using var host = await AbiesTestHost.Create(
@@ -210,14 +209,14 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("""data-ws-path="/custom/ws""", html);
+        await Assert.That(html).Contains("""data-ws-path="/custom/ws""");
     }
 
     // =========================================================================
     // InteractiveWasm Mode — HTML + WASM Script, No WebSocket
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task InteractiveWasm_ServesHtmlWithWasmScript()
     {
         await using var host = await AbiesTestHost.Create(
@@ -226,16 +225,16 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("import { dotnet } from '/_framework/dotnet.js'", html);
-        Assert.Contains("await dotnet.run()", html);
-        Assert.DoesNotContain("abies-server.js", html);
+        await Assert.That(html).Contains("import { dotnet } from '/_framework/dotnet.js'");
+        await Assert.That(html).Contains("await dotnet.run()");
+        await Assert.That(html).DoesNotContain("abies-server.js");
     }
 
     // =========================================================================
     // InteractiveAuto Mode — Both Scripts
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task InteractiveAuto_ServesBothScripts()
     {
         await using var host = await AbiesTestHost.Create(
@@ -244,13 +243,13 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("abies-server.js", html);
-        Assert.Contains("import { dotnet } from '/_framework/dotnet.js'", html);
-        Assert.Contains("await dotnet.run()", html);
-        Assert.Contains("data-auto", html);
+        await Assert.That(html).Contains("abies-server.js");
+        await Assert.That(html).Contains("import { dotnet } from '/_framework/dotnet.js'");
+        await Assert.That(html).Contains("await dotnet.run()");
+        await Assert.That(html).Contains("data-auto");
     }
 
-    [Fact]
+    [Test]
     public async Task InteractiveAuto_WebSocketEndpoint_RejectsNonWebSocket()
     {
         await using var host = await AbiesTestHost.Create(
@@ -259,14 +258,14 @@ public class EndpointTests
 
         var response = await client.GetAsync("/_abies/ws");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     // =========================================================================
     // Content Tests — Body and Head
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task Render_IncludesBodyContent()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -274,12 +273,12 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("""class="counter""", html);
-        Assert.Contains("Count: 0", html);
-        Assert.Contains("Page: home", html);
+        await Assert.That(html).Contains("""class="counter""");
+        await Assert.That(html).Contains("Count: 0");
+        await Assert.That(html).Contains("Page: home");
     }
 
-    [Fact]
+    [Test]
     public async Task Render_IncludesHeadElements()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -287,16 +286,16 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/");
 
-        Assert.Contains("meta", html);
-        Assert.Contains("description", html);
-        Assert.Contains("stylesheet", html);
+        await Assert.That(html).Contains("meta");
+        await Assert.That(html).Contains("description");
+        await Assert.That(html).Contains("stylesheet");
     }
 
     // =========================================================================
     // Static File Serving — abies-server.js
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task StaticFiles_ServesAbiesServerJs()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -304,13 +303,13 @@ public class EndpointTests
 
         var response = await client.GetAsync("/_abies/abies-server.js");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        Assert.Contains("abies-server.js", content);
-        Assert.Contains("WebSocket", content);
+        await Assert.That(content).Contains("abies-server.js");
+        await Assert.That(content).Contains("WebSocket");
     }
 
-    [Fact]
+    [Test]
     public async Task StaticFiles_ServesWithCorrectContentType()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -318,12 +317,12 @@ public class EndpointTests
 
         var response = await client.GetAsync("/_abies/abies-server.js");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var contentType = response.Content.Headers.ContentType?.MediaType;
-        Assert.Equal("text/javascript", contentType);
+        await Assert.That(contentType).IsEqualTo("text/javascript");
     }
 
-    [Fact]
+    [Test]
     public async Task StaticFiles_Returns404ForNonexistentFile()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());
@@ -331,14 +330,14 @@ public class EndpointTests
 
         var response = await client.GetAsync("/_abies/nonexistent.js");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     // =========================================================================
     // InteractiveWasm Mode — No WebSocket Endpoint
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task InteractiveWasm_NoWebSocketEndpoint()
     {
         await using var host = await AbiesTestHost.Create(
@@ -348,10 +347,10 @@ public class EndpointTests
         // The /_abies/ws endpoint should not exist in InteractiveWasm mode
         var response = await client.GetAsync("/_abies/ws");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task InteractiveWasm_RoutesFromRequestPath()
     {
         await using var host = await AbiesTestHost.Create(
@@ -360,16 +359,16 @@ public class EndpointTests
 
         var html = await client.GetStringAsync("/articles");
 
-        Assert.Contains("Page: articles", html);
-        Assert.Contains("import { dotnet } from '/_framework/dotnet.js'", html);
+        await Assert.That(html).Contains("Page: articles");
+        await Assert.That(html).Contains("import { dotnet } from '/_framework/dotnet.js'");
     }
 
     // =========================================================================
     // UseAbiesWasmFiles — WASM Static File Serving
     // =========================================================================
 
-    [Fact]
-    public void UseAbiesWasmFiles_ThrowsForMissingDirectory()
+    [Test]
+    public async Task UseAbiesWasmFiles_ThrowsForMissingDirectory()
     {
         var builder = WebApplication.CreateBuilder();
         var app = builder.Build();
@@ -378,7 +377,7 @@ public class EndpointTests
             app.UseAbiesWasmFiles("/nonexistent/path/to/wasm"));
     }
 
-    [Fact]
+    [Test]
     public async Task UseAbiesWasmFiles_ServesFilesFromAppBundle()
     {
         // Create a temporary directory simulating an AppBundle
@@ -405,9 +404,9 @@ public class EndpointTests
             using var client = app.GetTestClient();
             var response = await client.GetAsync("/_framework/dotnet.js");
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var content = await response.Content.ReadAsStringAsync();
-            Assert.Contains("mock dotnet.js", content);
+            await Assert.That(content).Contains("mock dotnet.js");
 
             await app.DisposeAsync();
         }

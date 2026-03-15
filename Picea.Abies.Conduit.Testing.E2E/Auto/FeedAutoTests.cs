@@ -2,15 +2,16 @@
 // Feed E2E Tests — InteractiveAuto Mode
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitAuto")]
-public sealed class FeedAutoTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAutoFixture>(Shared = SharedType.Keyed, Key = "ConduitAuto")]
+[NotInParallel("ConduitAuto")]
+public sealed class FeedAutoTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAutoFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class FeedAutoTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task GlobalFeed_WithArticles_ShouldShowArticlePreviews()
     {
         var username = $"autofeed{Guid.NewGuid():N}"[..20];
@@ -49,7 +50,7 @@ public sealed class FeedAutoTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task HomeBanner_ShouldShowConduitBranding()
     {
         await _page.GotoAsync("/");

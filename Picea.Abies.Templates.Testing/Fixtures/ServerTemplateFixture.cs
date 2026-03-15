@@ -1,27 +1,14 @@
 using Microsoft.Playwright;
+using TUnit.Core.Interfaces;
 
 namespace Picea.Abies.Templates.Testing.Fixtures;
 
 /// <summary>
-/// xUnit collection fixture that scaffolds the <c>abies-server</c> template,
+/// TUnit shared fixture that scaffolds the <c>abies-server</c> template,
 /// builds it, runs it as an external process, and provides a Playwright browser
 /// for E2E testing.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The fixture lifecycle:
-/// <list type="number">
-///   <item><c>dotnet new install</c> — installs the template from the local directory</item>
-///   <item><c>dotnet new abies-server</c> — scaffolds a new project in a temp directory</item>
-///   <item>Patches csproj — replaces NuGet PackageReferences with local ProjectReferences</item>
-///   <item><c>dotnet build</c> — builds the scaffolded project</item>
-///   <item><c>dotnet run</c> — starts the server on a random port</item>
-///   <item>Playwright connects and runs tests</item>
-///   <item>Cleanup — kills process, deletes temp dir, uninstalls template</item>
-/// </list>
-/// </para>
-/// </remarks>
-public sealed class ServerTemplateFixture : IAsyncLifetime
+public sealed class ServerTemplateFixture : IAsyncInitializer, IAsyncDisposable
 {
     private TemplateProject? _project;
     private IPlaywright? _playwright;
@@ -62,7 +49,7 @@ public sealed class ServerTemplateFixture : IAsyncLifetime
             new BrowserTypeLaunchOptions { Headless = headless });
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

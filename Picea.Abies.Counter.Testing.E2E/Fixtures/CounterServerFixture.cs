@@ -18,20 +18,17 @@
 // =============================================================================
 
 using System.Net.Sockets;
-using Picea.Abies.Counter;
-using Picea.Abies.Server;
-using Picea.Abies.Server.Kestrel;
-using Picea;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Playwright;
-
+using Picea.Abies.Server;
+using Picea.Abies.Server.Kestrel;
 namespace Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Counter in InteractiveServer mode for E2E testing.
 /// </summary>
-public sealed class CounterServerFixture : IAsyncLifetime
+public sealed class CounterServerFixture : IAsyncInitializer, IAsyncDisposable
 {
     private WebApplication? _app;
     private IPlaywright? _playwright;
@@ -91,7 +88,7 @@ public sealed class CounterServerFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

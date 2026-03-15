@@ -13,21 +13,16 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class TagEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class TagEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public TagEndpointTests(ConduitApiFactory factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetTags_ReturnsTagList()
     {
         _factory.Tags.Add("elm");
@@ -37,19 +32,19 @@ public sealed class TagEndpointTests : IClassFixture<ConduitApiFactory>
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/tags");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<TagsResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.NotNull(body.Tags);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.Tags).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task GetTags_NoAuthRequired()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/tags");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 }

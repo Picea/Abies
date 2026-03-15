@@ -2,15 +2,16 @@
 // Authentication E2E Tests — InteractiveServer Mode
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitServer")]
-public sealed class AuthenticationServerTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitServerFixture>(Shared = SharedType.Keyed, Key = "ConduitServer")]
+[NotInParallel("ConduitServer")]
+public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitServerFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class AuthenticationServerTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task Register_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         await _page.GotoAsync("/register");
@@ -48,7 +49,7 @@ public sealed class AuthenticationServerTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("New Article");
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         var username = $"srvlogin{Guid.NewGuid():N}"[..20];
@@ -67,7 +68,7 @@ public sealed class AuthenticationServerTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithInvalidCredentials_ShouldShowErrors()
     {
         await _page.GotoAsync("/login");
@@ -81,7 +82,7 @@ public sealed class AuthenticationServerTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task Logout_FromSettings_ShouldClearSessionAndNavigateToHome()
     {
         var username = $"srvlogout{Guid.NewGuid():N}"[..20];

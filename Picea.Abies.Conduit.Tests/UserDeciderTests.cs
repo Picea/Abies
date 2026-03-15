@@ -7,7 +7,6 @@
 
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
-using Picea;
 
 namespace Picea.Abies.Conduit.Tests;
 
@@ -28,73 +27,74 @@ public class UserDeciderTests
     // Initialize
     // =========================================================================
 
-    [Fact]
-    public void Initialize_ReturnsUnregisteredState()
+    [Test]
+    public async Task Initialize_ReturnsUnregisteredState()
     {
         var (state, effect) = User.Initialize(Unit.Value);
 
-        Assert.False(state.Registered);
-        Assert.IsType<UserEffect.None>(effect);
+        await Assert.That(state.Registered).IsFalse();
+        await Assert.That(effect).IsTypeOf<UserEffect.None>();
     }
 
     // =========================================================================
     // Register
     // =========================================================================
 
-    [Fact]
-    public void Decide_Register_WhenNotRegistered_ProducesRegisteredEvent()
+    [Test]
+    public async Task Decide_Register_WhenNotRegistered_ProducesRegisteredEvent()
     {
         var state = UserState.Initial;
         var command = new UserCommand.Register(UserId, Email, Username, PasswordHash, Now);
 
         var result = User.Decide(state, command);
 
-        Assert.True(result.IsOk);
+        await Assert.That(result.IsOk).IsTrue();
         var events = result.Value;
-        var registered = Assert.Single(events);
-        var e = Assert.IsType<UserEvent.Registered>(registered);
-        Assert.Equal(UserId, e.Id);
-        Assert.Equal(Email, e.Email);
-        Assert.Equal(Username, e.Username);
-        Assert.Equal(PasswordHash, e.PasswordHash);
-        Assert.Equal(Now, e.CreatedAt);
+        await Assert.That(events).Count().IsEqualTo(1);
+        var registered = events[0];
+        var e = await Assert.That(registered).IsTypeOf<UserEvent.Registered>();
+        await Assert.That(e.Id).IsEqualTo(UserId);
+        await Assert.That(e.Email).IsEqualTo(Email);
+        await Assert.That(e.Username).IsEqualTo(Username);
+        await Assert.That(e.PasswordHash).IsEqualTo(PasswordHash);
+        await Assert.That(e.CreatedAt).IsEqualTo(Now);
     }
 
-    [Fact]
-    public void Decide_Register_WhenAlreadyRegistered_ReturnsError()
+    [Test]
+    public async Task Decide_Register_WhenAlreadyRegistered_ReturnsError()
     {
         var state = RegisteredState();
         var command = new UserCommand.Register(UserId.New(), Email, Username, PasswordHash, Now);
 
         var result = User.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.AlreadyRegistered>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.AlreadyRegistered>();
     }
 
-    [Fact]
-    public void Transition_Registered_SetsAllFields()
+    [Test]
+    public async Task Transition_Registered_SetsAllFields()
     {
         var state = UserState.Initial;
         var e = new UserEvent.Registered(UserId, Email, Username, PasswordHash, Now);
 
         var (newState, _) = User.Transition(state, e);
 
-        Assert.Equal(UserId, newState.Id);
-        Assert.Equal(Email, newState.Email);
-        Assert.Equal(Username, newState.Username);
-        Assert.Equal(PasswordHash, newState.PasswordHash);
-        Assert.Equal(Now, newState.CreatedAt);
-        Assert.Equal(Now, newState.UpdatedAt);
-        Assert.True(newState.Registered);
+        await Assert.That(newState.Id).IsEqualTo(UserId);
+        await Assert.That(newState.Email).IsEqualTo(Email);
+        await Assert.That(newState.Username).IsEqualTo(Username);
+        await Assert.That(newState.PasswordHash).IsEqualTo(PasswordHash);
+        await Assert.That(newState.CreatedAt).IsEqualTo(Now);
+        await Assert.That(newState.UpdatedAt).IsEqualTo(Now);
+        await Assert.That(newState.Registered).IsTrue();
     }
 
     // =========================================================================
     // Commands before registration
     // =========================================================================
 
-    [Fact]
-    public void Decide_UpdateProfile_WhenNotRegistered_ReturnsNotRegistered()
+    [Test]
+    public async Task Decide_UpdateProfile_WhenNotRegistered_ReturnsNotRegistered()
     {
         var state = UserState.Initial;
         var command = new UserCommand.UpdateProfile(
@@ -104,27 +104,27 @@ public class UserDeciderTests
 
         var result = User.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.NotRegistered>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.NotRegistered>();
     }
 
-    [Fact]
-    public void Decide_Follow_WhenNotRegistered_ReturnsNotRegistered()
+    [Test]
+    public async Task Decide_Follow_WhenNotRegistered_ReturnsNotRegistered()
     {
         var state = UserState.Initial;
 
         var result = User.Decide(state, new UserCommand.Follow(UserId.New()));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.NotRegistered>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.NotRegistered>();
     }
 
     // =========================================================================
     // UpdateProfile
     // =========================================================================
 
-    [Fact]
-    public void Decide_UpdateProfile_ProducesProfileUpdatedEvent()
+    [Test]
+    public async Task Decide_UpdateProfile_ProducesProfileUpdatedEvent()
     {
         var state = RegisteredState();
         var newEmail = EmailAddress.Create("new@example.com").Value;
@@ -135,15 +135,16 @@ public class UserDeciderTests
 
         var result = User.Decide(state, command);
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<UserEvent.ProfileUpdated>(Assert.Single(result.Value));
-        Assert.True(e.Email.IsSome);
-        Assert.Equal(newEmail, e.Email.Value);
-        Assert.True(e.Username.IsNone);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<UserEvent.ProfileUpdated>();
+        await Assert.That(e.Email.IsSome).IsTrue();
+        await Assert.That(e.Email.Value).IsEqualTo(newEmail);
+        await Assert.That(e.Username.IsNone).IsTrue();
     }
 
-    [Fact]
-    public void Transition_ProfileUpdated_OnlyChangesProvidedFields()
+    [Test]
+    public async Task Transition_ProfileUpdated_OnlyChangesProvidedFields()
     {
         var state = RegisteredState();
         var newEmail = EmailAddress.Create("new@example.com").Value;
@@ -154,44 +155,45 @@ public class UserDeciderTests
 
         var (newState, _) = User.Transition(state, e);
 
-        Assert.Equal(newEmail, newState.Email);
-        Assert.Equal(state.Username, newState.Username);
-        Assert.Equal(state.PasswordHash, newState.PasswordHash);
-        Assert.Equal(state.Bio, newState.Bio);
-        Assert.Equal(state.Image, newState.Image);
-        Assert.Equal(Now, newState.UpdatedAt);
+        await Assert.That(newState.Email).IsEqualTo(newEmail);
+        await Assert.That(newState.Username).IsEqualTo(state.Username);
+        await Assert.That(newState.PasswordHash).IsEqualTo(state.PasswordHash);
+        await Assert.That(newState.Bio).IsEqualTo(state.Bio);
+        await Assert.That(newState.Image).IsEqualTo(state.Image);
+        await Assert.That(newState.UpdatedAt).IsEqualTo(Now);
     }
 
     // =========================================================================
     // Follow / Unfollow
     // =========================================================================
 
-    [Fact]
-    public void Decide_Follow_ProducesFollowedEvent()
+    [Test]
+    public async Task Decide_Follow_ProducesFollowedEvent()
     {
         var state = RegisteredState();
         var followeeId = UserId.New();
 
         var result = User.Decide(state, new UserCommand.Follow(followeeId));
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<UserEvent.Followed>(Assert.Single(result.Value));
-        Assert.Equal(followeeId, e.FolloweeId);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<UserEvent.Followed>();
+        await Assert.That(e.FolloweeId).IsEqualTo(followeeId);
     }
 
-    [Fact]
-    public void Decide_Follow_Self_ReturnsCannotFollowSelf()
+    [Test]
+    public async Task Decide_Follow_Self_ReturnsCannotFollowSelf()
     {
         var state = RegisteredState();
 
         var result = User.Decide(state, new UserCommand.Follow(state.Id));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.CannotFollowSelf>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.CannotFollowSelf>();
     }
 
-    [Fact]
-    public void Decide_Follow_AlreadyFollowing_ReturnsError()
+    [Test]
+    public async Task Decide_Follow_AlreadyFollowing_ReturnsError()
     {
         var followeeId = UserId.New();
         var state = RegisteredState() with
@@ -201,12 +203,12 @@ public class UserDeciderTests
 
         var result = User.Decide(state, new UserCommand.Follow(followeeId));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.AlreadyFollowing>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.AlreadyFollowing>();
     }
 
-    [Fact]
-    public void Transition_Followed_AddsToFollowingSet()
+    [Test]
+    public async Task Transition_Followed_AddsToFollowingSet()
     {
         var state = RegisteredState();
         var followeeId = UserId.New();
@@ -214,11 +216,11 @@ public class UserDeciderTests
 
         var (newState, _) = User.Transition(state, e);
 
-        Assert.Contains(followeeId, newState.Following);
+        await Assert.That(newState.Following).Contains(followeeId);
     }
 
-    [Fact]
-    public void Decide_Unfollow_ProducesUnfollowedEvent()
+    [Test]
+    public async Task Decide_Unfollow_ProducesUnfollowedEvent()
     {
         var followeeId = UserId.New();
         var state = RegisteredState() with
@@ -228,24 +230,25 @@ public class UserDeciderTests
 
         var result = User.Decide(state, new UserCommand.Unfollow(followeeId));
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<UserEvent.Unfollowed>(Assert.Single(result.Value));
-        Assert.Equal(followeeId, e.FolloweeId);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<UserEvent.Unfollowed>();
+        await Assert.That(e.FolloweeId).IsEqualTo(followeeId);
     }
 
-    [Fact]
-    public void Decide_Unfollow_NotFollowing_ReturnsError()
+    [Test]
+    public async Task Decide_Unfollow_NotFollowing_ReturnsError()
     {
         var state = RegisteredState();
 
         var result = User.Decide(state, new UserCommand.Unfollow(UserId.New()));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<UserError.NotFollowing>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<UserError.NotFollowing>();
     }
 
-    [Fact]
-    public void Transition_Unfollowed_RemovesFromFollowingSet()
+    [Test]
+    public async Task Transition_Unfollowed_RemovesFromFollowingSet()
     {
         var followeeId = UserId.New();
         var state = RegisteredState() with
@@ -256,7 +259,7 @@ public class UserDeciderTests
 
         var (newState, _) = User.Transition(state, e);
 
-        Assert.DoesNotContain(followeeId, newState.Following);
+        await Assert.That(newState.Following).DoesNotContain(followeeId);
     }
 
     // =========================================================================

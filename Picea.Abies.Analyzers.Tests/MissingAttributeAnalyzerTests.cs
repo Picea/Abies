@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 
 namespace Picea.Abies.Analyzers.Tests;
 
@@ -44,7 +43,7 @@ public class MissingAttributeAnalyzerTests
     // ABIES001: img() missing alt
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task ImgWithoutAlt_ReportsABIES001()
     {
         var test = CreateTest(WrapInView("""
@@ -57,7 +56,7 @@ public class MissingAttributeAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task ImgWithAlt_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -68,7 +67,7 @@ public class MissingAttributeAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task ImgWithEmptyAlt_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -83,7 +82,7 @@ public class MissingAttributeAnalyzerTests
     // ABIES003: a() missing href
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task AnchorWithoutHref_ReportsABIES003()
     {
         var test = CreateTest(WrapInView("""
@@ -96,7 +95,7 @@ public class MissingAttributeAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task AnchorWithHref_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -111,7 +110,7 @@ public class MissingAttributeAnalyzerTests
     // ABIES004: button() missing type
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task ButtonWithoutType_ReportsABIES004()
     {
         var test = CreateTest(WrapInView("""
@@ -124,7 +123,7 @@ public class MissingAttributeAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task ButtonWithType_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -139,7 +138,7 @@ public class MissingAttributeAnalyzerTests
     // ABIES005: input() missing type
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task InputWithoutType_ReportsABIES005()
     {
         var test = CreateTest(WrapInView("""
@@ -152,7 +151,7 @@ public class MissingAttributeAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task InputWithType_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -167,7 +166,7 @@ public class MissingAttributeAnalyzerTests
     // Edge cases
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task NonAbiesCode_NoDiagnostic()
     {
         // Code that doesn't use Abies elements should produce no diagnostics

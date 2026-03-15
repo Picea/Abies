@@ -2,15 +2,16 @@
 // Settings E2E Tests — InteractiveServer Mode
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitServer")]
-public sealed class SettingsServerTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitServerFixture>(Shared = SharedType.Keyed, Key = "ConduitServer")]
+[NotInParallel("ConduitServer")]
+public sealed class SettingsServerTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitServerFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class SettingsServerTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task Settings_WhenLoggedIn_ShouldShowCurrentUserInfo()
     {
         var username = $"srvsett{Guid.NewGuid():N}"[..20];
@@ -41,7 +42,7 @@ public sealed class SettingsServerTests : IAsyncLifetime
         await Expect(_page.GetByPlaceholder("Your Name")).ToHaveValueAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task UpdateSettings_WithNewBio_ShouldPersistChanges()
     {
         var username = $"srvupd{Guid.NewGuid():N}"[..20];

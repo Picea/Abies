@@ -15,9 +15,9 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
+public sealed class UsersEndpointTests
 {
-    private readonly ConduitApiFactory _factory;
+    private readonly ConduitApiFactory _factory = new();
     private readonly HttpClient _client;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -25,13 +25,12 @@ public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public UsersEndpointTests(ConduitApiFactory factory)
+    public UsersEndpointTests()
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _client = _factory.CreateClient();
     }
 
-    [Fact]
+    [Test]
     public async Task Register_ValidInput_ReturnsCreatedWithToken()
     {
         var request = new RegisterUserRequest(new RegisterUserBody(
@@ -41,17 +40,17 @@ public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await _client.PostAsJsonAsync("/api/users", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
 
         var body = await response.Content.ReadFromJsonAsync<UserResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.Equal("newuser@example.com", body.User.Email);
-        Assert.Equal("newuser", body.User.Username);
-        Assert.NotNull(body.User.Token);
-        Assert.NotEmpty(body.User.Token);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.User.Email).IsEqualTo("newuser@example.com");
+        await Assert.That(body.User.Username).IsEqualTo("newuser");
+        await Assert.That(body.User.Token).IsNotNull();
+        await Assert.That(body.User.Token).IsNotEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Login_ValidCredentials_ReturnsOkWithToken()
     {
         var user = _factory.SeedUser(
@@ -65,16 +64,16 @@ public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await _client.PostAsJsonAsync("/api/users/login", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var body = await response.Content.ReadFromJsonAsync<UserResponse>(JsonOptions);
-        Assert.NotNull(body);
-        Assert.Equal("loginuser@example.com", body.User.Email);
-        Assert.Equal("loginuser", body.User.Username);
-        Assert.NotNull(body.User.Token);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body.User.Email).IsEqualTo("loginuser@example.com");
+        await Assert.That(body.User.Username).IsEqualTo("loginuser");
+        await Assert.That(body.User.Token).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WrongPassword_ReturnsValidationError()
     {
         _factory.SeedUser(
@@ -88,10 +87,10 @@ public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await _client.PostAsJsonAsync("/api/users/login", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnprocessableEntity);
     }
 
-    [Fact]
+    [Test]
     public async Task Login_NonexistentUser_ReturnsValidationError()
     {
         var request = new LoginUserRequest(new LoginUserBody(
@@ -100,6 +99,6 @@ public sealed class UsersEndpointTests : IClassFixture<ConduitApiFactory>
 
         var response = await _client.PostAsJsonAsync("/api/users/login", request, JsonOptions);
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnprocessableEntity);
     }
 }

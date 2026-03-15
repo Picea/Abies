@@ -2,15 +2,16 @@
 // Static Render E2E Tests — Conduit
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitStatic")]
-public sealed class ConduitStaticRenderTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitStaticFixture>(Shared = SharedType.Keyed, Key = "ConduitStatic")]
+[NotInParallel("ConduitStatic")]
+public sealed class ConduitStaticRenderTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitStaticFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class ConduitStaticRenderTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task HomePage_ShouldRenderBannerAndNavbar()
     {
         await _page.GotoAsync("/");
@@ -40,7 +41,7 @@ public sealed class ConduitStaticRenderTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign up");
     }
 
-    [Fact]
+    [Test]
     public async Task HomePage_ShouldRenderFeedToggle()
     {
         await _page.GotoAsync("/");
@@ -49,7 +50,7 @@ public sealed class ConduitStaticRenderTests : IAsyncLifetime
         await Expect(_page.Locator(".feed-toggle")).ToBeVisibleAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task LoginPage_ShouldRenderForm()
     {
         await _page.GotoAsync("/login");
@@ -62,7 +63,7 @@ public sealed class ConduitStaticRenderTests : IAsyncLifetime
             .ToBeVisibleAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task RegisterPage_ShouldRenderForm()
     {
         await _page.GotoAsync("/register");

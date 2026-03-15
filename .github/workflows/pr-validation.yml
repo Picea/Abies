@@ -121,6 +121,12 @@ jobs:
     name: Lint Check
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    # Pin the SDK to the version in global.json so that `dotnet format`
+    # produces identical output regardless of which SDK the runner ships.
+    # Without this, a newer SDK (e.g. 10.0.201 vs 10.0.103) may apply
+    # different formatting rules, causing false-positive lint failures.
+    env:
+      DOTNET_ROLL_FORWARD: LatestPatch
     
     steps:
       - name: Checkout
@@ -128,10 +134,10 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Setup .NET 10
+      - name: Setup .NET (from global.json)
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
       
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
@@ -170,8 +176,14 @@ jobs:
           echo "🔍 Checking formatting for changed files..."
           echo "Files: $FILES"
           
-          # Run format check with --include for each file
-          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic
+          # Run format check with --include for each file.
+          # --exclude-diagnostics IDE1006: Exclude naming-rule violations
+          # (e.g. "Missing prefix: '_'") because dotnet format can detect but
+          # NOT auto-fix them (renaming is a refactoring, not formatting).
+          # Without this flag, --verify-no-changes reports false positives for
+          # files that would be "Formatted" yet produce zero diff.
+          dotnet format --verify-no-changes --include $FILES --verbosity diagnostic \
+            --exclude-diagnostics IDE1006
           
           if [ $? -ne 0 ]; then
             echo ""

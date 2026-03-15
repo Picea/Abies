@@ -23,7 +23,6 @@ using System.Buffers.Binary;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.TestHost;
 
 namespace Picea.Abies.Server.Kestrel.Tests;
 
@@ -33,7 +32,7 @@ public class WebSocketSessionTests
     // Connection & Initial Render
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task WebSocket_ReceivesInitialPatchBatch()
     {
         await using var host = await AbiesTestHost.Create(
@@ -42,11 +41,11 @@ public class WebSocketSessionTests
         using var ws = await ConnectWebSocket(host);
         var batch = await ReceiveInitialBatch(ws);
 
-        Assert.True(batch.PatchCount > 0, "Expected at least one patch in initial render");
-        Assert.True(batch.Strings.Count > 0, "Expected strings in the string table");
+        await Assert.That(batch.PatchCount > 0).IsTrue();
+        await Assert.That(batch.Strings.Count > 0).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task WebSocket_InitialRender_ContainsCounterHtml()
     {
         await using var host = await AbiesTestHost.Create(
@@ -57,14 +56,14 @@ public class WebSocketSessionTests
 
         // The initial render should contain "Count: 0" in the string table
         var allStrings = string.Join(" ", batch.Strings);
-        Assert.Contains("Count: 0", allStrings);
+        await Assert.That(allStrings).Contains("Count: 0");
     }
 
     // =========================================================================
     // Event Dispatch — Click → State Update → Patch Response
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task WebSocket_ClickIncrement_ReceivesUpdatedPatches()
     {
         await using var host = await AbiesTestHost.Create(
@@ -74,16 +73,16 @@ public class WebSocketSessionTests
         var initialBatch = await ReceiveInitialBatch(ws);
 
         var incrementCommandId = FindHandlerCommandId(initialBatch, "increment");
-        Assert.NotNull(incrementCommandId);
+        await Assert.That(incrementCommandId).IsNotNull();
 
         await SendClickEvent(ws, incrementCommandId!);
 
         var updatedBatch = await ReceiveBinaryBatch(ws);
         var allStrings = string.Join(" ", updatedBatch.Strings);
-        Assert.Contains("Count: 1", allStrings);
+        await Assert.That(allStrings).Contains("Count: 1");
     }
 
-    [Fact]
+    [Test]
     public async Task WebSocket_ClickDecrement_ReceivesUpdatedPatches()
     {
         await using var host = await AbiesTestHost.Create(
@@ -93,16 +92,16 @@ public class WebSocketSessionTests
         var initialBatch = await ReceiveInitialBatch(ws);
 
         var decrementCommandId = FindHandlerCommandId(initialBatch, "decrement");
-        Assert.NotNull(decrementCommandId);
+        await Assert.That(decrementCommandId).IsNotNull();
 
         await SendClickEvent(ws, decrementCommandId!);
 
         var updatedBatch = await ReceiveBinaryBatch(ws);
         var allStrings = string.Join(" ", updatedBatch.Strings);
-        Assert.Contains("Count: -1", allStrings);
+        await Assert.That(allStrings).Contains("Count: -1");
     }
 
-    [Fact]
+    [Test]
     public async Task WebSocket_MultipleClicks_AccumulateState()
     {
         await using var host = await AbiesTestHost.Create(
@@ -112,7 +111,7 @@ public class WebSocketSessionTests
         var batch = await ReceiveInitialBatch(ws);
 
         var incrementCommandId = FindHandlerCommandId(batch, "increment");
-        Assert.True(incrementCommandId is not null, "No initial increment handler");
+        await Assert.That(incrementCommandId is not null).IsTrue();
 
         // Click increment 3 times — after each click, extract new commandId
         // from the response patches if available, otherwise reuse the old one
@@ -122,7 +121,7 @@ public class WebSocketSessionTests
             batch = await ReceiveBinaryBatch(ws);
 
             var allStrings = string.Join(" ", batch.Strings);
-            Assert.Contains($"Count: {i}", allStrings);
+            await Assert.That(allStrings).Contains($"Count: {i}");
             // Try to find updated commandId from the diff patches.
             // The diff may contain UpdateHandler (type 12) or new AddHandler (type 10)
             // patches with the fresh commandId.
@@ -137,7 +136,7 @@ public class WebSocketSessionTests
     // URL Change Events — Client-Side Navigation
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task WebSocket_UrlChange_ReceivesUpdatedPatches()
     {
         await using var host = await AbiesTestHost.Create(
@@ -151,14 +150,14 @@ public class WebSocketSessionTests
 
         var updatedBatch = await ReceiveBinaryBatch(ws);
         var allStrings = string.Join(" ", updatedBatch.Strings);
-        Assert.Contains("Page: articles", allStrings);
+        await Assert.That(allStrings).Contains("Page: articles");
     }
 
     // =========================================================================
     // Session Isolation — Multiple Connections
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task WebSocket_MultipleSessions_HaveIsolatedState()
     {
         await using var host = await AbiesTestHost.Create(
@@ -182,7 +181,7 @@ public class WebSocketSessionTests
         batch1 = await ReceiveBinaryBatch(ws1);
 
         // Session 1 should be at Count: 2
-        Assert.Contains("Count: 2", string.Join(" ", batch1.Strings));
+        await Assert.That(string.Join(" ", batch1.Strings)).Contains("Count: 2");
 
         // Session 2 increments once — its handler commandId is DIFFERENT
         // because each session has its own Runtime with fresh handler IDs
@@ -191,14 +190,14 @@ public class WebSocketSessionTests
         batch2 = await ReceiveBinaryBatch(ws2);
 
         // Session 2 should be at Count: 1 (isolated from session 1)
-        Assert.Contains("Count: 1", string.Join(" ", batch2.Strings));
+        await Assert.That(string.Join(" ", batch2.Strings)).Contains("Count: 1");
     }
 
     // =========================================================================
     // Graceful Disconnect
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task WebSocket_ClientClose_ServerHandlesGracefully()
     {
         await using var host = await AbiesTestHost.Create(
@@ -211,7 +210,7 @@ public class WebSocketSessionTests
         await ws.CloseAsync(
             WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
 
-        Assert.Equal(WebSocketState.Closed, ws.State);
+        await Assert.That(ws.State).IsEqualTo(WebSocketState.Closed);
         ws.Dispose();
     }
 
@@ -291,8 +290,8 @@ public class WebSocketSessionTests
 
         var result = await ws.ReceiveAsync(buffer, cts.Token);
 
-        Assert.Equal(WebSocketMessageType.Binary, result.MessageType);
-        Assert.True(result.EndOfMessage, "Expected complete binary message");
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
+        await Assert.That(result.EndOfMessage).IsTrue();
 
         return ParseBinaryBatch(buffer.AsSpan(0, result.Count));
     }

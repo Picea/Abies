@@ -7,7 +7,6 @@
 
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.Shared;
-using Picea;
 
 namespace Picea.Abies.Conduit.Tests;
 
@@ -28,22 +27,22 @@ public class ArticleDeciderTests
     // Initialize
     // =========================================================================
 
-    [Fact]
-    public void Initialize_ReturnsUnpublishedState()
+    [Test]
+    public async Task Initialize_ReturnsUnpublishedState()
     {
         var (state, effect) = Article.Initialize(Unit.Value);
 
-        Assert.False(state.Published);
-        Assert.False(state.Deleted);
-        Assert.IsType<ArticleEffect.None>(effect);
+        await Assert.That(state.Published).IsFalse();
+        await Assert.That(state.Deleted).IsFalse();
+        await Assert.That(effect).IsTypeOf<ArticleEffect.None>();
     }
 
     // =========================================================================
     // CreateArticle
     // =========================================================================
 
-    [Fact]
-    public void Decide_CreateArticle_WhenUnpublished_ProducesArticleCreatedEvent()
+    [Test]
+    public async Task Decide_CreateArticle_WhenUnpublished_ProducesArticleCreatedEvent()
     {
         var state = ArticleState.Initial;
         var command = new ArticleCommand.CreateArticle(
@@ -51,19 +50,20 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.ArticleCreated>(Assert.Single(result.Value));
-        Assert.Equal(ArticleId, e.Id);
-        Assert.Equal(Title, e.Title);
-        Assert.Equal(Description, e.Description);
-        Assert.Equal(Body, e.Body);
-        Assert.Equal(AuthorId, e.AuthorId);
-        Assert.Equal(Now, e.CreatedAt);
-        Assert.Equal("hello-world", e.Slug.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.ArticleCreated>();
+        await Assert.That(e.Id).IsEqualTo(ArticleId);
+        await Assert.That(e.Title).IsEqualTo(Title);
+        await Assert.That(e.Description).IsEqualTo(Description);
+        await Assert.That(e.Body).IsEqualTo(Body);
+        await Assert.That(e.AuthorId).IsEqualTo(AuthorId);
+        await Assert.That(e.CreatedAt).IsEqualTo(Now);
+        await Assert.That(e.Slug.Value).IsEqualTo("hello-world");
     }
 
-    [Fact]
-    public void Decide_CreateArticle_WhenAlreadyPublished_ReturnsError()
+    [Test]
+    public async Task Decide_CreateArticle_WhenAlreadyPublished_ReturnsError()
     {
         var state = PublishedState();
         var command = new ArticleCommand.CreateArticle(
@@ -71,12 +71,12 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.AlreadyPublished>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.AlreadyPublished>();
     }
 
-    [Fact]
-    public void Transition_ArticleCreated_SetsAllFields()
+    [Test]
+    public async Task Transition_ArticleCreated_SetsAllFields()
     {
         var state = ArticleState.Initial;
         var slug = Slug.FromTitle(Title);
@@ -85,23 +85,23 @@ public class ArticleDeciderTests
 
         var (newState, _) = Article.Transition(state, e);
 
-        Assert.Equal(ArticleId, newState.Id);
-        Assert.Equal(slug, newState.Slug);
-        Assert.Equal(Title, newState.Title);
-        Assert.Equal(Description, newState.Description);
-        Assert.Equal(Body, newState.Body);
-        Assert.Equal(Tags, newState.Tags);
-        Assert.Equal(AuthorId, newState.AuthorId);
-        Assert.True(newState.Published);
-        Assert.False(newState.Deleted);
+        await Assert.That(newState.Id).IsEqualTo(ArticleId);
+        await Assert.That(newState.Slug).IsEqualTo(slug);
+        await Assert.That(newState.Title).IsEqualTo(Title);
+        await Assert.That(newState.Description).IsEqualTo(Description);
+        await Assert.That(newState.Body).IsEqualTo(Body);
+        await Assert.That(newState.Tags).IsEqualTo(Tags);
+        await Assert.That(newState.AuthorId).IsEqualTo(AuthorId);
+        await Assert.That(newState.Published).IsTrue();
+        await Assert.That(newState.Deleted).IsFalse();
     }
 
     // =========================================================================
     // Commands before creation
     // =========================================================================
 
-    [Fact]
-    public void Decide_UpdateArticle_WhenUnpublished_ReturnsNotPublished()
+    [Test]
+    public async Task Decide_UpdateArticle_WhenUnpublished_ReturnsNotPublished()
     {
         var state = ArticleState.Initial;
         var command = new ArticleCommand.UpdateArticle(
@@ -110,16 +110,16 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.NotPublished>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.NotPublished>();
     }
 
     // =========================================================================
     // UpdateArticle
     // =========================================================================
 
-    [Fact]
-    public void Decide_UpdateArticle_ByAuthor_ProducesArticleUpdatedEvent()
+    [Test]
+    public async Task Decide_UpdateArticle_ByAuthor_ProducesArticleUpdatedEvent()
     {
         var state = PublishedState();
         var newTitle = new Title("Updated Title");
@@ -129,16 +129,17 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.ArticleUpdated>(Assert.Single(result.Value));
-        Assert.True(e.Title.IsSome);
-        Assert.Equal(newTitle, e.Title.Value);
-        Assert.True(e.Description.IsNone);
-        Assert.Equal("updated-title", e.Slug.Value);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.ArticleUpdated>();
+        await Assert.That(e.Title.IsSome).IsTrue();
+        await Assert.That(e.Title.Value).IsEqualTo(newTitle);
+        await Assert.That(e.Description.IsNone).IsTrue();
+        await Assert.That(e.Slug.Value).IsEqualTo("updated-title");
     }
 
-    [Fact]
-    public void Decide_UpdateArticle_ByNonAuthor_ReturnsNotAuthor()
+    [Test]
+    public async Task Decide_UpdateArticle_ByNonAuthor_ReturnsNotAuthor()
     {
         var state = PublishedState();
         var command = new ArticleCommand.UpdateArticle(
@@ -147,13 +148,13 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        var error = Assert.IsType<ArticleError.NotAuthor>(result.Error);
-        Assert.Equal(OtherUserId, error.RequesterId);
+        await Assert.That(result.IsErr).IsTrue();
+        var error = await Assert.That(result.Error).IsTypeOf<ArticleError.NotAuthor>();
+        await Assert.That(error.RequesterId).IsEqualTo(OtherUserId);
     }
 
-    [Fact]
-    public void Transition_ArticleUpdated_OnlyChangesProvidedFields()
+    [Test]
+    public async Task Transition_ArticleUpdated_OnlyChangesProvidedFields()
     {
         var state = PublishedState();
         var newTitle = new Title("Updated Title");
@@ -164,82 +165,83 @@ public class ArticleDeciderTests
 
         var (newState, _) = Article.Transition(state, e);
 
-        Assert.Equal(newTitle, newState.Title);
-        Assert.Equal(newSlug, newState.Slug);
-        Assert.Equal(state.Description, newState.Description);
-        Assert.Equal(state.Body, newState.Body);
-        Assert.Equal(Now, newState.UpdatedAt);
+        await Assert.That(newState.Title).IsEqualTo(newTitle);
+        await Assert.That(newState.Slug).IsEqualTo(newSlug);
+        await Assert.That(newState.Description).IsEqualTo(state.Description);
+        await Assert.That(newState.Body).IsEqualTo(state.Body);
+        await Assert.That(newState.UpdatedAt).IsEqualTo(Now);
     }
 
     // =========================================================================
     // DeleteArticle
     // =========================================================================
 
-    [Fact]
-    public void Decide_DeleteArticle_ByAuthor_ProducesArticleDeletedEvent()
+    [Test]
+    public async Task Decide_DeleteArticle_ByAuthor_ProducesArticleDeletedEvent()
     {
         var state = PublishedState();
         var command = new ArticleCommand.DeleteArticle(AuthorId);
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsOk);
-        Assert.IsType<ArticleEvent.ArticleDeleted>(Assert.Single(result.Value));
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.ArticleDeleted>();
     }
 
-    [Fact]
-    public void Decide_DeleteArticle_ByNonAuthor_ReturnsNotAuthor()
+    [Test]
+    public async Task Decide_DeleteArticle_ByNonAuthor_ReturnsNotAuthor()
     {
         var state = PublishedState();
 
         var result = Article.Decide(state, new ArticleCommand.DeleteArticle(OtherUserId));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.NotAuthor>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.NotAuthor>();
     }
 
-    [Fact]
-    public void Transition_ArticleDeleted_SetsDeletedFlag()
+    [Test]
+    public async Task Transition_ArticleDeleted_SetsDeletedFlag()
     {
         var state = PublishedState();
 
         var (newState, _) = Article.Transition(state, new ArticleEvent.ArticleDeleted());
 
-        Assert.True(newState.Deleted);
+        await Assert.That(newState.Deleted).IsTrue();
     }
 
-    [Fact]
-    public void IsTerminal_DeletedArticle_ReturnsTrue()
+    [Test]
+    public async Task IsTerminal_DeletedArticle_ReturnsTrue()
     {
         var state = PublishedState() with { Deleted = true };
 
-        Assert.True(Article.IsTerminal(state));
+        await Assert.That(Article.IsTerminal(state)).IsTrue();
     }
 
-    [Fact]
-    public void IsTerminal_LiveArticle_ReturnsFalse()
+    [Test]
+    public async Task IsTerminal_LiveArticle_ReturnsFalse()
     {
-        Assert.False(Article.IsTerminal(PublishedState()));
+        await Assert.That(Article.IsTerminal(PublishedState())).IsFalse();
     }
 
-    [Fact]
-    public void Decide_AnyCommand_WhenDeleted_ReturnsAlreadyDeleted()
+    [Test]
+    public async Task Decide_AnyCommand_WhenDeleted_ReturnsAlreadyDeleted()
     {
         var state = PublishedState() with { Deleted = true };
         var command = new ArticleCommand.FavoriteArticle(OtherUserId);
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.AlreadyDeleted>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.AlreadyDeleted>();
     }
 
     // =========================================================================
     // Comments
     // =========================================================================
 
-    [Fact]
-    public void Decide_AddComment_ProducesCommentAddedEvent()
+    [Test]
+    public async Task Decide_AddComment_ProducesCommentAddedEvent()
     {
         var state = PublishedState();
         var commentId = CommentId.New();
@@ -248,15 +250,16 @@ public class ArticleDeciderTests
 
         var result = Article.Decide(state, command);
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.CommentAdded>(Assert.Single(result.Value));
-        Assert.Equal(commentId, e.CommentId);
-        Assert.Equal(OtherUserId, e.AuthorId);
-        Assert.Equal(body, e.Body);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.CommentAdded>();
+        await Assert.That(e.CommentId).IsEqualTo(commentId);
+        await Assert.That(e.AuthorId).IsEqualTo(OtherUserId);
+        await Assert.That(e.Body).IsEqualTo(body);
     }
 
-    [Fact]
-    public void Transition_CommentAdded_AddsToComments()
+    [Test]
+    public async Task Transition_CommentAdded_AddsToComments()
     {
         var state = PublishedState();
         var commentId = CommentId.New();
@@ -265,13 +268,13 @@ public class ArticleDeciderTests
 
         var (newState, _) = Article.Transition(state, e);
 
-        Assert.True(newState.Comments.ContainsKey(commentId));
-        Assert.Equal(OtherUserId, newState.Comments[commentId].AuthorId);
-        Assert.Equal(body, newState.Comments[commentId].Body);
+        await Assert.That(newState.Comments.ContainsKey(commentId)).IsTrue();
+        await Assert.That(newState.Comments[commentId].AuthorId).IsEqualTo(OtherUserId);
+        await Assert.That(newState.Comments[commentId].Body).IsEqualTo(body);
     }
 
-    [Fact]
-    public void Decide_DeleteComment_ByCommentAuthor_ProducesEvent()
+    [Test]
+    public async Task Decide_DeleteComment_ByCommentAuthor_ProducesEvent()
     {
         var commentId = CommentId.New();
         var state = StateWithComment(commentId, OtherUserId);
@@ -279,13 +282,14 @@ public class ArticleDeciderTests
         var result = Article.Decide(state,
             new ArticleCommand.DeleteComment(commentId, OtherUserId));
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.CommentDeleted>(Assert.Single(result.Value));
-        Assert.Equal(commentId, e.CommentId);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.CommentDeleted>();
+        await Assert.That(e.CommentId).IsEqualTo(commentId);
     }
 
-    [Fact]
-    public void Decide_DeleteComment_ByNonAuthor_ReturnsNotCommentAuthor()
+    [Test]
+    public async Task Decide_DeleteComment_ByNonAuthor_ReturnsNotCommentAuthor()
     {
         var commentId = CommentId.New();
         var state = StateWithComment(commentId, OtherUserId);
@@ -294,12 +298,12 @@ public class ArticleDeciderTests
         var result = Article.Decide(state,
             new ArticleCommand.DeleteComment(commentId, thirdUser));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.NotCommentAuthor>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.NotCommentAuthor>();
     }
 
-    [Fact]
-    public void Decide_DeleteComment_NotFound_ReturnsCommentNotFound()
+    [Test]
+    public async Task Decide_DeleteComment_NotFound_ReturnsCommentNotFound()
     {
         var state = PublishedState();
         var missingId = CommentId.New();
@@ -307,12 +311,12 @@ public class ArticleDeciderTests
         var result = Article.Decide(state,
             new ArticleCommand.DeleteComment(missingId, AuthorId));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.CommentNotFound>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.CommentNotFound>();
     }
 
-    [Fact]
-    public void Transition_CommentDeleted_RemovesFromComments()
+    [Test]
+    public async Task Transition_CommentDeleted_RemovesFromComments()
     {
         var commentId = CommentId.New();
         var state = StateWithComment(commentId, OtherUserId);
@@ -320,28 +324,29 @@ public class ArticleDeciderTests
         var (newState, _) = Article.Transition(state,
             new ArticleEvent.CommentDeleted(commentId));
 
-        Assert.False(newState.Comments.ContainsKey(commentId));
+        await Assert.That(newState.Comments.ContainsKey(commentId)).IsFalse();
     }
 
     // =========================================================================
     // Favorites
     // =========================================================================
 
-    [Fact]
-    public void Decide_FavoriteArticle_ProducesArticleFavoritedEvent()
+    [Test]
+    public async Task Decide_FavoriteArticle_ProducesArticleFavoritedEvent()
     {
         var state = PublishedState();
 
         var result = Article.Decide(state,
             new ArticleCommand.FavoriteArticle(OtherUserId));
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.ArticleFavorited>(Assert.Single(result.Value));
-        Assert.Equal(OtherUserId, e.UserId);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.ArticleFavorited>();
+        await Assert.That(e.UserId).IsEqualTo(OtherUserId);
     }
 
-    [Fact]
-    public void Decide_FavoriteArticle_AlreadyFavorited_ReturnsError()
+    [Test]
+    public async Task Decide_FavoriteArticle_AlreadyFavorited_ReturnsError()
     {
         var state = PublishedState() with
         {
@@ -351,23 +356,23 @@ public class ArticleDeciderTests
         var result = Article.Decide(state,
             new ArticleCommand.FavoriteArticle(OtherUserId));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.AlreadyFavorited>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.AlreadyFavorited>();
     }
 
-    [Fact]
-    public void Transition_ArticleFavorited_AddsToFavoritedBy()
+    [Test]
+    public async Task Transition_ArticleFavorited_AddsToFavoritedBy()
     {
         var state = PublishedState();
 
         var (newState, _) = Article.Transition(state,
             new ArticleEvent.ArticleFavorited(OtherUserId));
 
-        Assert.Contains(OtherUserId, newState.FavoritedBy);
+        await Assert.That(newState.FavoritedBy).Contains(OtherUserId);
     }
 
-    [Fact]
-    public void Decide_UnfavoriteArticle_ProducesArticleUnfavoritedEvent()
+    [Test]
+    public async Task Decide_UnfavoriteArticle_ProducesArticleUnfavoritedEvent()
     {
         var state = PublishedState() with
         {
@@ -377,25 +382,26 @@ public class ArticleDeciderTests
         var result = Article.Decide(state,
             new ArticleCommand.UnfavoriteArticle(OtherUserId));
 
-        Assert.True(result.IsOk);
-        var e = Assert.IsType<ArticleEvent.ArticleUnfavorited>(Assert.Single(result.Value));
-        Assert.Equal(OtherUserId, e.UserId);
+        await Assert.That(result.IsOk).IsTrue();
+        await Assert.That(result.Value).Count().IsEqualTo(1);
+        var e = await Assert.That(result.Value[0]).IsTypeOf<ArticleEvent.ArticleUnfavorited>();
+        await Assert.That(e.UserId).IsEqualTo(OtherUserId);
     }
 
-    [Fact]
-    public void Decide_UnfavoriteArticle_NotFavorited_ReturnsError()
+    [Test]
+    public async Task Decide_UnfavoriteArticle_NotFavorited_ReturnsError()
     {
         var state = PublishedState();
 
         var result = Article.Decide(state,
             new ArticleCommand.UnfavoriteArticle(OtherUserId));
 
-        Assert.True(result.IsErr);
-        Assert.IsType<ArticleError.NotFavorited>(result.Error);
+        await Assert.That(result.IsErr).IsTrue();
+        await Assert.That(result.Error).IsTypeOf<ArticleError.NotFavorited>();
     }
 
-    [Fact]
-    public void Transition_ArticleUnfavorited_RemovesFromFavoritedBy()
+    [Test]
+    public async Task Transition_ArticleUnfavorited_RemovesFromFavoritedBy()
     {
         var state = PublishedState() with
         {
@@ -405,7 +411,7 @@ public class ArticleDeciderTests
         var (newState, _) = Article.Transition(state,
             new ArticleEvent.ArticleUnfavorited(OtherUserId));
 
-        Assert.DoesNotContain(OtherUserId, newState.FavoritedBy);
+        await Assert.That(newState.FavoritedBy).DoesNotContain(OtherUserId);
     }
 
     // =========================================================================

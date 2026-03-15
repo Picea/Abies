@@ -2,15 +2,16 @@
 // Authentication E2E Tests — InteractiveAuto Mode
 // =============================================================================
 
+using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
-using Microsoft.Playwright;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("ConduitAuto")]
-public sealed class AuthenticationAutoTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAutoFixture>(Shared = SharedType.Keyed, Key = "ConduitAuto")]
+[NotInParallel("ConduitAuto")]
+public sealed class AuthenticationAutoTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAutoFixture _fixture;
     private IPage _page = null!;
@@ -24,9 +25,9 @@ public sealed class AuthenticationAutoTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync() => await _page.Context.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _page.Context.DisposeAsync();
 
-    [Fact]
+    [Test]
     public async Task Register_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         await _page.GotoAsync("/register");
@@ -48,7 +49,7 @@ public sealed class AuthenticationAutoTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("Settings");
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithValidCredentials_ShouldNavigateToHomeWithAuthenticatedNav()
     {
         var username = $"autologin{Guid.NewGuid():N}"[..20];
@@ -68,7 +69,7 @@ public sealed class AuthenticationAutoTests : IAsyncLifetime
         await Expect(_page.Locator(".navbar")).ToContainTextAsync(username);
     }
 
-    [Fact]
+    [Test]
     public async Task Login_WithInvalidCredentials_ShouldShowErrors()
     {
         await _page.GotoAsync("/login");

@@ -13,14 +13,15 @@
 // and that no interactive infrastructure (scripts, WebSocket) is present.
 // =============================================================================
 
-using Picea.Abies.Counter.Testing.E2E.Fixtures;
 using Microsoft.Playwright;
+using Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 namespace Picea.Abies.Counter.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("CounterStatic")]
-public sealed class CounterStaticRenderTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<CounterStaticFixture>(Shared = SharedType.Keyed, Key = "CounterStatic")]
+[NotInParallel("CounterStatic")]
+public sealed class CounterStaticRenderTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly CounterStaticFixture _fixture;
     private IPage _page = null!;
@@ -35,12 +36,12 @@ public sealed class CounterStaticRenderTests : IAsyncLifetime
         _page = await _fixture.CreatePageAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task InitialLoad_ShouldShowServerRenderedCounter()
     {
         await _page.GotoAsync("/");
@@ -52,7 +53,7 @@ public sealed class CounterStaticRenderTests : IAsyncLifetime
             .ToHaveTextAsync("0", new() { Timeout = 10_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task StaticMode_ShouldRenderAllButtons()
     {
         await _page.GotoAsync("/");
@@ -68,7 +69,7 @@ public sealed class CounterStaticRenderTests : IAsyncLifetime
             .ToBeVisibleAsync(new() { Timeout = 5_000 });
     }
 
-    [Fact]
+    [Test]
     public async Task StaticMode_ClickingShouldNotChangeCount()
     {
         await _page.GotoAsync("/");
@@ -84,20 +85,20 @@ public sealed class CounterStaticRenderTests : IAsyncLifetime
             .ToHaveTextAsync("0");
     }
 
-    [Fact]
+    [Test]
     public async Task StaticMode_ShouldNotIncludeInteractiveScripts()
     {
         await _page.GotoAsync("/");
 
         // Static mode should have no WebSocket or WASM bootstrap scripts
         var scriptCount = await _page.Locator("script[src*='abies-server']").CountAsync();
-        Assert.Equal(0, scriptCount);
+        await Assert.That(scriptCount).IsEqualTo(0);
 
         var wasmScriptCount = await _page.Locator("script:has-text('dotnet')").CountAsync();
-        Assert.Equal(0, wasmScriptCount);
+        await Assert.That(wasmScriptCount).IsEqualTo(0);
     }
 
-    [Fact]
+    [Test]
     public async Task StaticMode_ShouldServeValidHtmlDocument()
     {
         await _page.GotoAsync("/");
@@ -109,7 +110,7 @@ public sealed class CounterStaticRenderTests : IAsyncLifetime
 
         // Should have the Counter title
         var title = await _page.TitleAsync();
-        Assert.Equal("Abies Counter", title);
+        await Assert.That(title).IsEqualTo("Abies Counter");
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>

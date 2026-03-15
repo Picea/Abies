@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Xunit;
 
 namespace Picea.Abies.Analyzers.Tests;
 
@@ -43,7 +42,7 @@ public class ContentModelAnalyzerTests
     // ABIES002: Block inside inline
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task DivInsideSpan_ReportsABIES002()
     {
         var test = CreateTest(WrapInView("""
@@ -59,7 +58,7 @@ public class ContentModelAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task SectionInsideStrong_ReportsABIES002()
     {
         var test = CreateTest(WrapInView("""
@@ -75,7 +74,7 @@ public class ContentModelAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task TableInsideH1_ReportsABIES002()
     {
         var test = CreateTest(WrapInView("""
@@ -95,7 +94,7 @@ public class ContentModelAnalyzerTests
     // Valid nesting — should NOT report
     // =========================================================================
 
-    [Fact]
+    [Test]
     public async Task SpanInsideDiv_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -106,7 +105,7 @@ public class ContentModelAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task DivInsideDiv_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -117,7 +116,7 @@ public class ContentModelAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task SpanInsideSpan_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""
@@ -128,7 +127,7 @@ public class ContentModelAnalyzerTests
         await test.RunAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task TextInsideParagraph_NoDiagnostic()
     {
         var test = CreateTest(WrapInView("""

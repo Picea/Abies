@@ -8,13 +8,12 @@ using Microsoft.Playwright;
 using Picea.Abies.Conduit.App;
 using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
-
 namespace Picea.Abies.Conduit.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Conduit app in Static mode for E2E testing.
 /// </summary>
-public sealed class ConduitStaticFixture : IAsyncLifetime
+public sealed class ConduitStaticFixture : IAsyncInitializer, IAsyncDisposable
 {
     private ConduitInfraFixture? _infra;
     private WebApplication? _app;
@@ -81,7 +80,7 @@ public sealed class ConduitStaticFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_browser is not null)
             await _browser.DisposeAsync();

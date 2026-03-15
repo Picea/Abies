@@ -12,12 +12,12 @@
 // and avoid cross-contamination.
 // =============================================================================
 
+using Npgsql;
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadModel;
-using Picea;
-using Npgsql;
+using TUnit.Core.Interfaces;
 
 namespace Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests;
 
@@ -25,8 +25,8 @@ namespace Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests;
 /// Integration tests for the PostgreSQL read store.
 /// Requires a running PostgreSQL instance.
 /// </summary>
-[Trait("Category", "Integration")]
-public sealed class PostgresReadStoreTests : IAsyncLifetime
+[Property("Category", "Integration")]
+public sealed class PostgresReadStoreTests : IAsyncInitializer, IAsyncDisposable
 {
     private NpgsqlDataSource _dataSource = null!;
     private readonly string _connectionString;
@@ -44,7 +44,7 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         await CleanTables();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await CleanTables();
         await _dataSource.DisposeAsync();
@@ -66,7 +66,7 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
     // ─── User Projection Tests ──────────────────────────────────────────
 
-    [Fact]
+    [Test]
     public async Task UserRegistered_creates_user_in_read_store()
     {
         var userId = Guid.NewGuid();
@@ -82,15 +82,15 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var findByEmail = QueryStore.CreateFindUserByEmail(_dataSource);
         var result = await findByEmail("jake@jake.jake");
 
-        Assert.True(result.IsSome);
+        await Assert.That(result.IsSome).IsTrue();
         var user = result.Value;
-        Assert.Equal(userId, user.Id);
-        Assert.Equal("jake@jake.jake", user.Email);
-        Assert.Equal("jake", user.Username);
-        Assert.Equal("hashed123", user.PasswordHash);
+        await Assert.That(user.Id).IsEqualTo(userId);
+        await Assert.That(user.Email).IsEqualTo("jake@jake.jake");
+        await Assert.That(user.Username).IsEqualTo("jake");
+        await Assert.That(user.PasswordHash).IsEqualTo("hashed123");
     }
 
-    [Fact]
+    [Test]
     public async Task UserRegistered_is_idempotent()
     {
         var userId = Guid.NewGuid();
@@ -106,11 +106,11 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         var findById = QueryStore.CreateFindUserById(_dataSource);
         var result = await findById(userId);
-        Assert.True(result.IsSome);
-        Assert.Equal("idemuser", result.Value.Username);
+        await Assert.That(result.IsSome).IsTrue();
+        await Assert.That(result.Value.Username).IsEqualTo("idemuser");
     }
 
-    [Fact]
+    [Test]
     public async Task ProfileUpdated_updates_user_fields()
     {
         var userId = Guid.NewGuid();
@@ -135,12 +135,12 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         var findById = QueryStore.CreateFindUserById(_dataSource);
         var result = await findById(userId);
-        Assert.True(result.IsSome);
-        Assert.Equal("I work at StateFactory", result.Value.Bio);
-        Assert.Equal("https://i.stack.imgur.com/xHWG8.jpg", result.Value.Image);
+        await Assert.That(result.IsSome).IsTrue();
+        await Assert.That(result.Value.Bio).IsEqualTo("I work at StateFactory");
+        await Assert.That(result.Value.Image).IsEqualTo("https://i.stack.imgur.com/xHWG8.jpg");
     }
 
-    [Fact]
+    [Test]
     public async Task Follow_and_unfollow_affects_profile_query()
     {
         var followerId = Guid.NewGuid();
@@ -161,43 +161,43 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         // Before follow
         var before = await getProfile("followee", Option<Guid>.Some(followerId));
-        Assert.True(before.IsSome);
-        Assert.False(before.Value.Following);
+        await Assert.That(before.IsSome).IsTrue();
+        await Assert.That(before.Value.Following).IsFalse();
 
         // Follow
         await UserProjection.Apply(_dataSource, followerId, new UserEvent.Followed(new UserId(followeeId)));
 
         var after = await getProfile("followee", Option<Guid>.Some(followerId));
-        Assert.True(after.IsSome);
-        Assert.True(after.Value.Following);
+        await Assert.That(after.IsSome).IsTrue();
+        await Assert.That(after.Value.Following).IsTrue();
 
         // Unfollow
         await UserProjection.Apply(_dataSource, followerId, new UserEvent.Unfollowed(new UserId(followeeId)));
 
         var afterUnfollow = await getProfile("followee", Option<Guid>.Some(followerId));
-        Assert.True(afterUnfollow.IsSome);
-        Assert.False(afterUnfollow.Value.Following);
+        await Assert.That(afterUnfollow.IsSome).IsTrue();
+        await Assert.That(afterUnfollow.Value.Following).IsFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task FindUserByEmail_returns_none_for_unknown_email()
     {
         var findByEmail = QueryStore.CreateFindUserByEmail(_dataSource);
         var result = await findByEmail("nonexistent@test.com");
-        Assert.True(result.IsNone);
+        await Assert.That(result.IsNone).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task GetProfile_returns_none_for_unknown_username()
     {
         var getProfile = QueryStore.CreateGetProfile(_dataSource);
         var result = await getProfile("nobody", Option<Guid>.None);
-        Assert.True(result.IsNone);
+        await Assert.That(result.IsNone).IsTrue();
     }
 
     // ─── Article Projection Tests ───────────────────────────────────────
 
-    [Fact]
+    [Test]
     public async Task ArticleCreated_creates_article_in_read_store()
     {
         var userId = Guid.NewGuid();
@@ -220,21 +220,21 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var result = await findBySlug("how-to-train-your-dragon", Option<Guid>.None);
 
-        Assert.True(result.IsSome);
+        await Assert.That(result.IsSome).IsTrue();
         var article = result.Value;
-        Assert.Equal("how-to-train-your-dragon", article.Slug);
-        Assert.Equal("How to train your dragon", article.Title);
-        Assert.Equal("Ever wonder how?", article.Description);
-        Assert.Equal("You have to believe", article.Body);
-        Assert.Equal(3, article.TagList.Count);
-        Assert.Contains("dragons", article.TagList);
-        Assert.Contains("reactjs", article.TagList);
-        Assert.Equal("author1", article.Author.Username);
-        Assert.Equal(0, article.FavoritesCount);
-        Assert.False(article.Favorited);
+        await Assert.That(article.Slug).IsEqualTo("how-to-train-your-dragon");
+        await Assert.That(article.Title).IsEqualTo("How to train your dragon");
+        await Assert.That(article.Description).IsEqualTo("Ever wonder how?");
+        await Assert.That(article.Body).IsEqualTo("You have to believe");
+        await Assert.That(article.TagList.Count).IsEqualTo(3);
+        await Assert.That(article.TagList).Contains("dragons");
+        await Assert.That(article.TagList).Contains("reactjs");
+        await Assert.That(article.Author.Username).IsEqualTo("author1");
+        await Assert.That(article.FavoritesCount).IsEqualTo(0);
+        await Assert.That(article.Favorited).IsFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task ArticleUpdated_updates_article_fields()
     {
         var userId = Guid.NewGuid();
@@ -255,12 +255,12 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var result = await findBySlug("updated-title", Option<Guid>.None);
 
-        Assert.True(result.IsSome);
-        Assert.Equal("Updated Title", result.Value.Title);
-        Assert.Equal("New body content", result.Value.Body);
+        await Assert.That(result.IsSome).IsTrue();
+        await Assert.That(result.Value.Title).IsEqualTo("Updated Title");
+        await Assert.That(result.Value.Body).IsEqualTo("New body content");
     }
 
-    [Fact]
+    [Test]
     public async Task ArticleDeleted_soft_deletes_article()
     {
         var userId = Guid.NewGuid();
@@ -274,10 +274,10 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var result = await findBySlug("to-be-deleted", Option<Guid>.None);
 
-        Assert.True(result.IsNone);
+        await Assert.That(result.IsNone).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task Favorite_and_unfavorite_updates_count()
     {
         var authorId = Guid.NewGuid();
@@ -294,21 +294,21 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var afterFav = await findBySlug("fav-article", Option<Guid>.Some(userId));
-        Assert.True(afterFav.IsSome);
-        Assert.Equal(1, afterFav.Value.FavoritesCount);
-        Assert.True(afterFav.Value.Favorited);
+        await Assert.That(afterFav.IsSome).IsTrue();
+        await Assert.That(afterFav.Value.FavoritesCount).IsEqualTo(1);
+        await Assert.That(afterFav.Value.Favorited).IsTrue();
 
         // Unfavorite
         await ArticleProjection.Apply(_dataSource, articleId,
             new ArticleEvent.ArticleUnfavorited(new UserId(userId)));
 
         var afterUnfav = await findBySlug("fav-article", Option<Guid>.Some(userId));
-        Assert.True(afterUnfav.IsSome);
-        Assert.Equal(0, afterUnfav.Value.FavoritesCount);
-        Assert.False(afterUnfav.Value.Favorited);
+        await Assert.That(afterUnfav.IsSome).IsTrue();
+        await Assert.That(afterUnfav.Value.FavoritesCount).IsEqualTo(0);
+        await Assert.That(afterUnfav.Value.Favorited).IsFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task Favorite_is_idempotent()
     {
         var authorId = Guid.NewGuid();
@@ -326,13 +326,13 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var result = await findBySlug("idem-fav-article", Option<Guid>.Some(userId));
-        Assert.True(result.IsSome);
-        Assert.Equal(1, result.Value.FavoritesCount);
+        await Assert.That(result.IsSome).IsTrue();
+        await Assert.That(result.Value.FavoritesCount).IsEqualTo(1);
     }
 
     // ─── Comment Tests ──────────────────────────────────────────────────
 
-    [Fact]
+    [Test]
     public async Task CommentAdded_creates_comment_in_read_store()
     {
         var authorId = Guid.NewGuid();
@@ -355,13 +355,13 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var getComments = QueryStore.CreateGetComments(_dataSource);
         var comments = await getComments("commented-article", Option<Guid>.None);
 
-        Assert.Single(comments);
-        Assert.Equal(commentId, comments[0].Id);
-        Assert.Equal("His name was my name too.", comments[0].Body);
-        Assert.Equal("commenter", comments[0].Author.Username);
+        await Assert.That(comments).Count().IsEqualTo(1);
+        await Assert.That(comments[0].Id).IsEqualTo(commentId);
+        await Assert.That(comments[0].Body).IsEqualTo("His name was my name too.");
+        await Assert.That(comments[0].Author.Username).IsEqualTo("commenter");
     }
 
-    [Fact]
+    [Test]
     public async Task CommentDeleted_soft_deletes_comment()
     {
         var authorId = Guid.NewGuid();
@@ -381,12 +381,12 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
 
         var getComments = QueryStore.CreateGetComments(_dataSource);
         var comments = await getComments("del-comment-article", Option<Guid>.None);
-        Assert.Empty(comments);
+        await Assert.That(comments).IsEmpty();
     }
 
     // ─── List / Feed / Tags Tests ───────────────────────────────────────
 
-    [Fact]
+    [Test]
     public async Task ListArticles_with_tag_filter()
     {
         var userId = Guid.NewGuid();
@@ -415,12 +415,12 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
             Author: Option<string>.None,
             FavoritedBy: Option<string>.None));
 
-        Assert.Equal(1, result.ArticlesCount);
-        Assert.Single(result.Articles);
-        Assert.Equal("article-one", result.Articles[0].Slug);
+        await Assert.That(result.ArticlesCount).IsEqualTo(1);
+        await Assert.That(result.Articles).Count().IsEqualTo(1);
+        await Assert.That(result.Articles[0].Slug).IsEqualTo("article-one");
     }
 
-    [Fact]
+    [Test]
     public async Task GetFeed_returns_articles_by_followed_authors()
     {
         var followerId = Guid.NewGuid();
@@ -456,13 +456,13 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var getFeed = QueryStore.CreateGetFeed(_dataSource);
         var feed = await getFeed(followerId, 20, 0);
 
-        Assert.Equal(1, feed.ArticlesCount);
-        Assert.Single(feed.Articles);
-        Assert.Equal("followed-article", feed.Articles[0].Slug);
-        Assert.True(feed.Articles[0].Author.Following);
+        await Assert.That(feed.ArticlesCount).IsEqualTo(1);
+        await Assert.That(feed.Articles).Count().IsEqualTo(1);
+        await Assert.That(feed.Articles[0].Slug).IsEqualTo("followed-article");
+        await Assert.That(feed.Articles[0].Author.Following).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task GetTags_returns_all_unique_tags()
     {
         var userId = Guid.NewGuid();
@@ -488,13 +488,13 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         var getTags = QueryStore.CreateGetTags(_dataSource);
         var tags = await getTags();
 
-        Assert.Contains("csharp", tags);
-        Assert.Contains("dotnet", tags);
-        Assert.Contains("python", tags);
-        Assert.Equal(3, tags.Count); // csharp appears twice but should be distinct
+        await Assert.That(tags).Contains("csharp");
+        await Assert.That(tags).Contains("dotnet");
+        await Assert.That(tags).Contains("python");
+        await Assert.That(tags.Count).IsEqualTo(3); // csharp appears twice but should be distinct
     }
 
-    [Fact]
+    [Test]
     public async Task ProfileUpdated_cascades_to_articles_and_comments()
     {
         var userId = Guid.NewGuid();
@@ -521,15 +521,15 @@ public sealed class PostgresReadStoreTests : IAsyncLifetime
         // Verify article author data was updated
         var findBySlug = QueryStore.CreateFindArticleBySlug(_dataSource);
         var article = await findBySlug("cascade-article", Option<Guid>.None);
-        Assert.True(article.IsSome);
-        Assert.Equal("new-cascade-author", article.Value.Author.Username);
-        Assert.Equal("Updated bio", article.Value.Author.Bio);
+        await Assert.That(article.IsSome).IsTrue();
+        await Assert.That(article.Value.Author.Username).IsEqualTo("new-cascade-author");
+        await Assert.That(article.Value.Author.Bio).IsEqualTo("Updated bio");
 
         // Verify comment author data was updated
         var getComments = QueryStore.CreateGetComments(_dataSource);
         var comments = await getComments("cascade-article", Option<Guid>.None);
-        Assert.Single(comments);
-        Assert.Equal("new-cascade-author", comments[0].Author.Username);
+        await Assert.That(comments).Count().IsEqualTo(1);
+        await Assert.That(comments[0].Author.Username).IsEqualTo("new-cascade-author");
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────

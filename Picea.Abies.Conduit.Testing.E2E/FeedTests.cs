@@ -8,9 +8,10 @@ using Picea.Abies.Conduit.Testing.E2E.Helpers;
 
 namespace Picea.Abies.Conduit.Testing.E2E;
 
-[Trait("Category", "E2E")]
-[Collection("Conduit")]
-public sealed class FeedTests : IAsyncLifetime
+[Category("E2E")]
+[ClassDataSource<ConduitAppFixture>(Shared = SharedType.Keyed, Key = "Conduit")]
+[NotInParallel("Conduit")]
+public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
 {
     private readonly ConduitAppFixture _fixture;
     private IPage _page = null!;
@@ -27,12 +28,12 @@ public sealed class FeedTests : IAsyncLifetime
         _seeder = new ApiSeeder(_fixture.ApiUrl);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _page.Context.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task GlobalFeed_WithArticles_ShouldShowArticlePreviews()
     {
         var username = $"feedglo{Guid.NewGuid():N}"[..20];
@@ -56,7 +57,7 @@ public sealed class FeedTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task TagSidebar_ShouldShowPopularTags()
     {
         var username = $"feedtag{Guid.NewGuid():N}"[..20];
@@ -79,7 +80,7 @@ public sealed class FeedTests : IAsyncLifetime
             new() { Timeout = 15000 });
     }
 
-    [Fact]
+    [Test]
     public async Task ClickTag_ShouldFilterFeedByTag()
     {
         var username = $"feedflt{Guid.NewGuid():N}"[..20];
@@ -111,7 +112,7 @@ public sealed class FeedTests : IAsyncLifetime
             .ToContainTextAsync(uniqueTag, new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task YourFeed_WhenFollowingUser_ShouldShowTheirArticles()
     {
         var author = $"feedaut{Guid.NewGuid():N}"[..20];
@@ -140,7 +141,7 @@ public sealed class FeedTests : IAsyncLifetime
             new() { Timeout = 10000 });
     }
 
-    [Fact]
+    [Test]
     public async Task ArticlePreview_ShouldShowMetadata()
     {
         var username = $"feedmta{Guid.NewGuid():N}"[..20];
@@ -167,7 +168,7 @@ public sealed class FeedTests : IAsyncLifetime
         await Expect(preview).ToContainTextAsync(article.Description);
     }
 
-    [Fact]
+    [Test]
     public async Task HomeBanner_ShouldShowConduitBranding()
     {
         await _page.GotoAsync("/");
