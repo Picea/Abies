@@ -2,6 +2,7 @@
 // Feed E2E Tests — Global feed, your feed, tag filter, pagination
 // =============================================================================
 
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
@@ -256,7 +257,7 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
 
         // Navigate to page 2
         await _page.Locator("ul.pagination .page-link", new() { HasText = "2" }).ClickAsync();
-        await _page.WaitForTimeoutAsync(2000);
+        await Expect(_page).ToHaveURLAsync(new Regex(@"/\?page=2$"), new() { Timeout = 10000 });
 
         // Page 2 should now be the active page
         await Expect(_page.Locator("ul.pagination .page-item.active"))

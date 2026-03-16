@@ -47,11 +47,9 @@ public static class Route
         var currentPage = ParsePage(query);
         var offset = (currentPage - 1) * Constants.ArticlesPerPage;
         var model = new HomeModel(tab, null, [], 0, currentPage, [], true);
-        var fetchArticles = tab switch
-        {
-            FeedTab.Your => (Command)new FetchFeed(apiUrl, session!.Token, Constants.ArticlesPerPage, offset),
-            _ => new FetchArticles(apiUrl, session?.Token, Constants.ArticlesPerPage, offset)
-        };
+        Command fetchArticles = tab == FeedTab.Your && session is not null
+            ? new FetchFeed(apiUrl, session.Token, Constants.ArticlesPerPage, offset)
+            : new FetchArticles(apiUrl, session?.Token, Constants.ArticlesPerPage, offset);
         return (new Page.Home(model), Commands.Batch(fetchArticles, new FetchTags(apiUrl)));
     }
 

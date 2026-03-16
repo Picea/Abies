@@ -118,11 +118,11 @@ public static class Runtime
     /// <returns>The window origin, or empty string if unavailable.</returns>
     public static string GetOrigin() => Interop.GetOrigin();
 
-    public static string? GetLocalStorageItem(string key) => Interop.GetLocalStorageItem(key);
+    public static string? GetSessionStorageItem(string key) => Interop.GetSessionStorageItem(key);
 
-    public static void SetLocalStorageItem(string key, string value) => Interop.SetLocalStorageItem(key, value);
+    public static void SetSessionStorageItem(string key, string value) => Interop.SetSessionStorageItem(key, value);
 
-    public static void RemoveLocalStorageItem(string key) => Interop.RemoveLocalStorageItem(key);
+    public static void RemoveSessionStorageItem(string key) => Interop.RemoveSessionStorageItem(key);
 
     /// <summary>
     /// Runs an Abies MVU application in the browser.
