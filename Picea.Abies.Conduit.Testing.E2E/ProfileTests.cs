@@ -175,6 +175,26 @@ public sealed class ProfileTests : IAsyncInitializer, IAsyncDisposable
             .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
+    [Test]
+    public async Task ViewingAnotherUsersProfile_ShouldNotShowEditSettingsLink()
+    {
+        var target = $"prfoth2{Guid.NewGuid():N}"[..20];
+        var targetEmail = $"{target}@test.com";
+        await _seeder.RegisterUserAsync(target, targetEmail, "password123");
+
+        var viewer = $"prfview{Guid.NewGuid():N}"[..20];
+        var viewerEmail = $"{viewer}@test.com";
+        await _seeder.RegisterUserAsync(viewer, viewerEmail, "password123");
+
+        await _seeder.WaitForProfileAsync(target);
+        await LoginViaUi(viewerEmail, "password123");
+        await _page.NavigateInApp($"/profile/{target}");
+
+        await Expect(_page.Locator(".user-info a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
+        await Expect(_page.Locator($"button:has-text('Follow {target}')").First)
+            .ToBeVisibleAsync(new() { Timeout = 10000 });
+    }
+
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
