@@ -70,7 +70,7 @@ public static class Operations
         (uint)index < IndexStringCacheSize ? IndexStringCache[index] : $"__index:{index}";
 
     // =========================================================================
-    // Object Pools — Stack<T> (WASM is single-threaded)
+    // Object Pools — ConcurrentStack<T>
     // =========================================================================
 
     private static readonly ConcurrentStack<List<Patch>> PatchListPool = new();

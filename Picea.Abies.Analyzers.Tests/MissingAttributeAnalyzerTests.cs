@@ -15,9 +15,9 @@ public class MissingAttributeAnalyzerTests
         using static Picea.Abies.Html.Elements;
         using static Picea.Abies.Html.Attributes;
         using Picea.Abies.DOM;
-        
+
         namespace TestApp;
-        
+
         public static class TestView
         {
         """;
@@ -174,7 +174,7 @@ public class MissingAttributeAnalyzerTests
         {
             TestCode = """
                 namespace TestApp;
-                
+
                 public static class Foo
                 {
                     public static string img(string x) => x;

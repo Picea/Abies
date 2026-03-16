@@ -61,9 +61,10 @@ public class WebSocketTransportTests
         var domEvent = await receiveEvent(CancellationToken.None);
 
         await Assert.That(domEvent).IsNotNull();
-        await Assert.That(domEvent.Value.CommandId).IsEqualTo("cmd-1");
-        await Assert.That(domEvent.Value.EventName).IsEqualTo("click");
-        await Assert.That(domEvent.Value.EventData).IsEqualTo("{}");
+        var e = domEvent!.Value; // Safe: IsNotNull asserted above
+        await Assert.That(e.CommandId).IsEqualTo("cmd-1");
+        await Assert.That(e.EventName).IsEqualTo("click");
+        await Assert.That(e.EventData).IsEqualTo("{}");
     }
 
     [Test]
@@ -96,8 +97,9 @@ public class WebSocketTransportTests
         var domEvent = await receiveEvent(CancellationToken.None);
 
         await Assert.That(domEvent).IsNotNull();
-        await Assert.That(domEvent.Value.CommandId).IsEqualTo("cmd-2");
-        await Assert.That(domEvent.Value.EventData).IsEqualTo(string.Empty);
+        var e = domEvent!.Value; // Safe: IsNotNull asserted above
+        await Assert.That(e.CommandId).IsEqualTo("cmd-2");
+        await Assert.That(e.EventData).IsEqualTo(string.Empty);
     }
 
     // =========================================================================

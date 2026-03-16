@@ -26,7 +26,7 @@ namespace Picea.Abies.Counter.Testing.E2E.Fixtures;
 
 /// <summary>
 /// Shared fixture that starts the Counter in InteractiveWasm mode for E2E testing.
-/// Implements <see cref="IAsyncInitializer"/> for xUnit lifecycle management.
+/// Implements <see cref="IAsyncInitializer"/> for TUnit lifecycle management.
 /// </summary>
 public sealed class CounterWasmFixture : IAsyncInitializer, IAsyncDisposable
 {

@@ -16,7 +16,7 @@ jobs:
     name: Validate PR Title
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
-    
+
     steps:
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@v5
@@ -47,7 +47,7 @@ jobs:
     name: Validate PR Description
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
-    
+
     steps:
       - name: Check PR description
         uses: actions/github-script@v8
@@ -55,7 +55,7 @@ jobs:
           script: |
             const prBody = context.payload.pull_request.body || '';
             const minLength = 50;
-            
+
             if (prBody.trim().length < minLength) {
               core.setFailed(
                 `PR description is too short (${prBody.trim().length} chars). ` +
@@ -63,12 +63,12 @@ jobs:
               );
               return;
             }
-            
+
             // Check for required sections (flexible check)
             const hasWhat = /###?\s*What/i.test(prBody);
             const hasWhy = /###?\s*Why/i.test(prBody);
             const hasTesting = /###?\s*Testing/i.test(prBody) || /\[x\].*test/i.test(prBody);
-            
+
             if (!hasWhat || !hasWhy) {
               core.setFailed(
                 'PR description is missing required sections. ' +
@@ -76,7 +76,7 @@ jobs:
               );
               return;
             }
-            
+
             core.info('✅ PR description looks good!');
 
   # Check PR size
@@ -84,7 +84,7 @@ jobs:
     name: Check PR Size
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Check PR size
         uses: actions/github-script@v8
@@ -94,11 +94,11 @@ jobs:
             const additions = pr.additions || 0;
             const deletions = pr.deletions || 0;
             const totalChanges = additions + deletions;
-            
+
             // Soft limit (warning) and hard limit (failure)
             const hardLimit = 1500;
             const softLimit = 400;
-            
+
             if (totalChanges > hardLimit) {
               core.setFailed(
                 `⚠️  PR is too large (${totalChanges} lines changed). ` +
@@ -106,7 +106,7 @@ jobs:
               );
               return;
             }
-            
+
             if (totalChanges > softLimit) {
               core.warning(
                 `⚠️  PR is getting large (${totalChanges} lines changed). ` +
@@ -127,34 +127,34 @@ jobs:
     # different formatting rules, causing false-positive lint failures.
     env:
       DOTNET_ROLL_FORWARD: LatestPatch
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      
+
       - name: Setup .NET (from global.json)
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      
+
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
-      
+
       - name: Restore
         run: dotnet restore
         env:
           # Suppress NuGet audit during lint restore — audit is not the lint
           # check's concern; the security-scan job handles vulnerability detection.
           DOTNET_NUGET_AUDIT: "false"
-      
+
       - name: Get changed C# files
         id: changed-files
         run: |
           # Get list of changed .cs files in the PR
           CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.cs$' || true)
-          
+
           if [ -z "$CHANGED_FILES" ]; then
             echo "has_cs_files=false" >> $GITHUB_OUTPUT
             echo "ℹ️  No C# files changed in this PR"
@@ -166,16 +166,16 @@ jobs:
             echo "📝 Changed C# files:"
             echo "$CHANGED_FILES"
           fi
-      
+
       - name: Format check changed files
         if: steps.changed-files.outputs.has_cs_files == 'true'
         run: |
           # Check formatting only for changed files
           FILES="${{ steps.changed-files.outputs.files }}"
-          
+
           echo "🔍 Checking formatting for changed files..."
           echo "Files: $FILES"
-          
+
           # Run format check with --include for each file.
           # --exclude-diagnostics IDE1006: Exclude naming-rule violations
           # (e.g. "Missing prefix: '_'") because dotnet format can detect but
@@ -184,7 +184,7 @@ jobs:
           # files that would be "Formatted" yet produce zero diff.
           dotnet format --verify-no-changes --include $FILES --verbosity diagnostic \
             --exclude-diagnostics IDE1006
-          
+
           if [ $? -ne 0 ]; then
             echo ""
             echo "❌ Code formatting issues detected in your changes."
@@ -193,9 +193,9 @@ jobs:
             echo ""
             exit 1
           fi
-          
+
           echo "✅ Code formatting is correct for all changed files"
-      
+
       - name: Skip format check
         if: steps.changed-files.outputs.has_cs_files == 'false'
         run: |
@@ -206,30 +206,30 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      
+
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
-      
+
       - name: Restore
         run: dotnet restore
         env:
           # Suppress audit during restore — we run our own scan below
           DOTNET_NUGET_AUDIT: "false"
-      
+
       - name: Check for vulnerable direct packages
         run: |
           echo "🔍 Scanning direct packages for vulnerabilities..."
           dotnet list package --vulnerable 2>&1 | tee direct-vulnerability-report.txt
-          
+
           if grep -qi "critical\|high" direct-vulnerability-report.txt; then
             echo "❌ Critical or High severity vulnerabilities detected in direct dependencies!"
             echo "Please update the affected packages before merging."
@@ -237,17 +237,17 @@ jobs:
           else
             echo "✅ No critical or high severity vulnerabilities in direct dependencies"
           fi
-      
+
       - name: Check for vulnerable transitive packages
         run: |
           echo "🔍 Scanning transitive packages for vulnerabilities..."
           dotnet list package --vulnerable --include-transitive 2>&1 | tee transitive-vulnerability-report.txt
-          
+
           if grep -qi "critical\|high" transitive-vulnerability-report.txt; then
             echo "❌ Critical or High severity vulnerabilities detected in transitive dependencies!"
             echo "These usually require updating one or more direct package versions."
             echo "Review the report above for details."
-            
+
             # Allow temporary exceptions via ALLOW_TRANSITIVE_VULNS env var.
             # Set it to a tracking issue URL to document the exception.
             if [ -n "${ALLOW_TRANSITIVE_VULNS:-}" ]; then
@@ -276,30 +276,30 @@ jobs:
     name: Template Smoke Test
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           # Nerdbank.GitVersioning requires full git history to compute versions
           fetch-depth: 0
-      
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      
+
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
-      
+
       - name: Pack framework packages to local feed
         run: |
           LOCAL_FEED=$(pwd)/local-packages
           mkdir -p "$LOCAL_FEED"
-          
+
           # Use a version that matches the template's 1.0.0-* floating constraint
           PACK_VERSION="1.0.0-ci"
-          
+
           # Pack framework projects in dependency order.
           # -p:Version overrides Nerdbank.GitVersioning so ProjectReference
           # dependencies also resolve as 1.0.0-ci in the local feed.
@@ -313,13 +313,13 @@ jobs:
               -p:Version="$PACK_VERSION" \
               -p:PackageVersion="$PACK_VERSION"
           done
-          
+
           echo ""
           echo "📦 Local packages:"
           ls -la "$LOCAL_FEED"
         env:
           DOTNET_NUGET_AUDIT: "false"
-      
+
       - name: Create NuGet config for template builds
         run: |
           # Create a nuget.config that prioritises the local feed for framework
@@ -335,59 +335,59 @@ jobs:
             </packageSources>
           </configuration>
           EOF
-          
+
           echo "📄 NuGet config:"
           cat /tmp/template-nuget.config
-      
+
       - name: Install template pack from source
         run: |
           dotnet new install Picea.Abies.Templates/
           echo ""
           echo "📋 Installed templates:"
           dotnet new list abies
-      
+
       - name: Smoke test — abies-browser
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-browser into $TEMP_DIR..."
           dotnet new abies-browser -o "$TEMP_DIR"
-          
+
           echo "🔨 Restoring scaffolded project..."
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
-          
+
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore
-          
+
           echo "✅ abies-browser template compiles successfully"
           rm -rf "$TEMP_DIR"
-      
+
       - name: Smoke test — abies-browser-empty
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-browser-empty into $TEMP_DIR..."
           dotnet new abies-browser-empty -o "$TEMP_DIR"
-          
+
           echo "🔨 Restoring scaffolded project..."
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
-          
+
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore
-          
+
           echo "✅ abies-browser-empty template compiles successfully"
           rm -rf "$TEMP_DIR"
-      
+
       - name: Smoke test — abies-server
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-server into $TEMP_DIR..."
           dotnet new abies-server -o "$TEMP_DIR"
-          
+
           echo "🔨 Restoring scaffolded project..."
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
-          
+
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore
-          
+
           echo "✅ abies-server template compiles successfully"
           rm -rf "$TEMP_DIR"
 
@@ -396,22 +396,22 @@ jobs:
     name: Bundle Size Check
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           # Nerdbank.GitVersioning requires full git history to compute versions
           fetch-depth: 0
-      
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      
+
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
-      
+
       - name: Publish Release (Trimmed)
         run: |
           dotnet publish Picea.Abies.Conduit.Wasm/Picea.Abies.Conduit.Wasm.csproj \
@@ -419,7 +419,7 @@ jobs:
         env:
           # Suppress NuGet audit — the security-scan job handles vulnerability detection
           DOTNET_NUGET_AUDIT: "false"
-      
+
       - name: Measure Bundle Size
         id: bundle-size
         run: |
@@ -427,7 +427,7 @@ jobs:
           # goes to bin/Release/<tfm>/browser-wasm/AppBundle/ (not wwwroot/_framework).
           # The _framework directory contains the WASM runtime and assemblies.
           PUBLISH_DIR="Picea.Abies.Conduit.Wasm/bin/Release/net10.0/browser-wasm"
-          
+
           # Find the _framework directory in the publish output
           FRAMEWORK_DIR=""
           for candidate in \
@@ -439,7 +439,7 @@ jobs:
               break
             fi
           done
-          
+
           if [ -z "$FRAMEWORK_DIR" ]; then
             echo "❌ Could not find _framework directory in publish output"
             echo "Searched in: $PUBLISH_DIR"
@@ -447,18 +447,18 @@ jobs:
             find "$PUBLISH_DIR" -maxdepth 4 -type d 2>/dev/null || echo "  (directory not found)"
             exit 1
           fi
-          
+
           echo "📂 Found framework directory: $FRAMEWORK_DIR"
-          
+
           # Get total size in bytes
           TOTAL_BYTES=$(du -sb "$FRAMEWORK_DIR" | cut -f1)
           TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
           FILE_COUNT=$(find "$FRAMEWORK_DIR" -type f | wc -l)
-          
+
           echo "bundle_size_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
           echo "bundle_size_bytes=$TOTAL_BYTES" >> $GITHUB_OUTPUT
           echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
-          
+
           echo "📦 WASM Bundle Size Report"
           echo "=========================="
           echo "Total Size: ${TOTAL_MB}MB ($TOTAL_BYTES bytes)"
@@ -466,26 +466,26 @@ jobs:
           echo ""
           echo "Largest files:"
           find "$FRAMEWORK_DIR" -type f -exec du -h {} + | sort -rh | head -10
-      
+
       - name: Check Bundle Size Limits
         run: |
           BUNDLE_SIZE=${{ steps.bundle-size.outputs.bundle_size_mb }}
-          
+
           # Validate BUNDLE_SIZE is a valid integer
           if ! echo "$BUNDLE_SIZE" | grep -qE '^[0-9]+$'; then
             echo "❌ FAILED: Could not determine bundle size (got '$BUNDLE_SIZE')"
             exit 1
           fi
-          
+
           # Hard limit: 15MB for trimmed Release build
           HARD_LIMIT=15
           # Soft limit (warning): 10MB
           SOFT_LIMIT=10
-          
+
           echo "📊 Bundle Size: ${BUNDLE_SIZE}MB"
           echo "🔴 Hard Limit: ${HARD_LIMIT}MB"
           echo "🟡 Soft Limit: ${SOFT_LIMIT}MB"
-          
+
           if [ "$BUNDLE_SIZE" -gt "$HARD_LIMIT" ]; then
             echo ""
             echo "❌ FAILED: Bundle size (${BUNDLE_SIZE}MB) exceeds hard limit (${HARD_LIMIT}MB)"
@@ -510,16 +510,16 @@ jobs:
     name: Check TODOs
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Check for untracked TODOs
         run: |
           # Find TODO/FIXME comments without issue references
           untracked=$(grep -rn "TODO\|FIXME" --include="*.cs" --include="*.fs" --exclude-dir=obj --exclude-dir=bin . | grep -v "#[0-9]" || true)
-          
+
           if [ ! -z "$untracked" ]; then
             echo "⚠️  Found TODO/FIXME comments without issue references:"
             echo "$untracked"
@@ -540,7 +540,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, template-smoke-test, bundle-size-check, check-todos]
-    
+
     steps:
       - name: Check if automated PR
         id: check-automated
@@ -550,7 +550,7 @@ jobs:
           else
             echo "automated=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: All checks passed
         run: |
           if [ "${{ steps.check-automated.outputs.automated }}" = "true" ]; then
