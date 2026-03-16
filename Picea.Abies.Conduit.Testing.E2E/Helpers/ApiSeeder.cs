@@ -154,6 +154,36 @@ public sealed class ApiSeeder
         });
     }
 
+    /// <summary>
+    /// Updates the current user via the API and returns the resulting user data.
+    /// </summary>
+    public async Task<UserSeedResult> UpdateUserAsync(
+        string token,
+        string? image = null,
+        string? username = null,
+        string? bio = null,
+        string? email = null,
+        string? password = null)
+    {
+        var response = await SendWithRetryAsync(() =>
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"{_apiUrl}/api/user");
+            request.Headers.Add("Authorization", $"Token {token}");
+            request.Content = JsonContent.Create(
+                new { user = new { image, username, bio, email, password } },
+                options: _jsonOptions);
+            return _http.SendAsync(request);
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<UserResponse>(_jsonOptions);
+        return new UserSeedResult(
+            body!.User.Username,
+            body.User.Email,
+            body.User.Token,
+            body.User.Bio,
+            body.User.Image);
+    }
+
     // ─── Read-After-Write Consistency Helpers ──────────────────────────────────
 
     /// <summary>

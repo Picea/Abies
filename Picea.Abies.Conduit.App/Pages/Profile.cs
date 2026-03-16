@@ -43,9 +43,9 @@ public static class Profile
                 [
                     div([class_("col-xs-12 col-md-10 offset-md-1")],
                     [
-                        img([src(profile.Image ?? "https://api.realworld.io/images/smiley-cyrus.jpeg"), class_("user-img")]),
+                        img([src(Views.Avatar.Url(profile.Image)), class_("user-img")]),
                         h4([], [text(profile.Username)]),
-                        p([], [text(profile.Bio)]),
+                        p([], [text(profile.Bio ?? "")]),
                         ..ActionButton(profile, session)
                     ])
                 ])

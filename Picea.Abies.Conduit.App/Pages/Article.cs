@@ -41,7 +41,7 @@ public static class Article
         div([class_("article-meta")],
         [
             a([href($"/profile/{article.Author.Username}")],
-                [img([src(article.Author.Image ?? "https://api.realworld.io/images/smiley-cyrus.jpeg")])]),
+                [img([src(Views.Avatar.Url(article.Author.Image))])]),
             div([class_("info")],
             [
                 a([href($"/profile/{article.Author.Username}"), class_("author")], [text(article.Author.Username)]),
@@ -90,7 +90,7 @@ public static class Article
                            value(commentBody), oninput(e => new CommentBodyChanged(e?.Value ?? ""))], [])]),
             div([class_("card-footer")],
             [
-                img([src(session.Image ?? "https://api.realworld.io/images/smiley-cyrus.jpeg"), class_("comment-author-img")]),
+                img([src(Views.Avatar.Url(session.Image)), class_("comment-author-img")]),
                 button([class_("btn btn-sm btn-primary"), type("submit")], [text("Post Comment")])
             ])
         ]);
@@ -103,7 +103,7 @@ public static class Article
             div([class_("card-footer")],
             [
                 a([href($"/profile/{comment.Author.Username}"), class_("comment-author")],
-                    [img([src(comment.Author.Image ?? "https://api.realworld.io/images/smiley-cyrus.jpeg"), class_("comment-author-img")])]),
+                    [img([src(Views.Avatar.Url(comment.Author.Image)), class_("comment-author-img")])]),
                 text("\u00A0"),
                 a([href($"/profile/{comment.Author.Username}"), class_("comment-author")], [text(comment.Author.Username)]),
                 span([class_("date-posted")], [text(comment.CreatedAt.ToString("MMMM d, yyyy"))]),
