@@ -57,7 +57,8 @@ public static class Profile
         if (session is not null && session.Username == profile.Username)
             return [a([class_("btn btn-sm btn-outline-secondary action-btn"), href("/settings")],
                 [i([class_("ion-gear-a")], []), text("\u00A0 Edit Profile Settings")])];
-        if (session is null) return [];
+        if (session is null)
+            return [];
         var btnClass = profile.Following ? "btn btn-sm btn-secondary action-btn" : "btn btn-sm btn-outline-secondary action-btn";
         var label = profile.Following ? $"\u00A0 Unfollow {profile.Username}" : $"\u00A0 Follow {profile.Username}";
         return [button([class_(btnClass), onclick(new ToggleFollow(profile.Username, profile.Following))],

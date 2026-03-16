@@ -113,7 +113,8 @@ public static class Article
 
     private static Node[] DeleteButton(CommentData comment, string slug, Session? session)
     {
-        if (session is null || session.Username != comment.Author.Username) return [];
+        if (session is null || session.Username != comment.Author.Username)
+            return [];
         return [span([class_("mod-options")], [i([class_("ion-trash-a"), onclick(new DeleteComment(slug, comment.Id))], [])])];
     }
 

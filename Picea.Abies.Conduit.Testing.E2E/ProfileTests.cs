@@ -2,7 +2,6 @@
 // Profile E2E Tests — View profile, follow/unfollow, article tabs
 // =============================================================================
 
-using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
