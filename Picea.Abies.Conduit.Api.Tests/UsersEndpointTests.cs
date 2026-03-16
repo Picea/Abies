@@ -15,7 +15,7 @@ using Picea.Abies.Conduit.Api.Dto;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class UsersEndpointTests
+public sealed class UsersEndpointTests : IAsyncDisposable
 {
     private readonly ConduitApiFactory _factory = new();
     private readonly HttpClient _client;
@@ -100,5 +100,12 @@ public sealed class UsersEndpointTests
         var response = await _client.PostAsJsonAsync("/api/users/login", request, JsonOptions);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnprocessableEntity);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        await _factory.DisposeAsync();
     }
 }
