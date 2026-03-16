@@ -84,6 +84,9 @@ public static class Route
 
     private static (Page, Command) EditorRoute(string? slug, string? token, string apiUrl)
     {
+        if (token is null)
+            return LoginRoute();
+
         var model = new EditorModel(slug, "", "", "", "", [], [], false);
         var command = slug is not null ? new FetchArticle(apiUrl, token, slug) : Commands.None;
         return (new Page.Editor(model), command);
