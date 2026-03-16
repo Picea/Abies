@@ -13,7 +13,7 @@ public static class ArticlePreview
             div([class_("article-meta")],
             [
                 a([href($"/profile/{article.Author.Username}")],
-                    [img([src(article.Author.Image ?? "https://api.realworld.io/images/smiley-cyrus.jpeg")])]),
+                    [img([src(Avatar.Url(article.Author.Image))])]),
                 div([class_("info")],
                 [
                     a([href($"/profile/{article.Author.Username}"), class_("author")], [text(article.Author.Username)]),
