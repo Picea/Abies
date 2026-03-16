@@ -28,7 +28,9 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 
 namespace Picea.Abies.Server.Kestrel;
 
@@ -286,11 +288,23 @@ public static class Endpoints
         // A simple Directory.Exists check is insufficient because NuGet consumers may have
         // their own wwwroot/ in the output directory (e.g., site.css from the template)
         // without the Abies JS files. CompositeFileProvider ensures both are checked.
-        IFileProvider fileProvider = Directory.Exists(wwwrootPath)
-            ? new CompositeFileProvider(
-                new PhysicalFileProvider(wwwrootPath),  // Development: project reference copies to output
-                embeddedProvider)                       // Fallback: embedded resources (always present)
-            : embeddedProvider;                         // NuGet-only: no physical wwwroot at all
+        IFileProvider fileProvider;
+        if (Directory.Exists(wwwrootPath))
+        {
+            var physicalProvider = new PhysicalFileProvider(wwwrootPath);
+
+            // PhysicalFileProvider owns a file watcher — register for disposal on app shutdown.
+            var lifetime = app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(physicalProvider.Dispose);
+
+            fileProvider = new CompositeFileProvider(
+                physicalProvider,   // Development: project reference copies to output
+                embeddedProvider);  // Fallback: embedded resources (always present)
+        }
+        else
+        {
+            fileProvider = embeddedProvider; // NuGet-only: no physical wwwroot at all
+        }
 
         app.UseStaticFiles(new StaticFileOptions
         {
