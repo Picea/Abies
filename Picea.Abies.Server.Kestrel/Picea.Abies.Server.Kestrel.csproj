@@ -39,7 +39,7 @@
     <!-- Required for GenerateEmbeddedFilesManifest MSBuild targets.
          PrivateAssets="all" keeps this as a build-time-only dependency;
          the types are already available via the FrameworkReference. -->
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.0-*" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.5" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
