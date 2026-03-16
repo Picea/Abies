@@ -28,6 +28,8 @@ using Picea.Abies.Conduit.App;
 // The subsequent import inside Runtime.Run is a cached no-op.
 await Picea.Abies.Browser.Runtime.ImportModule();
 var apiUrl = Picea.Abies.Browser.Runtime.GetOrigin();
+// Keep auth persistence scoped to the current browser tab. This preserves
+// hard-reload behavior without extending token lifetime across browser restarts.
 const string SessionStorageKey = "conduit.session";
 
 var initialSession = LoadPersistedSession();
@@ -41,13 +43,13 @@ static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
     switch (command)
     {
         case PersistSession persist:
-            Picea.Abies.Browser.Runtime.SetLocalStorageItem(
+            Picea.Abies.Browser.Runtime.SetSessionStorageItem(
                 SessionStorageKey,
                 SerializeSession(persist.Session));
             return new(Result<Message[], PipelineError>.Ok([]));
 
         case ClearPersistedSession:
-            Picea.Abies.Browser.Runtime.RemoveLocalStorageItem(SessionStorageKey);
+            Picea.Abies.Browser.Runtime.RemoveSessionStorageItem(SessionStorageKey);
             return new(Result<Message[], PipelineError>.Ok([]));
 
         default:
@@ -57,7 +59,7 @@ static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
 
 static Session? LoadPersistedSession()
 {
-    var json = Picea.Abies.Browser.Runtime.GetLocalStorageItem(SessionStorageKey);
+    var json = Picea.Abies.Browser.Runtime.GetSessionStorageItem(SessionStorageKey);
     if (string.IsNullOrWhiteSpace(json))
         return null;
 
@@ -67,7 +69,7 @@ static Session? LoadPersistedSession()
     }
     catch
     {
-        Picea.Abies.Browser.Runtime.RemoveLocalStorageItem(SessionStorageKey);
+        Picea.Abies.Browser.Runtime.RemoveSessionStorageItem(SessionStorageKey);
         return null;
     }
 }

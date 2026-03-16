@@ -298,7 +298,9 @@ public static class Endpoints
 
             // PhysicalFileProvider owns a file watcher — register for disposal on app shutdown.
             var lifetime = app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>();
-            lifetime.ApplicationStopping.Register(physicalProvider.Dispose);
+            lifetime.ApplicationStopping.Register(
+                static state => ((PhysicalFileProvider)state!).Dispose(),
+                physicalProvider);
 
             fileProvider = new CompositeFileProvider(
                 physicalProvider,   // Development: project reference copies to output
