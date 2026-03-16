@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="1.0.0-*" />
+    <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
   </ItemGroup>
 
 </Project>
