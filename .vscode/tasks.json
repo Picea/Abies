@@ -140,6 +140,14 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "Start Conduit AppHost",
+			"type": "shell",
+			"command": "dotnet run --project Picea.Abies.Conduit.AppHost/Picea.Abies.Conduit.AppHost.csproj",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

@@ -9,4 +9,9 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.2" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.KurrentDB" Version="13.1.1" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Frontend projects so Aspire can launch them from the AppHost -->
+    <ProjectReference Include="..\Picea.Abies.Conduit.Server\Picea.Abies.Conduit.Server.csproj" />
+    <ProjectReference Include="..\Picea.Abies.Conduit.Wasm.Host\Picea.Abies.Conduit.Wasm.Host.csproj" />
+  </ItemGroup>
 </Project>
