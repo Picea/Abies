@@ -36,10 +36,10 @@ var app = builder.Build();
 
 app.UseWebSockets();
 app.UseAbiesStaticFiles();
-app.MapAbies<ConduitProgram, Model, string>(
+app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer(),
     interpreter: ConduitInterpreter.Interpret,
-    argument: apiUrl);
+    argument: new ConduitStartup(apiUrl));
 
 app.Run();

@@ -94,6 +94,48 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
+    public async Task DeleteComment_WhenServerReturns200_ShouldStillRemoveComment()
+    {
+        var username = $"cmtd200{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Comment 200 {Guid.NewGuid():N}"[..30],
+            "Article for 200 delete",
+            "Body content.");
+        var comment = await _seeder.AddCommentAsync(
+            user.Token,
+            article.Slug,
+            "This comment will be deleted with a mocked 200 response.");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await LoginViaUi(email, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        await _page.RouteAsync("**/api/articles/*/comments/*", async route =>
+        {
+            if (route.Request.Method == "DELETE")
+            {
+                await route.FulfillAsync(new RouteFulfillOptions
+                {
+                    Status = 200,
+                    ContentType = "application/json",
+                    Body = "{}"
+                });
+                return;
+            }
+
+            await route.ContinueAsync();
+        });
+
+        await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First.DispatchEventAsync("click");
+
+        await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
+            new() { Timeout = 10000 });
+    }
+
+    [Test]
     public async Task AddMultipleComments_ShouldShowBothComments()
     {
         var username = $"cmtmul{Guid.NewGuid():N}"[..20];

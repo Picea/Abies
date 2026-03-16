@@ -19,6 +19,10 @@ public sealed record Model(
     Session? Session,
     string ApiUrl);
 
+public sealed record ConduitStartup(
+    string ApiUrl,
+    Session? Session = null);
+
 /// <summary>
 /// An authenticated user session.
 /// </summary>

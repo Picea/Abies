@@ -87,11 +87,11 @@ public sealed class ConduitAppFixture : IAsyncInitializer, IAsyncDisposable
         _app.UseAbiesWasmFiles(wasmAppBundlePath);
         _app.UseAbiesStaticFiles();
 
-        _app.MapAbies<ConduitProgram, Model, string>(
+        _app.MapAbies<ConduitProgram, Model, ConduitStartup>(
             "/{**catch-all}",
             new RenderMode.InteractiveWasm(),
             interpreter: ConduitInterpreter.Interpret,
-            argument: _infra.ApiUrl);
+            argument: new ConduitStartup(_infra.ApiUrl));
 
         await _app.StartAsync();
         BaseUrl = _app.Urls.First();

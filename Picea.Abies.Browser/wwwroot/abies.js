@@ -873,6 +873,18 @@ export function getOrigin() {
     return globalThis.location?.origin ?? "";
 }
 
+export function getLocalStorageItem(key) {
+    return globalThis.localStorage?.getItem(key) ?? null;
+}
+
+export function setLocalStorageItem(key, value) {
+    globalThis.localStorage?.setItem(key, value);
+}
+
+export function removeLocalStorageItem(key) {
+    globalThis.localStorage?.removeItem(key);
+}
+
 /**
  * Returns the current browser URL (window.location.href).
  * Called by .NET during initialization to determine the initial route.

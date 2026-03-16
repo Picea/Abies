@@ -65,11 +65,11 @@ public sealed class ConduitServerFixture : IAsyncInitializer, IAsyncDisposable
 
         _app.UseWebSockets();
         _app.UseAbiesStaticFiles();
-        _app.MapAbies<ConduitProgram, Model, string>(
+        _app.MapAbies<ConduitProgram, Model, ConduitStartup>(
             "/{**catch-all}",
             new RenderMode.InteractiveServer(),
             interpreter: ConduitInterpreter.Interpret,
-            argument: _infra.ApiUrl);
+            argument: new ConduitStartup(_infra.ApiUrl));
 
         await _app.StartAsync();
         BaseUrl = _app.Urls.First();
