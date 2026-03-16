@@ -68,8 +68,14 @@ public sealed class SettingsTests : IAsyncInitializer, IAsyncDisposable
 
         await _page.WaitForSelectorAsync("button:has-text('Update Settings'):not([disabled])", new() { Timeout = 15000 });
 
-        await Expect(_page.GetByPlaceholder("Short bio about you")).ToHaveValueAsync(newBio, new() { Timeout = 10000 });
-        await Expect(_page.GetByPlaceholder("URL of profile picture")).ToHaveValueAsync(newImage, new() { Timeout = 10000 });
+        await _page.Locator(".navbar").GetByText(username).ClickAsync();
+        await Expect(_page.Locator(".user-info p")).ToContainTextAsync(newBio, new() { Timeout = 10000 });
+        await Expect(_page.Locator($".user-img[src='{newImage}']")).ToBeVisibleAsync(new() { Timeout = 10000 });
+
+        await _page.Locator(".user-info").GetByText("Edit Profile Settings").ClickAsync();
+        await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 10000 });
+        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "Update Settings" }))
+            .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     private async Task LoginViaUi(string email, string password)
@@ -85,4 +91,5 @@ public sealed class SettingsTests : IAsyncInitializer, IAsyncDisposable
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
 }

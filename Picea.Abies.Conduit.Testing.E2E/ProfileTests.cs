@@ -2,6 +2,7 @@
 // Profile E2E Tests — View profile, follow/unfollow, article tabs
 // =============================================================================
 
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
@@ -139,15 +140,20 @@ public sealed class ProfileTests : IAsyncInitializer, IAsyncDisposable
         await _page.NavigateInApp($"/profile/{author}");
 
         await Expect(_page.Locator(".user-info h4")).ToContainTextAsync(author, new() { Timeout = 15000 });
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = "My Article" }))
+            .ToHaveCountAsync(1, new() { Timeout = 10000 });
 
         await Expect(_page.Locator(".articles-toggle .nav-link.active"))
             .ToContainTextAsync("My Articles");
 
-        await _page.GetByText("Favorited Articles").ClickAsync();
+        await _page.Locator(".articles-toggle .nav-link").Filter(new() { HasText = "Favorited" }).ClickAsync();
 
         await Expect(_page.Locator(".articles-toggle .nav-link.active"))
-            .ToContainTextAsync("Favorited Articles");
-        await _page.WaitForTimeoutAsync(2000);
+            .ToContainTextAsync("Favorited", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = otherArticle.Title }))
+            .ToHaveCountAsync(1, new() { Timeout = 10000 });
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = "My Article" }))
+            .ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     [Test]
@@ -182,4 +188,7 @@ public sealed class ProfileTests : IAsyncInitializer, IAsyncDisposable
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
+    private static IPageAssertions Expect(IPage page) =>
+        Assertions.Expect(page);
 }

@@ -78,7 +78,10 @@ public sealed class EditorTests : IAsyncInitializer, IAsyncDisposable
         await publishBtn.WaitForAsync(new() { Timeout = 10000 });
         await publishBtn.ClickAsync();
 
-        await _page.WaitForTimeoutAsync(8000);
+        await _page.WaitForFunctionAsync(
+            "() => window.location.pathname.startsWith('/article/')",
+            null,
+            new() { Timeout = 15000 });
         var currentUrl = _page.Url;
         var currentPath = new Uri(currentUrl).AbsolutePath;
 
