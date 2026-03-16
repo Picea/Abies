@@ -38,7 +38,7 @@ public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
 
     /// <summary>
     /// The NBGV-generated package version discovered from .nupkg filenames.
-    /// Used by fixtures to patch template csproj <c>Version="1.0.0-*"</c> references.
+    /// Used by fixtures to patch template csproj floating version references.
     /// </summary>
     public string PackageVersion { get; private set; } = "";
 

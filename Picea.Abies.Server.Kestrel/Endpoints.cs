@@ -239,20 +239,29 @@ public static class Endpoints
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Uses a hybrid resolution strategy:
+    /// Uses a composite resolution strategy that always includes embedded
+    /// resources as a fallback:
     /// <list type="number">
     ///   <item>
-    ///     <b>Physical files (development)</b>: Checks for a <c>wwwroot/</c> directory
-    ///     next to the assembly DLL. This path is populated by project references
-    ///     via <c>CopyToOutputDirectory</c>, enabling hot-reload during development.
+    ///     <b>Physical files (development)</b>: When a <c>wwwroot/</c> directory
+    ///     exists next to the assembly DLL, physical files are checked first.
+    ///     This path is populated by project references via
+    ///     <c>CopyToOutputDirectory</c>, enabling hot-reload during development.
     ///   </item>
     ///   <item>
-    ///     <b>Embedded resources (production/NuGet)</b>: Falls back to
-    ///     <see cref="ManifestEmbeddedFileProvider"/> which serves the files embedded
-    ///     inside the DLL itself. This ensures the JS is always available regardless
-    ///     of how the consumer references the package.
+    ///     <b>Embedded resources (always available)</b>: The
+    ///     <see cref="ManifestEmbeddedFileProvider"/> serves files embedded inside
+    ///     the DLL itself. This ensures the JS is always available regardless of
+    ///     how the consumer references the package.
     ///   </item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// A <see cref="CompositeFileProvider"/> is used when physical files are
+    /// present so that both sources are tried. This is critical for NuGet
+    /// consumers whose own <c>wwwroot/</c> (e.g., <c>site.css</c>) is copied
+    /// to the output directory — <c>Directory.Exists</c> returns <c>true</c>,
+    /// but the Abies JS files only exist in the embedded resources.
     /// </para>
     /// <para>
     /// Files are served without a path prefix, matching the script references
@@ -270,10 +279,18 @@ public static class Endpoints
         var contentRoot = Path.GetDirectoryName(assembly.Location)!;
         var wwwrootPath = Path.Combine(contentRoot, "wwwroot");
 
-        // Hybrid strategy: physical files first (dev), embedded fallback (NuGet)
+        // Embedded resources are always available — the DLL contains abies-server.js
+        var embeddedProvider = new ManifestEmbeddedFileProvider(assembly, "wwwroot");
+
+        // Composite strategy: physical files first (dev hot-reload), embedded fallback (NuGet).
+        // A simple Directory.Exists check is insufficient because NuGet consumers may have
+        // their own wwwroot/ in the output directory (e.g., site.css from the template)
+        // without the Abies JS files. CompositeFileProvider ensures both are checked.
         IFileProvider fileProvider = Directory.Exists(wwwrootPath)
-            ? new PhysicalFileProvider(wwwrootPath)             // Development: project reference copies wwwroot to output
-            : new ManifestEmbeddedFileProvider(assembly, "wwwroot"); // Production/NuGet: embedded resources
+            ? new CompositeFileProvider(
+                new PhysicalFileProvider(wwwrootPath),  // Development: project reference copies to output
+                embeddedProvider)                       // Fallback: embedded resources (always present)
+            : embeddedProvider;                         // NuGet-only: no physical wwwroot at all
 
         app.UseStaticFiles(new StaticFileOptions
         {
