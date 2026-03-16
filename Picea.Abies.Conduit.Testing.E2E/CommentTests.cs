@@ -94,7 +94,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
-    public async Task AddMultipleComments_ShouldShowAllInOrder()
+    public async Task AddMultipleComments_ShouldShowBothComments()
     {
         var username = $"cmtmul{Guid.NewGuid():N}"[..20];
         var email = $"{username}@test.com";
@@ -117,9 +117,12 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByPlaceholder("Write a comment...").FillAsync("Second comment via UI");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
 
-        await _page.WaitForTimeoutAsync(2000);
         var commentCards = _page.Locator(".card .card-block p");
         await Expect(commentCards).ToHaveCountAsync(2, new() { Timeout = 10000 });
+        await Expect(commentCards.Filter(new() { HasText = "First comment via API" }))
+            .ToHaveCountAsync(1, new() { Timeout = 10000 });
+        await Expect(commentCards.Filter(new() { HasText = "Second comment via UI" }))
+            .ToHaveCountAsync(1, new() { Timeout = 10000 });
     }
 
     private async Task LoginViaUi(string email, string password)

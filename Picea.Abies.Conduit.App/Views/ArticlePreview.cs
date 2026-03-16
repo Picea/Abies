@@ -50,7 +50,7 @@ public static class ArticlePreview
         return div([], articles.Select(Render).ToArray());
     }
 
-    public static Node Pagination(int articlesCount, int currentPage, int articlesPerPage)
+    public static Node Pagination(int articlesCount, int currentPage, int articlesPerPage, Func<int, string> hrefForPage)
     {
         var pageCount = (int)Math.Ceiling((double)articlesCount / articlesPerPage);
         if (pageCount <= 1) return new Empty();
@@ -60,7 +60,7 @@ public static class ArticlePreview
                 {
                     var activeClass = page == currentPage ? "page-item active" : "page-item";
                     return li([class_(activeClass)],
-                        [a([class_("page-link"), href(""), onclick(new PageChanged(page))], [text(page.ToString())])]);
+                        [a([class_("page-link"), href(hrefForPage(page))], [text(page.ToString())])]);
                 }).ToArray())]);
     }
 }

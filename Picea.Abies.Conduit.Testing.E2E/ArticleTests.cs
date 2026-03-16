@@ -78,6 +78,13 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByText("Delete Article").First.ClickAsync();
 
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
+        await _seeder.WaitForArticleDeletedAsync(article.Slug);
+
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
+            .ToHaveCountAsync(0, new() { Timeout = 10000 });
+
+        await _page.GotoAsync($"/article/{article.Slug}");
+        await Expect(_page.Locator(".banner h1")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     [Test]
