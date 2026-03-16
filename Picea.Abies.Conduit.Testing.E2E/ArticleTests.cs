@@ -2,6 +2,7 @@
 // Article E2E Tests — View, delete, favorite/unfavorite articles
 // =============================================================================
 
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
@@ -85,6 +86,44 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 
         await _page.GotoAsync($"/article/{article.Slug}");
         await Expect(_page.Locator(".banner h1")).ToHaveCountAsync(0, new() { Timeout = 10000 });
+    }
+
+    [Test]
+    public async Task DeleteArticle_WhenServerReturns200_ShouldStillNavigateHome()
+    {
+        var username = $"artd200{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Delete 200 {Guid.NewGuid():N}"[..30],
+            "Delete with 200",
+            "This article will be deleted with a mocked 200 response.");
+
+        await _seeder.WaitForArticleAsync(article.Slug);
+        await LoginViaUi(email, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        await _page.RouteAsync("**/api/articles/*", async route =>
+        {
+            if (route.Request.Method == "DELETE")
+            {
+                await route.FulfillAsync(new RouteFulfillOptions
+                {
+                    Status = 200,
+                    ContentType = "application/json",
+                    Body = "{}"
+                });
+                return;
+            }
+
+            await route.ContinueAsync();
+        });
+
+        await _page.GetByText("Delete Article").First.ClickAsync();
+
+        await Expect(_page).ToHaveURLAsync(new Regex("/$"), new() { Timeout = 10000 });
+        await Expect(_page.Locator(".home-page")).ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     [Test]
@@ -214,4 +253,7 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
+    private static IPageAssertions Expect(IPage page) =>
+        Assertions.Expect(page);
 }

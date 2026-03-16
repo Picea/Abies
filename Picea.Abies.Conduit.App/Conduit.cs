@@ -10,13 +10,13 @@ using static Picea.Abies.Html.Elements;
 
 namespace Picea.Abies.Conduit.App;
 
-public sealed class ConduitProgram : Program<Model, string>
+public sealed class ConduitProgram : Program<Model, ConduitStartup>
 {
-    public static (Model, Command) Initialize(string apiUrl)
+    public static (Model, Command) Initialize(ConduitStartup startup)
     {
         var initialUrl = Url.Root;
-        var (page, command) = Route.FromUrl(initialUrl, session: null, apiUrl);
-        var model = new Model(page, Session: null, ApiUrl: apiUrl);
+        var (page, command) = Route.FromUrl(initialUrl, startup.Session, startup.ApiUrl);
+        var model = new Model(page, startup.Session, startup.ApiUrl);
         return (model, command);
     }
 
@@ -144,6 +144,7 @@ public sealed class ConduitProgram : Program<Model, string>
             Logout =>
                 (model with { Session = null, Page = new Page.Home(new HomeModel(FeedTab.Global, null, [], 0, 1, [], true)) },
                  Commands.Batch(
+                     new ClearPersistedSession(),
                      new FetchArticles(model.ApiUrl, null, Constants.ArticlesPerPage, 0),
                      new FetchTags(model.ApiUrl))),
 
@@ -258,7 +259,7 @@ public sealed class ConduitProgram : Program<Model, string>
     {
         var newModel = model with { Session = msg.Session };
         var (page, command) = Route.FromUrl(new Url([], new Dictionary<string, string>(), Option<string>.None), msg.Session, model.ApiUrl);
-        return (newModel with { Page = page }, Commands.Batch(command, Navigation.PushUrl(Url.Root)));
+        return (newModel with { Page = page }, Commands.Batch(command, Navigation.PushUrl(Url.Root), new PersistSession(msg.Session)));
     }
 
     private static (Model, Command) HandleFavoriteToggled(Model model, FavoriteToggled msg) =>
@@ -307,7 +308,7 @@ public sealed class ConduitProgram : Program<Model, string>
         };
 
     private static (Model, Command) HandleUserUpdated(Model model, UserUpdated msg) =>
-        (model with { Session = msg.Session, Page = new Page.Settings(new SettingsModel(msg.Session.Image ?? "", msg.Session.Username, msg.Session.Bio, msg.Session.Email, "", [], false)) }, Commands.None);
+        (model with { Session = msg.Session, Page = new Page.Settings(new SettingsModel(msg.Session.Image ?? "", msg.Session.Username, msg.Session.Bio, msg.Session.Email, "", [], false)) }, new PersistSession(msg.Session));
 
     private static (Model, Command) HandleArticleSaved(Model model, ArticleSaved msg)
     {
