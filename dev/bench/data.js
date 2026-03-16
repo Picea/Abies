@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773651752751,
+  "lastUpdate": 1773651753779,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12766,6 +12766,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.872862815856934,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "924f447c7efbbc1fe94971e10bd0c6d66f6f43bb",
+          "message": "fix: address PR review comments (CodeQL null deref, factory disposal, docs)\n\n- Fix CodeQL null dereference in WebSocketTransportTests (extract to local after assert)\n- Add IAsyncDisposable to 6 Conduit.Api.Tests classes for ConduitApiFactory cleanup\n- Fix xUnit → TUnit in CounterWasmFixture XML doc\n- Update Diff.cs comment: Stack<T> → ConcurrentStack<T>\n- Whitespace cleanup in workflows and analyzer tests",
+          "timestamp": "2026-03-16T09:53:20+01:00",
+          "tree_id": "978bd635affaec6e83e1e972ea7f848f9cea5322",
+          "url": "https://github.com/Picea/Abies/commit/924f447c7efbbc1fe94971e10bd0c6d66f6f43bb"
+        },
+        "date": 1773651753535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.112083435058594,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.88868999481201,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
