@@ -124,6 +124,60 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
+    public async Task UnfavoriteArticle_WhenAlreadyFavorited_ShouldReturnToZero()
+    {
+        var author = $"unfava{Guid.NewGuid():N}"[..20];
+        var authorEmail = $"{author}@test.com";
+        var authorUser = await _seeder.RegisterUserAsync(author, authorEmail, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            authorUser.Token,
+            $"Unfav Test {Guid.NewGuid():N}"[..30],
+            "Unfavorite me",
+            "This article should be unfavorited.");
+
+        var reader = $"unfavr{Guid.NewGuid():N}"[..20];
+        var readerEmail = $"{reader}@test.com";
+        await _seeder.RegisterUserAsync(reader, readerEmail, "password123");
+
+        await _seeder.WaitForArticleAsync(article.Slug);
+        await LoginViaUi(readerEmail, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        var favoriteButton = _page.Locator(".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary").First;
+        await favoriteButton.ClickAsync();
+        await Expect(_page.Locator(".article-actions button.btn-primary, .article-meta button.btn-primary").First)
+            .ToContainTextAsync("1", new() { Timeout = 10000 });
+
+        await _page.Locator(".article-actions button.btn-primary, .article-meta button.btn-primary").First.ClickAsync();
+        await Expect(_page.Locator(".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary").First)
+            .ToContainTextAsync("0", new() { Timeout = 10000 });
+    }
+
+    [Test]
+    public async Task ArticleActions_WhenViewingOthersArticle_ShouldNotShowEditOrDelete()
+    {
+        var author = $"artoth{Guid.NewGuid():N}"[..20];
+        var authorEmail = $"{author}@test.com";
+        var authorUser = await _seeder.RegisterUserAsync(author, authorEmail, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            authorUser.Token,
+            $"Other Article {Guid.NewGuid():N}"[..30],
+            "Owned by another user",
+            "This should not show author actions.");
+
+        var reader = $"artrea{Guid.NewGuid():N}"[..20];
+        var readerEmail = $"{reader}@test.com";
+        await _seeder.RegisterUserAsync(reader, readerEmail, "password123");
+
+        await _seeder.WaitForArticleAsync(article.Slug);
+        await LoginViaUi(readerEmail, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        await Expect(_page.GetByText("Edit Article")).ToHaveCountAsync(0, new() { Timeout = 10000 });
+        await Expect(_page.GetByText("Delete Article")).ToHaveCountAsync(0, new() { Timeout = 10000 });
+    }
+
+    [Test]
     public async Task ViewArticle_WithTags_ShouldDisplayTagList()
     {
         var username = $"arttag{Guid.NewGuid():N}"[..20];

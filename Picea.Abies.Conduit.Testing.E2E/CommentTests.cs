@@ -125,6 +125,56 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
             .ToHaveCountAsync(1, new() { Timeout = 10000 });
     }
 
+    [Test]
+    public async Task CommentForm_ShouldClearAfterPosting()
+    {
+        var username = $"cmtclr{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Clear Comment {Guid.NewGuid():N}"[..30],
+            "Article for comment clearing",
+            "Comment clearing body.");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await LoginViaUi(email, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        var commentBox = _page.GetByPlaceholder("Write a comment...");
+        await commentBox.FillAsync("Comment that should clear");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
+
+        await Expect(commentBox).ToHaveValueAsync(string.Empty, new() { Timeout = 10000 });
+    }
+
+    [Test]
+    public async Task OtherUsersComments_ShouldNotShowDeleteIcon()
+    {
+        var author = $"cmtoth{Guid.NewGuid():N}"[..20];
+        var authorEmail = $"{author}@test.com";
+        var authorUser = await _seeder.RegisterUserAsync(author, authorEmail, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            authorUser.Token,
+            $"Other Comment {Guid.NewGuid():N}"[..30],
+            "Article with foreign comment",
+            "Body.");
+
+        var commenter = $"cmtusr{Guid.NewGuid():N}"[..20];
+        var commenterEmail = $"{commenter}@test.com";
+        var commenterUser = await _seeder.RegisterUserAsync(commenter, commenterEmail, "password123");
+        var comment = await _seeder.AddCommentAsync(commenterUser.Token, article.Slug, "Owned by another user");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await LoginViaUi(authorEmail, "password123");
+        await _page.NavigateInApp($"/article/{article.Slug}");
+
+        var foreignComment = _page.Locator(".card").Filter(new() { HasText = comment.Body }).First;
+        await Expect(foreignComment).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Expect(foreignComment.Locator(".mod-options i.ion-trash-a"))
+            .ToHaveCountAsync(0, new() { Timeout = 10000 });
+    }
+
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
