@@ -291,7 +291,10 @@ public static class Endpoints
         IFileProvider fileProvider;
         if (Directory.Exists(wwwrootPath))
         {
-            var physicalProvider = new PhysicalFileProvider(wwwrootPath);
+            // CodeQL: physicalProvider disposal is handled via the ApplicationStopping
+            // callback below. Using 'using' would dispose it immediately after middleware
+            // setup, which is incorrect — file providers must live for the app's lifetime.
+            var physicalProvider = new PhysicalFileProvider(wwwrootPath); // lgtm[cs/local-not-disposed]
 
             // PhysicalFileProvider owns a file watcher — register for disposal on app shutdown.
             var lifetime = app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>();
