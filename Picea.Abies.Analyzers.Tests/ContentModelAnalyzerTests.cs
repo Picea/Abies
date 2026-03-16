@@ -14,9 +14,9 @@ public class ContentModelAnalyzerTests
         using static Picea.Abies.Html.Elements;
         using static Picea.Abies.Html.Attributes;
         using Picea.Abies.DOM;
-        
+
         namespace TestApp;
-        
+
         public static class TestView
         {
         """;

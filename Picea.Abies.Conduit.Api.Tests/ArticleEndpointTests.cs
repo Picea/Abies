@@ -16,7 +16,7 @@ using Picea.Abies.Conduit.ReadModel;
 
 namespace Picea.Abies.Conduit.Api.Tests;
 
-public sealed class ArticleEndpointTests
+public sealed class ArticleEndpointTests : IAsyncDisposable
 {
     private readonly ConduitApiFactory _factory = new();
 
@@ -152,4 +152,7 @@ public sealed class ArticleEndpointTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync() => await _factory.DisposeAsync();
 }
