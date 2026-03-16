@@ -4,7 +4,7 @@
 // Implements the full template E2E pipeline:
 //
 //   1. dotnet new {template}    → scaffold a project from the installed template
-//   2. Patch csproj             → replace Version="1.0.0-*" with actual NBGV version
+//   2. Patch csproj             → replace Version="1.0.*-*" with actual NBGV version
 //   3. Patch launchSettings     → overwrite applicationUrl with our test port
 //   4. Write nuget.config       → point at the local feed + nuget.org
 //   5. dotnet build             → compile the generated project
@@ -21,6 +21,7 @@
 
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using TUnit.Core.Interfaces;
 
@@ -181,8 +182,9 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
     }
 
     /// <summary>
-    /// Replaces <c>Version="1.0.0-*"</c> in the generated csproj with the actual
-    /// NBGV version from the local feed, so NuGet restore resolves our local packages.
+    /// Replaces floating version specifiers (e.g. <c>Version="1.0.*-*"</c>) in the
+    /// generated csproj with the actual NBGV version from the local feed, so NuGet
+    /// restore resolves our local packages.
     /// </summary>
     private void PatchCsprojVersion()
     {
@@ -190,8 +192,12 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
         foreach (var csproj in csprojFiles)
         {
             var content = File.ReadAllText(csproj);
-            var patched = content.Replace(
-                "Version=\"1.0.0-*\"",
+
+            // Match any floating version specifier containing wildcards
+            // e.g. Version="1.0.*-*", Version="1.0.0-*", Version="*-*"
+            var patched = Regex.Replace(
+                content,
+                @"Version=""[^""]*\*[^""]*""",
                 $"Version=\"{Feed.PackageVersion}\"");
 
             if (patched != content)
@@ -199,7 +205,7 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
                 File.WriteAllText(csproj, patched);
                 Console.WriteLine(
                     $"[{TemplateName}] Patched {Path.GetFileName(csproj)}: " +
-                    $"Version=\"1.0.0-*\" → Version=\"{Feed.PackageVersion}\"");
+                    $"floating version → Version=\"{Feed.PackageVersion}\"");
             }
         }
     }
