@@ -38,7 +38,8 @@ public static class Home
     private static Node FeedTabs(FeedTab activeTab, Session? session, string? selectedTag)
     {
         var tabs = new List<Node>();
-        if (session is not null) tabs.Add(Tab("Your Feed", FeedTab.Your, activeTab, PageHref(FeedTab.Your, null, 1)));
+        if (session is not null)
+            tabs.Add(Tab("Your Feed", FeedTab.Your, activeTab, PageHref(FeedTab.Your, null, 1)));
         tabs.Add(Tab("Global Feed", FeedTab.Global, activeTab, PageHref(FeedTab.Global, null, 1)));
         if (activeTab is FeedTab.Tag && selectedTag is not null)
             tabs.Add(Tab($"# {selectedTag}", FeedTab.Tag, activeTab, PageHref(FeedTab.Tag, selectedTag, 1)));
