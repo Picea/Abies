@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The WASM bundle is served as static files; the App reference is needed for
+         MapAbies<ConduitProgram> to render the initial HTML page in InteractiveWasm mode. -->
+    <ProjectReference Include="..\Picea.Abies.Conduit.App\Picea.Abies.Conduit.App.csproj" />
+    <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
+    <!-- YARP reverse-proxies /api/** to the conduit-api service so the WASM app
+         can call window.location.origin + /api/... (its standard pattern). -->
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+
+  <!--
+    Publish the WASM project before build so that its AppBundle is available
+    for UseAbiesWasmFiles() to serve at runtime.
+
+    The WASM project is NOT referenced via <ProjectReference> because it targets
+    the browser-wasm RuntimeIdentifier and cannot be directly referenced from a
+    Web SDK project. Instead, we invoke dotnet publish as an MSBuild target and
+    point UseAbiesWasmFiles() at the output directory.
+  -->
+  <PropertyGroup>
+    <WasmProjectPath>..\Picea.Abies.Conduit.Wasm\Picea.Abies.Conduit.Wasm.csproj</WasmProjectPath>
+    <WasmAppBundlePath>..\Picea.Abies.Conduit.Wasm\bin\$(Configuration)\net10.0\browser-wasm\AppBundle</WasmAppBundlePath>
+  </PropertyGroup>
+
+  <Target Name="PublishWasmProject" BeforeTargets="Build"
+          Inputs="$(WasmProjectPath)"
+          Outputs="$(WasmAppBundlePath)\_framework\dotnet.js">
+    <Exec Command="dotnet publish &quot;$(WasmProjectPath)&quot; -c $(Configuration)"
+          ConsoleToMSBuild="true" />
+  </Target>
+
+</Project>

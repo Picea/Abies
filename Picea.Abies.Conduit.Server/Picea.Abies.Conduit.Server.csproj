@@ -12,4 +12,11 @@
     <ProjectReference Include="..\Picea.Abies.Server.Kestrel\Picea.Abies.Server.Kestrel.csproj" />
   </ItemGroup>
 
+  <!-- UseAbiesStaticFiles serves from the binary output wwwroot/, so static assets
+       must be copied there explicitly — the Web SDK's static web assets manifest
+       only covers dotnet publish, not the build output directory. -->
+  <ItemGroup>
+    <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
