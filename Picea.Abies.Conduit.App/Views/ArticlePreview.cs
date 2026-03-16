@@ -45,15 +45,18 @@ public static class ArticlePreview
 
     public static Node List(IReadOnlyList<ArticlePreviewData> articles, bool isLoading)
     {
-        if (isLoading) return div([class_("article-preview")], [text("Loading articles...")]);
-        if (articles.Count == 0) return div([class_("article-preview")], [text("No articles are here... yet.")]);
+        if (isLoading)
+            return div([class_("article-preview")], [text("Loading articles...")]);
+        if (articles.Count == 0)
+            return div([class_("article-preview")], [text("No articles are here... yet.")]);
         return div([], articles.Select(Render).ToArray());
     }
 
     public static Node Pagination(int articlesCount, int currentPage, int articlesPerPage, Func<int, string> hrefForPage)
     {
         var pageCount = (int)Math.Ceiling((double)articlesCount / articlesPerPage);
-        if (pageCount <= 1) return new Empty();
+        if (pageCount <= 1)
+            return new Empty();
         return nav([],
             [ul([class_("pagination")],
                 Enumerable.Range(1, pageCount).Select(page =>
