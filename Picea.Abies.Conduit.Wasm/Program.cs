@@ -21,12 +21,75 @@
 // =============================================================================
 
 using Picea.Abies.Conduit.App;
+using Picea.Abies;
+using Picea;
 
 // Import the Abies JS module early so we can read the browser origin.
 // The subsequent import inside Runtime.Run is a cached no-op.
 await Picea.Abies.Browser.Runtime.ImportModule();
 var apiUrl = Picea.Abies.Browser.Runtime.GetOrigin();
+const string SessionStorageKey = "conduit.session";
 
-await Picea.Abies.Browser.Runtime.Run<ConduitProgram, Model, string>(
-    argument: apiUrl,
-    interpreter: ConduitInterpreter.Interpret);
+var initialSession = LoadPersistedSession();
+
+await Picea.Abies.Browser.Runtime.Run<ConduitProgram, Model, ConduitStartup>(
+    argument: new ConduitStartup(apiUrl, initialSession),
+    interpreter: Interpret);
+
+static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
+{
+    switch (command)
+    {
+        case PersistSession persist:
+            Picea.Abies.Browser.Runtime.SetLocalStorageItem(
+                SessionStorageKey,
+                SerializeSession(persist.Session));
+            return new(Result<Message[], PipelineError>.Ok([]));
+
+        case ClearPersistedSession:
+            Picea.Abies.Browser.Runtime.RemoveLocalStorageItem(SessionStorageKey);
+            return new(Result<Message[], PipelineError>.Ok([]));
+
+        default:
+            return ConduitInterpreter.Interpret(command);
+    }
+}
+
+static Session? LoadPersistedSession()
+{
+    var json = Picea.Abies.Browser.Runtime.GetLocalStorageItem(SessionStorageKey);
+    if (string.IsNullOrWhiteSpace(json))
+        return null;
+
+    try
+    {
+        return DeserializeSession(json);
+    }
+    catch
+    {
+        Picea.Abies.Browser.Runtime.RemoveLocalStorageItem(SessionStorageKey);
+        return null;
+    }
+}
+
+static string SerializeSession(Session session) =>
+    string.Join("|",
+        Uri.EscapeDataString(session.Token),
+        Uri.EscapeDataString(session.Username),
+        Uri.EscapeDataString(session.Email),
+        Uri.EscapeDataString(session.Bio),
+        Uri.EscapeDataString(session.Image ?? string.Empty));
+
+static Session? DeserializeSession(string value)
+{
+    var parts = value.Split('|');
+    if (parts.Length != 5)
+        return null;
+
+    return new Session(
+        Uri.UnescapeDataString(parts[0]),
+        Uri.UnescapeDataString(parts[1]),
+        Uri.UnescapeDataString(parts[2]),
+        Uri.UnescapeDataString(parts[3]),
+        string.IsNullOrEmpty(parts[4]) ? null : Uri.UnescapeDataString(parts[4]));
+}

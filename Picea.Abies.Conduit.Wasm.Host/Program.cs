@@ -89,7 +89,7 @@ app.UseAbiesWasmFiles(wasmAppBundlePath);
 app.MapReverseProxy();
 
 // Serve the initial HTML page in InteractiveWasm mode (fast first paint + WASM takeover)
-app.MapAbies<ConduitProgram, Model, string>(
+app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
     new RenderMode.InteractiveWasm());
 

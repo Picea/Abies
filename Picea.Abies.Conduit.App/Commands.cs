@@ -34,6 +34,8 @@ public sealed record FetchTags(string ApiUrl) : ConduitCommand;
 
 public sealed record LoginUser(string ApiUrl, string Email, string Password) : ConduitCommand;
 public sealed record RegisterUser(string ApiUrl, string Username, string Email, string Password) : ConduitCommand;
+public sealed record PersistSession(Session Session) : ConduitCommand;
+public sealed record ClearPersistedSession : ConduitCommand;
 
 // ─── Profile Commands ─────────────────────────────────────────────────────
 
