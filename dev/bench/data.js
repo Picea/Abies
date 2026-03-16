@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773428703019,
+  "lastUpdate": 1773651752751,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12148,6 +12148,84 @@ window.BENCHMARK_DATA = {
             "value": 61.3,
             "unit": "ms",
             "extra": "mean: 60.9ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "MCGPPeters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "924f447c7efbbc1fe94971e10bd0c6d66f6f43bb",
+          "message": "fix: address PR review comments (CodeQL null deref, factory disposal, docs)\n\n- Fix CodeQL null dereference in WebSocketTransportTests (extract to local after assert)\n- Add IAsyncDisposable to 6 Conduit.Api.Tests classes for ConduitApiFactory cleanup\n- Fix xUnit → TUnit in CounterWasmFixture XML doc\n- Update Diff.cs comment: Stack<T> → ConcurrentStack<T>\n- Whitespace cleanup in workflows and analyzer tests",
+          "timestamp": "2026-03-16T09:53:20+01:00",
+          "tree_id": "978bd635affaec6e83e1e972ea7f848f9cea5322",
+          "url": "https://github.com/Picea/Abies/commit/924f447c7efbbc1fe94971e10bd0c6d66f6f43bb"
+        },
+        "date": 1773651752446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 166,
+            "unit": "ms",
+            "extra": "mean: 167.4ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 179.6,
+            "unit": "ms",
+            "extra": "mean: 179.4ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 207.9,
+            "unit": "ms",
+            "extra": "mean: 209.6ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.2,
+            "unit": "ms",
+            "extra": "mean: 29.4ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 87.9,
+            "unit": "ms",
+            "extra": "mean: 88.1ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 60.3,
+            "unit": "ms",
+            "extra": "mean: 59.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1645.4,
+            "unit": "ms",
+            "extra": "mean: 1644.0ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 209.5,
+            "unit": "ms",
+            "extra": "mean: 209.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 59.8,
+            "unit": "ms",
+            "extra": "mean: 59.0ms, samples: 15"
           }
         ]
       }
