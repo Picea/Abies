@@ -51,8 +51,9 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
         await _page.Locator(".feed-toggle").GetByText("Global Feed").ClickAsync();
-        await _page.WaitForTimeoutAsync(2000);
 
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
+            .ToBeVisibleAsync(new() { Timeout = 10000 });
         await Expect(_page.Locator(".article-preview").First).ToBeVisibleAsync(
             new() { Timeout = 10000 });
     }
@@ -110,6 +111,11 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
 
         await Expect(_page.Locator(".feed-toggle .nav-link.active"))
             .ToContainTextAsync(uniqueTag, new() { Timeout = 10000 });
+
+        var taggedPreview = _page.Locator(".article-preview").Filter(new() { HasText = taggedArticle.Title });
+        await Expect(taggedPreview).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = "Untagged" }))
+            .ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     [Test]
@@ -128,6 +134,11 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         var reader = $"feedrd{Guid.NewGuid():N}"[..20];
         var readerEmail = $"{reader}@test.com";
         var readerUser = await _seeder.RegisterUserAsync(reader, readerEmail, "password123");
+        await _seeder.CreateArticleAsync(
+            readerUser.Token,
+            $"OwnPost {Guid.NewGuid():N}"[..30],
+            "Reader article for feed context",
+            "This is the reader's own article.");
         await _seeder.FollowUserAsync(readerUser.Token, author);
 
         await LoginViaUi(readerEmail, "password123");
@@ -135,10 +146,12 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         await _page.NavigateInApp("/");
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
         await _page.Locator(".feed-toggle").GetByText("Your Feed").ClickAsync();
-        await _page.WaitForTimeoutAsync(2000);
 
-        await Expect(_page.Locator(".article-preview").First).ToBeVisibleAsync(
-            new() { Timeout = 10000 });
+        var followedPreview = _page.Locator(".article-preview").Filter(new() { HasText = article.Title });
+        await Expect(_page.Locator(".feed-toggle .nav-link.active"))
+            .ToContainTextAsync("Your Feed", new() { Timeout = 10000 });
+        await Expect(followedPreview).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Expect(followedPreview).ToContainTextAsync(author);
     }
 
     [Test]
@@ -159,13 +172,13 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
         await _page.Locator(".feed-toggle").GetByText("Global Feed").ClickAsync();
-        await _page.WaitForTimeoutAsync(2000);
 
         var preview = _page.Locator(".article-preview").Filter(
             new() { HasText = article.Title });
         await Expect(preview).ToBeVisibleAsync(new() { Timeout = 15000 });
         await Expect(preview).ToContainTextAsync(username);
         await Expect(preview).ToContainTextAsync(article.Description);
+        await Expect(preview).ToContainTextAsync("metatag");
     }
 
     [Test]
@@ -178,6 +191,80 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         await Expect(_page.Locator(".banner h1")).ToContainTextAsync("conduit");
         await Expect(_page.Locator(".banner p")).ToContainTextAsync(
             "A place to share your knowledge.");
+    }
+
+    [Test]
+    public async Task GlobalFeed_ShouldBeActiveByDefault_WhenAnonymous()
+    {
+        await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
+        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+
+        // Anonymous users land on Global Feed by default (no click needed)
+        await Expect(_page.Locator(".feed-toggle .nav-link.active"))
+            .ToContainTextAsync("Global Feed", new() { Timeout = 10000 });
+
+        // "Your Feed" tab is not present for anonymous users
+        await Expect(_page.Locator(".feed-toggle").GetByText("Your Feed"))
+            .Not.ToBeVisibleAsync(new() { Timeout = 5000 });
+    }
+
+    [Test]
+    public async Task YourFeed_WhenNotFollowingAnyone_ShouldBeDefaultAndShowEmptyState()
+    {
+        var username = $"feedempty{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        await _seeder.RegisterUserAsync(username, email, "password123");
+        await LoginViaUi(email, "password123");
+
+        // After login the app navigates home; "Your Feed" is the default tab for logged-in users
+        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await Expect(_page.Locator(".feed-toggle .nav-link.active"))
+            .ToContainTextAsync("Your Feed", new() { Timeout = 10000 });
+
+        // No articles because this user follows nobody
+        await Expect(_page.Locator(".article-preview"))
+            .ToContainTextAsync("No articles are here... yet.", new() { Timeout = 15000 });
+    }
+
+    [Test]
+    public async Task GlobalFeed_Pagination_ShouldShowPaginationAndNavigateToPage2()
+    {
+        var username = $"feedpage{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+
+        // Create 11 articles so the global feed is guaranteed to span at least 2 pages (page size = 10)
+        ArticleSeedResult? lastArticle = null;
+        for (var i = 1; i <= 11; i++)
+        {
+            lastArticle = await _seeder.CreateArticleAsync(
+                user.Token,
+                $"PagTest {i} {username}",
+                "Pagination test description",
+                "Pagination test body.");
+        }
+        // Ensure the read model has picked up our articles before navigating
+        await _seeder.WaitForArticleAsync(lastArticle!.Slug);
+
+        await _page.GotoAsync("/");
+        await _page.WaitForWasmReady();
+        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+
+        // Pagination widget must now be visible (anonymous → Global Feed, ≥11 articles)
+        await Expect(_page.Locator("ul.pagination")).ToBeVisibleAsync(new() { Timeout = 15000 });
+
+        // Navigate to page 2
+        await _page.Locator("ul.pagination .page-link", new() { HasText = "2" }).ClickAsync();
+        await _page.WaitForTimeoutAsync(2000);
+
+        // Page 2 should now be the active page
+        await Expect(_page.Locator("ul.pagination .page-item.active"))
+            .ToContainTextAsync("2", new() { Timeout = 10000 });
+
+        // Articles are still rendered on page 2
+        await Expect(_page.Locator(".article-preview").First)
+            .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     private async Task LoginViaUi(string email, string password)

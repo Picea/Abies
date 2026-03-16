@@ -25,9 +25,9 @@ public static class Profile
                 [
                     div([class_("col-xs-12 col-md-10 offset-md-1")],
                     [
-                        ArticleTabs(model.ShowFavorites),
+                        ArticleTabs(model.Username, model.ShowFavorites),
                         Views.ArticlePreview.List(model.Articles, false),
-                        Views.ArticlePreview.Pagination(model.ArticlesCount, model.CurrentPage, Constants.ArticlesPerPage)
+                        Views.ArticlePreview.Pagination(model.ArticlesCount, model.CurrentPage, Constants.ArticlesPerPage, page => PageHref(model.Username, model.ShowFavorites, page))
                     ])
                 ])
             ])
@@ -64,17 +64,23 @@ public static class Profile
             [i([class_("ion-plus-round")], []), text(label)])];
     }
 
-    private static Node ArticleTabs(bool showFavorites) =>
+    private static Node ArticleTabs(string username, bool showFavorites) =>
         div([class_("articles-toggle")],
         [
             ul([class_("nav nav-pills outline-active")],
             [
                 li([class_("nav-item")],
-                    [a([class_(showFavorites ? "nav-link" : "nav-link active"), href(""), onclick(new ProfileTabChanged(false))],
+                    [a([class_(showFavorites ? "nav-link" : "nav-link active"), href(PageHref(username, false, 1))],
                         [text("My Articles")])]),
                 li([class_("nav-item")],
-                    [a([class_(showFavorites ? "nav-link active" : "nav-link"), href(""), onclick(new ProfileTabChanged(true))],
+                    [a([class_(showFavorites ? "nav-link active" : "nav-link"), href(PageHref(username, true, 1))],
                         [text("Favorited Articles")])])
             ])
         ]);
+
+    private static string PageHref(string username, bool showFavorites, int page)
+    {
+        var path = showFavorites ? $"/profile/{Uri.EscapeDataString(username)}/favorites" : $"/profile/{Uri.EscapeDataString(username)}";
+        return page > 1 ? $"{path}?page={page}" : path;
+    }
 }

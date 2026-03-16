@@ -205,6 +205,32 @@ public sealed class ApiSeeder
     }
 
     /// <summary>
+    /// Waits until an article is no longer available in the read model.
+    /// </summary>
+    public async Task WaitForArticleDeletedAsync(string slug, int timeoutSeconds = 30)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                var response = await _http.GetAsync($"{_apiUrl}/api/articles/{slug}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return;
+            }
+            catch
+            {
+                // Transient error
+            }
+
+            await Task.Delay(500);
+        }
+
+        throw new TimeoutException(
+            $"Article '{slug}' still available in read model after {timeoutSeconds}s.");
+    }
+
+    /// <summary>
     /// Waits until an article is available AND its title matches (for update consistency).
     /// </summary>
     public async Task WaitForArticleWithTitleAsync(string slug, string expectedTitle, int timeoutSeconds = 30)
