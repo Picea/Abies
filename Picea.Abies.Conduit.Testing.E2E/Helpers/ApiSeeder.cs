@@ -85,14 +85,14 @@ public sealed class ApiSeeder
         string body,
         string[]? tagList = null)
     {
-        var response = await SendWithRetryAsync(() =>
+        var response = await SendWithRetryAsync(async () =>
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_apiUrl}/api/articles");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{_apiUrl}/api/articles");
             request.Headers.Add("Authorization", $"Token {token}");
             request.Content = JsonContent.Create(
                 new { article = new { title, description, body, tagList } },
                 options: _jsonOptions);
-            return _http.SendAsync(request);
+            return await _http.SendAsync(request);
         });
 
         var result = await response.Content.ReadFromJsonAsync<ArticleResponse>(_jsonOptions);
@@ -111,15 +111,15 @@ public sealed class ApiSeeder
         string slug,
         string commentBody)
     {
-        var response = await SendWithRetryAsync(() =>
+        var response = await SendWithRetryAsync(async () =>
         {
-            var request = new HttpRequestMessage(
+            using var request = new HttpRequestMessage(
                 HttpMethod.Post, $"{_apiUrl}/api/articles/{slug}/comments");
             request.Headers.Add("Authorization", $"Token {token}");
             request.Content = JsonContent.Create(
                 new { comment = new { body = commentBody } },
                 options: _jsonOptions);
-            return _http.SendAsync(request);
+            return await _http.SendAsync(request);
         });
 
         var result = await response.Content.ReadFromJsonAsync<CommentResponse>(_jsonOptions);
@@ -131,12 +131,12 @@ public sealed class ApiSeeder
     /// </summary>
     public async Task FollowUserAsync(string token, string username)
     {
-        await SendWithRetryAsync(() =>
+        await SendWithRetryAsync(async () =>
         {
-            var request = new HttpRequestMessage(
+            using var request = new HttpRequestMessage(
                 HttpMethod.Post, $"{_apiUrl}/api/profiles/{username}/follow");
             request.Headers.Add("Authorization", $"Token {token}");
-            return _http.SendAsync(request);
+            return await _http.SendAsync(request);
         });
     }
 
@@ -145,12 +145,12 @@ public sealed class ApiSeeder
     /// </summary>
     public async Task FavoriteArticleAsync(string token, string slug)
     {
-        await SendWithRetryAsync(() =>
+        await SendWithRetryAsync(async () =>
         {
-            var request = new HttpRequestMessage(
+            using var request = new HttpRequestMessage(
                 HttpMethod.Post, $"{_apiUrl}/api/articles/{slug}/favorite");
             request.Headers.Add("Authorization", $"Token {token}");
-            return _http.SendAsync(request);
+            return await _http.SendAsync(request);
         });
     }
 
@@ -165,14 +165,14 @@ public sealed class ApiSeeder
         string? email = null,
         string? password = null)
     {
-        var response = await SendWithRetryAsync(() =>
+        var response = await SendWithRetryAsync(async () =>
         {
-            var request = new HttpRequestMessage(HttpMethod.Put, $"{_apiUrl}/api/user");
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"{_apiUrl}/api/user");
             request.Headers.Add("Authorization", $"Token {token}");
             request.Content = JsonContent.Create(
                 new { user = new { image, username, bio, email, password } },
                 options: _jsonOptions);
-            return _http.SendAsync(request);
+            return await _http.SendAsync(request);
         });
 
         var body = await response.Content.ReadFromJsonAsync<UserResponse>(_jsonOptions);
@@ -200,7 +200,7 @@ public sealed class ApiSeeder
                 if (response.IsSuccessStatusCode)
                     return;
             }
-            catch
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 // Transient error
             }
@@ -224,7 +224,7 @@ public sealed class ApiSeeder
                 if (response.IsSuccessStatusCode)
                     return;
             }
-            catch
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 // Transient error
             }
@@ -248,7 +248,7 @@ public sealed class ApiSeeder
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                     return;
             }
-            catch
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 // Transient error
             }
@@ -283,7 +283,7 @@ public sealed class ApiSeeder
                     lastStatus += $" (title mismatch: got '{result?.Article.Title}')";
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 lastStatus = $"exception: {ex.Message}";
             }

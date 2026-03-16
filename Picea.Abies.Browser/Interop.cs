@@ -165,22 +165,22 @@ public static partial class Interop
     internal static partial string GetOrigin();
 
     /// <summary>
-    /// Gets a localStorage item by key.
+    /// Gets a sessionStorage item by key.
     /// </summary>
-    [JSImport("getLocalStorageItem", "Abies")]
-    internal static partial string? GetLocalStorageItem(string key);
+    [JSImport("getSessionStorageItem", "Abies")]
+    internal static partial string? GetSessionStorageItem(string key);
 
     /// <summary>
-    /// Sets a localStorage item.
+    /// Sets a sessionStorage item.
     /// </summary>
-    [JSImport("setLocalStorageItem", "Abies")]
-    internal static partial void SetLocalStorageItem(string key, string value);
+    [JSImport("setSessionStorageItem", "Abies")]
+    internal static partial void SetSessionStorageItem(string key, string value);
 
     /// <summary>
-    /// Removes a localStorage item.
+    /// Removes a sessionStorage item.
     /// </summary>
-    [JSImport("removeLocalStorageItem", "Abies")]
-    internal static partial void RemoveLocalStorageItem(string key);
+    [JSImport("removeSessionStorageItem", "Abies")]
+    internal static partial void RemoveSessionStorageItem(string key);
 
     // =========================================================================
     // Callback Wiring (.NET → JavaScript)

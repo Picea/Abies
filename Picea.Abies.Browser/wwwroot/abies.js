@@ -873,16 +873,28 @@ export function getOrigin() {
     return globalThis.location?.origin ?? "";
 }
 
-export function getLocalStorageItem(key) {
-    return globalThis.localStorage?.getItem(key) ?? null;
+export function getSessionStorageItem(key) {
+    try {
+        return globalThis.sessionStorage?.getItem(key) ?? null;
+    } catch {
+        return null;
+    }
 }
 
-export function setLocalStorageItem(key, value) {
-    globalThis.localStorage?.setItem(key, value);
+export function setSessionStorageItem(key, value) {
+    try {
+        globalThis.sessionStorage?.setItem(key, value);
+    } catch {
+        // Ignore storage failures in restricted browsing modes.
+    }
 }
 
-export function removeLocalStorageItem(key) {
-    globalThis.localStorage?.removeItem(key);
+export function removeSessionStorageItem(key) {
+    try {
+        globalThis.sessionStorage?.removeItem(key);
+    } catch {
+        // Ignore storage failures in restricted browsing modes.
+    }
 }
 
 /**

@@ -31,9 +31,7 @@
     <WasmAppBundlePath>..\Picea.Abies.Conduit.Wasm\bin\$(Configuration)\net10.0\browser-wasm\AppBundle</WasmAppBundlePath>
   </PropertyGroup>
 
-  <Target Name="PublishWasmProject" BeforeTargets="Build"
-          Inputs="$(WasmProjectPath)"
-          Outputs="$(WasmAppBundlePath)\_framework\dotnet.js">
+  <Target Name="PublishWasmProject" BeforeTargets="Build">
     <Exec Command="dotnet publish &quot;$(WasmProjectPath)&quot; -c $(Configuration)"
           ConsoleToMSBuild="true" />
   </Target>

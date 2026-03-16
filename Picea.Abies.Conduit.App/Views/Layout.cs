@@ -31,7 +31,7 @@ public static class Layout
                     [i([class_("ion-gear-a")], []), text("\u2003Settings")])]),
                 li([class_("nav-item")], [a([class_(NavClass(currentPage is Page.Profile p && p.Data.Username == session.Username)),
                     href($"/profile/{session.Username}")],
-                    [img([src(Avatar.Url(session.Image)), class_("user-pic")]), text(session.Username)])])
+                    [img([src(Avatar.Url(session.Image)), class_("user-pic"), alt("")]), text(session.Username)])])
             ];
         return
         [

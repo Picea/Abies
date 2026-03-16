@@ -125,7 +125,7 @@ public sealed class NullFieldsAndSecurityTests : IAsyncInitializer, IAsyncDispos
         await LoginViaUi(email, "password123");
         await _page.GotoAsync($"/profile/{username}");
         await _page.WaitForWasmReady();
-        await _page.WaitForTimeoutAsync(1000);
+        await Expect(_page.Locator(".user-img")).ToBeVisibleAsync(new() { Timeout = 10000 });
 
         var hasOnError = await _page.Locator(".user-img").EvaluateAsync<bool>("img => img.hasAttribute('onerror')");
         await Assert.That(hasOnError).IsFalse();
@@ -155,7 +155,7 @@ public sealed class NullFieldsAndSecurityTests : IAsyncInitializer, IAsyncDispos
         await LoginViaUi(email, "password123");
         await _page.GotoAsync($"/article/{article.Slug}");
         await _page.WaitForWasmReady();
-        await _page.WaitForTimeoutAsync(1000);
+        await Expect(_page.Locator(".article-content p").First).ToBeVisibleAsync(new() { Timeout = 10000 });
 
         await Expect(_page.Locator(".article-content")).ToContainTextAsync("<script>alert(1)</script>");
         await Expect(_page.Locator(".article-content p").First).ToContainTextAsync("Before <script>alert(1)</script> After");
