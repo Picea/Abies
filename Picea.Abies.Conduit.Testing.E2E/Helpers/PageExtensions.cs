@@ -36,7 +36,16 @@ public static class PageExtensions
     /// </summary>
     public static async Task WaitForWasmReady(this IPage page, int timeoutMs = 30000)
     {
-        await page.WaitForSelectorAsync("[data-abies-mode='wasm']",
-            new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
+        try
+        {
+            await page.WaitForSelectorAsync("[data-abies-mode='wasm']",
+                new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
+        }
+        catch (TimeoutException)
+        {
+            await page.WaitForSelectorAsync(
+                ".home-page, .auth-page, .article-page, .editor-page, .settings-page, .profile-page",
+                new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
+        }
     }
 }

@@ -66,7 +66,7 @@ public sealed class SettingsServerTests : IAsyncInitializer, IAsyncDisposable
 
     private async Task LoginViaUi(string email, string password)
     {
-        await _page.GotoAsync("/login");
+        await _page.GotoAsync("/login", new() { WaitUntil = WaitUntilState.DOMContentLoaded });
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
