@@ -102,6 +102,45 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign up");
     }
 
+    /// <summary>
+    /// RealWorld spec: auth.spec.ts — "should show error for wrong password after registering"
+    /// </summary>
+    [Test]
+    public async Task Login_WithWrongPasswordAfterRegister_ShouldShowError()
+    {
+        var username = $"srvwpw{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        await _seeder.RegisterUserAsync(username, email, "password123");
+
+        await _page.GotoAsync("/login");
+        await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
+
+        await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
+        await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+
+        await Expect(_page.Locator(".error-messages")).ToBeVisibleAsync(
+            new() { Timeout = 10000 });
+    }
+
+    /// <summary>
+    /// RealWorld spec: auth.spec.ts — "should prevent accessing editor when not logged in"
+    /// In Server mode, the app may redirect to login or show the unauthenticated navbar.
+    /// </summary>
+    [Test]
+    public async Task Editor_WhenNotLoggedIn_ShouldRedirectToLogin()
+    {
+        await _page.GotoAsync("/editor");
+
+        // In Server mode the client-side auth guard may redirect to login, or
+        // the page may render with an unauthenticated navbar showing "Sign in" link.
+        var signInHeading = _page.Locator("h1:has-text('Sign in')");
+        var signInNavLink = _page.Locator("nav a[href='/login']");
+
+        await signInHeading.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 15000 });
+        await Expect(signInNavLink).ToBeVisibleAsync(new() { Timeout = 15000 });
+    }
+
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
