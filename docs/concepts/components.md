@@ -39,6 +39,19 @@ Node(Id)
 
 Every node carries a string `Id` for stable identity across renders. IDs are generated at **compile time** by the [Praefixum](https://github.com/MCGPPeters/Praefixum) source generator, ensuring deterministic, zero-cost identification for efficient diffing.
 
+That compile-time identity is **structural identity**: it tells Abies where a node comes from in source code. For repeated interactive UI, you often also need **instance identity**: which logical row/tab/action this particular control belongs to.
+
+Rule of thumb:
+
+- Static singleton controls: Praefixum call-site ids are usually enough.
+- Repeated or duplicated interactive controls: provide explicit `key(...)`, `id(...)`, and event handler ids where appropriate.
+
+Examples that need explicit instance identity:
+
+- list rows rendered with `Select(...)`
+- tabs rendered from a helper in multiple states
+- the same action bar rendered in two places on one page
+
 ### Element
 
 An HTML element with tag, attributes, and children:

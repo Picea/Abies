@@ -61,6 +61,26 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
+    public async Task AnonymousUser_ShouldSeeSignInPromptInsteadOfCommentForm()
+    {
+        var author = $"anoncmt{Guid.NewGuid():N}"[..20];
+        var email = $"{author}@test.com";
+        var user = await _seeder.RegisterUserAsync(author, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Anon Prompt {Guid.NewGuid():N}"[..30],
+            "Anonymous prompt article",
+            "Body.");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await _page.GotoAsync($"/article/{article.Slug}");
+        await _page.WaitForWasmReady();
+
+        await Expect(_page.GetByText("to add comments on this article.")).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Expect(_page.Locator(".comment-form")).ToHaveCountAsync(0, new() { Timeout = 10000 });
+    }
+
+    [Test]
     public async Task DeleteComment_AsAuthor_ShouldRemoveFromList()
     {
         var username = $"cmtdel{Guid.NewGuid():N}"[..20];
@@ -81,8 +101,8 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
 
         await _page.NavigateInApp($"/article/{article.Slug}");
 
-        await Expect(_page.Locator(".card .card-block p").First)
-            .ToContainTextAsync(comment.Body, new() { Timeout = 15000 });
+        await Expect(_page.Locator($".card .card-block p:text-is('{comment.Body}')"))
+            .ToBeVisibleAsync(new() { Timeout = 15000 });
 
         // The <i> icon element has zero dimensions (icon font may not load in headless),
         // so use DispatchEventAsync which doesn't require the element to be visible.
@@ -168,6 +188,28 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
+    public async Task Comments_ShouldRemainVisibleAfterReload()
+    {
+        var username = $"cmtrld{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Reload Comment {Guid.NewGuid():N}"[..30],
+            "Comment reload article",
+            "Body.");
+        var comment = await _seeder.AddCommentAsync(user.Token, article.Slug, "Persist across reload");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await _page.GotoAsync($"/article/{article.Slug}", new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await _page.WaitForWasmReady();
+        await _page.ReloadAsync();
+        await _page.WaitForWasmReady();
+
+        await Expect(_page.Locator($"text={comment.Body}")).ToBeVisibleAsync(new() { Timeout = 10000 });
+    }
+
+    [Test]
     public async Task CommentForm_ShouldClearAfterPosting()
     {
         var username = $"cmtclr{Guid.NewGuid():N}"[..20];
@@ -224,7 +266,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).DispatchEventAsync("click");
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
     }
 

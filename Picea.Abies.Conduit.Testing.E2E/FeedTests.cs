@@ -147,10 +147,10 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
         await _page.NavigateInApp("/");
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
         await _page.Locator(".feed-toggle").GetByText("Your Feed").ClickAsync();
+        await Expect(_page).ToHaveURLAsync(new Regex(@"/\?feed=following$"), new() { Timeout = 10000 });
+        await _page.WaitForWasmReady();
 
         var followedPreview = _page.Locator(".article-preview").Filter(new() { HasText = article.Title });
-        await Expect(_page.Locator(".feed-toggle .nav-link.active"))
-            .ToContainTextAsync("Your Feed", new() { Timeout = 10000 });
         await Expect(followedPreview).ToBeVisibleAsync(new() { Timeout = 10000 });
         await Expect(followedPreview).ToContainTextAsync(author);
     }

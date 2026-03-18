@@ -24,7 +24,7 @@ public static class Article
                 div([class_("row article-content")],
                     [div([class_("col-md-12")], [p([], [text(article.Body)]), TagList(article.TagList)])]),
                 hr([]),
-                div([class_("article-actions")], [ArticleMeta(article, session)]),
+                div([class_("article-actions")], [ArticleMeta(article, session, "body")]),
                 div([class_("row")],
                     [div([class_("col-xs-12 col-md-8 offset-md-2")],
                         [CommentForm(model.CommentBody, session),
@@ -35,30 +35,30 @@ public static class Article
 
     private static Node Banner(ArticleData article, Session? session) =>
         div([class_("banner")],
-            [div([class_("container")], [h1([], [text(article.Title)]), ArticleMeta(article, session)])]);
+            [div([class_("container")], [h1([], [text(article.Title)]), ArticleMeta(article, session, "banner")])]);
 
-    private static Node ArticleMeta(ArticleData article, Session? session) =>
+    private static Node ArticleMeta(ArticleData article, Session? session, string scope) =>
         div([class_("article-meta")],
         [
-            a([href($"/profile/{article.Author.Username}")],
+            a([id($"article-meta-author-link:{scope}:{article.Slug}"), href($"/profile/{article.Author.Username}")],
                 [img([src(Views.Avatar.Url(article.Author.Image))])]),
             div([class_("info")],
             [
                 a([href($"/profile/{article.Author.Username}"), class_("author")], [text(article.Author.Username)]),
                 span([class_("date")], [text(article.CreatedAt.ToString("MMMM d, yyyy"))])
             ]),
-            ..ArticleActions(article, session)
+            ..ArticleActions(article, session, scope)
         ]);
 
-    private static Node[] ArticleActions(ArticleData article, Session? session)
+    private static Node[] ArticleActions(ArticleData article, Session? session, string scope)
     {
         if (session is not null && session.Username == article.Author.Username)
             return
             [
-                a([class_("btn btn-outline-secondary btn-sm"), href($"/editor/{article.Slug}")],
+                a([id($"article-edit:{scope}:{article.Slug}"), class_("btn btn-outline-secondary btn-sm"), href($"/editor/{article.Slug}")],
                     [i([class_("ion-edit")], []), text("\u2003Edit Article")]),
                 text(" "),
-                button([class_("btn btn-outline-danger btn-sm"), onclick(new DeleteArticle(article.Slug))],
+                button([id($"article-delete:{scope}:{article.Slug}"), class_("btn btn-outline-danger btn-sm"), onclick(new DeleteArticle(article.Slug), $"article-delete-click:{scope}:{article.Slug}")],
                     [i([class_("ion-trash-a")], []), text("\u2003Delete Article")])
             ];
 
@@ -69,10 +69,10 @@ public static class Article
 
         return
         [
-            button([class_(followClass), onclick(new ToggleFollow(article.Author.Username, article.Author.Following))],
+            button([id($"article-follow:{scope}:{article.Slug}"), class_(followClass), onclick(new ToggleFollow(article.Author.Username, article.Author.Following), $"article-follow-click:{scope}:{article.Slug}")],
                 [i([class_("ion-plus-round")], []), text(followLabel)]),
             text("\u00A0\u00A0"),
-            button([class_(favClass), onclick(new ToggleFavorite(article.Slug, article.Favorited))],
+            button([id($"article-favorite:{scope}:{article.Slug}"), class_(favClass), onclick(new ToggleFavorite(article.Slug, article.Favorited), $"article-favorite-click:{scope}:{article.Slug}")],
                 [i([class_("ion-heart")], []), text(favLabel)])
         ];
     }

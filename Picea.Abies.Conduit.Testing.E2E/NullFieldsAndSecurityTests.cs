@@ -103,6 +103,59 @@ public sealed class NullFieldsAndSecurityTests : IAsyncInitializer, IAsyncDispos
     }
 
     [Test]
+    public async Task NewUser_ShouldShowDefaultAvatarInCommentFormAndPostedComment()
+    {
+        var username = $"nullfrm{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        var article = await _seeder.CreateArticleAsync(
+            user.Token,
+            $"Comment Avatar {Guid.NewGuid():N}"[..30],
+            "Comment avatar",
+            "Body.");
+        await _seeder.WaitForArticleAsync(article.Slug);
+
+        await LoginViaUi(email, "password123");
+        await _page.GotoAsync($"/article/{article.Slug}");
+        await _page.WaitForWasmReady();
+
+        await Expect(_page.Locator(".comment-form .comment-author-img")).ToHaveAttributeAsync("src", DefaultAvatarUrl);
+        await _page.GetByPlaceholder("Write a comment...").FillAsync("Avatar comment");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Post Comment" }).ClickAsync();
+        await Expect(_page.Locator(".card:not(.comment-form) .comment-author-img").First).ToHaveAttributeAsync("src", DefaultAvatarUrl);
+    }
+
+    [Test]
+    public async Task SettingImage_ShouldDisplayCustomAvatarOnProfilePage()
+    {
+        var username = $"custimg{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        var user = await _seeder.RegisterUserAsync(username, email, "password123");
+        const string customImage = "https://api.realworld.io/images/smiley-cyrus.jpeg";
+        await _seeder.UpdateUserAsync(user.Token, image: customImage, username: username, email: email);
+
+        await LoginViaUi(email, "password123");
+        await _page.GotoAsync($"/profile/{username}");
+        await _page.WaitForWasmReady();
+        await Expect(_page.Locator(".user-img")).ToHaveAttributeAsync("src", customImage);
+    }
+
+    [Test]
+    public async Task SettingsForm_ShouldShowEmptyStringsForNullImageAndBio()
+    {
+        var username = $"nullset{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        await _seeder.RegisterUserAsync(username, email, "password123");
+
+        await LoginViaUi(email, "password123");
+        await _page.GotoAsync("/settings");
+        await _page.WaitForWasmReady();
+
+        await Expect(_page.GetByPlaceholder("URL of profile picture")).ToHaveValueAsync(string.Empty);
+        await Expect(_page.GetByPlaceholder("Short bio about you")).ToHaveValueAsync(string.Empty);
+    }
+
+    [Test]
     public async Task MaliciousImagePayload_ShouldNotCreateExecutableAttributes()
     {
         var username = $"xssimg{Guid.NewGuid():N}"[..20];
