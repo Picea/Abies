@@ -261,7 +261,7 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
         var newModel = model with { Session = msg.Session };
         var authenticatedHomeUrl = new Url([], new Dictionary<string, string> { ["feed"] = "following" }, Option<string>.None);
         var (page, command) = Route.FromUrl(authenticatedHomeUrl, msg.Session, model.ApiUrl);
-        return (newModel with { Page = page }, Commands.Batch(command, Navigation.PushUrl(authenticatedHomeUrl), new PersistSession(msg.Session)));
+        return (newModel with { Page = page }, Commands.Batch(new PersistSession(msg.Session), command, Navigation.PushUrl(authenticatedHomeUrl)));
     }
 
     private static (Model, Command) HandleFavoriteToggled(Model model, FavoriteToggled msg) =>

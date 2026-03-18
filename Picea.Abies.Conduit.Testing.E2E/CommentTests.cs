@@ -266,8 +266,9 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).DispatchEventAsync("click");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await Expect(_page.Locator(".navbar")).ToContainTextAsync(email.Split('@')[0], new() { Timeout = 10000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>

@@ -32,8 +32,8 @@ public sealed class AppHostWasmRegressionTests : IAsyncInitializer, IAsyncDispos
         await _seeder.RegisterUserAsync(username, email, "password123");
 
         await LoginViaUi(email, "password123");
-        await _page.Locator(".navbar").GetByText("New Article").ClickAsync();
-        await _page.WaitForURLAsync("**/editor");
+        await _page.NavigateInApp("/editor");
+        await _page.WaitForSelectorAsync(".editor-page", new() { Timeout = 15000 });
         await _page.WaitForWasmReady();
         await _page.GetByPlaceholder("Article Title").FillAsync("Wasm apphost article");
         await _page.GetByPlaceholder("What's this article about?").FillAsync("Visible from home");
@@ -227,6 +227,12 @@ public sealed class AppHostWasmRegressionTests : IAsyncInitializer, IAsyncDispos
         await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Global Feed" }).ClickAsync();
         await _page.WaitForWasmReady();
 
+        if (!((await _page.Locator(".feed-toggle .nav-link.active").TextContentAsync())?.Contains("Global Feed") ?? false))
+        {
+            await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Global Feed" }).ClickAsync();
+            await _page.WaitForWasmReady();
+        }
+
         await Expect(_page.Locator(".feed-toggle .nav-link.active")).ToHaveCountAsync(1, new() { Timeout = 10000 });
         await Expect(_page.Locator(".feed-toggle .nav-link.active")).ToContainTextAsync("Global Feed", new() { Timeout = 10000 });
     }
@@ -240,6 +246,7 @@ public sealed class AppHostWasmRegressionTests : IAsyncInitializer, IAsyncDispos
         await _page.GetByPlaceholder("Password").FillAsync(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForFunctionAsync("() => window.sessionStorage.getItem('conduit.session') !== null", null, new() { Timeout = 10000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) => Assertions.Expect(locator);

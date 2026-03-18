@@ -22,14 +22,17 @@ using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
 
 var builder = WebApplication.CreateBuilder(args);
+var conduitApiUrl = builder.Configuration["services:conduit-api:http:0"]
+    ?? builder.Configuration["ConduitApiUrl"]
+    ?? "http://localhost:5000";
 var app = builder.Build();
 
 app.UseWebSockets();
 app.UseAbiesStaticFiles();
-app.MapAbies<ConduitProgram, Model, string>(
+app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer(),
     interpreter: ConduitInterpreter.Interpret,
-    argument: "http://localhost:5000");
+    argument: new ConduitStartup(conduitApiUrl));
 
 app.Run();
