@@ -873,6 +873,30 @@ export function getOrigin() {
     return globalThis.location?.origin ?? "";
 }
 
+export function getSessionStorageItem(key) {
+    try {
+        return globalThis.sessionStorage?.getItem(key) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+export function setSessionStorageItem(key, value) {
+    try {
+        globalThis.sessionStorage?.setItem(key, value);
+    } catch {
+        // Ignore storage failures in restricted browsing modes.
+    }
+}
+
+export function removeSessionStorageItem(key) {
+    try {
+        globalThis.sessionStorage?.removeItem(key);
+    } catch {
+        // Ignore storage failures in restricted browsing modes.
+    }
+}
+
 /**
  * Returns the current browser URL (window.location.href).
  * Called by .NET during initialization to determine the initial route.
