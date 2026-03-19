@@ -68,8 +68,7 @@ public static class Events
     /// <param name="id">Compile-time unique identifier for this handler.</param>
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     {
-        var commandId = id ?? NextCommandId();
-        return new(name, commandId, command, id ?? string.Empty);
+        return new(name, NextCommandId(), command, id ?? string.Empty);
     }
 
     /// <summary>
@@ -82,8 +81,7 @@ public static class Events
     /// <param name="id">Compile-time unique identifier for this handler.</param>
     public static Handler on<T>(string name, Func<T?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
     {
-        var commandId = id ?? NextCommandId();
-        return new(name, commandId, null, id ?? string.Empty,
+        return new(name, NextCommandId(), null, id ?? string.Empty,
             o => factory((T?)o),
             EventDataDeserializers.Get<T>());
     }
