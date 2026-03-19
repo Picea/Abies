@@ -215,10 +215,8 @@ jobs:
     needs: changes
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      needs.changes.outputs.perf-pr == 'true' ||
-      needs.changes.outputs.e2e-scripts == 'true' ||
-      contains(github.event.pull_request.labels.*.name, 'performance')
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
 
     steps:
       - name: Checkout repository
@@ -226,7 +224,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Decide whether to run benchmarks
+        id: should-run
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.run_e2e_benchmark }}" == "true" ]]; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "run=false" >> "$GITHUB_OUTPUT"
+            fi
+          elif [[ "${{ needs.changes.outputs.perf-pr }}" == "true" || "${{ needs.changes.outputs.e2e-scripts }}" == "true" || "${{ contains(github.event.pull_request.labels.*.name, 'performance') }}" == "true" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip benchmark execution
+        if: steps.should-run.outputs.run != 'true'
+        run: |
+          echo "No benchmark run needed for this PR; required check passes."
+
       - name: Clone js-framework-benchmark
+        if: steps.should-run.outputs.run == 'true'
         run: |
           # Remove uninitialized submodule placeholder directory
           rm -rf js-framework-benchmark
@@ -234,20 +255,24 @@ jobs:
           git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git js-framework-benchmark
 
       - name: Setup .NET
+        if: steps.should-run.outputs.run == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Install WASM workloads
+        if: steps.should-run.outputs.run == 'true'
         run: dotnet workload install wasm-experimental wasm-tools
 
       - name: Setup Node.js
+        if: steps.should-run.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       # Build the benchmark WASM app from the repo's own project
       - name: Build Abies benchmark WASM app
+        if: steps.should-run.outputs.run == 'true'
         run: |
           dotnet publish Picea.Abies.Benchmark.Wasm/Picea.Abies.Benchmark.Wasm.csproj -c Release
 
@@ -255,6 +280,7 @@ jobs:
       # The upstream server's isFrameworkDir() requires BOTH package.json AND
       # package-lock.json to exist for framework discovery via the /ls endpoint.
       - name: Setup Abies framework in benchmark
+        if: steps.should-run.outputs.run == 'true'
         run: |
           # Ensure framework directory structure exists
           mkdir -p js-framework-benchmark/frameworks/keyed/abies/bundled-dist/wwwroot
@@ -311,6 +337,7 @@ jobs:
 
       # Cache npm dependencies
       - name: Cache npm dependencies
+        if: steps.should-run.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -320,6 +347,7 @@ jobs:
 
       # Cache Chrome browser for Selenium
       - name: Cache Chrome for Testing
+        if: steps.should-run.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/selenium
@@ -328,6 +356,7 @@ jobs:
             selenium-chrome-${{ runner.os }}-
 
       - name: Install benchmark dependencies
+        if: steps.should-run.outputs.run == 'true'
         run: |
           cd js-framework-benchmark
           npm ci
@@ -337,6 +366,7 @@ jobs:
           npm run compile
 
       - name: Start benchmark server
+        if: steps.should-run.outputs.run == 'true'
         run: |
           cd js-framework-benchmark
           npm start &
@@ -359,6 +389,7 @@ jobs:
       # package.json causes zero frameworks to match silently (exit 0,
       # no results, compare script fails).
       - name: Verify framework discovery
+        if: steps.should-run.outputs.run == 'true'
         run: |
           echo "=== Checking /ls endpoint for framework discovery ==="
           LS_RESPONSE=$(curl -s http://localhost:8080/ls)
@@ -376,6 +407,7 @@ jobs:
           fi
 
       - name: Run E2E benchmarks (all CPU benchmarks)
+        if: steps.should-run.outputs.run == 'true'
         run: |
           cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
@@ -389,6 +421,7 @@ jobs:
           npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k
 
       - name: Run Memory benchmarks
+        if: steps.should-run.outputs.run == 'true'
         run: |
           cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 21_ready-memory
@@ -396,7 +429,7 @@ jobs:
           npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory
 
       - name: Fetch baseline from gh-pages (if not in repo)
-        if: ${{ !hashFiles('benchmark-results/baseline.json') }}
+        if: steps.should-run.outputs.run == 'true' && ${{ !hashFiles('benchmark-results/baseline.json') }}
         continue-on-error: true
         run: |
           # Try to fetch baseline from gh-pages branch
@@ -408,6 +441,7 @@ jobs:
           fi
 
       - name: Compare against baseline
+        if: steps.should-run.outputs.run == 'true'
         id: regression-check
         continue-on-error: true
         run: |
@@ -418,7 +452,7 @@ jobs:
             --framework abies
 
       - name: Report benchmark status
-        if: always()
+        if: always() && steps.should-run.outputs.run == 'true'
         run: |
           if [[ "${{ steps.regression-check.outcome }}" == "failure" ]]; then
             echo "❌ Performance regression detected (>5%)"
@@ -428,6 +462,7 @@ jobs:
           fi
 
       - name: Convert E2E results to benchmark format
+        if: steps.should-run.outputs.run == 'true'
         run: |
           python3 scripts/convert-e2e-results.py \
             --results-dir js-framework-benchmark/webdriver-ts/results \
@@ -437,7 +472,7 @@ jobs:
 
       - name: Check if gh-pages exists
         id: gh-pages-check
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -447,7 +482,7 @@ jobs:
 
       - name: Store E2E benchmark trends to gh-pages (main only)
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
           name: "1. E2E Benchmark (js-framework-benchmark)"
           tool: customSmallerIsBetter
@@ -463,7 +498,7 @@ jobs:
 
       - name: Store E2E memory benchmark trends to gh-pages (main only)
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
           name: "1. E2E Benchmark: Memory (js-framework-benchmark)"
           tool: customSmallerIsBetter
@@ -486,7 +521,7 @@ jobs:
       # on:push workflows (CD, E2E, etc.).
       # ============================================================================
       - name: Update README benchmark tables (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           python3 scripts/update-readme-benchmarks.py \
             --results-dir js-framework-benchmark/webdriver-ts/results \
@@ -495,7 +530,7 @@ jobs:
             --framework abies
 
       - name: Create PR for README benchmark updates (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -511,7 +546,7 @@ jobs:
             README.md
 
       - name: Copy results to workspace for upload
-        if: always()
+        if: always() && steps.should-run.outputs.run == 'true'
         run: |
           mkdir -p ./e2e-results
           cp -r js-framework-benchmark/webdriver-ts/results/* ./e2e-results/ 2>/dev/null || true
@@ -520,7 +555,7 @@ jobs:
 
       - name: Upload E2E benchmark results
         uses: actions/upload-artifact@v6
-        if: always()
+        if: always() && steps.should-run.outputs.run == 'true'
         with:
           name: e2e-benchmark-results
           path: ./e2e-results/
