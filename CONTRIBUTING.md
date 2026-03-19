@@ -17,10 +17,51 @@ We follow **trunk-based development** practices:
 The `main` branch is protected with the following rules:
 
 ### Required Status Checks
-All PRs must pass:
+All PRs must pass 10 checks:
+
+**Core Workflows:**
 - ✅ **CD workflow** - Build, test, and package validation
 - ✅ **E2E workflow** - End-to-end integration tests
 - ✅ **CodeQL** - Security and code quality analysis
+- ✅ **Benchmark (js-framework-benchmark)** - E2E performance regression detection (5% threshold)
+
+**Other Checks:**
+- ✅ **Draft check** - PR must not be in draft state
+- ✅ **Size check** - PR must not be too large
+- ✅ **Title check** - PR title must follow Conventional Commits
+- ✅ **Description check** - PR description must be complete
+- ✅ **Branch check** - Branch must not be out of date with main
+- ✅ **Merge permissions** - User has permission to merge
+
+### Performance Regression Detection
+
+The **Benchmark (js-framework-benchmark)** check automatically detects performance regressions on:
+- PRs with title starting with `perf:` or `perf(`
+- PRs with the `performance` label
+- All pushes to main (baseline tracking)
+
+**Regression Threshold:** 5% — Any benchmark regressing >5% will fail the check and block merge.
+
+**Run benchmarks locally:**
+
+```bash
+# Build Abies WASM for benchmark
+cd js-framework-benchmark/frameworks/keyed/abies/src
+rm -rf bin obj && dotnet publish -c Release
+cp -R bin/Release/net10.0/publish/wwwroot/* ../bundled-dist/
+
+# Start benchmark server
+cd ../../../../../../js-framework-benchmark
+npm ci && npm start &  # Runs on http://localhost:8080
+
+# Run specific benchmarks
+cd webdriver-ts
+npm ci
+npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k
+npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k
+```
+
+See [Benchmarking Guide](docs/guides/performance.md) for detailed instructions.
 
 ### Pull Request Requirements
 - ✅ **At least 1 approval** required (for team members)
