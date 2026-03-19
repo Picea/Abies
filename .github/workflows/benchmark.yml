@@ -201,13 +201,16 @@ jobs:
 
   # ============================================================================
   # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
+  # REQUIRED STATUS CHECK - Fails on >5% performance regression
   # ============================================================================
   # Clones the upstream js-framework-benchmark for benchmark infrastructure
   # (server, webdriver-ts, CSS) and builds Picea.Abies.Benchmark.Wasm from
   # the repo for the framework-under-test.
   # ============================================================================
-  e2e-benchmark:
-    name: E2E Benchmark (js-framework-benchmark)
+  benchmark-check:
+    name: Benchmark (js-framework-benchmark)
+    # NOTE: This job provides the "Benchmark (js-framework-benchmark)" status check
+    # required for merging PRs. It fails if perf regressions >5% are detected.
     runs-on: ubuntu-latest
     needs: changes
     if: >
@@ -405,12 +408,24 @@ jobs:
           fi
 
       - name: Compare against baseline
+        id: regression-check
+        continue-on-error: true
         run: |
           python3 scripts/compare-benchmark.py \
             --results-dir js-framework-benchmark/webdriver-ts/results \
             --baseline benchmark-results/baseline.json \
             --threshold 5.0 \
             --framework abies
+
+      - name: Report benchmark status
+        if: always()
+        run: |
+          if [[ "${{ steps.regression-check.outcome }}" == "failure" ]]; then
+            echo "❌ Performance regression detected (>5%)"
+            exit 1
+          else
+            echo "✅ Benchmark check passed"
+          fi
 
       - name: Convert E2E results to benchmark format
         run: |
