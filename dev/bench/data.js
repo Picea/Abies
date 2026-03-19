@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773939188883,
+  "lastUpdate": 1773939191135,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12994,6 +12994,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.870347023010254,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "ccc51d507719d0334c0a403bce8faa3dc2d8c1e6",
+          "message": "ci: Ensure benchmark required check always reports status",
+          "timestamp": "2026-03-19T17:43:41+01:00",
+          "tree_id": "b891c81820ddbde83a4b9ed2a129ad2674c15667",
+          "url": "https://github.com/Picea/Abies/commit/ccc51d507719d0334c0a403bce8faa3dc2d8c1e6"
+        },
+        "date": 1773939190693,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11384391784668,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.87452793121338,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
