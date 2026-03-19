@@ -21,7 +21,8 @@ public sealed record Model(
 
 public sealed record ConduitStartup(
     string ApiUrl,
-    Session? Session = null);
+    Session? Session = null,
+    Url? InitialUrl = null);
 
 /// <summary>
 /// An authenticated user session.

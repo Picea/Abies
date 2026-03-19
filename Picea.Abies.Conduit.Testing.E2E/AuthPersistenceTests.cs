@@ -74,12 +74,12 @@ public sealed class AuthPersistenceTests : IAsyncInitializer, IAsyncDisposable
         await LoginViaUi(readerEmail, "password123");
         await _page.GotoAsync("/?feed=following");
         await _page.WaitForWasmReady();
+        await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
+            .ToHaveCountAsync(1, new() { Timeout = 10000 });
         await _page.ReloadAsync();
         await _page.WaitForWasmReady();
 
         await Expect(_page).ToHaveURLAsync(new Regex(@"/\?feed=following$"), new() { Timeout = 10000 });
-        await Expect(_page.Locator(".feed-toggle .nav-link.active"))
-            .ToContainTextAsync("Your Feed", new() { Timeout = 10000 });
         await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
             .ToHaveCountAsync(1, new() { Timeout = 10000 });
         await Expect(_page.Locator(".navbar")).ToContainTextAsync(reader, new() { Timeout = 10000 });

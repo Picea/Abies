@@ -60,6 +60,8 @@ public sealed class ConduitStaticFixture : IAsyncInitializer, IAsyncDisposable
 
         ConduitServerFixture.AddApiReverseProxy(_app, _infra.ApiUrl);
 
+        _app.UseAbiesStaticFiles();
+
         _app.MapAbies<ConduitProgram, Model, ConduitStartup>(
             "/{**catch-all}",
             new RenderMode.Static(),

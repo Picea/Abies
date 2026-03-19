@@ -124,6 +124,8 @@ public static class Runtime
 
     public static void RemoveSessionStorageItem(string key) => Interop.RemoveSessionStorageItem(key);
 
+    public static string GetCurrentUrl() => Interop.GetCurrentUrl();
+
     /// <summary>
     /// Runs an Abies MVU application in the browser.
     /// </summary>

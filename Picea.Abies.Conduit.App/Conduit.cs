@@ -14,7 +14,7 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
 {
     public static (Model, Command) Initialize(ConduitStartup startup)
     {
-        var initialUrl = Url.Root;
+        var initialUrl = startup.InitialUrl ?? Url.Root;
         var (page, command) = Route.FromUrl(initialUrl, startup.Session, startup.ApiUrl);
         var model = new Model(page, startup.Session, startup.ApiUrl);
         return (model, command);
@@ -208,7 +208,8 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
             FeedTab.Tag when msg.Tag is not null => new FetchArticles(model.ApiUrl, model.Session?.Token, Constants.ArticlesPerPage, 0, Tag: msg.Tag),
             _ => new FetchArticles(model.ApiUrl, model.Session?.Token, Constants.ArticlesPerPage, 0)
         };
-        return (model with { Page = new Page.Home(newHome) }, command);
+        var url = Route.ToUrl(new Page.Home(newHome));
+        return (model with { Page = new Page.Home(newHome) }, Commands.Batch(command, Navigation.PushUrl(url)));
     }
 
     private static (Model, Command) HandlePageChanged(Model model, HomeModel home, PageChanged msg)
@@ -258,8 +259,9 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
     private static (Model, Command) HandleUserAuthenticated(Model model, UserAuthenticated msg)
     {
         var newModel = model with { Session = msg.Session };
-        var (page, command) = Route.FromUrl(new Url([], new Dictionary<string, string>(), Option<string>.None), msg.Session, model.ApiUrl);
-        return (newModel with { Page = page }, Commands.Batch(command, Navigation.PushUrl(Url.Root), new PersistSession(msg.Session)));
+        var authenticatedHomeUrl = new Url([], new Dictionary<string, string> { ["feed"] = "following" }, Option<string>.None);
+        var (page, command) = Route.FromUrl(authenticatedHomeUrl, msg.Session, model.ApiUrl);
+        return (newModel with { Page = page }, Commands.Batch(new PersistSession(msg.Session), command, Navigation.PushUrl(authenticatedHomeUrl)));
     }
 
     private static (Model, Command) HandleFavoriteToggled(Model model, FavoriteToggled msg) =>
@@ -332,7 +334,8 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
         Command articleCmd = msg.ShowFavorites
             ? new FetchArticles(model.ApiUrl, model.Session?.Token, Constants.ArticlesPerPage, 0, Favorited: profile.Username)
             : new FetchArticles(model.ApiUrl, model.Session?.Token, Constants.ArticlesPerPage, 0, Author: profile.Username);
-        return (model with { Page = new Page.Profile(newProfile) }, articleCmd);
+        var url = Route.ToUrl(new Page.Profile(newProfile));
+        return (model with { Page = new Page.Profile(newProfile) }, Commands.Batch(articleCmd, Navigation.PushUrl(url)));
     }
 
     private static (Model, Command) HandleProfilePageChanged(Model model, ProfileModel profile, PageChanged msg)

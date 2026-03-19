@@ -42,10 +42,11 @@ public sealed class UrlNavigationTests : IAsyncInitializer, IAsyncDisposable
         await _seeder.RegisterUserAsync(username, email, "password123");
         await LoginViaUi(email, "password123");
 
-        await Expect(_page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" }))
-            .ToHaveAttributeAsync("href", "/?feed=following");
-        await Expect(_page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Global Feed" }))
-            .ToHaveAttributeAsync("href", "/");
+        await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" }).ClickAsync();
+        await Expect(_page).ToHaveURLAsync(new Regex(@"/\?feed=following$"), new() { Timeout = 10000 });
+
+        await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Global Feed" }).ClickAsync();
+        await Expect(_page).ToHaveURLAsync(new Regex(@"/$"), new() { Timeout = 10000 });
     }
 
     [Test]
