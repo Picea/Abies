@@ -71,10 +71,10 @@ public static class Profile
             ul([class_("nav nav-pills outline-active")],
             [
                 li([class_("nav-item")],
-                    [a([class_(showFavorites ? "nav-link" : "nav-link active"), href(PageHref(username, false, 1))],
+                    [button([id($"profile-tab:{username}:articles"), type("button"), class_(showFavorites ? "nav-link" : "nav-link active"), onclick(new ProfileTabChanged(false), $"profile-tab-click:{username}:articles")],
                         [text("My Articles")])]),
                 li([class_("nav-item")],
-                    [a([class_(showFavorites ? "nav-link active" : "nav-link"), href(PageHref(username, true, 1))],
+                    [button([id($"profile-tab:{username}:favorites"), type("button"), class_(showFavorites ? "nav-link active" : "nav-link"), onclick(new ProfileTabChanged(true), $"profile-tab-click:{username}:favorites")],
                         [text("Favorited Articles")])])
             ])
         ]);

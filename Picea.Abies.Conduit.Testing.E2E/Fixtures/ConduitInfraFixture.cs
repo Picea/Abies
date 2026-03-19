@@ -64,6 +64,12 @@ public sealed class ConduitInfraFixture
     /// <summary>The base URL of the Conduit API (Aspire-managed).</summary>
     public string ApiUrl { get; private set; } = "";
 
+    /// <summary>The base URL of the AppHost-hosted InteractiveServer frontend.</summary>
+    public string ServerUrl { get; private set; } = "";
+
+    /// <summary>The base URL of the AppHost-hosted InteractiveWasm frontend.</summary>
+    public string WasmUrl { get; private set; } = "";
+
     /// <summary>
     /// Starts the Aspire backend and waits for full health.
     /// </summary>
@@ -77,6 +83,8 @@ public sealed class ConduitInfraFixture
 
         var apiEndpoint = _app.GetEndpoint("conduit-api", "http");
         ApiUrl = apiEndpoint.ToString().TrimEnd('/');
+        ServerUrl = _app.GetEndpoint("conduit-server", "http").ToString().TrimEnd('/');
+        WasmUrl = _app.GetEndpoint("conduit-wasm", "http").ToString().TrimEnd('/');
 
         try
         {
@@ -89,6 +97,8 @@ public sealed class ConduitInfraFixture
         }
 
         await WaitForApiHealthy(ApiUrl);
+        await WaitForFrontendHealthy(ServerUrl, "conduit-server");
+        await WaitForFrontendHealthy(WasmUrl, "conduit-wasm");
     }
 
     /// <summary>
@@ -157,5 +167,31 @@ public sealed class ConduitInfraFixture
 
         throw new TimeoutException(
             $"Conduit API at {apiUrl} did not become fully healthy within {timeoutSeconds} seconds.");
+    }
+
+    private static async Task WaitForFrontendHealthy(string url, string name, int timeoutSeconds = 120)
+    {
+        using var http = new HttpClient();
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                var response = await http.GetAsync(url);
+                var status = (int)response.StatusCode;
+                Console.WriteLine($"[Infra] Frontend {name} {url} -> {status}");
+                if (response.IsSuccessStatusCode)
+                    return;
+            }
+            catch
+            {
+                // Frontend not ready yet
+            }
+
+            await Task.Delay(500);
+        }
+
+        throw new TimeoutException($"Frontend '{name}' at {url} did not become healthy within {timeoutSeconds} seconds.");
     }
 }

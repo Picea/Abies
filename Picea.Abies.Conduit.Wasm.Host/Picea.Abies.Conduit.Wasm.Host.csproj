@@ -17,6 +17,13 @@
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\Picea.Abies.Conduit.Wasm\wwwroot\main.css"
+             Link="wwwroot\main.css"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!--
     Publish the WASM project before build so that its AppBundle is available
     for UseAbiesWasmFiles() to serve at runtime.

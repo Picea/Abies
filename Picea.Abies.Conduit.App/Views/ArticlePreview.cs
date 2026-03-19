@@ -35,7 +35,11 @@ public static class ArticlePreview
         var btnClass = article.Favorited
             ? "btn btn-primary btn-sm pull-xs-right"
             : "btn btn-outline-primary btn-sm pull-xs-right";
-        return button([class_(btnClass), onclick(new ToggleFavorite(article.Slug, article.Favorited))],
+        return button([
+                id($"article-preview-favorite:{article.Slug}"),
+                class_(btnClass),
+                onclick(new ToggleFavorite(article.Slug, article.Favorited), $"article-preview-favorite-click:{article.Slug}")
+            ],
             [i([class_("ion-heart")], []), text($" {article.FavoritesCount}")]);
     }
 

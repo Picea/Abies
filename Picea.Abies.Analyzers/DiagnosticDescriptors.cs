@@ -75,4 +75,30 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "An <input> element without an explicit type attribute defaults to type='text'. Being explicit about the input type improves code readability and makes the intent clear.",
         helpLinkUri: "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#type");
+
+    // =========================================================================
+    // ABIES006: Repeated interactive controls should use explicit stable handler IDs
+    // =========================================================================
+    public static readonly DiagnosticDescriptor RepeatedHandlerMissingStableId = new(
+        id: "ABIES006",
+        title: "Repeated interactive control should use an explicit handler id",
+        messageFormat: "'{0}' is created inside a repeated render path; provide an explicit id argument so the handler command identity stays stable across renders",
+        category: _category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Praefixum call-site IDs provide structural identity, but repeated interactive controls created in loops or Select projections need explicit handler ids to preserve instance identity. Without them, rerenders can dispatch stale handlers or patch the wrong interactive element.",
+        helpLinkUri: "https://github.com/Picea/Abies/blob/main/docs/api/html-events.md");
+
+    // =========================================================================
+    // ABIES007: Repeated helper invocations that emit interactive controls
+    // =========================================================================
+    public static readonly DiagnosticDescriptor RepeatedInteractiveHelperMissingStableIds = new(
+        id: "ABIES007",
+        title: "Repeated helper invocation should use stable event handler ids",
+        messageFormat: "'{0}' is invoked in a repeated render path and contains event handlers without explicit id arguments",
+        category: _category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Helpers that render interactive controls can hide event handlers from the immediate call site. When those helpers are invoked in repeated paths, handlers inside the helper should use explicit ids to preserve per-instance identity.",
+        helpLinkUri: "https://github.com/Picea/Abies/blob/main/docs/api/html-events.md");
 }

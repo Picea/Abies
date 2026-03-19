@@ -43,7 +43,7 @@ public static class Route
 
         var tab = query.TryGetValue("feed", out feed) && feed == "following" && session is not null
             ? FeedTab.Your
-            : session is not null ? FeedTab.Your : FeedTab.Global;
+            : FeedTab.Global;
         var currentPage = ParsePage(query);
         var offset = (currentPage - 1) * Constants.ArticlesPerPage;
         var model = new HomeModel(tab, null, [], 0, currentPage, [], true);

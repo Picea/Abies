@@ -76,6 +76,7 @@ This provides:
 - **Source generator dependency**: Requires Praefixum NuGet package
 - **Build complexity**: Source generators affect build time
 - **Loop handling**: Dynamic lists still need manual keys
+- **Repeated interactive controls**: Call-site IDs provide structural identity, not logical instance identity. Repeated controls with event handlers may also need explicit handler ids so `CommandId`s stay stable across rerenders.
 - **Refactoring sensitivity**: Moving code changes IDs
 
 ### Neutral
@@ -118,7 +119,7 @@ Rejected as too burdensome for simple cases.
 
 **Note:** Per ADR-016, for dynamic lists where elements may change,
 developers should use the `id:` parameter to provide stable element identity.
-This is only necessary for dynamic lists, not static content.
+For repeated interactive controls, developers should additionally provide explicit event handler ids so DOM identity and handler identity stay aligned.
 
 ### Alternative 3: Hash-Based IDs
 

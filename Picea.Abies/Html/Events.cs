@@ -67,7 +67,9 @@ public static class Events
     /// <param name="command">The message to dispatch when the event fires.</param>
     /// <param name="id">Compile-time unique identifier for this handler.</param>
     public static Handler on(string name, Message command, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, NextCommandId(), command, id ?? string.Empty);
+    {
+        return new(name, NextCommandId(), command, id ?? string.Empty);
+    }
 
     /// <summary>
     /// Creates an event handler that produces a message from deserialized event data.
@@ -78,9 +80,11 @@ public static class Events
     /// <param name="factory">A function that creates a message from event data.</param>
     /// <param name="id">Compile-time unique identifier for this handler.</param>
     public static Handler on<T>(string name, Func<T?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
-        => new(name, NextCommandId(), null, id ?? string.Empty,
+    {
+        return new(name, NextCommandId(), null, id ?? string.Empty,
             o => factory((T?)o),
             EventDataDeserializers.Get<T>());
+    }
 
     // =========================================================================
     // Mouse Events
