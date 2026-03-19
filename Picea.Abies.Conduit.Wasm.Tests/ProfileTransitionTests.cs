@@ -97,7 +97,8 @@ public class ProfileTransitionTests
 
         var (_, command) = ConduitProgram.Transition(model, new ProfileTabChanged(true));
 
-        await Assert.That(command).IsTypeOf<FetchArticles>();
+        var batch = await Assert.That(command).IsTypeOf<Command.Batch>();
+        await Assert.That(batch!.Commands).Any(c => c is FetchArticles);
     }
 
     [Test]

@@ -73,10 +73,9 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
         await LoginViaUi(email, "password123");
 
         await _page.NavigateInApp($"/article/{article.Slug}");
+        await _page.WaitForSelectorAsync(".banner h1", new() { Timeout = 15000 });
 
-        await _page.WaitForSelectorAsync("text='Delete Article'", new() { Timeout = 15000 });
-
-        await _page.GetByText("Delete Article").First.ClickAsync();
+        await _page.Locator(".article-actions button.btn-outline-danger, .article-meta button.btn-outline-danger").First.ClickAsync();
 
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
         await _seeder.WaitForArticleDeletedAsync(article.Slug);
@@ -102,7 +101,9 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 
         await _seeder.WaitForArticleAsync(article.Slug);
         await LoginViaUi(email, "password123");
-        await _page.NavigateInApp($"/article/{article.Slug}");
+        await _page.GotoAsync($"/article/{article.Slug}", new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await _page.WaitForWasmReady();
+        await _page.WaitForSelectorAsync(".banner h1", new() { Timeout = 15000 });
 
         await _page.RouteAsync("**/api/articles/*", async route =>
         {
@@ -120,7 +121,7 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
             await route.ContinueAsync();
         });
 
-        await _page.GetByText("Delete Article").First.ClickAsync();
+        await _page.Locator("button").Filter(new() { HasText = "Delete Article" }).First.ClickAsync();
 
         await Expect(_page).ToHaveURLAsync(new Regex("/$"), new() { Timeout = 10000 });
         await Expect(_page.Locator(".home-page")).ToBeVisibleAsync(new() { Timeout = 10000 });
@@ -147,19 +148,15 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 
         await LoginViaUi(readerEmail, "password123");
 
-        await _page.NavigateInApp($"/article/{article.Slug}");
+        await _page.GotoAsync($"/article/{article.Slug}", new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await _page.WaitForWasmReady();
+        await _page.WaitForSelectorAsync(".banner h1", new() { Timeout = 15000 });
 
-        await _page.WaitForSelectorAsync(
-            ".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary",
-            new() { Timeout = 15000 });
+        var favoriteButton = _page.Locator("button").Filter(new() { HasText = "Favorite Article" }).First;
+        await favoriteButton.ClickAsync();
 
-        await _page.Locator(".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary")
-            .First.ClickAsync();
-
-        await Expect(
-            _page.Locator(".article-actions button.btn-primary, .article-meta button.btn-primary")
-                .First
-        ).ToContainTextAsync("1", new() { Timeout = 10000 });
+        await Expect(_page.Locator("button").Filter(new() { HasText = "Unfavorite Article" }).First)
+            .ToContainTextAsync("1", new() { Timeout = 10000 });
     }
 
     [Test]
@@ -180,15 +177,17 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
 
         await _seeder.WaitForArticleAsync(article.Slug);
         await LoginViaUi(readerEmail, "password123");
-        await _page.NavigateInApp($"/article/{article.Slug}");
+        await _page.GotoAsync($"/article/{article.Slug}", new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await _page.WaitForWasmReady();
+        await _page.WaitForSelectorAsync(".banner h1", new() { Timeout = 15000 });
 
-        var favoriteButton = _page.Locator(".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary").First;
+        var favoriteButton = _page.Locator("button").Filter(new() { HasText = "Favorite Article" }).First;
         await favoriteButton.ClickAsync();
-        await Expect(_page.Locator(".article-actions button.btn-primary, .article-meta button.btn-primary").First)
+        await Expect(_page.Locator("button").Filter(new() { HasText = "Unfavorite Article" }).First)
             .ToContainTextAsync("1", new() { Timeout = 10000 });
 
-        await _page.Locator(".article-actions button.btn-primary, .article-meta button.btn-primary").First.ClickAsync();
-        await Expect(_page.Locator(".article-actions button.btn-outline-primary, .article-meta button.btn-outline-primary").First)
+        await _page.Locator("button").Filter(new() { HasText = "Unfavorite Article" }).First.ClickAsync();
+        await Expect(_page.Locator("button").Filter(new() { HasText = "Favorite Article" }).First)
             .ToContainTextAsync("0", new() { Timeout = 10000 });
     }
 
@@ -249,6 +248,7 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByPlaceholder("Password").FillAsync(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await Expect(_page.Locator(".navbar")).ToContainTextAsync(email.Split('@')[0], new() { Timeout = 10000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>

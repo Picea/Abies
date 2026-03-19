@@ -22,6 +22,7 @@ internal static class AbiesStubs
             public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
             public record Text(string Id, string Value) : Node(Id);
             public record Attribute(string Id, string Name, string Value);
+            public abstract record Message;
         }
         
         // ── Picea.Abies.Html.Elements stubs ────────────────────────────────
@@ -103,6 +104,28 @@ internal static class AbiesStubs
         
                 public static DOM.Attribute placeholder(string value, string? id = null)
                     => new(id ?? "", "placeholder", value);
+
+                public static DOM.Attribute key(string value, string? id = null)
+                    => new(id ?? "", "data-key", value);
+
+                public static DOM.Attribute id(string value, string? id = null)
+                    => new(id ?? "", "id", value);
+            }
+        }
+
+        namespace Picea.Abies.Html
+        {
+            using Picea.Abies.DOM;
+
+            public record Handler(string Id, string Name, string Value) : Attribute(Id, Name, Value);
+
+            public static class Events
+            {
+                public static Handler onclick(Message command, string? id = null)
+                    => new(id ?? "", "data-event-click", id ?? "auto");
+
+                public static Handler oninput(System.Func<object?, Message> factory, string? id = null)
+                    => new(id ?? "", "data-event-input", id ?? "auto");
             }
         }
         """;

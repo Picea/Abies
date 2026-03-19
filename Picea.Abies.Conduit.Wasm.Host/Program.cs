@@ -84,6 +84,7 @@ var wasmAppBundlePath = Path.GetFullPath(Path.Combine(
     "net10.0", "browser-wasm", "AppBundle"));
 
 app.UseAbiesWasmFiles(wasmAppBundlePath);
+app.UseAbiesStaticFiles();
 
 // Forward /api/** to the conduit-api service
 app.MapReverseProxy();
@@ -91,6 +92,8 @@ app.MapReverseProxy();
 // Serve the initial HTML page in InteractiveWasm mode (fast first paint + WASM takeover)
 app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
-    new RenderMode.InteractiveWasm());
+    new RenderMode.InteractiveWasm(),
+    interpreter: ConduitInterpreter.Interpret,
+    argument: new ConduitStartup(conduitApiUrl));
 
 app.Run();

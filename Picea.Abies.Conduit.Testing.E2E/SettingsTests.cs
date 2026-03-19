@@ -78,6 +78,43 @@ public sealed class SettingsTests : IAsyncInitializer, IAsyncDisposable
             .ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
+    [Test]
+    public async Task UpdateSettings_WithBioOnly_ShouldPersistBio()
+    {
+        var username = $"bioonly{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        await _seeder.RegisterUserAsync(username, email, "password123");
+        await LoginViaUi(email, "password123");
+
+        await _page.Locator(".navbar").GetByText("Settings").ClickAsync();
+        await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 10000 });
+        await _page.GetByPlaceholder("Short bio about you").FillAsync("Bio only update");
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Update Settings" }).ClickAsync();
+        await _page.WaitForSelectorAsync("button:has-text('Update Settings'):not([disabled])", new() { Timeout = 15000 });
+
+        await _page.Locator(".navbar").GetByText(username).ClickAsync();
+        await Expect(_page.Locator(".user-info p")).ToContainTextAsync("Bio only update", new() { Timeout = 10000 });
+    }
+
+    [Test]
+    public async Task UpdateSettings_WithImageOnly_ShouldPersistImage()
+    {
+        var username = $"imgonly{Guid.NewGuid():N}"[..20];
+        var email = $"{username}@test.com";
+        await _seeder.RegisterUserAsync(username, email, "password123");
+        await LoginViaUi(email, "password123");
+
+        await _page.Locator(".navbar").GetByText("Settings").ClickAsync();
+        await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 10000 });
+        const string newImage = "https://example.com/image-only.png";
+        await _page.GetByPlaceholder("URL of profile picture").FillAsync(newImage);
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Update Settings" }).ClickAsync();
+        await _page.WaitForSelectorAsync("button:has-text('Update Settings'):not([disabled])", new() { Timeout = 15000 });
+
+        await _page.Locator(".navbar").GetByText(username).ClickAsync();
+        await Expect(_page.Locator($".user-img[src='{newImage}']")).ToBeVisibleAsync(new() { Timeout = 10000 });
+    }
+
     private async Task LoginViaUi(string email, string password)
     {
         await _page.GotoAsync("/login");
@@ -91,5 +128,8 @@ public sealed class SettingsTests : IAsyncInitializer, IAsyncDisposable
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
+    private static IPageAssertions Expect(IPage page) =>
+        Assertions.Expect(page);
 
 }

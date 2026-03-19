@@ -1,6 +1,7 @@
 using Picea.Abies.DOM;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace Picea.Abies.Conduit.App.Pages;
 
@@ -39,17 +40,23 @@ public static class Home
     {
         var tabs = new List<Node>();
         if (session is not null)
-            tabs.Add(Tab("Your Feed", FeedTab.Your, activeTab, PageHref(FeedTab.Your, null, 1)));
-        tabs.Add(Tab("Global Feed", FeedTab.Global, activeTab, PageHref(FeedTab.Global, null, 1)));
+            tabs.Add(Tab("Your Feed", FeedTab.Your, activeTab, "your", new FeedTabChanged(FeedTab.Your)));
+        tabs.Add(Tab("Global Feed", FeedTab.Global, activeTab, "global", new FeedTabChanged(FeedTab.Global)));
         if (activeTab is FeedTab.Tag && selectedTag is not null)
-            tabs.Add(Tab($"# {selectedTag}", FeedTab.Tag, activeTab, PageHref(FeedTab.Tag, selectedTag, 1)));
+            tabs.Add(Tab($"# {selectedTag}", FeedTab.Tag, activeTab, $"tag-{Uri.EscapeDataString(selectedTag)}", new FeedTabChanged(FeedTab.Tag, selectedTag)));
         return div([class_("feed-toggle")], [ul([class_("nav nav-pills outline-active")], tabs.ToArray())]);
     }
 
-    private static Node Tab(string label, FeedTab tab, FeedTab activeTab, string hrefValue)
+    private static Node Tab(string label, FeedTab tab, FeedTab activeTab, string keySuffix, Message message)
     {
         var activeClass = tab == activeTab ? "nav-link active" : "nav-link";
-        return li([class_("nav-item")], [a([class_(activeClass), href(hrefValue)], [text(label)])]);
+        return li([class_("nav-item"), key($"feed-tab-item:{keySuffix}")],
+            [button([
+                id($"feed-tab:{keySuffix}"),
+                type("button"),
+                class_(activeClass),
+                onclick(message, $"feed-tab-click:{keySuffix}")
+            ], [text(label)])]);
     }
 
     private static Node Sidebar(IReadOnlyList<string> tags) =>
@@ -60,7 +67,12 @@ public static class Home
                 ? text("Loading tags...")
                 : div([class_("tag-list")],
                     tags.Select(tag =>
-                        a([href(PageHref(FeedTab.Tag, tag, 1)), class_("tag-pill tag-default")],
+                        button([
+                            id($"tag-pill:{Uri.EscapeDataString(tag)}"),
+                            type("button"),
+                            class_("tag-pill tag-default"),
+                            onclick(new FeedTabChanged(FeedTab.Tag, tag), $"tag-pill-click:{Uri.EscapeDataString(tag)}")
+                        ],
                             [text(tag)])).ToArray())
         ]);
 

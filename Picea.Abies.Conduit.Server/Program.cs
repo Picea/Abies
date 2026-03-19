@@ -22,16 +22,9 @@ using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Resolve the conduit API URL from configuration.
-// Under .NET Aspire, WithReference(conduitApi) injects the env var
-// services__conduit-api__http__0, which ASP.NET Core's env-var provider
-// normalizes to the config key "services:conduit-api:http:0" (__ → :).
-// ConduitApiUrl is the fallback for standalone runs (no Aspire).
-var apiUrl = builder.Configuration["services:conduit-api:http:0"]
+var conduitApiUrl = builder.Configuration["services:conduit-api:http:0"]
     ?? builder.Configuration["ConduitApiUrl"]
-    ?? "http://localhost:5179";
-
+    ?? "http://localhost:5000";
 var app = builder.Build();
 
 app.UseWebSockets();
@@ -40,6 +33,6 @@ app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer(),
     interpreter: ConduitInterpreter.Interpret,
-    argument: new ConduitStartup(apiUrl));
+    argument: new ConduitStartup(conduitApiUrl));
 
 app.Run();

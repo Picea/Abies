@@ -28,6 +28,7 @@ using Picea.Abies.Conduit.App;
 // The subsequent import inside Runtime.Run is a cached no-op.
 await Picea.Abies.Browser.Runtime.ImportModule();
 var apiUrl = Picea.Abies.Browser.Runtime.GetOrigin();
+var initialUrl = Navigation.ParseUrl(Picea.Abies.Browser.Runtime.GetCurrentUrl());
 // Keep auth persistence scoped to the current browser tab. This preserves
 // hard-reload behavior without extending token lifetime across browser restarts.
 const string SessionStorageKey = "conduit.session";
@@ -35,7 +36,7 @@ const string SessionStorageKey = "conduit.session";
 var initialSession = LoadPersistedSession();
 
 await Picea.Abies.Browser.Runtime.Run<ConduitProgram, Model, ConduitStartup>(
-    argument: new ConduitStartup(apiUrl, initialSession),
+    argument: new ConduitStartup(apiUrl, initialSession, initialUrl),
     interpreter: Interpret);
 
 static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
@@ -65,7 +66,14 @@ static Session? LoadPersistedSession()
 
     try
     {
-        return DeserializeSession(json);
+        var session = DeserializeSession(json);
+        if (session is null)
+        {
+            Picea.Abies.Browser.Runtime.RemoveSessionStorageItem(SessionStorageKey);
+            return null;
+        }
+
+        return session;
     }
     catch
     {
