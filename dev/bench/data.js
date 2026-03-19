@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773651753779,
+  "lastUpdate": 1773932997301,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12226,6 +12226,84 @@ window.BENCHMARK_DATA = {
             "value": 59.8,
             "unit": "ms",
             "extra": "mean: 59.0ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87657d13cc73c0d8deb6b695a3822626d16831d8",
+          "message": "fix: Stabilize Conduit auth and E2E interactions (#142)\n\n* fix: restore Conduit route and auth regressions\n\n# Conflicts:\n#\tPicea.Abies.Conduit.Testing.E2E/CommentTests.cs\n#\tPicea.Abies.Conduit.Testing.E2E/Server/AuthenticationServerTests.cs\n\n* id repitition docs and analyzer / fixers\n\n* fix: stabilize Conduit auth and E2E interactions\n\n* fix: restore runtime handler IDs and update profile transition test\n\n* style: apply lint formatting fixes",
+          "timestamp": "2026-03-19T16:00:46+01:00",
+          "tree_id": "b87eab99edd58bd0ac63e01d9132246999b053a2",
+          "url": "https://github.com/Picea/Abies/commit/87657d13cc73c0d8deb6b695a3822626d16831d8"
+        },
+        "date": 1773932996962,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 161.6,
+            "unit": "ms",
+            "extra": "mean: 166.3ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 174.6,
+            "unit": "ms",
+            "extra": "mean: 174.1ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 209.9,
+            "unit": "ms",
+            "extra": "mean: 209.3ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 25.8,
+            "unit": "ms",
+            "extra": "mean: 25.7ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 74.3,
+            "unit": "ms",
+            "extra": "mean: 73.9ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 49.1,
+            "unit": "ms",
+            "extra": "mean: 49.1ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1589.2,
+            "unit": "ms",
+            "extra": "mean: 1590.3ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 199.9,
+            "unit": "ms",
+            "extra": "mean: 201.6ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 54.9,
+            "unit": "ms",
+            "extra": "mean: 54.4ms, samples: 15"
           }
         ]
       }
