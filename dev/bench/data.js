@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773932997301,
+  "lastUpdate": 1773932998375,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12880,6 +12880,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.88868999481201,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87657d13cc73c0d8deb6b695a3822626d16831d8",
+          "message": "fix: Stabilize Conduit auth and E2E interactions (#142)\n\n* fix: restore Conduit route and auth regressions\n\n# Conflicts:\n#\tPicea.Abies.Conduit.Testing.E2E/CommentTests.cs\n#\tPicea.Abies.Conduit.Testing.E2E/Server/AuthenticationServerTests.cs\n\n* id repitition docs and analyzer / fixers\n\n* fix: stabilize Conduit auth and E2E interactions\n\n* fix: restore runtime handler IDs and update profile transition test\n\n* style: apply lint formatting fixes",
+          "timestamp": "2026-03-19T16:00:46+01:00",
+          "tree_id": "b87eab99edd58bd0ac63e01d9132246999b053a2",
+          "url": "https://github.com/Picea/Abies/commit/87657d13cc73c0d8deb6b695a3822626d16831d8"
+        },
+        "date": 1773932998087,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.1138973236084,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.870347023010254,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
