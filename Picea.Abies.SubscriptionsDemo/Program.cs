@@ -7,9 +7,9 @@
 //   - SubscriptionModule.Create: custom subscription sources
 //   - Navigation.UrlChanges: URL change subscription
 //
-// TODO: Re-add browser subscription demos (OnResize, OnVisibilityChange,
-//       OnMouseMove, WebSocket) when the BrowserSubscriptions module is
-//       reintroduced to the framework.
+// Planned follow-up: re-add browser subscription demos (OnResize,
+// OnVisibilityChange, OnMouseMove, WebSocket) when the BrowserSubscriptions
+// module is reintroduced to the framework.
 // =============================================================================
 
 using System.Runtime.Versioning;
