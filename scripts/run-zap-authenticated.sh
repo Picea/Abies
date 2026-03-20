@@ -101,6 +101,7 @@ for endpoint in "${authenticated_endpoints[@]}"; do
 
   echo "Running authenticated ZAP baseline against $endpoint"
   docker run --rm --network host \
+    --user 0:0 \
     -v "$(pwd):/zap/wrk:rw" \
     ghcr.io/zaproxy/zaproxy:stable \
     zap-baseline.py \

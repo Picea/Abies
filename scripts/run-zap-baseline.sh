@@ -30,6 +30,7 @@ fi
 
 echo "Running ZAP baseline against $target_url"
 docker run --rm --network host \
+  --user 0:0 \
   -v "$(pwd):/zap/wrk:rw" \
   ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py \
