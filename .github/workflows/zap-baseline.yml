@@ -60,6 +60,8 @@ jobs:
         run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore
 
       - name: Start API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
         run: |
           dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://127.0.0.1:5179 > /tmp/conduit-api.log 2>&1 &
           echo $! > /tmp/conduit-api.pid
