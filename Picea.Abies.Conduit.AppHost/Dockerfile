@@ -4,6 +4,8 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
+# python3 is required by emscripten (emcc) for WASM native compilation
+RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY ["Picea.Abies.Conduit.AppHost/Picea.Abies.Conduit.AppHost.csproj", "Picea.Abies.Conduit.AppHost/"]
 COPY ["Picea.Abies.Conduit/Picea.Abies.Conduit.csproj", "Picea.Abies.Conduit/"]
