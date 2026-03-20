@@ -156,6 +156,23 @@ if (app.Environment.IsDevelopment())
 }
 
 // ─── Middleware ─────────────────────────────────────────────────────────────
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.TryAdd("X-Content-Type-Options", "nosniff");
+    headers.TryAdd("X-Frame-Options", "DENY");
+    headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+    headers.TryAdd("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+
+    await next().ConfigureAwait(false);
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

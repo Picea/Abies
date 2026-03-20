@@ -210,6 +210,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Secrets scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -346,6 +354,19 @@ jobs:
           echo "📋 Installed templates:"
           dotnet new list abies
 
+      - name: Detect template-related changes
+        id: template-changes
+        run: |
+          CHANGED=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^Picea\.Abies\.Templates/' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "has_template_changes=true" >> $GITHUB_OUTPUT
+            echo "Detected template changes:"
+            echo "$CHANGED"
+          else
+            echo "has_template_changes=false" >> $GITHUB_OUTPUT
+            echo "No template source changes detected"
+          fi
+
       - name: Smoke test — abies-browser
         run: |
           TEMP_DIR=$(mktemp -d)
@@ -390,6 +411,43 @@ jobs:
 
           echo "✅ abies-server template compiles successfully"
           rm -rf "$TEMP_DIR"
+
+      - name: Security scan scaffolded templates
+        if: steps.template-changes.outputs.has_template_changes == 'true'
+        run: |
+          OUT_ROOT=$(mktemp -d)
+          echo "Using temp output root: $OUT_ROOT"
+
+          dotnet new abies-browser -o "$OUT_ROOT/abies-browser"
+          dotnet new abies-browser-empty -o "$OUT_ROOT/abies-browser-empty"
+          dotnet new abies-server -o "$OUT_ROOT/abies-server"
+
+          for project in \
+            "$OUT_ROOT/abies-browser" \
+            "$OUT_ROOT/abies-browser-empty" \
+            "$OUT_ROOT/abies-server"; do
+            dotnet restore "$project" --configfile /tmp/template-nuget.config
+            dotnet list "$project" package --vulnerable --include-transitive 2>&1 | tee "$project/vulnerability-report.txt"
+
+            if grep -qi "critical\|high" "$project/vulnerability-report.txt"; then
+              echo "❌ High/Critical dependency vulnerabilities in scaffolded project: $project"
+              exit 1
+            fi
+          done
+
+          docker run --rm \
+            -v "$PWD:/src" \
+            -v "$OUT_ROOT:/scan" \
+            aquasec/trivy:latest fs \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --scanners vuln,misconfig,secret \
+            --exit-code 1 \
+            /scan
+
+          python3 -m pip install --user semgrep
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep scan --config .semgrep/rules/template-security.yml "$OUT_ROOT" --error
 
   # Bundle size quality gate
   bundle-size-check:

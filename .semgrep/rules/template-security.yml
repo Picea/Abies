@@ -1,0 +1,27 @@
+rules:
+  - id: template-no-allowanyorigin
+    message: Do not ship templates with wildcard CORS policies in production code.
+    severity: ERROR
+    languages: [csharp]
+    paths:
+      include:
+        - Picea.Abies.Templates/templates/**/*.cs
+    pattern: .AllowAnyOrigin()
+
+  - id: template-no-hardcoded-secrets
+    message: Do not hardcode secrets or credentials in template source files.
+    severity: ERROR
+    languages: [csharp]
+    paths:
+      include:
+        - Picea.Abies.Templates/templates/**/*.cs
+    pattern-regex: (?i)(api[_-]?key|secret|password|token)\s*=\s*"[^"]+"
+
+  - id: template-no-insecure-http-links
+    message: Avoid http:// links in template assets unless explicitly localhost.
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - Picea.Abies.Templates/templates/**/*
+    pattern-regex: http://(?!localhost|127\.0\.0\.1)[^\s"')>]+
