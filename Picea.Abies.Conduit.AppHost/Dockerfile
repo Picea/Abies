@@ -16,9 +16,9 @@ RUN dotnet workload restore "Picea.Abies.Conduit.AppHost/Picea.Abies.Conduit.App
     && dotnet workload install wasm-tools
 COPY . .
 WORKDIR "/src/Picea.Abies.Conduit.AppHost"
-RUN dotnet publish "./Picea.Abies.Conduit.AppHost.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet build "./Picea.Abies.Conduit.AppHost.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM base AS final
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --from=build /app/build .
 ENTRYPOINT ["dotnet", "Picea.Abies.Conduit.AppHost.dll"]
