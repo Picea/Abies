@@ -10,5 +10,29 @@
     "universe": "Tolkien Legendarium",
     "created_at": "2026-03-19",
     "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Gimli", "Scribe", "Ralph"]
+  },
+  {
+    "assignment_id": 3,
+    "universe": "Tolkien Legendarium",
+    "created_at": "2026-03-20",
+    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Gimli", "Elrond", "Scribe", "Ralph"]
+  },
+  {
+    "assignment_id": 4,
+    "universe": "Tolkien Legendarium",
+    "created_at": "2026-03-20",
+    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Legolas", "Gimli", "Elrond", "Scribe", "Ralph"]
+  },
+  {
+    "assignment_id": 5,
+    "universe": "Tolkien Legendarium",
+    "created_at": "2026-03-20",
+    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Legolas", "Boromir", "Gimli", "Elrond", "Scribe", "Ralph"]
+  },
+  {
+    "assignment_id": 6,
+    "universe": "Tolkien Legendarium",
+    "created_at": "2026-03-20",
+    "members": ["Gandalf", "Galadriel", "Aragorn", "Faramir", "Samwise", "Legolas", "Boromir", "Gimli", "Elrond", "Scribe", "Ralph"]
   }
 ]

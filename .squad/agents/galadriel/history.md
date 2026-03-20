@@ -6,3 +6,6 @@
 - Created: 2026-03-19
 
 ## Learnings
+
+- UI branding directive: apply Abies conference brand palette to UI work by default.
+- Exception rule: Conduit-related projects keep their existing styling conventions and are excluded from palette enforcement.
