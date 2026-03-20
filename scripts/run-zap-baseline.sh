@@ -47,6 +47,12 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+if [ ! -f "$output_dir/zap-report.json" ]; then
+  echo "ZAP report was not generated at $output_dir/zap-report.json"
+  echo "The target may be unreachable or returned an unexpected status for baseline crawling."
+  exit 1
+fi
+
 high_count=$(jq '[.site[].alerts[] | select((.riskcode | tonumber) >= 3)] | length' "$output_dir/zap-report.json")
 echo "ZAP high-risk alerts: $high_count"
 
