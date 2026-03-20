@@ -518,7 +518,7 @@ jobs:
       - name: Check for untracked TODOs
         run: |
           # Find TODO/FIXME comments without issue references
-          untracked=$(grep -rn "TODO\|FIXME" --include="*.cs" --include="*.fs" --exclude-dir=obj --exclude-dir=bin . | grep -v "#[0-9]" || true)
+          untracked=$(grep -rIn "TODO\|FIXME" --include="*.cs" --include="*.fs" --exclude-dir=obj --exclude-dir=bin --exclude-dir=.git --binary-files=without-match . | grep -v "#[0-9]" || true)
 
           if [ ! -z "$untracked" ]; then
             echo "⚠️  Found TODO/FIXME comments without issue references:"

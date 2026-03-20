@@ -178,19 +178,38 @@ This preserves E2E confidence while keeping tests fast and focused.
 ```csharp
 public class LoginTests
 {
+  private IPlaywright _playwright;
+  private IBrowser _browser;
+  private IBrowserContext _context;
     private IPage _page;
 
   [Before(Test)]
   public async Task Setup()
     {
-        var playwright = await Playwright.CreateAsync();
-        var browser = await playwright.Chromium.LaunchAsync();
-        var context = await browser.NewContextAsync();
-        _page = await context.NewPageAsync();
+    _playwright = await Playwright.CreateAsync();
+    _browser = await _playwright.Chromium.LaunchAsync();
+    _context = await _browser.NewContextAsync();
+    _page = await _context.NewPageAsync();
 
         await TestSeeder.SeedUserAsync("user@test.com", "password");
         await _page.GotoAsync("/login");
     }
+
+  [After(Test)]
+  public async Task Cleanup()
+  {
+    if (_context is not null)
+    {
+      await _context.DisposeAsync();
+    }
+
+    if (_browser is not null)
+    {
+      await _browser.DisposeAsync();
+    }
+
+    _playwright?.Dispose();
+  }
 
   [Test]
     public async Task Login_WithValidCredentials_ShouldNavigateToDashboard()
@@ -199,7 +218,7 @@ public class LoginTests
         await _page.GetByLabel("Password").FillAsync("password");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
 
-        await Expect(_page).ToHaveURLAsync("/dashboard");
+    await Assertions.Expect(_page).ToHaveURLAsync("/dashboard");
     }
 }
 ```

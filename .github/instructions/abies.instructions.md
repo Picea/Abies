@@ -18,10 +18,11 @@ Picea.Abies.Browser/wwwroot/abies.js
 
 **This file is automatically copied to all consuming projects during build via the `SyncAbiesJs` MSBuild target.**
 
-Consuming projects include:
-- `Picea.Abies.Conduit.Wasm/wwwroot/abies.js`
-- `Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
-- `Picea.Abies.Presentation/wwwroot/abies.js`
+Copy targets include:
+- `Picea.Abies.Presentation/wwwroot/abies.js` (dev server static file)
+- `Picea.Abies.SubscriptionsDemo/wwwroot/abies.js` (dev server static file)
+- `Picea.Abies.Conduit.Wasm/bin/<Configuration>/net10.0/browser-wasm/AppBundle/abies.js`
+- `Picea.Abies.Counter.Wasm/bin/<Configuration>/net10.0/browser-wasm/AppBundle/abies.js`
 
 ⚠️ **NEVER edit the copied files directly** - always edit `Picea.Abies.Browser/wwwroot/abies.js` first. The copied files will be overwritten on build.
 
