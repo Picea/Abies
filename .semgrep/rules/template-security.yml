@@ -5,7 +5,8 @@ rules:
     languages: [csharp]
     paths:
       include:
-        - Picea.Abies.Templates/templates/**/*.cs
+        - /Picea.Abies.Templates/templates/**/*.cs
+        - /template-security-out/**/*.cs
     pattern: .AllowAnyOrigin()
 
   - id: template-no-hardcoded-secrets
@@ -14,7 +15,8 @@ rules:
     languages: [csharp]
     paths:
       include:
-        - Picea.Abies.Templates/templates/**/*.cs
+        - /Picea.Abies.Templates/templates/**/*.cs
+        - /template-security-out/**/*.cs
     pattern-regex: (?i)(api[_-]?key|secret|password|token)\s*=\s*"[^"]+"
 
   - id: template-no-insecure-http-links
@@ -23,5 +25,6 @@ rules:
     languages: [generic]
     paths:
       include:
-        - Picea.Abies.Templates/templates/**/*
+        - /Picea.Abies.Templates/templates/**/*
+        - /template-security-out/**/*
     pattern-regex: http://(?!localhost|127\.0\.0\.1)[^\s"')>]+

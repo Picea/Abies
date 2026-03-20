@@ -8,6 +8,29 @@ targets_file="${4:-.zap/apphost-auth-targets.txt}"
 
 mkdir -p "$output_dir"
 
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "$cmd is required but was not found in PATH"
+    exit 1
+  fi
+}
+
+require_cmd docker
+require_cmd curl
+require_cmd jq
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker daemon is not available. Start Docker Desktop and retry."
+  exit 1
+fi
+
+if ! curl -fsS --max-time 5 "$target_url/api/tags" >/dev/null 2>&1; then
+  echo "Target API is not ready at $target_url/api/tags"
+  echo "Ensure API dependencies (for example PostgreSQL) are running and retry."
+  exit 1
+fi
+
 if [ ! -f "$policy_file" ]; then
   echo "Policy file not found: $policy_file"
   exit 1
@@ -15,11 +38,6 @@ fi
 
 if [ ! -f "$targets_file" ]; then
   echo "Targets file not found: $targets_file"
-  exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "jq is required for authenticated ZAP scan"
   exit 1
 fi
 
