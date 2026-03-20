@@ -14,6 +14,7 @@ How to decide who handles what.
 | Backend implementation | Aragorn | APIs, services, data integration |
 | CI/CD and GitHub automation | Gimli | GitHub Actions, release pipelines, deployment checks |
 | Quality gate / PR approval | Elrond | Final code review, blocking authority, rejection lockout |
+| Security scanning, threat modeling, pentesting | Lúthien | SAST/DAST/SCA integration, secrets detection, security regression tests, HTTP headers, CORS, CVE triage |
 | Testing | Samwise | Write tests, find edge cases, verify fixes |
 | Scope & priorities | Gandalf | What to build next, trade-offs, decisions |
 | Async issue work (bugs, tests, small features) | @copilot 🤖 | Well-defined tasks matching capability profile |

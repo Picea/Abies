@@ -21,6 +21,7 @@
 | Boromir | Senior Technical Writer | .squad/agents/boromir/charter.md | Active |
 | Gimli | DevOps Engineer | .squad/agents/gimli/charter.md | Active |
 | Elrond | Reviewer | .squad/agents/elrond/charter.md | Active |
+| Lúthien | Security Expert & Pentester | .squad/agents/luthien/charter.md | Active |
 | Ralph | Work Monitor | .squad/agents/ralph/charter.md | Active |
 | Scribe | Session Logger | .squad/agents/scribe/charter.md | Active |
 
