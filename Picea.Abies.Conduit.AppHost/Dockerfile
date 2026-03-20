@@ -10,6 +10,7 @@ COPY ["Picea.Abies.Conduit/Picea.Abies.Conduit.csproj", "Picea.Abies.Conduit/"]
 COPY ["Picea.Abies/Picea.Abies.csproj", "Picea.Abies/"]
 COPY ["Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj", "Picea.Abies.Conduit.Api/"]
 RUN dotnet restore "Picea.Abies.Conduit.AppHost/Picea.Abies.Conduit.AppHost.csproj"
+RUN dotnet workload restore "Picea.Abies.Conduit.AppHost/Picea.Abies.Conduit.AppHost.csproj"
 COPY . .
 WORKDIR "/src/Picea.Abies.Conduit.AppHost"
 RUN dotnet build "./Picea.Abies.Conduit.AppHost.csproj" -c $BUILD_CONFIGURATION -o /app/build
