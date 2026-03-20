@@ -1,0 +1,73 @@
+rules:
+  - id: csharp-sql-query-string-concatenation
+    message: Avoid SQL query construction via string concatenation. Use parameterized commands.
+    severity: ERROR
+    languages: [csharp]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $SQL = "..." + $X + "...";
+          - pattern: |
+              $SQL = "..." + $X;
+          - pattern: |
+              $SQL = $X + "...";
+      - metavariable-regex:
+          metavariable: $SQL
+          regex: (?i).*(sql|query|command|statement).*
+
+  - id: csharp-hardcoded-jwt-dev-secret
+    message: Hardcoded JWT development secret found. Keep secrets in configuration providers, never source code.
+    severity: ERROR
+    languages: [csharp]
+    patterns:
+      - pattern-regex: "(?i)jwt:secret"
+      - pattern-regex: "(?i)this-is-a-development-secret-key"
+
+  - id: csharp-crypto-random-for-security
+    message: Do not use System.Random for security-sensitive values. Use RandomNumberGenerator.
+    severity: ERROR
+    languages: [csharp]
+    patterns:
+      - pattern: new Random(...)
+
+  - id: conduit-minimal-api-mutation-without-auth
+    message: Mutating API endpoints should call RequireAuthorization() unless explicitly public by design.
+    severity: WARNING
+    languages: [csharp]
+    paths:
+      include:
+        - Picea.Abies.Conduit.Api/Endpoints/*.cs
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $GROUP.MapPost(...)
+                ...
+                .WithName(...);
+          - pattern: |
+              $GROUP.MapPut(...)
+                ...
+                .WithName(...);
+          - pattern: |
+              $GROUP.MapDelete(...)
+                ...
+                .WithName(...);
+      - pattern-not: |
+          $GROUP.MapPost(...)
+            ...
+            .RequireAuthorization()
+            ...
+            .WithName(...);
+      - pattern-not: |
+          $GROUP.MapPut(...)
+            ...
+            .RequireAuthorization()
+            ...
+            .WithName(...);
+      - pattern-not: |
+          $GROUP.MapDelete(...)
+            ...
+            .RequireAuthorization()
+            ...
+            .WithName(...);
+      - pattern-not-regex: '(?s)MapPost\(\s*"/"\s*,\s*Register\s*\).*?WithName'
+      - pattern-not-regex: '(?s)MapPost\(\s*"/login"\s*,\s*Login\s*\).*?WithName'

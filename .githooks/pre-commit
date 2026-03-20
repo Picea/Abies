@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run secrets detection before each commit.
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat <<'EOF'
+gitleaks is not installed.
+Install with one of:
+  brew install gitleaks
+  go install github.com/gitleaks/gitleaks/v8@latest
+Then retry the commit.
+EOF
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "Running gitleaks pre-commit scan..."
+gitleaks git --staged --config .gitleaks.toml --redact

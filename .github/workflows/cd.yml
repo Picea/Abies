@@ -38,15 +38,28 @@ jobs:
       run: |
         echo "🔍 Scanning for vulnerable packages..."
         dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+
         if grep -qi "critical\|high" vulnerability-report.txt; then
-          echo "⚠️  WARNING: Critical or High severity vulnerabilities detected!"
-          echo "Please review the vulnerability report above and update dependencies."
-          # For now, we warn but don't fail the build
-          # Change to 'exit 1' to make this a hard failure
+          echo "❌ Critical or High severity vulnerabilities detected!"
+
+          if [ -n "${ALLOW_TRANSITIVE_VULNS:-}" ]; then
+            if echo "${ALLOW_TRANSITIVE_VULNS}" | grep -Eq '^https?://'; then
+              echo "⚠️  Temporarily allowing vulnerabilities due to tracked issue:"
+              echo "    ${ALLOW_TRANSITIVE_VULNS}"
+              echo "Remove this exception as soon as remediations are available."
+            else
+              echo "❌ ALLOW_TRANSITIVE_VULNS is set but is not a valid http(s) URL:"
+              echo "    ${ALLOW_TRANSITIVE_VULNS}"
+              exit 1
+            fi
+          else
+            echo "❌ Failing build because high/critical vulnerabilities were found."
+            echo "To temporarily allow this, set ALLOW_TRANSITIVE_VULNS to a tracking issue URL."
+            exit 1
+          fi
         else
           echo "✅ No critical or high severity vulnerabilities found"
         fi
-      continue-on-error: true
 
     - name: Build
       run: dotnet build --no-restore
@@ -66,6 +79,50 @@ jobs:
       run: dotnet test --project Picea.Abies.Analyzers.Tests/Picea.Abies.Analyzers.Tests.csproj --no-build --verbosity normal
     - name: Test Picea.Abies.Templates.Testing (build-smoke only)
       run: dotnet test --project Picea.Abies.Templates.Testing/Picea.Abies.Templates.Testing.csproj --no-build --verbosity normal -- --treenode-filter "/*/*/*/*[Category!=E2E]"
+
+    - name: Build container images from Dockerfiles
+      run: |
+        mapfile -t dockerfiles < <(find . -name 'Dockerfile' -type f | sort)
+
+        if [ "${#dockerfiles[@]}" -eq 0 ]; then
+          echo "No Dockerfiles found. Skipping image build phase."
+          exit 0
+        fi
+
+        : > /tmp/cd-image-tags.txt
+
+        for dockerfile in "${dockerfiles[@]}"; do
+          context_dir=$(dirname "$dockerfile")
+          rel=${context_dir#./}
+          tag="abies-$(echo "$rel" | tr '/._' '---' | tr -cd 'a-zA-Z0-9-'):ci"
+
+          echo "Building image $tag from $dockerfile"
+          docker build -f "$dockerfile" -t "$tag" .
+          echo "$tag" >> /tmp/cd-image-tags.txt
+        done
+
+        echo "Built images:"
+        cat /tmp/cd-image-tags.txt
+
+    - name: Trivy image scan (HIGH/CRITICAL)
+      run: |
+        if [ ! -f /tmp/cd-image-tags.txt ]; then
+          echo "No built image list found. Skipping image scanning."
+          exit 0
+        fi
+
+        while IFS= read -r image_tag; do
+          [ -z "$image_tag" ] && continue
+          echo "Scanning image: $image_tag"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "$image_tag"
+        done < /tmp/cd-image-tags.txt
+
     # PostgreSQL integration tests are skipped in CD — they require a
     # PostgreSQL service container that is not provisioned in this workflow.
     # Run locally with: CONDUIT_POSTGRES_CONNECTION="..." dotnet test --project ...

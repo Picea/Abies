@@ -1,0 +1,77 @@
+name: ZAP Baseline Scan
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  zap-baseline:
+    name: ZAP Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore API
+        run: dotnet restore Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Build API
+        run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore
+
+      - name: Start API
+        run: |
+          dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://127.0.0.1:5179 > /tmp/conduit-api.log 2>&1 &
+          echo $! > /tmp/conduit-api.pid
+
+      - name: Wait for API readiness
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5179/api/tags >/dev/null 2>&1; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "API failed to become ready"
+          tail -n 200 /tmp/conduit-api.log || true
+          exit 1
+
+      - name: Run ZAP baseline
+        run: bash scripts/run-zap-baseline.sh http://127.0.0.1:5179 zap-results
+
+      - name: Run authenticated ZAP profile
+        run: |
+          bash scripts/run-zap-authenticated.sh \
+            http://127.0.0.1:5179 \
+            zap-results-auth \
+            .zap/apphost-auth-policy.conf \
+            .zap/apphost-auth-targets.txt
+
+      - name: Upload ZAP artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline-artifacts
+          path: |
+            zap-results/**
+            zap-results-auth/**
+            /tmp/conduit-api.log
+
+      - name: Stop API
+        if: always()
+        run: |
+          pid=$(cat /tmp/conduit-api.pid 2>/dev/null || true)
+          if [ -n "${pid:-}" ]; then
+            kill "$pid" || true
+          fi
