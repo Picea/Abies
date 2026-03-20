@@ -65,7 +65,7 @@ jobs:
           exit 1
 
       - name: Run ZAP baseline
-        run: bash scripts/run-zap-baseline.sh http://127.0.0.1:5179 zap-results
+        run: bash scripts/run-zap-baseline.sh http://127.0.0.1:5179/api/tags zap-results
 
       - name: Run authenticated ZAP profile
         run: |
