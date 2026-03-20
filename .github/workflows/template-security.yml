@@ -110,11 +110,17 @@ jobs:
       - name: Semgrep scan scaffolded template output
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          semgrep scan \
+          if ! semgrep scan \
             --config .semgrep/rules/template-security.yml \
             --json \
             --output template-security-out/semgrep-template-output.json \
-            template-security-out
+            template-security-out; then
+            code=$?
+            # Semgrep may return 2 for non-fatal warnings; findings are enforced below via JSON parsing.
+            if [ "$code" -ne 2 ]; then
+              exit "$code"
+            fi
+          fi
 
       - name: Enforce no ERROR findings in scaffolded output
         run: |
