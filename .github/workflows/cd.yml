@@ -94,7 +94,7 @@ jobs:
         for dockerfile in "${dockerfiles[@]}"; do
           context_dir=$(dirname "$dockerfile")
           rel=${context_dir#./}
-          tag="abies-$(echo "$rel" | tr '/._' '---' | tr -cd 'a-zA-Z0-9-'):ci"
+          tag="abies-$(echo "$rel" | tr '/._' '---' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-'):ci"
 
           echo "Building image $tag from $dockerfile"
           docker build -f "$dockerfile" -t "$tag" .
