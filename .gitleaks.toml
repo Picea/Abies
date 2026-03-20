@@ -1,0 +1,14 @@
+[extend]
+# Start from the built-in default ruleset and only tune repo-specific behavior.
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for known non-secret test fixtures"
+paths = [
+  '''^benchmark-results/''',
+  '''^BenchmarkDotNet\.Artifacts/''',
+  '''^test-results/''',
+  '''^TestResults/''',
+  '''^docs/''',
+  '''^\.squad/'''
+]

@@ -27,6 +27,22 @@ var conduitApiUrl = builder.Configuration["services:conduit-api:http:0"]
     ?? "http://localhost:5000";
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.TryAdd("X-Content-Type-Options", "nosniff");
+    headers.TryAdd("X-Frame-Options", "DENY");
+    headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+
+    await next().ConfigureAwait(false);
+});
+
 app.UseWebSockets();
 app.UseAbiesStaticFiles();
 app.MapAbies<ConduitProgram, Model, ConduitStartup>(

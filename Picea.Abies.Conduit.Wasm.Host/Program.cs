@@ -70,6 +70,22 @@ builder.Services
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.TryAdd("X-Content-Type-Options", "nosniff");
+    headers.TryAdd("X-Frame-Options", "DENY");
+    headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+
+    await next().ConfigureAwait(false);
+});
+
 // Serve the WASM AppBundle files (_framework/dotnet.js, managed DLLs, etc.)
 var configuration =
 #if DEBUG

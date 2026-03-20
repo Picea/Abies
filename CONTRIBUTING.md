@@ -139,6 +139,64 @@ npm run bench -- --headless --framework abies-keyed
 
 See the [benchmarking guide](docs/guides/performance.md) for detailed instructions.
 
+### Local Secret Scanning Hook (Required)
+
+This repository uses a managed pre-commit hook that runs `gitleaks` against staged changes.
+
+Set it up once after cloning:
+
+```bash
+# Install gitleaks (macOS)
+brew install gitleaks
+
+# Enable repository-managed hooks
+bash scripts/setup-git-hooks.sh
+```
+
+Verify hook path:
+
+```bash
+git config --get core.hooksPath
+# expected: .githooks
+```
+
+If gitleaks reports a finding, fix or remove the secret before committing.
+
+### Local Semgrep Security Scan
+
+Run Semgrep locally before opening a PR:
+
+```bash
+pipx run semgrep scan --config .semgrep/rules/conduit-security.yml
+```
+
+The CI workflow also runs this ruleset on pull requests and pushes to main.
+
+### Local Trivy Security Scan
+
+Run Trivy baseline locally before opening a PR:
+
+```bash
+bash scripts/run-trivy-baseline.sh
+```
+
+This enforces high/critical findings and writes reports to `trivy-results/`.
+
+### Local ZAP Security Scan (Authenticated)
+
+With the API running locally, run both baseline and authenticated scans:
+
+```bash
+bash scripts/run-zap-baseline.sh http://127.0.0.1:5179 zap-results
+bash scripts/run-zap-authenticated.sh \
+  http://127.0.0.1:5179 \
+  zap-results-auth \
+  .zap/apphost-auth-policy.conf \
+  .zap/apphost-auth-targets.txt
+```
+
+Authenticated scan provisions a temporary user and checks protected endpoints with a valid token.
+
 ## 🚀 Workflow
 
 ### 1. Create a Feature Branch

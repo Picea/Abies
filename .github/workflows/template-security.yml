@@ -1,0 +1,149 @@
+name: Template Security Scan
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  template-security:
+    name: Template Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
+      - name: Pack framework packages to local feed
+        run: |
+          LOCAL_FEED=$(pwd)/local-packages
+          mkdir -p "$LOCAL_FEED"
+          PACK_VERSION="1.0.0-ci"
+
+          for project in \
+            Picea.Abies/Picea.Abies.csproj \
+            Picea.Abies.Browser/Picea.Abies.Browser.csproj \
+            Picea.Abies.Server/Picea.Abies.Server.csproj \
+            Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj; do
+            dotnet pack "$project" -c Release -o "$LOCAL_FEED" \
+              -p:Version="$PACK_VERSION" \
+              -p:PackageVersion="$PACK_VERSION"
+          done
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Create NuGet config for template builds
+        run: |
+          cat > /tmp/template-security-nuget.config <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="local" value="$(pwd)/local-packages" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+          EOF
+
+      - name: Install template pack from source
+        run: dotnet new install Picea.Abies.Templates/
+
+      - name: Scaffold templates for security scanning
+        run: |
+          OUT_ROOT="$(pwd)/template-security-out"
+          rm -rf "$OUT_ROOT"
+          mkdir -p "$OUT_ROOT"
+
+          dotnet new abies-browser -o "$OUT_ROOT/abies-browser"
+          dotnet new abies-browser-empty -o "$OUT_ROOT/abies-browser-empty"
+          dotnet new abies-server -o "$OUT_ROOT/abies-server"
+
+      - name: Build and SCA scan scaffolded templates
+        run: |
+          OUT_ROOT="$(pwd)/template-security-out"
+
+          for project in \
+            "$OUT_ROOT/abies-browser" \
+            "$OUT_ROOT/abies-browser-empty" \
+            "$OUT_ROOT/abies-server"; do
+            echo "🔨 Restoring $project"
+            dotnet restore "$project" --configfile /tmp/template-security-nuget.config
+
+            echo "🔨 Building $project"
+            dotnet build "$project" --no-restore
+
+            echo "🔍 Running SCA for $project"
+            report="$project/vulnerability-report.txt"
+            dotnet list "$project" package --vulnerable --include-transitive 2>&1 | tee "$report"
+
+            if grep -qi "critical\|high" "$report"; then
+              echo "❌ High/Critical vulnerabilities found in scaffolded template project: $project"
+              exit 1
+            fi
+          done
+
+      - name: Trivy scan scaffolded templates
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: template-security-out
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          scanners: vuln,misconfig,secret
+          exit-code: '1'
+
+      - name: Install Semgrep CLI
+        run: python3 -m pip install --user semgrep
+
+      - name: Semgrep scan scaffolded template output
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep scan \
+            --config .semgrep/rules/template-security.yml \
+            --json \
+            --output template-security-out/semgrep-template-output.json \
+            template-security-out
+
+      - name: Enforce no ERROR findings in scaffolded output
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("template-security-out/semgrep-template-output.json")
+          if not report.exists():
+              raise SystemExit("Semgrep report not found")
+
+          data = json.loads(report.read_text())
+          errors = [r for r in data.get("results", []) if r.get("extra", {}).get("severity") == "ERROR"]
+          if errors:
+              print(f"Found {len(errors)} ERROR-level Semgrep findings in scaffolded output")
+              for finding in errors[:20]:
+                  path = finding.get("path")
+                  check = finding.get("check_id")
+                  msg = finding.get("extra", {}).get("message")
+                  print(f"- {check} :: {path} :: {msg}")
+              raise SystemExit(1)
+          print("No ERROR-level Semgrep findings in scaffolded output")
+          PY
+
+      - name: Upload template security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: template-security-artifacts
+          path: |
+            template-security-out/**/vulnerability-report.txt
+            template-security-out/semgrep-template-output.json

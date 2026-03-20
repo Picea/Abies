@@ -1,0 +1,31 @@
+name: Semgrep Security Scan
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Semgrep rules
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: |
+            .semgrep/rules/conduit-security.yml
+            .semgrep/rules/template-security.yml
+          generateSarif: "1"
+          sarifOutput: semgrep.sarif
+
+      - name: Upload SARIF results
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif

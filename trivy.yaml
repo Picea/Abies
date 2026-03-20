@@ -1,0 +1,19 @@
+format: table
+exit-code: 1
+severity:
+  - HIGH
+  - CRITICAL
+ignore-unfixed: true
+scanners:
+  - vuln
+  - misconfig
+  - secret
+skip-dirs:
+  - BenchmarkDotNet.Artifacts
+  - benchmark-results
+  - TestResults
+  - test-results
+  - js-framework-benchmark
+  - '**/bin'
+  - '**/obj'
+  - '**/.git'

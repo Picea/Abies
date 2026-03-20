@@ -1,0 +1,5 @@
+# Relative paths scanned with authenticated token header.
+/api/user
+/api/articles/feed
+/api/articles
+/api/profiles/jake
