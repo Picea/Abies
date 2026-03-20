@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Validate PR title
-        uses: amannn/action-semantic-pull-request@v5
+        uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -528,8 +528,7 @@ jobs:
             echo "1. Create an issue and reference it (e.g., // TODO #123: description)"
             echo "2. Fix the item in this PR"
             echo "3. Remove the comment if not needed"
-            # For now, just warn
-            # exit 1
+            exit 1
           else
             echo "✅ No untracked TODOs found"
           fi

@@ -266,7 +266,7 @@ public class RenderTests
     public async Task Html_HandlerNameProperty_ReturnsFullAttributeName()
     {
         // This test documents the C# record inheritance behavior that caused
-        // the double-prefix bug (see memory.instructions.md TODO).
+        // the double-prefix bug documented in memory.instructions.md.
         var handler = new Handler("click", "cmd-1", null, "h1");
 
         await Assert.That(handler.Name).IsEqualTo("data-event-click");

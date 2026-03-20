@@ -13,17 +13,17 @@ The Abies framework is a Model-View-Update (MVU) architecture implementation for
 
 The canonical source for `abies.js` is located at:
 ```
-Picea.Abies/wwwroot/abies.js
+Picea.Abies.Browser/wwwroot/abies.js
 ```
 
 **This file is automatically copied to all consuming projects during build via the `SyncAbiesJs` MSBuild target.**
 
 Consuming projects include:
 - `Picea.Abies.Conduit.Wasm/wwwroot/abies.js`
-- `Picea.Abies.Counter.Wasm/wwwroot/abies.js`
+- `Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
 - `Picea.Abies.Presentation/wwwroot/abies.js`
 
-⚠️ **NEVER edit the copied files directly** - always edit `Picea.Abies/wwwroot/abies.js` first. The copied files will be overwritten on build.
+⚠️ **NEVER edit the copied files directly** - always edit `Picea.Abies.Browser/wwwroot/abies.js` first. The copied files will be overwritten on build.
 
 ## Telemetry
 
