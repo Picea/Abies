@@ -6,6 +6,28 @@ output_dir="${2:-zap-results}"
 
 mkdir -p "$output_dir"
 
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "$cmd is required but was not found in PATH"
+    exit 1
+  fi
+}
+
+require_cmd docker
+require_cmd curl
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker daemon is not available. Start Docker Desktop and retry."
+  exit 1
+fi
+
+if ! curl -sS --max-time 5 "$target_url" >/dev/null; then
+  echo "Target URL is not reachable: $target_url"
+  echo "Ensure the target app and dependencies are running before DAST scans."
+  exit 1
+fi
+
 echo "Running ZAP baseline against $target_url"
 docker run --rm --network host \
   -v "$(pwd):/zap/wrk:rw" \
