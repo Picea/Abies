@@ -50,7 +50,7 @@ Accessibility-based locators are more stable over time and encourage accessible 
 ## 2. Technology Stack Assumptions
 
 - **Playwright for .NET**
-- **xUnit or NUnit** for test execution
+- **TUnit** for test execution
 - **FluentAssertions** for expressive assertions (optional but recommended)
 - **.NET 8+**
 
@@ -90,7 +90,7 @@ Blocking async code can deadlock test runners and introduces nondeterministic ti
 
 ### 4.2 Centralized Browser & Context Management
 **Instruction**
-- Use fixtures (`IAsyncLifetime`, NUnit `[SetUpFixture]`) to manage:
+- Use shared fixtures and setup helpers to manage:
   - Playwright instance
   - Browser
   - Browser context
@@ -173,14 +173,15 @@ This preserves E2E confidence while keeping tests fast and focused.
 
 ---
 
-## 8. Example Test (C# + xUnit)
+## 8. Example Test (C# + TUnit)
 
 ```csharp
-public class LoginTests : IAsyncLifetime
+public class LoginTests
 {
     private IPage _page;
 
-    public async Task InitializeAsync()
+  [Before(Test)]
+  public async Task Setup()
     {
         var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.LaunchAsync();
@@ -191,9 +192,7 @@ public class LoginTests : IAsyncLifetime
         await _page.GotoAsync("/login");
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
-
-    [Fact]
+  [Test]
     public async Task Login_WithValidCredentials_ShouldNavigateToDashboard()
     {
         await _page.GetByLabel("Email").FillAsync("user@test.com");
