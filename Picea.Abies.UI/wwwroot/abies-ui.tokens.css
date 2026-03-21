@@ -79,4 +79,93 @@
   --abies-ui-toast-fg: var(--abies-ui-color-text);
 
   --abies-ui-surface: var(--abies-ui-color-surface);
+
+  /* Stack */
+  --abies-ui-stack-gap-1: var(--abies-ui-space-1);
+  --abies-ui-stack-gap-2: var(--abies-ui-space-2);
+  --abies-ui-stack-gap-3: var(--abies-ui-space-3);
+  --abies-ui-stack-gap-4: var(--abies-ui-space-4);
+  --abies-ui-stack-gap-5: var(--abies-ui-space-5);
+  --abies-ui-stack-gap-6: var(--abies-ui-space-6);
+
+  /* Card */
+  --abies-ui-card-bg: var(--abies-ui-color-surface);
+  --abies-ui-card-border: var(--abies-ui-color-border);
+  --abies-ui-card-shadow-low: 0 1px 4px rgb(16 24 40 / 0.06);
+  --abies-ui-card-shadow-medium: 0 4px 16px rgb(16 24 40 / 0.10);
+  --abies-ui-card-shadow-high: 0 8px 32px rgb(16 24 40 / 0.18);
+  --abies-ui-card-radius: var(--abies-ui-radius-lg);
+  --abies-ui-card-pad-sm: var(--abies-ui-space-3);
+  --abies-ui-card-pad-md: var(--abies-ui-space-4);
+  --abies-ui-card-pad-lg: var(--abies-ui-space-6);
+
+  /* Divider */
+  --abies-ui-divider-color: var(--abies-ui-color-border);
+  --abies-ui-divider-label-color: var(--abies-ui-color-text-muted);
+
+  /* Progress Bar */
+  --abies-ui-progress-track: var(--abies-brand-100, #e7f1cc);
+  --abies-ui-progress-fill: var(--abies-ui-color-accent);
+  --abies-ui-progress-height: 8px;
+
+  /* Alert */
+  --abies-ui-alert-info-bg: color-mix(in srgb, var(--abies-ui-color-info) 12%, var(--abies-ui-color-bg));
+  --abies-ui-alert-success-bg: color-mix(in srgb, var(--abies-ui-color-success) 12%, var(--abies-ui-color-bg));
+  --abies-ui-alert-warning-bg: color-mix(in srgb, var(--abies-ui-color-warning) 14%, var(--abies-ui-color-bg));
+  --abies-ui-alert-danger-bg: color-mix(in srgb, var(--abies-ui-color-danger) 12%, var(--abies-ui-color-bg));
+  --abies-ui-alert-border: var(--abies-ui-color-border-strong);
+
+  /* Skeleton */
+  --abies-ui-skeleton-bg: color-mix(in srgb, var(--abies-ui-color-text) 8%, var(--abies-ui-color-bg));
+  --abies-ui-skeleton-highlight: color-mix(in srgb, var(--abies-ui-color-text) 14%, var(--abies-ui-color-bg));
+  --abies-ui-skeleton-radius: var(--abies-ui-radius-sm);
+  --abies-ui-skeleton-text-height: 14px;
+  --abies-ui-skeleton-heading-height: 28px;
+  --abies-ui-skeleton-avatar-size: 40px;
+}
+
+/* ── Progress Bar ──────────────────────────────────────────── */
+
+.abies-ui-progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abies-ui-space-1);
+  width: 100%;
+}
+
+.abies-ui-progress-bar__label {
+  font-size: 0.875rem;
+  color: var(--abies-ui-color-text-muted);
+}
+
+.abies-ui-progress-bar__track {
+  height: var(--abies-ui-progress-height);
+  background-color: var(--abies-ui-progress-track);
+  border-radius: var(--abies-ui-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.abies-ui-progress-bar__fill {
+  height: 100%;
+  background-color: var(--abies-ui-progress-fill);
+  border-radius: var(--abies-ui-radius-sm);
+  transition: width var(--abies-ui-duration-normal) var(--abies-ui-ease-standard);
+}
+
+.abies-ui-progress-bar--indeterminate .abies-ui-progress-bar__fill {
+  width: 30% !important;
+  position: absolute;
+  animation: abies-ui-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes abies-ui-indeterminate {
+  0%   { left: -35%; }
+  100% { left: 110%; }
+}
+
+.abies-ui-progress-bar__value {
+  font-size: 0.875rem;
+  color: var(--abies-ui-color-text-muted);
+  text-align: right;
 }
