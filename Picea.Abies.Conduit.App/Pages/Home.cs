@@ -64,28 +64,24 @@ public static class Home
     private static Node Sidebar(IReadOnlyList<string> tags) =>
         div([class_("sidebar")],
         [
-            card(new CardOptions(
-                Common: new UiCommonOptions(Class: "conduit-sidebar-card"),
-                Children:
-                [
-                    p([], [text("Popular Tags")]),
-                    divider(new DividerOptions()),
-                    tags.Count == 0
-                        ? alert(new AlertOptions(
-                            Message: "Loading tags...",
-                            Variant: AlertVariant.Info,
-                            IsLive: true,
-                            Common: new UiCommonOptions(Class: "conduit-sidebar-tags-loading")))
-                        : div([class_("tag-list")],
-                            tags.Select(tag =>
-                                button([
-                                    id($"tag-pill:{Uri.EscapeDataString(tag)}"),
-                                    type("button"),
-                                    class_("tag-pill tag-default"),
-                                    onclick(new FeedTabChanged(FeedTab.Tag, tag), $"tag-pill-click:{Uri.EscapeDataString(tag)}")
-                                ],
-                                    [text(tag)])).ToArray())
-                ]))
+            toast(new ToastOptions(
+                Message: "Popular Tags",
+                Title: "Discover",
+                Variant: ToastVariant.Info,
+                Common: new UiCommonOptions(Class: "conduit-sidebar-ui-proof"))),
+            tags.Count == 0
+                ? spinner(new SpinnerOptions(
+                    Label: "Loading tags",
+                    Common: new UiCommonOptions(Class: "conduit-sidebar-tags-loading")))
+                : div([class_("tag-list")],
+                    tags.Select(tag =>
+                        button([
+                            id($"tag-pill:{Uri.EscapeDataString(tag)}"),
+                            type("button"),
+                            class_("tag-pill tag-default"),
+                            onclick(new FeedTabChanged(FeedTab.Tag, tag), $"tag-pill-click:{Uri.EscapeDataString(tag)}")
+                        ],
+                            [text(tag)])).ToArray())
         ]);
 
     private static string PageHref(FeedTab tab, string? tag, int page)

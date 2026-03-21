@@ -195,13 +195,13 @@ public sealed class FeedTests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
-    public async Task HomeSidebar_ShouldRenderUiCardWrapper()
+    public async Task HomeSidebar_ShouldRenderUiToastWrapper()
     {
         await _page.GotoAsync("/");
         await _page.WaitForWasmReady();
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
 
-        await Expect(_page.Locator(".sidebar .conduit-sidebar-card")).ToBeVisibleAsync(new() { Timeout = 10000 });
+        await Expect(_page.Locator(".sidebar .conduit-sidebar-ui-proof")).ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     [Test]
