@@ -80,6 +80,9 @@ Every review covers these nine dimensions systematically:
 - README, ADR, and architecture docs updated to reflect changes.
 - TODOs/FIXMEs tracked as issues rather than left inline.
 
+### 10. Boy Scout Rule
+- Every file touched must be left better than it was found. If obvious improvements exist in modified files (poor names, stale comments, missing types, code smells, unclear error messages) and they were ignored, flag as ⚠️ Should Fix.
+
 ---
 
 ## Review Output Format
