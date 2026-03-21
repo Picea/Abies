@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774136175960,
+  "lastUpdate": 1774136178199,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13336,6 +13336,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.88938617706299,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "52e987b18b8728d644e233d043e95ed8a92980c4",
+          "message": "chore(ui): sync demo abies-ui.js copy\n\nKeep demo static asset aligned with the reviewed focus-trap fixes in Picea.Abies.UI/wwwroot/abies-ui.js.",
+          "timestamp": "2026-03-22T00:25:45+01:00",
+          "tree_id": "74b41decc590f74f8d1dea933ed4533666ef8909",
+          "url": "https://github.com/Picea/Abies/commit/52e987b18b8728d644e233d043e95ed8a92980c4"
+        },
+        "date": 1774136177556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.114370346069336,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.85181427001953,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
