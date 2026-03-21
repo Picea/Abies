@@ -1,91 +1,175 @@
-# Squad Decisions
+# Team Decisions
 
-## Active Decisions
+## Framework
 
-### 2026-03-20T00:00:00Z: Phase 1 UI kit contract for issue #152
-**By:** Galadriel (Frontend Dev)
-**What:** Phase 1 components in `Picea.Abies.UI` use pure Node-returning functions with immutable record options, token-first CSS custom properties, and explicit keyboard/focus/ARIA contracts per component.
-**Why:** Establishes a coherent, reusable frontend contract for issue #152 with accessibility and composability built in.
+### Beast Mode × Disney Creative Strategy
+All significant features and architectural changes go through the Architect's Dreamer → Realist → Critic cycle before implementation. All code changes go through the independent Reviewer before merge. The Architect does not write code. The Reviewer does not participate in design phases.
 
-### 2026-03-20T00:00:00Z: Issue #152 Phase 1 test strategy and merge gates
-**By:** Samwise (Tester)
-**What:** Use a test pyramid (unit/integration/a11y + focused E2E), require WCAG 2.1 AA and keyboard coverage for all interactive Phase 1 components, and enforce deterministic CI test gates before merge.
-**Why:** Provides release confidence for the initial component kit while minimizing flaky CI behavior.
+### Principles Enforcement
+Every deviation from an established principle requires explicit user approval before proceeding. No agent may silently compromise. Undocumented deviations are 🔴 Must Fix during review. See `.squad/principles-enforcement.md` for the full protocol.
 
-### 2026-03-20T13:20:00Z: Issue #152 architecture direction for Picea.Abies.UI
-**By:** Maurice Cornelius Gerardus Petrus Peters (via Gandalf)
-**What:** Phase 1 ships as two packages (`Picea.Abies.UI` and `Picea.Abies.UI.Demo`) with seven baseline components, token-driven styling, explicit accessibility contracts, and zero hidden mutable state.
-**Why:** Delivers a practical starter kit quickly while preserving MVU purity and ecosystem consistency.
+---
 
-### 2026-03-20T14:05:00Z: Issue #152 review gate — execution readiness constraints
-**By:** Elrond (Reviewer)
-**What:** Keep issue #152 in changes-requested until v1 table scope/deferred items, measurable accessibility gates (automated + manual), and explicit CI/release mapping are fully defined.
-**Why:** Prevents scope drift and unverifiable completion criteria.
+## Language & Platform
 
-### 2026-03-20T15:30:00Z: Issue #152 design iteration 2 — execution contract locked
-**By:** Gandalf (Architect)
-**What:** Locked four-phase implementation, v1 include/defer boundaries for all Phase 1 components, required accessibility verification matrix, explicit merge/release CI gate mapping, and frozen non-goals.
-**Why:** Resolves reviewer concerns and establishes a measurable completion contract before implementation.
+### .NET 10 (LTS) with C# 14
+Target `net10.0`. Use the latest stable C# features. Always prefer new language features and APIs. Replace deprecated APIs with recommended alternatives.
 
-### 2026-03-20T16:00:00Z: Issue #152 kickoff package baseline in-repo
-**By:** Maurice Cornelius Gerardus Petrus Peters (via Faramir)
-**What:** Start implementation with a new `Picea.Abies.UI` net10.0 class library in the main solution, exposing immutable-options + pure static Node component factories for `button`, `textInput`, `select`, `spinner`, `toast`, `modal`, and `table`, plus a token CSS contract file under `wwwroot`.
-**Why:** Provides a compile-ready baseline that matches Phase 1 scope while deferring advanced behaviors to explicit follow-up phases.
+### Picea.Abies Namespace Root
+`Picea.Abies` is the root namespace for the project ecosystem. All code lives under it.
 
-### 2026-03-20T16:10:00Z: Issue #152 kickoff execution source-of-truth locked
-**By:** Gandalf (Architect)
-**What:** Established `docs/guides/abies-ui-issue-152-execution-plan.md` as the implementation kickoff source of truth, including phase ownership mapping, explicit v1 include/defer boundaries per component, and merge/release gates mapped to required CI checks.
-**Why:** Converts approved design direction into an execution contract that enables implementation to start with measurable completion criteria and no scope ambiguity.
+---
 
-## Process Decisions
+## Functional DDD
 
-### 2026-03-19T16:00:37Z: Always use the PR template
-**By:** Maurice Peters (via Copilot)
-**What:** Always use the PR template when creating pull requests.
-**Why:** User request — captured for team memory
+### Pure Functional Programming
+No object orientation in the domain. No mutable classes, no inheritance hierarchies for behavior, no Manager/Helper/Util types. Model with immutable records, pure functions, discriminated unions, Result/Option. Exception: performance-critical hot paths — use what's fastest and comment why.
 
-### 2026-03-19T16:25:36Z: PR titles must use Conventional Commits with uppercase subject
-**By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot)
-**What:** Follow the repository PR title naming scheme (Conventional Commits with uppercase subject) when creating/editing PR titles.
-**Why:** User request — captured for team memory
+### Make Illegal States Unrepresentable
+Replace primitive obsession with constrained types (smart constructors). Private type constructors, public smart constructors — the only way to obtain a valid instance. Model mutually exclusive states as sum types. Model optional data as `Option<T>`, not null.
 
-### 2026-03-20T12:30:00Z: Use terminal-safe execution patterns for long-running commands
-**By:** Squad (integrated from memory instructions)
-**What:** Avoid risky shell constructs in VS Code terminal. Do not pipe long-running commands through `tail`/`head`/`tee`/`grep`; use redirection to log files and inspect logs after completion.
-**Why:** Prevents silent command termination and shell hangs in integrated terminal sessions.
+### State Machines, Not Flags
+Never model entity lifecycle state as boolean flags or nullable fields. Each state is a distinct type carrying only its own data. Transitions are methods on the source state type. The compiler enforces valid transitions.
 
-### 2026-03-20T12:31:00Z: Benchmark comparisons require consistent power state
-**By:** Squad (integrated from memory instructions)
-**What:** Never compare benchmark runs across different MacBook power states. Record plugged-in vs battery for every benchmark set and run A/B in same session.
-**Why:** Power-state variance can dominate signal and produce misleading conclusions.
+### Errors Are Values
+Expected failures use `Result<T, TError>` — never exceptions. Keep error types domain-specific and discriminated. Exceptions only for programmer bugs and unrecoverable infrastructure failures.
 
-### 2026-03-20T12:32:00Z: Performance claims require E2E benchmark validation
-**By:** Squad (integrated from memory instructions)
-**What:** Treat js-framework-benchmark as source of truth for user-visible performance; do not ship based on micro-benchmark improvements alone.
-**Why:** Micro-benchmarks can show wins that regress real-world behavior.
+### Push IO to the Edges
+Functional core, imperative shell. Domain functions are pure. Effects (time, persistence, external services) are supplied as capability functions. Application layer wires real implementations.
 
-### 2026-03-20T12:50:00Z: PR branches must pass `dotnet format --verify-no-changes`
-**By:** Squad (integrated from PR instructions)
-**What:** Before PR submission, run `dotnet format --verify-no-changes`; when fixing formatting in PR branches, scope changes with `--include` to avoid unrelated reformatting.
-**Why:** Keeps PRs reviewable and aligned with `.editorconfig` without introducing noisy style-only churn.
+### Persistence Boundaries
+Domain types never leak into infrastructure. No JSON/ORM attributes on domain types. Map domain types to DTOs at the boundary. `ToDomain` returns `Result` when persisted data might be invalid.
 
-### 2026-03-20T12:51:00Z: PR descriptions must follow repository template sections
-**By:** Squad (integrated from PR instructions)
-**What:** PR bodies must include: Description (What/Why/How), Related Issues, Type of Change, Testing, Changes Made, and Code Review Checklist.
-**Why:** Maintains consistent review context and traceability for maintainers.
+### Anti-Corruption Layer
+When integrating with external systems, map external DTOs into internal domain types at the boundary. Never let an external schema leak into the internal model.
 
-### 2026-03-20T12:52:00Z: PR gate requires Conventional Commits title and core CI checks
-**By:** Squad (integrated from PR instructions)
-**What:** PR titles follow Conventional Commits format and CI must pass build, lint (`dotnet format`), tests, and E2E (when applicable) before merge.
-**Why:** Enforces predictable automation, quality standards, and release safety.
+---
 
-### 2026-03-20T13:05:00Z: Apply Abies brand palette to UI work, except Conduit projects
-**By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot)
-**What:** All UI work should follow the Abies conference brand palette guidance, except Conduit-related projects which keep their existing visual conventions.
-**Why:** User directive for consistent branding with an explicit Conduit carve-out.
+## Naming Conventions
 
-## Governance
+### No I-Prefix on Your Own Interfaces
+`UserRepository` not `IUserRepository`. BCL interfaces (`IOptions<T>`, `IEntityTypeConfiguration<T>`) keep their Microsoft names.
 
-- All meaningful changes require team consensus
-- Document architectural decisions here
-- Keep history focused on work, decisions focused on direction
+### No Async Suffix
+Never suffix async method names with `Async`.
+
+### Namespaces Are Bounded Contexts
+`Picea.Abies.Commanding.Handler` not `Picea.Abies.CommandHandler`. `Picea.Abies.Demos.Subscriptions` not `Picea.Abies.SubscriptionDemo`. Depth over width. Folder structure mirrors namespace declarations exactly.
+
+### Domain Terms Only
+No `Manager`, `Helper`, `Util`, `Service` in the domain layer. Use ubiquitous language names that match the business domain. Modules as `static class ...Module`.
+
+---
+
+## Code Style (C#)
+
+### File-Scoped Namespaces
+Always. Single-line using directives.
+
+### Expression-Bodied Members by Default
+Use expression-bodied members unless the method body requires multiple statements.
+
+### Pattern Matching by Default
+Prefer pattern matching and switch expressions over traditional control flow.
+
+### No #region
+Ever. If you need regions, your class is too big.
+
+### Nullable Reference Types
+Declare variables non-nullable. Check for null at entry points. Always `is null` / `is not null` — never `== null` / `!= null`. Trust C# null annotations.
+
+---
+
+## Code Style (JavaScript)
+
+### Vanilla First
+No frameworks (React, Vue, Angular) unless explicitly Architect-approved after a full design cycle. The platform is the framework.
+
+### ES Modules Only
+`import`/`export`. No CommonJS, AMD, UMD.
+
+### No Build Step by Default
+If code runs natively in a modern browser with `<script type="module">`, that's the preferred delivery. Build steps require justification.
+
+### No Unnecessary Dependencies
+If the browser or Node.js provides it natively, don't npm install a package for it.
+
+---
+
+## Testing
+
+### TUnit Only
+TUnit is the only test framework. No xUnit, no NUnit, no MSTest. Source-generated, parallel by default, async-first assertions.
+
+### No Arrange/Act/Assert Comments
+Do not emit "Arrange", "Act", or "Assert" comments in tests.
+
+### Aspire AppHost Is the Test Fixture
+All integration and E2E tests start the SUT via `DistributedApplicationTestingBuilder` against the Aspire AppHost. No `WebApplicationFactory`, no Testcontainers, no manual process startup.
+
+### E2E Tests for User Journeys
+Always write E2E tests for user journeys. TUnit + Playwright via TUnit.Playwright.
+
+---
+
+## Aspire & Observability
+
+### Aspire for All Runnable Apps
+Every application with more than one process uses .NET Aspire for local orchestration. Every service calls `AddServiceDefaults()`.
+
+### Full OTEL Trace Coverage
+Every functional flow is instrumented end-to-end — from user action through all backend hops. Custom `ActivitySource` spans on workflow entry points with meaningful names. Errors record exception info on spans. Cross-service trace context propagates.
+
+### No Dark Services
+Every component in the Aspire AppHost must emit telemetry visible in the dashboard. Missing spans are bugs.
+
+### Templates Ship with Observability
+All `dotnet new` templates include AppHost, ServiceDefaults, OTEL instrumentation, at least one E2E test, and a README for the dashboard.
+
+---
+
+## Security
+
+### Living Threat Model
+`/docs/security/threat-model.md` is maintained and updated after every change that alters the attack surface. Every threat has a corresponding regression test.
+
+### Automated Security Pipeline
+SAST, SCA, secrets detection, DAST, and container scanning run locally AND in CI. Critical/high findings block merge.
+
+### Secure Defaults
+Every endpoint has an explicit authorization policy. Parameterized queries only. No hardcoded secrets. CSP configured. CORS explicit.
+
+---
+
+## Documentation
+
+### Markdown Only
+All project documentation in `.md` format. No Word, no Confluence, no Google Docs for anything that lives with code.
+
+### Docs Ship with Code
+If a feature lands without docs, it's not done. If an API changes without updating its reference, it's a bug.
+
+### Diátaxis Framework
+Every doc fits one mode: tutorial (learning), how-to (task), reference (information), explanation (understanding). Don't mix modes.
+
+### ADR Template
+All ADRs follow the template at `/docs/adr/` with Status, Date, Decision Makers, Supersedes, Context, Decision, Consequences (Positive/Negative/Neutral), Alternatives, Related Decisions, References.
+
+---
+
+## Review
+
+### Independent Reviewer
+The Reviewer approaches code with fresh eyes — no prior context from design phases. Evaluates what was written, not what was intended.
+
+### Reviewer Lockout Authority
+🔴 Must Fix findings block merge. Original author locked out on rejection — coordinator reassigns.
+
+### Undocumented Deviations Block
+Any code that deviates from an established principle without a documented approval (decision log + code comment) is 🔴 Must Fix unconditionally.
+
+### Observability Review
+Reviewer checks for OTEL trace coverage, custom spans, error recording, cross-service propagation, AddServiceDefaults(), and E2E trace verification tests.
+
+### Threat Model Review
+If a change adds an entry point, alters a trust boundary, or changes auth — the threat model must be updated. Missing updates are 🔴 Must Fix.

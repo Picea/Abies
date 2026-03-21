@@ -1,5 +1,23 @@
 {
-  "universe": "Tolkien Legendarium",
-  "allowlist": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Scribe", "Ralph"],
-  "created_at": "2026-03-19"
+  "version": "1.0",
+  "allowlist": [
+    "alien",
+    "blade_runner",
+    "star_wars_ot",
+    "the_thing",
+    "heat",
+    "usual_suspects",
+    "dark_knight_trilogy",
+    "reservoir_dogs",
+    "the_office_us",
+    "arrested_development",
+    "sopranos",
+    "the_wire",
+    "succession",
+    "seinfeld",
+    "twin_peaks"
+  ],
+  "capacity": 25,
+  "overflow_strategy": "diegetic_expansion",
+  "notes": "Casting applies to NEW agents added after 2026-03-21. All agents created before that date are legacy_named."
 }
