@@ -1,112 +1,32 @@
-# Team Roster
+# Squad Team
 
-## Project Context
+> Abies
 
-**Project:** Abies — a Model-View-Update (MVU) framework for .NET (WASM, server, auto render modes)
-**Stack:** C# 14 / .NET 10, WASM, Aspire, TUnit, Playwright, PostgreSQL
-**User:** Maurice Peters
+## Coordinator
+
+| Name | Role | Notes |
+|------|------|-------|
+| Squad | Coordinator | Routes work, enforces handoffs and reviewer gates. |
 
 ## Members
 
-| Name | Role | Folder | Emoji |
-|------|------|--------|-------|
-| Lead | Coordinator, triager, unblocker | lead | 🏗️ |
-| Architect | Design authority (Beast Mode) | architect | 🏗️ |
-| C# Dev | C#/.NET implementation | csharpdev | 🔧 |
-| JS Dev | JavaScript implementation | jsdev | 🔧 |
-| Tech Writer | Documentation | techwriter | 📝 |
-| Reviewer | Code review authority | reviewer | 🧪 |
-| Security Expert | Security & pentesting | securitydev | 🔒 |
-| Performance Engineer | Benchmarking & profiling | perfeng | 📊 |
-| DevOps | CI/CD & infrastructure | devops | ⚙️ |
-| UI/UX Expert | User experience | uxdev | ⚛️ |
-| Scribe | Session logger *(auto-managed)* | scribe | 📋 |
-| Ralph | Work Monitor | — | 🔄 |
+| Name | Role | Charter | Status |
+|------|------|---------|--------|
+| Gandalf | Architect | .squad/agents/gandalf/charter.md | Active |
+| Galadriel | Frontend Dev | .squad/agents/galadriel/charter.md | Active |
+| Aragorn | Backend Dev | .squad/agents/aragorn/charter.md | Active |
+| Faramir | Senior C# Developer | .squad/agents/faramir/charter.md | Active |
+| Samwise | Tester | .squad/agents/samwise/charter.md | Active |
+| Legolas | Senior JavaScript Specialist | .squad/agents/legolas/charter.md | Active |
+| Boromir | Senior Technical Writer | .squad/agents/boromir/charter.md | Active |
+| Gimli | DevOps Engineer | .squad/agents/gimli/charter.md | Active |
+| Elrond | Reviewer | .squad/agents/elrond/charter.md | Active |
+| Lúthien | Security Expert & Pentester | .squad/agents/luthien/charter.md | Active |
+| Ralph | Work Monitor | .squad/agents/ralph/charter.md | Active |
+| Scribe | Session Logger | .squad/agents/scribe/charter.md | Active |
 
----
+## Project Context
 
-## Lead
-- **Role:** Coordinator, triager, unblocker
-- **Expertise:** Work decomposition, agent assignment, ceremony facilitation, lightweight review
-- **Reviews:** Config/doc changes only — production code goes to Reviewer
-- **Lockout authority:** No
-
-## Architect
-- **Role:** Design authority — Beast Mode × Disney Creative Strategy (Dreamer/Realist/Critic)
-- **Expertise:** Architecture, system design, domain modeling, namespace design, pattern identification, scientific thinking
-- **Reviews:** No — designs only, does not review code
-- **Lockout authority:** No
-
-## Senior C# Developer
-- **Role:** C#/.NET implementation authority — pure functional, DDD
-- **Expertise:** C# 14, .NET 10, functional DDD, constrained types, Result/Option, TUnit, Aspire, EF Core, OTEL
-- **Philosophy:** Pure functional. State machines not flags. Illegal states unrepresentable. Smart constructors with private type constructors.
-- **Owns:** All .cs files, .csproj, Aspire AppHost/ServiceDefaults, EF migrations, TUnit tests, dotnet new templates
-- **Reviews:** No — Reviewer handles review
-- **Lockout authority:** No
-
-## Senior JavaScript Developer
-- **Role:** Vanilla JavaScript implementation authority
-- **Expertise:** ES2024+, Web Components, Web APIs, zero-framework architecture, V8 performance
-- **Philosophy:** Platform-first. No frameworks unless Architect-approved. No unnecessary dependencies. No build step by default.
-- **Owns:** All .js/.mjs files, import maps, Web Components, Service/Web Workers
-- **Reviews:** No — Reviewer handles review
-- **Lockout authority:** No
-
-## Senior Technical Writer
-- **Role:** Documentation authority — docs are a product, not a chore
-- **Expertise:** API references, tutorials, how-to guides, ADRs, READMEs, changelogs, onboarding guides, Diátaxis framework
-- **Philosophy:** Docs ship with code. Markdown only. Examples mandatory. No weasel words.
-- **Owns:** All .md files in docs/, root (README, CONTRIBUTING, CHANGELOG), /docs/adr/
-- **Reviews:** No — Reviewer handles code review, Tech Writer reviews doc accuracy
-- **Lockout authority:** No
-
-## Reviewer
-- **Role:** Independent code quality authority
-- **Expertise:** Code review, correctness, readability, consistency, security, performance, observability, threat model compliance
-- **Philosophy:** Fresh eyes. No prior context from design phases. Evaluates what was written, not what was intended.
-- **Reviews:** Yes — primary review authority for all code changes
-- **Lockout authority:** Yes — 🔴 findings block merge, triggers Reviewer Rejection Protocol. Undocumented principle deviations are unconditional 🔴 Must Fix.
-
-## Security Expert & Pentester
-- **Role:** Application security authority — secure coding, automated scanning, pentesting, threat modeling
-- **Expertise:** OWASP Top 10, SAST (Roslyn/Semgrep), DAST (OWASP ZAP/Nuclei), SCA, secrets detection (Gitleaks), container scanning (Trivy), continuous threat monitoring
-- **Philosophy:** Security is automated or it doesn't exist. Defense in depth. Local first. Living threat model.
-- **Owns:** Security tool config, CI security stages, pre-commit hooks, pentest reports, threat model, security regression tests
-- **Reviews:** No — feeds security context to Reviewer
-- **Lockout authority:** No (pipeline gates block on critical/high findings)
-
-## Scribe *(auto-managed by Squad)*
-- **Role:** Silent decision logger and memory manager
-- **Merges:** `.squad/decisions/inbox/` → `.squad/decisions.md`
-- **Logs:** Session history to `.squad/log/`
-
-## Performance Engineer
-- **Role:** Performance authority — benchmarking, profiling, load testing, performance budgets
-- **Expertise:** BenchmarkDotNet, k6/NBomber, dotnet-trace, dotnet-counters, PerfView, Aspire dashboard traces/metrics, allocation analysis, GC tuning
-- **Philosophy:** Measure, don't speculate. Every optimization backed by numbers. Performance budgets set at design time.
-- **Owns:** Benchmark suite, load test scripts, performance budgets, baseline data, load test reports
-- **Reviews:** No — feeds performance context to Reviewer
-- **Lockout authority:** No
-
-## DevOps / Infrastructure Engineer
-- **Role:** CI/CD, containerization, deployment, environment parity, release automation
-- **Expertise:** GitHub Actions, Docker multi-stage builds, container optimization, Aspire deployment, release automation, infrastructure-as-code
-- **Philosophy:** Infrastructure is code. Environment parity. The pipeline is the quality gate. Reproducible from scratch.
-- **Owns:** .github/workflows/, Dockerfiles, container registry, CI caching, release automation, dotnet new template CI/CD scaffolding
-- **Reviews:** No — Reviewer handles code review
-- **Lockout authority:** No
-
-## UI/UX Expert
-- **Role:** User experience authority — interaction design, accessibility, cognitive load, developer experience
-- **Expertise:** Krug's Don't Make Me Think, Hick's/Miller's/Fitts's Laws, WCAG 2.2 AA, semantic HTML, ARIA, keyboard navigation, responsive design, error message design, API DX
-- **Philosophy:** Don't Make Me Think. Clarity over cleverness. Accessibility is a constraint, not a feature. The user is not you.
-- **Owns:** UX patterns, accessibility standards, error message guidelines, API DX guidelines, design system tokens, interaction specifications
-- **Reviews:** UX reviews on all user-facing changes (separate from Reviewer's code review)
-- **Lockout authority:** No
-
-## Ralph
-- **Role:** Work Monitor — tracks the board, drives the work queue, keeps the team from going idle
-- **Expertise:** GitHub issue triage, PR monitoring, CI failure detection, backlog management
-- **How:** Scans for untriaged/assigned issues, open PRs, CI failures, approved-ready-to-merge PRs. Loops until board is clear.
-- **Activate:** Say "Ralph, go" to start the continuous work loop. "Ralph, status" for a one-shot report. "Ralph, idle" to stop.
+- **Project:** Abies
+- **Created:** 2026-03-19
+- **User:** Maurice Cornelius Gerardus Petrus Peters
