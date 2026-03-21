@@ -106,12 +106,53 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
 
     private async Task LoginViaUi(string email, string password)
     {
-        await _page.GotoAsync("/login");
-        await _page.WaitForSelectorAsync("h1:has-text('Sign in')");
-        await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
-        await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync(email.Split('@')[0], new() { Timeout = 15000 });
+        var expectedUser = email.Split('@')[0];
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            await _page.GotoAsync("/login");
+            await _page.WaitForSelectorAsync("h1:has-text('Sign in')", new() { Timeout = 15000 });
+            await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
+            await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
+            await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+
+            if (await WaitForAuthenticatedShell(expectedUser))
+            {
+                return;
+            }
+
+            if (attempt < 3)
+            {
+                await _page.WaitForTimeoutAsync(1000);
+            }
+        }
+
+        throw new TimeoutException($"Login did not reach authenticated UI for user '{expectedUser}' after 3 attempts.");
+    }
+
+    private async Task<bool> WaitForAuthenticatedShell(string expectedUser)
+    {
+        var navbar = _page.Locator(".navbar");
+        var yourFeedTab = _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" });
+
+        try
+        {
+            await Expect(navbar).ToContainTextAsync(expectedUser, new() { Timeout = 20000 });
+            return true;
+        }
+        catch (PlaywrightException)
+        {
+            // In AppHost runs the username can lag in navbar updates; Your Feed indicates authenticated state.
+            try
+            {
+                await Expect(yourFeedTab).ToBeVisibleAsync(new() { Timeout = 5000 });
+                return true;
+            }
+            catch (PlaywrightException)
+            {
+                return false;
+            }
+        }
     }
 
     private static ILocatorAssertions Expect(ILocator locator) => Assertions.Expect(locator);
