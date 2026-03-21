@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774097342573,
+  "lastUpdate": 1774097343749,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13108,6 +13108,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.87452793121338,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "405abd900649aca13d75d340aecff3ce6ba1bfff",
+          "message": "feat(ui): Add UI component kit, demo, and E2E tests (#167)\n\n* chore(security): harden framework and template security gates\n\n* fix(security): enforce template semgrep coverage and DAST prerequisites\n\n* feat(ui): add UI component kit, demo, and smoke E2E tests\n\n* fix: add UI demo E2E project to .gitignore whitelist and version control\n\n* style: apply dotnet format fixes to match PR validation requirements\n\n* fix: Update TODO comments to use issue number format (#152 instead of (issue-152))\n\n* fix(test): serialize template install and scaffold in template tests",
+          "timestamp": "2026-03-21T13:39:56+01:00",
+          "tree_id": "0663feb9c73f4a4ee9d53f4c626dee398b30fb99",
+          "url": "https://github.com/Picea/Abies/commit/405abd900649aca13d75d340aecff3ce6ba1bfff"
+        },
+        "date": 1774097343398,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.1135196685791,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.87464618682861,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
