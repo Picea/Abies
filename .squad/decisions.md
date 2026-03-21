@@ -173,3 +173,57 @@ Reviewer checks for OTEL trace coverage, custom spans, error recording, cross-se
 
 ### Threat Model Review
 If a change adds an entry point, alters a trust boundary, or changes auth — the threat model must be updated. Missing updates are 🔴 Must Fix.
+
+---
+
+## Picea.Abies.UI — Phase 2 Components (2026-03-21, issue #166)
+
+### StackGap Enum: `Gap1`–`Gap6` with `None = 0`
+Map to `--abies-ui-space-1` through `--abies-ui-space-6`. `ToStackGapCss()` returns `null` for `None` — `BuildClassName` already filters nulls, avoiding spurious `abies-ui-stack--gap-none` classes. Consistent with `SpinnerSize` naming.
+
+### `FormatDouble()` Helper for ARIA Numeric Attributes
+All `aria-valuemin`, `aria-valuemax`, `aria-valuenow` values use `value.ToString(CultureInfo.InvariantCulture)`. Centralised in a private helper rather than inlining at each call site.
+
+### Labeled Divider: `<div>` Wrapper (Not Modified `<hr>`)
+A labeled divider renders as `<div>` with two `<hr role="presentation" aria-hidden="true">` flanking a `<span>`. Plain divider remains `<hr role="separator">`. Matches ARIA authoring practices.
+
+### `SkeletonOptions.Lines` Only Applies to `SkeletonShape.Text`
+For non-Text shapes (Heading, Avatar, Rectangle, Circle) the `Lines` parameter is silently ignored. No `InvalidOperationException`. Document in XML doc if API is extended.
+
+### Grid Gap: `int`, Not `StackGap` Enum
+Grid component gap uses a direct `int` token index. Reusing `StackGap` would couple two layout primitives with different semantics. A `GridGap` enum can be added independently if needed.
+
+### CSS Modifier Null Convention
+When a modifier class is optional (no gap, no elevation), return `null` from the `ToXxxCss()` helper rather than empty string or `"none"`. `BuildClassName` filters nulls — spurious modifier classes are never emitted.
+
+---
+
+## Picea.Abies.UI — abies-ui.js (2026-03-21, issue #166)
+
+### Focus Trap Teardown via `AbortController` (ES2024+ Idiomatic)
+The focus trap `keydown` listener is registered with `{ signal: controller.signal }`. Teardown is `controller.abort()` — no stored listener reference needed. Single module-level `activeTrapController` enforces one active trap (Phase 1; nested support deferred).
+
+### Module-Level `activeTrapController` — Single Trap (Phase 1)
+Activating a new trap aborts the previous one first. Nested modal support (stack-based) is a known Phase 1 limitation.
+
+### Load `abies-ui.js` as `defer`, Not `type="module"`
+Pure side-effect file with no imports/exports. `defer` gives "run after parse" semantics without ES module machinery. ES2024+ syntax is compatible with module loading — this is a delivery decision, not a code style constraint.
+
+### `MutationObserver` on `document.body` (Not `document`)
+Abies renders into `document.body`. Scoping the observer to `body` avoids irrelevant `<head>` mutations (stylesheet injections, meta tag changes).
+
+### Focusable Filter: Runtime `.filter()`, Not `:not([hidden])` Selector
+`getFocusableElements()` filters via `.filter(el => !el.closest('[hidden]') && !el.closest('[inert]'))`. Embedding `:not([hidden])` in the CSS selector string cannot account for ancestor `[inert]` propagation or non-attribute hiding.
+
+---
+
+## Testing — Phase 2 (2026-03-21, issue #166)
+
+### TUnit Boolean Assertions: `await Assert.That(value).IsTrue()`
+Do NOT use NUnit's `Assert.That(x, Is.True)`. `Is` does not exist in the TUnit execution context. For `Page.EvaluateAsync<bool>(...)` results, use `await Assert.That(value).IsTrue()`.
+
+### Tests Written Against Future DOM (Parallel Agent Pattern)
+Tester-authored E2E tests may be written before the demo app update lands. This is intentional: tests express the accessibility contract. Tests go green when the parallel implementation agent completes — no modification needed.
+
+### Focus Trap Test Layers on Smoke Test
+`Modal_FocusShouldBeTrappedInsideWhenOpen` extends the existing smoke test without duplicating open/close assertions. Smoke test = navigation contract; Phase 2 test = accessibility contract.
