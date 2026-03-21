@@ -1,11 +1,16 @@
-# Scribe — History
+# Project Context
+
+- **Project:** Abies
+- **Created:** 2026-03-19
 
 ## Core Context
 
-Scribe for the Abies MVU Framework project (Maurice Peters).
-Project renewed 2026-03-21. All agents are legacy-named.
+Agent Scribe initialized and ready for work.
+
+## Recent Updates
+
+📌 Team initialized on 2026-03-19
 
 ## Learnings
 
-- Squad renewed 2026-03-21. Casting migration complete. All agents marked legacy_named.
-- Project: Abies MVU Framework — C# 14 / .NET 10 / WASM / Aspire / TUnit / Playwright / PostgreSQL.
+Initial setup complete.

@@ -1,103 +1,14 @@
-{
-  "version": "1.0",
-  "agents": [
-    {
-      "persistent_name": "Lead",
-      "folder": "lead",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Architect",
-      "folder": "architect",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "C# Dev",
-      "folder": "csharpdev",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "JS Dev",
-      "folder": "jsdev",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Tech Writer",
-      "folder": "techwriter",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Reviewer",
-      "folder": "reviewer",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Security Expert",
-      "folder": "securitydev",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Performance Engineer",
-      "folder": "perfeng",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "DevOps",
-      "folder": "devops",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "UI/UX Expert",
-      "folder": "uxdev",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active"
-    },
-    {
-      "persistent_name": "Scribe",
-      "folder": "scribe",
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active",
-      "notes": "Always 'Scribe' — exempt from casting"
-    },
-    {
-      "persistent_name": "Ralph",
-      "folder": null,
-      "universe": null,
-      "created_at": "2026-03-21T00:00:00Z",
-      "legacy_named": true,
-      "status": "active",
-      "notes": "Always 'Ralph' — exempt from casting. Work Monitor, not spawnable."
-    }
-  ]
-}
+[
+  {"persistent_name": "Gandalf", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Galadriel", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Aragorn", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Samwise", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Legolas", "universe": "Tolkien Legendarium", "created_at": "2026-03-20", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Faramir", "universe": "Tolkien Legendarium", "created_at": "2026-03-20", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Boromir", "universe": "Tolkien Legendarium", "created_at": "2026-03-20", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Gimli", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Elrond", "universe": "Tolkien Legendarium", "created_at": "2026-03-20", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Scribe", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Ralph", "universe": "Tolkien Legendarium", "created_at": "2026-03-19", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Lúthien", "universe": "Tolkien Legendarium", "created_at": "2026-03-20", "legacy_named": false, "status": "active"}
+]
