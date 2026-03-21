@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773939191135,
+  "lastUpdate": 1774097342573,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12382,6 +12382,84 @@ window.BENCHMARK_DATA = {
             "value": 60.2,
             "unit": "ms",
             "extra": "mean: 59.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "405abd900649aca13d75d340aecff3ce6ba1bfff",
+          "message": "feat(ui): Add UI component kit, demo, and E2E tests (#167)\n\n* chore(security): harden framework and template security gates\n\n* fix(security): enforce template semgrep coverage and DAST prerequisites\n\n* feat(ui): add UI component kit, demo, and smoke E2E tests\n\n* fix: add UI demo E2E project to .gitignore whitelist and version control\n\n* style: apply dotnet format fixes to match PR validation requirements\n\n* fix: Update TODO comments to use issue number format (#152 instead of (issue-152))\n\n* fix(test): serialize template install and scaffold in template tests",
+          "timestamp": "2026-03-21T13:39:56+01:00",
+          "tree_id": "0663feb9c73f4a4ee9d53f4c626dee398b30fb99",
+          "url": "https://github.com/Picea/Abies/commit/405abd900649aca13d75d340aecff3ce6ba1bfff"
+        },
+        "date": 1774097342200,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 162.3,
+            "unit": "ms",
+            "extra": "mean: 163.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 172.6,
+            "unit": "ms",
+            "extra": "mean: 174.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 216.3,
+            "unit": "ms",
+            "extra": "mean: 215.4ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 26.2,
+            "unit": "ms",
+            "extra": "mean: 26.5ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 73.8,
+            "unit": "ms",
+            "extra": "mean: 74.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 48.1,
+            "unit": "ms",
+            "extra": "mean: 47.8ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1580.5,
+            "unit": "ms",
+            "extra": "mean: 1576.0ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 202.1,
+            "unit": "ms",
+            "extra": "mean: 202.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 56,
+            "unit": "ms",
+            "extra": "mean: 54.2ms, samples: 15"
           }
         ]
       }
