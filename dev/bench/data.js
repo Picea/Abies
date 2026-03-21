@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774130817907,
+  "lastUpdate": 1774130818947,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13222,6 +13222,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.87464618682861,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a8910143c6106606751c0e7da40669cebc680d5",
+          "message": "feat(ui): Harden production readiness gates and integration (#169)\n\n* feat(ui): harden production readiness gates and integration\n\n* fix(conduit): use available UI components in Home sidebar\n\nReplace removed card/divider/alert APIs with supported toast/spinner components in Home sidebar and update E2E proof selector accordingly.\n\n* fix(e2e): harden AppHost login assertion against transient nav lag\n\nAdd bounded retry and resilient authenticated-shell detection in AppHost regression login helper to reduce flakiness when username rendering lags in navbar.\n\n* test(ui-demo): align phase2 E2E coverage with current demo components\n\nReplace obsolete assertions for removed/deferred demo components with stable checks for current Phase 1 surface to keep CI strict gates meaningful and non-flaky.",
+          "timestamp": "2026-03-21T22:57:49+01:00",
+          "tree_id": "835757fcee6dadb0b88ea7e04eb273b3635f20b3",
+          "url": "https://github.com/Picea/Abies/commit/0a8910143c6106606751c0e7da40669cebc680d5"
+        },
+        "date": 1774130818669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11324119567871,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.88938617706299,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
