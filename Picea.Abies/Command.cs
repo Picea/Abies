@@ -2,9 +2,9 @@ namespace Picea.Abies;
 
 public interface Command
 {
-    public sealed record None : Command;
+    sealed record None : Command;
 
-    public sealed record Batch(IReadOnlyList<Command> Commands) : Command;
+    sealed record Batch(IReadOnlyList<Command> Commands) : Command;
 }
 
 public static class Commands

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Picea.Abies.UI</PackageId>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot/abies-ui.tokens.css" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
+  </ItemGroup>
+
+</Project>

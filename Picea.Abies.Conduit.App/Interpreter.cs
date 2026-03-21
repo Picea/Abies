@@ -51,7 +51,8 @@ public static class ConduitInterpreter
         var query = BuildArticleQuery(cmd.Limit, cmd.Offset, cmd.Tag, cmd.Author, cmd.Favorited);
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/articles{query}", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.MultipleArticlesDto);
         return dto is null ? [] : [new ArticlesLoaded(dto.Articles.Select(MapArticlePreview).ToList(), dto.ArticlesCount)];
     }
@@ -60,7 +61,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/articles/feed?limit={cmd.Limit}&offset={cmd.Offset}", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.MultipleArticlesDto);
         return dto is null ? [] : [new ArticlesLoaded(dto.Articles.Select(MapArticlePreview).ToList(), dto.ArticlesCount)];
     }
@@ -69,7 +71,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleArticleDto);
         return dto?.Article is null ? [] : [new ArticleLoaded(MapArticle(dto.Article))];
     }
@@ -78,7 +81,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}/favorite", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleArticleDto);
         return dto?.Article is null ? [] : [new FavoriteToggled(MapArticlePreview(dto.Article))];
     }
@@ -87,7 +91,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Delete, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}/favorite", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleArticleDto);
         return dto?.Article is null ? [] : [new FavoriteToggled(MapArticlePreview(dto.Article))];
     }
@@ -103,7 +108,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}/comments", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.MultipleCommentsDto);
         return dto is null ? [] : [new CommentsLoaded(dto.Comments.Select(MapComment).ToList())];
     }
@@ -113,7 +119,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}/comments", cmd.Token);
         request.Content = JsonContent.Create(new CommentRequest(new CommentPayload(cmd.Body)), ConduitJsonContext.Default.CommentRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleCommentDto);
         return dto?.Comment is null ? [] : [new CommentAdded(MapComment(dto.Comment))];
     }
@@ -129,7 +136,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/tags", null);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.TagsDto);
         return dto is null ? [] : [new TagsLoaded(dto.Tags)];
     }
@@ -139,7 +147,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/users/login", null);
         request.Content = JsonContent.Create(new LoginRequest(new LoginUserPayload(cmd.Email, cmd.Password)), ConduitJsonContext.Default.LoginRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.UserResponseDto);
         return dto?.User is null ? [] : [new UserAuthenticated(new Session(dto.User.Token, dto.User.Username, dto.User.Email, dto.User.Bio, dto.User.Image))];
     }
@@ -149,7 +158,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/users", null);
         request.Content = JsonContent.Create(new RegisterRequest(new RegisterUserPayload(cmd.Username, cmd.Email, cmd.Password)), ConduitJsonContext.Default.RegisterRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.UserResponseDto);
         return dto?.User is null ? [] : [new UserAuthenticated(new Session(dto.User.Token, dto.User.Username, dto.User.Email, dto.User.Bio, dto.User.Image))];
     }
@@ -158,7 +168,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Get, $"{cmd.ApiUrl}/api/profiles/{cmd.Username}", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.ProfileResponseDto);
         return dto?.Profile is null ? [] : [new ProfileLoaded(MapProfile(dto.Profile))];
     }
@@ -167,7 +178,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/profiles/{cmd.Username}/follow", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.ProfileResponseDto);
         return dto?.Profile is null ? [] : [new FollowToggled(MapProfile(dto.Profile))];
     }
@@ -176,7 +188,8 @@ public static class ConduitInterpreter
     {
         using var request = CreateRequest(HttpMethod.Delete, $"{cmd.ApiUrl}/api/profiles/{cmd.Username}/follow", cmd.Token);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.ProfileResponseDto);
         return dto?.Profile is null ? [] : [new FollowToggled(MapProfile(dto.Profile))];
     }
@@ -186,7 +199,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Put, $"{cmd.ApiUrl}/api/user", cmd.Token);
         request.Content = JsonContent.Create(new UpdateUserRequest(new UpdateUserPayload(cmd.Image, cmd.Username, cmd.Bio, cmd.Email, cmd.Password)), ConduitJsonContext.Default.UpdateUserRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.UserResponseDto);
         return dto?.User is null ? [] : [new UserUpdated(new Session(dto.User.Token, dto.User.Username, dto.User.Email, dto.User.Bio, dto.User.Image))];
     }
@@ -196,7 +210,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Post, $"{cmd.ApiUrl}/api/articles", cmd.Token);
         request.Content = JsonContent.Create(new ArticleRequest(new ArticlePayload(cmd.Title, cmd.Description, cmd.Body, cmd.TagList)), ConduitJsonContext.Default.ArticleRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleArticleDto);
         return dto?.Article is null ? [] : [new ArticleSaved(dto.Article.Slug)];
     }
@@ -206,7 +221,8 @@ public static class ConduitInterpreter
         using var request = CreateRequest(HttpMethod.Put, $"{cmd.ApiUrl}/api/articles/{cmd.Slug}", cmd.Token);
         request.Content = JsonContent.Create(new ArticleRequest(new ArticlePayload(cmd.Title, cmd.Description, cmd.Body, cmd.TagList)), ConduitJsonContext.Default.ArticleRequest);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return [new ApiError(await ReadErrors(response))];
+        if (!response.IsSuccessStatusCode)
+            return [new ApiError(await ReadErrors(response))];
         var dto = await response.Content.ReadFromJsonAsync(ConduitJsonContext.Default.SingleArticleDto);
         return dto?.Article is null ? [] : [new ArticleSaved(dto.Article.Slug)];
     }
@@ -222,9 +238,12 @@ public static class ConduitInterpreter
     private static string BuildArticleQuery(int limit, int offset, string? tag, string? author, string? favorited)
     {
         var parts = new List<string> { $"limit={limit}", $"offset={offset}" };
-        if (tag is not null) parts.Add($"tag={Uri.EscapeDataString(tag)}");
-        if (author is not null) parts.Add($"author={Uri.EscapeDataString(author)}");
-        if (favorited is not null) parts.Add($"favorited={Uri.EscapeDataString(favorited)}");
+        if (tag is not null)
+            parts.Add($"tag={Uri.EscapeDataString(tag)}");
+        if (author is not null)
+            parts.Add($"author={Uri.EscapeDataString(author)}");
+        if (favorited is not null)
+            parts.Add($"favorited={Uri.EscapeDataString(favorited)}");
         return "?" + string.Join("&", parts);
     }
 

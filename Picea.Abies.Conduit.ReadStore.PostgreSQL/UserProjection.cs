@@ -12,9 +12,9 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Picea.Abies.Conduit.Domain.User;
 using Npgsql;
 using NpgsqlTypes;
+using Picea.Abies.Conduit.Domain.User;
 
 namespace Picea.Abies.Conduit.ReadStore.PostgreSQL;
 

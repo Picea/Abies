@@ -10,7 +10,6 @@
 // =============================================================================
 
 using System.Text.RegularExpressions;
-using Picea;
 
 namespace Picea.Abies.Conduit.Domain.Article;
 

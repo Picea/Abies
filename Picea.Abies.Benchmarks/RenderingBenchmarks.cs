@@ -1,6 +1,6 @@
+using BenchmarkDotNet.Attributes;
 using Picea.Abies.DOM;
 using Picea.Abies.Html;
-using BenchmarkDotNet.Attributes;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;

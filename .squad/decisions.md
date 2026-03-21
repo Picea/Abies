@@ -2,7 +2,40 @@
 
 ## Active Decisions
 
-No decisions recorded yet.
+### 2026-03-20T00:00:00Z: Phase 1 UI kit contract for issue #152
+**By:** Galadriel (Frontend Dev)
+**What:** Phase 1 components in `Picea.Abies.UI` use pure Node-returning functions with immutable record options, token-first CSS custom properties, and explicit keyboard/focus/ARIA contracts per component.
+**Why:** Establishes a coherent, reusable frontend contract for issue #152 with accessibility and composability built in.
+
+### 2026-03-20T00:00:00Z: Issue #152 Phase 1 test strategy and merge gates
+**By:** Samwise (Tester)
+**What:** Use a test pyramid (unit/integration/a11y + focused E2E), require WCAG 2.1 AA and keyboard coverage for all interactive Phase 1 components, and enforce deterministic CI test gates before merge.
+**Why:** Provides release confidence for the initial component kit while minimizing flaky CI behavior.
+
+### 2026-03-20T13:20:00Z: Issue #152 architecture direction for Picea.Abies.UI
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Gandalf)
+**What:** Phase 1 ships as two packages (`Picea.Abies.UI` and `Picea.Abies.UI.Demo`) with seven baseline components, token-driven styling, explicit accessibility contracts, and zero hidden mutable state.
+**Why:** Delivers a practical starter kit quickly while preserving MVU purity and ecosystem consistency.
+
+### 2026-03-20T14:05:00Z: Issue #152 review gate — execution readiness constraints
+**By:** Elrond (Reviewer)
+**What:** Keep issue #152 in changes-requested until v1 table scope/deferred items, measurable accessibility gates (automated + manual), and explicit CI/release mapping are fully defined.
+**Why:** Prevents scope drift and unverifiable completion criteria.
+
+### 2026-03-20T15:30:00Z: Issue #152 design iteration 2 — execution contract locked
+**By:** Gandalf (Architect)
+**What:** Locked four-phase implementation, v1 include/defer boundaries for all Phase 1 components, required accessibility verification matrix, explicit merge/release CI gate mapping, and frozen non-goals.
+**Why:** Resolves reviewer concerns and establishes a measurable completion contract before implementation.
+
+### 2026-03-20T16:00:00Z: Issue #152 kickoff package baseline in-repo
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Faramir)
+**What:** Start implementation with a new `Picea.Abies.UI` net10.0 class library in the main solution, exposing immutable-options + pure static Node component factories for `button`, `textInput`, `select`, `spinner`, `toast`, `modal`, and `table`, plus a token CSS contract file under `wwwroot`.
+**Why:** Provides a compile-ready baseline that matches Phase 1 scope while deferring advanced behaviors to explicit follow-up phases.
+
+### 2026-03-20T16:10:00Z: Issue #152 kickoff execution source-of-truth locked
+**By:** Gandalf (Architect)
+**What:** Established `docs/guides/abies-ui-issue-152-execution-plan.md` as the implementation kickoff source of truth, including phase ownership mapping, explicit v1 include/defer boundaries per component, and merge/release gates mapped to required CI checks.
+**Why:** Converts approved design direction into an execution contract that enables implementation to start with measurable completion criteria and no scope ambiguity.
 
 ## Process Decisions
 
