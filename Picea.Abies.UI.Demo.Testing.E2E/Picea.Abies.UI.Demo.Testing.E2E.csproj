@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="TUnit.Core.Interfaces" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
+    <PackageReference Include="TUnit" Version="1.19.57" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build-order dependency: ensure UI.Demo builds before publish target runs. -->
+    <ProjectReference Include="..\Picea.Abies.UI.Demo\Picea.Abies.UI.Demo.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      Private="false" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <WasmProjectPath>..\Picea.Abies.UI.Demo\Picea.Abies.UI.Demo.csproj</WasmProjectPath>
+    <WasmAppBundlePath>..\Picea.Abies.UI.Demo\bin\$(Configuration)\net10.0\publish\wwwroot</WasmAppBundlePath>
+  </PropertyGroup>
+
+  <Target Name="PublishWasmProject" BeforeTargets="Build"
+          Inputs="$(WasmProjectPath)"
+          Outputs="$(WasmAppBundlePath)\_framework\dotnet.js">
+    <Exec Command="dotnet publish &quot;$(WasmProjectPath)&quot; -c $(Configuration)"
+          ConsoleToMSBuild="true" />
+  </Target>
+
+</Project>
