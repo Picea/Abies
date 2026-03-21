@@ -75,6 +75,46 @@ public sealed class UiDemoSmokeTests : IAsyncInitializer, IAsyncDisposable
         await Expect(modalTrigger).ToBeVisibleAsync(new() { Timeout = 10_000 });
     }
 
+    [Test]
+    public async Task Phase2LayoutSections_ShouldRenderCoreElements()
+    {
+        await _page.GotoAsync("/");
+
+        await Expect(_page.GetByText("Item 1"))
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Expect(_page.Locator(".abies-ui-card").First)
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Expect(_page.Locator("hr[role='separator']").First)
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Expect(_page.GetByText("Section break"))
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
+    [Test]
+    public async Task Phase2FeedbackSections_ShouldExposeAccessibilityContracts()
+    {
+        await _page.GotoAsync("/");
+
+        var progressBars = _page.Locator("[role='progressbar']");
+        await Expect(progressBars).ToHaveCountAsync(2, new() { Timeout = 10_000 });
+
+        var determinate = progressBars.First;
+        await Expect(determinate).ToHaveAttributeAsync("aria-valuenow", new System.Text.RegularExpressions.Regex(".*"), new() { Timeout = 10_000 });
+        await Expect(determinate).ToHaveAttributeAsync("aria-label", new System.Text.RegularExpressions.Regex("\\S+"), new() { Timeout = 10_000 });
+
+        var indeterminate = progressBars.Nth(1);
+        await Expect(indeterminate).Not.ToHaveAttributeAsync("aria-valuenow", new System.Text.RegularExpressions.Regex(".*"), new() { Timeout = 10_000 });
+
+        await Expect(_page.Locator(".abies-ui-alert[role='alert'][aria-live='assertive']").First)
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        var skeletonCount = await _page.Locator(".abies-ui-skeleton[aria-busy='true']").CountAsync();
+        await Assert.That(skeletonCount).IsGreaterThan(0);
+    }
+
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
 }
