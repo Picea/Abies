@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774130818947,
+  "lastUpdate": 1774136175960,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12538,6 +12538,84 @@ window.BENCHMARK_DATA = {
             "value": 52.8,
             "unit": "ms",
             "extra": "mean: 52.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "52e987b18b8728d644e233d043e95ed8a92980c4",
+          "message": "chore(ui): sync demo abies-ui.js copy\n\nKeep demo static asset aligned with the reviewed focus-trap fixes in Picea.Abies.UI/wwwroot/abies-ui.js.",
+          "timestamp": "2026-03-22T00:25:45+01:00",
+          "tree_id": "74b41decc590f74f8d1dea933ed4533666ef8909",
+          "url": "https://github.com/Picea/Abies/commit/52e987b18b8728d644e233d043e95ed8a92980c4"
+        },
+        "date": 1774136175314,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 170.9,
+            "unit": "ms",
+            "extra": "mean: 176.5ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 182.7,
+            "unit": "ms",
+            "extra": "mean: 182.8ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 228.1,
+            "unit": "ms",
+            "extra": "mean: 229.1ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.8,
+            "unit": "ms",
+            "extra": "mean: 29.7ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 79.9,
+            "unit": "ms",
+            "extra": "mean: 81.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 52.4,
+            "unit": "ms",
+            "extra": "mean: 53.1ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1645,
+            "unit": "ms",
+            "extra": "mean: 1642.8ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 208.6,
+            "unit": "ms",
+            "extra": "mean: 209.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 59.1,
+            "unit": "ms",
+            "extra": "mean: 59.2ms, samples: 15"
           }
         ]
       }
