@@ -812,7 +812,7 @@ public static class Components
 
         var children = options.Shape is SkeletonShape.Text && options.Lines > 1
             ? Enumerable.Range(0, options.Lines)
-                .Select(_ => (Node)div([class_("abies-ui-skeleton abies-ui-skeleton--text-line")], []))
+                .Select(_ => div([class_("abies-ui-skeleton abies-ui-skeleton--text-line")], []))
                 .ToArray()
             : Array.Empty<Node>();
 
@@ -921,8 +921,10 @@ public static class Components
     private static string? BuildSkeletonStyle(string? width, string? height)
     {
         var parts = new List<string>(2);
-        if (HasText(width)) parts.Add($"width:{width}");
-        if (HasText(height)) parts.Add($"height:{height}");
+        if (HasText(width))
+            parts.Add($"width:{width}");
+        if (HasText(height))
+            parts.Add($"height:{height}");
         return parts.Count > 0 ? string.Join(";", parts) : null;
     }
 
