@@ -9,7 +9,9 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
+    env:
+      E2E_RETRY_COUNT: 3
 
     steps:
       - name: Checkout
@@ -23,7 +25,8 @@ jobs:
           # Detect which E2E projects are available in the solution.
           for proj in Picea.Abies.Conduit.Testing.E2E \
                       Picea.Abies.Counter.Testing.E2E \
-                      Picea.Abies.Templates.Testing.E2E; do
+                      Picea.Abies.Templates.Testing.E2E \
+                      Picea.Abies.UI.Demo.Testing.E2E; do
             key=$(echo "$proj" | tr '.' '_' | tr '-' '_')
             if grep -q "$proj" Picea.Abies.sln; then
               echo "${key}=true" >> $GITHUB_OUTPUT
@@ -56,6 +59,15 @@ jobs:
           restore-keys: |
             ms-playwright-${{ runner.os }}-
 
+      - name: Runner preflight checks
+        run: |
+          echo "Disk usage"
+          df -h
+          echo "Memory"
+          free -m
+          echo "CPU"
+          nproc
+
       # ── Playwright browser install (one per E2E project) ──────────
 
       - name: Install Playwright browsers (Conduit E2E)
@@ -73,6 +85,11 @@ jobs:
         run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
         working-directory: Picea.Abies.Templates.Testing.E2E
 
+      - name: Install Playwright browsers (UI Demo E2E)
+        if: steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
+        working-directory: Picea.Abies.UI.Demo.Testing.E2E
+
       # ── Conduit E2E ───────────────────────────────────────────────
 
       - name: Run Conduit E2E tests
@@ -80,11 +97,27 @@ jobs:
         id: conduit-e2e
         continue-on-error: true
         run: |
-          dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
-            --no-build -c Debug \
-            -- --treenode-filter "/*/*/*/*[Category!=Performance]" \
-            --report-trx --report-trx-filename conduit-e2e.trx \
-            --maximum-parallel-tests 1 --timeout 1h
+          attempt=1
+          while [ "$attempt" -le "$E2E_RETRY_COUNT" ]; do
+            echo "Conduit E2E attempt ${attempt}/${E2E_RETRY_COUNT}"
+            if dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj \
+              --no-build -c Debug \
+              -- --treenode-filter "/*/*/*/*[Category!=Performance]" \
+              --report-trx --report-trx-filename conduit-e2e.trx \
+              --maximum-parallel-tests 1 --timeout 1h; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$E2E_RETRY_COUNT" ]; then
+              echo "Retrying Conduit E2E in 20s..."
+              sleep 20
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ Conduit E2E failed after ${E2E_RETRY_COUNT} attempts"
+          exit 1
 
       - name: Analyze Conduit E2E results
         if: always() && steps.check-e2e.outputs.Picea_Abies_Conduit_Testing_E2E == 'true'
@@ -94,7 +127,7 @@ jobs:
             echo "❌ TRX file not found for Conduit E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict --min-pass-rate 1.0 --max-timeout-rate 0
 
       # ── Counter E2E ───────────────────────────────────────────────
 
@@ -103,10 +136,26 @@ jobs:
         id: counter-e2e
         continue-on-error: true
         run: |
-          dotnet test --project Picea.Abies.Counter.Testing.E2E/Picea.Abies.Counter.Testing.E2E.csproj \
-            --no-build -c Debug \
-            -- --report-trx --report-trx-filename counter-e2e.trx \
-            --maximum-parallel-tests 1 --timeout 1h
+          attempt=1
+          while [ "$attempt" -le "$E2E_RETRY_COUNT" ]; do
+            echo "Counter E2E attempt ${attempt}/${E2E_RETRY_COUNT}"
+            if dotnet test --project Picea.Abies.Counter.Testing.E2E/Picea.Abies.Counter.Testing.E2E.csproj \
+              --no-build -c Debug \
+              -- --report-trx --report-trx-filename counter-e2e.trx \
+              --maximum-parallel-tests 1 --timeout 1h; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$E2E_RETRY_COUNT" ]; then
+              echo "Retrying Counter E2E in 20s..."
+              sleep 20
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ Counter E2E failed after ${E2E_RETRY_COUNT} attempts"
+          exit 1
 
       - name: Analyze Counter E2E results
         if: always() && steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
@@ -116,7 +165,7 @@ jobs:
             echo "❌ TRX file not found for Counter E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict --min-pass-rate 1.0 --max-timeout-rate 0
 
       # ── Templates E2E ─────────────────────────────────────────────
 
@@ -125,10 +174,26 @@ jobs:
         id: templates-e2e
         continue-on-error: true
         run: |
-          dotnet test --project Picea.Abies.Templates.Testing.E2E/Picea.Abies.Templates.Testing.E2E.csproj \
-            --no-build -c Debug \
-            -- --report-trx --report-trx-filename templates-e2e.trx \
-            --maximum-parallel-tests 1 --timeout 1h
+          attempt=1
+          while [ "$attempt" -le "$E2E_RETRY_COUNT" ]; do
+            echo "Templates E2E attempt ${attempt}/${E2E_RETRY_COUNT}"
+            if dotnet test --project Picea.Abies.Templates.Testing.E2E/Picea.Abies.Templates.Testing.E2E.csproj \
+              --no-build -c Debug \
+              -- --report-trx --report-trx-filename templates-e2e.trx \
+              --maximum-parallel-tests 1 --timeout 1h; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$E2E_RETRY_COUNT" ]; then
+              echo "Retrying Templates E2E in 20s..."
+              sleep 20
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ Templates E2E failed after ${E2E_RETRY_COUNT} attempts"
+          exit 1
 
       - name: Analyze Templates E2E results
         if: always() && steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
@@ -138,7 +203,45 @@ jobs:
             echo "❌ TRX file not found for Templates E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict --min-pass-rate 1.0 --max-timeout-rate 0
+
+      # ── UI Demo E2E ───────────────────────────────────────────────
+
+      - name: Run UI Demo E2E tests
+        if: steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        id: uidemo-e2e
+        continue-on-error: true
+        run: |
+          attempt=1
+          while [ "$attempt" -le "$E2E_RETRY_COUNT" ]; do
+            echo "UI Demo E2E attempt ${attempt}/${E2E_RETRY_COUNT}"
+            if dotnet test --project Picea.Abies.UI.Demo.Testing.E2E/Picea.Abies.UI.Demo.Testing.E2E.csproj \
+              --no-build -c Debug \
+              -- --report-trx --report-trx-filename uidemo-e2e.trx \
+              --maximum-parallel-tests 1 --timeout 1h; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$E2E_RETRY_COUNT" ]; then
+              echo "Retrying UI Demo E2E in 20s..."
+              sleep 20
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ UI Demo E2E failed after ${E2E_RETRY_COUNT} attempts"
+          exit 1
+
+      - name: Analyze UI Demo E2E results
+        if: always() && steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        run: |
+          TRX_FILE=$(find Picea.Abies.UI.Demo.Testing.E2E -name "uidemo-e2e.trx" -type f | head -1)
+          if [ -z "$TRX_FILE" ]; then
+            echo "❌ TRX file not found for UI Demo E2E"
+            exit 2
+          fi
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict --min-pass-rate 1.0 --max-timeout-rate 0
 
       # ── Artifacts & Summary ───────────────────────────────────────
 

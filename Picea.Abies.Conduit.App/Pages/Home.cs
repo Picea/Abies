@@ -1,7 +1,9 @@
 using Picea.Abies.DOM;
+using Picea.Abies.UI;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
+using static Picea.Abies.UI.Components;
 
 namespace Picea.Abies.Conduit.App.Pages;
 
@@ -62,18 +64,28 @@ public static class Home
     private static Node Sidebar(IReadOnlyList<string> tags) =>
         div([class_("sidebar")],
         [
-            p([], [text("Popular Tags")]),
-            tags.Count == 0
-                ? text("Loading tags...")
-                : div([class_("tag-list")],
-                    tags.Select(tag =>
-                        button([
-                            id($"tag-pill:{Uri.EscapeDataString(tag)}"),
-                            type("button"),
-                            class_("tag-pill tag-default"),
-                            onclick(new FeedTabChanged(FeedTab.Tag, tag), $"tag-pill-click:{Uri.EscapeDataString(tag)}")
-                        ],
-                            [text(tag)])).ToArray())
+            card(new CardOptions(
+                Common: new UiCommonOptions(Class: "conduit-sidebar-card"),
+                Children:
+                [
+                    p([], [text("Popular Tags")]),
+                    divider(new DividerOptions()),
+                    tags.Count == 0
+                        ? alert(new AlertOptions(
+                            Message: "Loading tags...",
+                            Variant: AlertVariant.Info,
+                            IsLive: true,
+                            Common: new UiCommonOptions(Class: "conduit-sidebar-tags-loading")))
+                        : div([class_("tag-list")],
+                            tags.Select(tag =>
+                                button([
+                                    id($"tag-pill:{Uri.EscapeDataString(tag)}"),
+                                    type("button"),
+                                    class_("tag-pill tag-default"),
+                                    onclick(new FeedTabChanged(FeedTab.Tag, tag), $"tag-pill-click:{Uri.EscapeDataString(tag)}")
+                                ],
+                                    [text(tag)])).ToArray())
+                ]))
         ]);
 
     private static string PageHref(FeedTab tab, string? tag, int page)

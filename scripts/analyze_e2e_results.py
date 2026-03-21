@@ -19,6 +19,7 @@ Exit codes:
   2 - No test results found
 """
 
+import argparse
 import sys
 import re
 import xml.etree.ElementTree as ET
@@ -174,13 +175,50 @@ def print_failures(results: List[TestResult], failure_type: str = None):
             print(f"   Message: {msg}")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Analyze TRX E2E test results.")
+    parser.add_argument("trx_file", help="Path to the TRX result file")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail on any error including timeouts",
+    )
+    parser.add_argument(
+        "--min-pass-rate",
+        type=float,
+        default=0.0,
+        help="Minimum required pass rate as ratio [0..1] or percent [0..100]",
+    )
+    parser.add_argument(
+        "--max-timeout-rate",
+        type=float,
+        default=1.0,
+        help="Maximum allowed timeout failure rate as ratio [0..1] or percent [0..100]",
+    )
+    return parser.parse_args()
+
+
+def normalize_rate(value: float) -> float:
+    """Normalize ratio/percentage inputs to a ratio in [0..1]."""
+    if value > 1.0:
+        return value / 100.0
+    return value
+
+
 def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
+    args = parse_args()
+    trx_path = Path(args.trx_file)
+    strict_mode = args.strict
+    min_pass_rate = normalize_rate(args.min_pass_rate)
+    max_timeout_rate = normalize_rate(args.max_timeout_rate)
+
+    if min_pass_rate < 0.0 or min_pass_rate > 1.0:
+        print(f"❌ Invalid --min-pass-rate: {args.min_pass_rate} (expected 0..1 or 0..100)")
         sys.exit(2)
-    
-    trx_path = Path(sys.argv[1])
-    strict_mode = '--strict' in sys.argv
+
+    if max_timeout_rate < 0.0 or max_timeout_rate > 1.0:
+        print(f"❌ Invalid --max-timeout-rate: {args.max_timeout_rate} (expected 0..1 or 0..100)")
+        sys.exit(2)
     
     if not trx_path.exists():
         print(f"❌ Test results file not found: {trx_path}")
@@ -188,11 +226,34 @@ def main():
     
     print(f"🔍 Analyzing E2E test results from: {trx_path}")
     print(f"   Mode: {'STRICT (fail on any error)' if strict_mode else 'LENIENT (warn on timeouts)'}")
+    print(f"   Thresholds: min_pass_rate={min_pass_rate:.2%}, max_timeout_rate={max_timeout_rate:.2%}")
     
     results, counts = parse_trx_file(trx_path)
     
     print_summary(counts)
     
+    if counts['total'] == 0:
+        print("❌ No test results found in TRX file")
+        sys.exit(2)
+
+    pass_rate = counts['passed'] / counts['total']
+    timeout_rate = counts['timeout'] / counts['total']
+
+    # Global thresholds
+    if pass_rate < min_pass_rate:
+        print("\n" + "="*70)
+        print("🎯 Decision")
+        print("="*70)
+        print(f"🚨 FAIL: Pass rate {pass_rate:.2%} is below required {min_pass_rate:.2%}")
+        sys.exit(1)
+
+    if timeout_rate > max_timeout_rate:
+        print("\n" + "="*70)
+        print("🎯 Decision")
+        print("="*70)
+        print(f"🚨 FAIL: Timeout rate {timeout_rate:.2%} exceeds allowed {max_timeout_rate:.2%}")
+        sys.exit(1)
+
     # All tests passed
     if counts['failed'] == 0:
         print("✅ All E2E tests passed!")
