@@ -21,7 +21,6 @@ internal sealed record DemoModel(
     bool IsLoadingButtonActive,
     bool IsStatusSortAscending,
     int? SelectedTableRowIndex,
-    bool IsProgressBarDeterminate = true,
     double ProgressBarValue = 45.0,
     bool IsAlertVisible = true);
 
@@ -39,8 +38,6 @@ internal interface DemoMessage : Message
 
     sealed record Noop : DemoMessage;
 
-    sealed record ToggleProgressBarMode : DemoMessage;
-
     sealed record IncrementProgress : DemoMessage;
 
     sealed record ToggleAlert : DemoMessage;
@@ -55,7 +52,6 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
                 IsLoadingButtonActive: false,
                 IsStatusSortAscending: true,
                 SelectedTableRowIndex: 1,
-                IsProgressBarDeterminate: true,
                 ProgressBarValue: 45.0,
                 IsAlertVisible: true),
             Commands.None);
@@ -72,7 +68,6 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
             DemoMessage.SelectTableRow selectedRow => (model with { SelectedTableRowIndex = selectedRow.Index }, Commands.None),
             DemoMessage.CloseModal => (model with { IsModalOpen = false }, Commands.None),
             DemoMessage.Noop => (model, Commands.None),
-            DemoMessage.ToggleProgressBarMode => (model with { IsProgressBarDeterminate = !model.IsProgressBarDeterminate }, Commands.None),
             DemoMessage.IncrementProgress => (model with { ProgressBarValue = Math.Min(100.0, model.ProgressBarValue + 10.0) }, Commands.None),
             DemoMessage.ToggleAlert => (model with { IsAlertVisible = !model.IsAlertVisible }, Commands.None),
             _ => (model, Commands.None)

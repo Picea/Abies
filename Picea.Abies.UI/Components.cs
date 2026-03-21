@@ -915,7 +915,8 @@ public static class Components
         var range = max - min;
         var rawPercent = range > 0.0 ? (value - min) / range * 100.0 : 0.0;
         var clamped = Math.Clamp(rawPercent, 0.0, 100.0);
-        return clamped % 1.0 == 0.0 ? $"{clamped:F0}" : $"{clamped:F1}";
+        var rounded = Math.Round(clamped);
+        return Math.Abs(clamped - rounded) < 1e-9 ? $"{clamped:F0}" : $"{clamped:F1}";
     }
 
     private static string? BuildSkeletonStyle(string? width, string? height)
