@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774097343749,
+  "lastUpdate": 1774130817907,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12460,6 +12460,84 @@ window.BENCHMARK_DATA = {
             "value": 56,
             "unit": "ms",
             "extra": "mean: 54.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a8910143c6106606751c0e7da40669cebc680d5",
+          "message": "feat(ui): Harden production readiness gates and integration (#169)\n\n* feat(ui): harden production readiness gates and integration\n\n* fix(conduit): use available UI components in Home sidebar\n\nReplace removed card/divider/alert APIs with supported toast/spinner components in Home sidebar and update E2E proof selector accordingly.\n\n* fix(e2e): harden AppHost login assertion against transient nav lag\n\nAdd bounded retry and resilient authenticated-shell detection in AppHost regression login helper to reduce flakiness when username rendering lags in navbar.\n\n* test(ui-demo): align phase2 E2E coverage with current demo components\n\nReplace obsolete assertions for removed/deferred demo components with stable checks for current Phase 1 surface to keep CI strict gates meaningful and non-flaky.",
+          "timestamp": "2026-03-21T22:57:49+01:00",
+          "tree_id": "835757fcee6dadb0b88ea7e04eb273b3635f20b3",
+          "url": "https://github.com/Picea/Abies/commit/0a8910143c6106606751c0e7da40669cebc680d5"
+        },
+        "date": 1774130817637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 166.5,
+            "unit": "ms",
+            "extra": "mean: 168.6ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 178.3,
+            "unit": "ms",
+            "extra": "mean: 178.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 215.7,
+            "unit": "ms",
+            "extra": "mean: 214.6ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 26.1,
+            "unit": "ms",
+            "extra": "mean: 26.2ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 74.9,
+            "unit": "ms",
+            "extra": "mean: 75.1ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 48.1,
+            "unit": "ms",
+            "extra": "mean: 48.3ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1598.5,
+            "unit": "ms",
+            "extra": "mean: 1599.8ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 202,
+            "unit": "ms",
+            "extra": "mean: 202.4ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 52.8,
+            "unit": "ms",
+            "extra": "mean: 52.2ms, samples: 15"
           }
         ]
       }
