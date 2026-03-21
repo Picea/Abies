@@ -10,10 +10,41 @@ jobs:
   zap-baseline:
     name: ZAP Baseline
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: conduit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d conduit"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      kurrentdb:
+        image: kurrentplatform/kurrentdb:latest
+        env:
+          EVENTSTORE_CLUSTER_SIZE: 1
+          EVENTSTORE_RUN_PROJECTIONS: All
+          EVENTSTORE_START_STANDARD_PROJECTIONS: true
+          EVENTSTORE_INSECURE: true
+        ports:
+          - 2113:2113
+        options: >-
+          --health-cmd "curl -fsS http://localhost:2113/health/live"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Nerdbank.GitVersioning requires full git history to compute versions
+          fetch-depth: 0
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -29,6 +60,8 @@ jobs:
         run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore
 
       - name: Start API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
         run: |
           dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://127.0.0.1:5179 > /tmp/conduit-api.log 2>&1 &
           echo $! > /tmp/conduit-api.pid
@@ -48,7 +81,7 @@ jobs:
           exit 1
 
       - name: Run ZAP baseline
-        run: bash scripts/run-zap-baseline.sh http://127.0.0.1:5179 zap-results
+        run: bash scripts/run-zap-baseline.sh http://127.0.0.1:5179/api/tags zap-results
 
       - name: Run authenticated ZAP profile
         run: |

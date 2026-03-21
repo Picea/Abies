@@ -94,13 +94,14 @@ fi
 total_high=0
 for endpoint in "${authenticated_endpoints[@]}"; do
   name=$(echo "$endpoint" | sed 's#https\?://##' | tr '/:' '_')
-  json_report="/zap/wrk/$output_dir/${name}.json"
-  html_report="/zap/wrk/$output_dir/${name}.html"
-  md_report="/zap/wrk/$output_dir/${name}.md"
-  xml_report="/zap/wrk/$output_dir/${name}.xml"
+  json_report="$output_dir/${name}.json"
+  html_report="$output_dir/${name}.html"
+  md_report="$output_dir/${name}.md"
+  xml_report="$output_dir/${name}.xml"
 
   echo "Running authenticated ZAP baseline against $endpoint"
   docker run --rm --network host \
+    --user 0:0 \
     -v "$(pwd):/zap/wrk:rw" \
     ghcr.io/zaproxy/zaproxy:stable \
     zap-baseline.py \

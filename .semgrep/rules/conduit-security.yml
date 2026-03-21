@@ -39,35 +39,16 @@ rules:
         - Picea.Abies.Conduit.Api/Endpoints/*.cs
     patterns:
       - pattern-either:
-          - pattern: |
-              $GROUP.MapPost(...)
-                ...
-                .WithName(...);
-          - pattern: |
-              $GROUP.MapPut(...)
-                ...
-                .WithName(...);
-          - pattern: |
-              $GROUP.MapDelete(...)
-                ...
-                .WithName(...);
-      - pattern-not: |
-          $GROUP.MapPost(...)
-            ...
-            .RequireAuthorization()
-            ...
-            .WithName(...);
-      - pattern-not: |
-          $GROUP.MapPut(...)
-            ...
-            .RequireAuthorization()
-            ...
-            .WithName(...);
-      - pattern-not: |
-          $GROUP.MapDelete(...)
-            ...
-            .RequireAuthorization()
-            ...
-            .WithName(...);
-      - pattern-not-regex: '(?s)MapPost\(\s*"/"\s*,\s*Register\s*\).*?WithName'
-      - pattern-not-regex: '(?s)MapPost\(\s*"/login"\s*,\s*Login\s*\).*?WithName'
+          - pattern: $GROUP.MapPost(...).WithName(...)
+          - pattern: $GROUP.MapPut(...).WithName(...)
+          - pattern: $GROUP.MapDelete(...).WithName(...)
+      - pattern-not: $GROUP.MapPost(...).RequireAuthorization().WithName(...)
+      - pattern-not: $GROUP.MapPut(...).RequireAuthorization().WithName(...)
+      - pattern-not: $GROUP.MapDelete(...).RequireAuthorization().WithName(...)
+      - pattern-not: $GROUP.MapPost(...).AllowAnonymous().WithName(...)
+      - pattern-not: $GROUP.MapPut(...).AllowAnonymous().WithName(...)
+      - pattern-not: $GROUP.MapDelete(...).AllowAnonymous().WithName(...)
+      - pattern-not-inside: |
+          var $GROUP = $ROUTES.MapGroup(...)
+              .RequireAuthorization();
+          ...
