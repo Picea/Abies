@@ -23,7 +23,8 @@ jobs:
           # Detect which E2E projects are available in the solution.
           for proj in Picea.Abies.Conduit.Testing.E2E \
                       Picea.Abies.Counter.Testing.E2E \
-                      Picea.Abies.Templates.Testing.E2E; do
+                      Picea.Abies.Templates.Testing.E2E \
+                      Picea.Abies.UI.Demo.Testing.E2E; do
             key=$(echo "$proj" | tr '.' '_' | tr '-' '_')
             if grep -q "$proj" Picea.Abies.sln; then
               echo "${key}=true" >> $GITHUB_OUTPUT
@@ -73,6 +74,11 @@ jobs:
         run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
         working-directory: Picea.Abies.Templates.Testing.E2E
 
+      - name: Install Playwright browsers (UI Demo E2E)
+        if: steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        run: pwsh bin/Debug/net10.0/playwright.ps1 install --with-deps
+        working-directory: Picea.Abies.UI.Demo.Testing.E2E
+
       # ── Conduit E2E ───────────────────────────────────────────────
 
       - name: Run Conduit E2E tests
@@ -94,7 +100,7 @@ jobs:
             echo "❌ TRX file not found for Conduit E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict
 
       # ── Counter E2E ───────────────────────────────────────────────
 
@@ -116,7 +122,7 @@ jobs:
             echo "❌ TRX file not found for Counter E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict
 
       # ── Templates E2E ─────────────────────────────────────────────
 
@@ -138,7 +144,29 @@ jobs:
             echo "❌ TRX file not found for Templates E2E"
             exit 2
           fi
-          python3 scripts/analyze_e2e_results.py "$TRX_FILE"
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict
+
+      # ── UI Demo E2E ───────────────────────────────────────────────
+
+      - name: Run UI Demo E2E tests
+        if: steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        id: uidemo-e2e
+        continue-on-error: true
+        run: |
+          dotnet test --project Picea.Abies.UI.Demo.Testing.E2E/Picea.Abies.UI.Demo.Testing.E2E.csproj \
+            --no-build -c Debug \
+            -- --report-trx --report-trx-filename uidemo-e2e.trx \
+            --maximum-parallel-tests 1 --timeout 1h
+
+      - name: Analyze UI Demo E2E results
+        if: always() && steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        run: |
+          TRX_FILE=$(find Picea.Abies.UI.Demo.Testing.E2E -name "uidemo-e2e.trx" -type f | head -1)
+          if [ -z "$TRX_FILE" ]; then
+            echo "❌ TRX file not found for UI Demo E2E"
+            exit 2
+          fi
+          python3 scripts/analyze_e2e_results.py "$TRX_FILE" --strict
 
       # ── Artifacts & Summary ───────────────────────────────────────
 

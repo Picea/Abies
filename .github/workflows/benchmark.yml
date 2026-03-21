@@ -428,16 +428,22 @@ jobs:
           npm run bench -- --headless --framework keyed/abies --benchmark 22_run-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory
 
-      - name: Fetch baseline from gh-pages (if not in repo)
-        if: steps.should-run.outputs.run == 'true' && ${{ !hashFiles('benchmark-results/baseline.json') }}
+      - name: Refresh baseline from gh-pages
+        if: steps.should-run.outputs.run == 'true'
         continue-on-error: true
         run: |
-          # Try to fetch baseline from gh-pages branch
+          # Try to refresh baseline from gh-pages branch.
+          # If unavailable, keep the repo baseline as fallback.
           mkdir -p benchmark-results
-          if git show origin/gh-pages:data/e2e-baseline.json > benchmark-results/baseline.json 2>/dev/null; then
-            echo "✅ Fetched baseline from gh-pages"
+          if git show origin/gh-pages:data/e2e-baseline.json > /tmp/e2e-baseline.json 2>/dev/null; then
+            mv /tmp/e2e-baseline.json benchmark-results/baseline.json
+            echo "✅ Refreshed baseline from gh-pages"
           else
-            echo "⚠️ No baseline found in gh-pages - first run will create one"
+            if [ -f benchmark-results/baseline.json ]; then
+              echo "⚠️ Could not refresh from gh-pages, using repo baseline"
+            else
+              echo "⚠️ No baseline found in gh-pages or repo - first run will create one"
+            fi
           fi
 
       - name: Compare against baseline

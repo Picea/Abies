@@ -20,7 +20,10 @@ internal sealed record DemoModel(
     bool IsModalOpen,
     bool IsLoadingButtonActive,
     bool IsStatusSortAscending,
-    int? SelectedTableRowIndex);
+    int? SelectedTableRowIndex,
+    bool IsProgressBarDeterminate = true,
+    double ProgressBarValue = 45.0,
+    bool IsAlertVisible = true);
 
 internal interface DemoMessage : Message
 {
@@ -35,6 +38,12 @@ internal interface DemoMessage : Message
     sealed record CloseModal : DemoMessage;
 
     sealed record Noop : DemoMessage;
+
+    sealed record ToggleProgressBarMode : DemoMessage;
+
+    sealed record IncrementProgress : DemoMessage;
+
+    sealed record ToggleAlert : DemoMessage;
 }
 
 internal sealed class UiDemo : Program<DemoModel, DemoArguments>
@@ -45,7 +54,10 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
                 IsModalOpen: false,
                 IsLoadingButtonActive: false,
                 IsStatusSortAscending: true,
-                SelectedTableRowIndex: 1),
+                SelectedTableRowIndex: 1,
+                IsProgressBarDeterminate: true,
+                ProgressBarValue: 45.0,
+                IsAlertVisible: true),
             Commands.None);
 
     public static Subscription Subscriptions(DemoModel model)
@@ -60,6 +72,9 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
             DemoMessage.SelectTableRow selectedRow => (model with { SelectedTableRowIndex = selectedRow.Index }, Commands.None),
             DemoMessage.CloseModal => (model with { IsModalOpen = false }, Commands.None),
             DemoMessage.Noop => (model, Commands.None),
+            DemoMessage.ToggleProgressBarMode => (model with { IsProgressBarDeterminate = !model.IsProgressBarDeterminate }, Commands.None),
+            DemoMessage.IncrementProgress => (model with { ProgressBarValue = Math.Min(100.0, model.ProgressBarValue + 10.0) }, Commands.None),
+            DemoMessage.ToggleAlert => (model with { IsAlertVisible = !model.IsAlertVisible }, Commands.None),
             _ => (model, Commands.None)
         };
 
@@ -73,10 +88,10 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
                         [class_("demo-hero")],
                         [
                             p([class_("demo-eyebrow")], [text("Picea.Abies.UI.Demo")]),
-                            h1([], [text("Phase 1 component scaffold")]),
+                            h1([], [text("Phase 2 component kit")]),
                             p(
                                 [class_("demo-intro")],
-                                [text("Minimal runnable showcase for the seven issue #152 baseline components.")])
+                                [text("Extending the Phase 1 baseline with layout and feedback components.")])
                         ]),
                     div(
                         [class_("demo-grid")],
@@ -221,7 +236,104 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
                                                 [
                                                     button(new ButtonOptions("Done", Variant: ButtonVariant.Secondary, Common: Clickable(new DemoMessage.CloseModal())))
                                                 ]))
-                                    ]))
+                                    ])),
+                            ShowcaseSection(
+                                "stack (vertical)",
+                                "Arranges children in a vertical flex column with configurable gap.",
+                                stack(new StackOptions(
+                                    Children:
+                                    [
+                                        p([], [text("Item 1")]),
+                                        p([], [text("Item 2")]),
+                                        p([], [text("Item 3")])
+                                    ],
+                                    Gap: StackGap.Gap2))),
+                            ShowcaseSection(
+                                "stack (horizontal)",
+                                "Arranges children in a horizontal flex row.",
+                                stack(new StackOptions(
+                                    Children:
+                                    [
+                                        p([], [text("Item A")]),
+                                        p([], [text("Item B")]),
+                                        p([], [text("Item C")])
+                                    ],
+                                    Direction: StackDirection.Horizontal,
+                                    Gap: StackGap.Gap3))),
+                            ShowcaseSection(
+                                "card",
+                                "Surface container with configurable elevation and padding.",
+                                card(new CardOptions(
+                                    Children:
+                                    [
+                                        p([], [text("This is card content")])
+                                    ]))),
+                            ShowcaseSection(
+                                "divider (plain)",
+                                "Horizontal rule between content sections.",
+                                divider(new DividerOptions())),
+                            ShowcaseSection(
+                                "divider (labeled)",
+                                "Horizontal rule with an inline section label.",
+                                divider(new DividerOptions(Label: "Section break"))),
+                            ShowcaseSection(
+                                "progressBar (determinate)",
+                                "Shows task completion with a fill bar — increment with the button.",
+                                div(
+                                    [class_("demo-stack")],
+                                    [
+                                        progressBar(new ProgressBarOptions(
+                                            Label: "Upload progress",
+                                            Value: model.ProgressBarValue,
+                                            ShowValue: true)),
+                                        button(new ButtonOptions(
+                                            "Add 10 %",
+                                            Variant: ButtonVariant.Secondary,
+                                            Common: Clickable(new DemoMessage.IncrementProgress())))
+                                    ])),
+                            ShowcaseSection(
+                                "progressBar (indeterminate)",
+                                "Indeterminate bar for operations with an unknown duration.",
+                                progressBar(new ProgressBarOptions(
+                                    Label: "Loading data",
+                                    Value: null))),
+                            ShowcaseSection(
+                                "alert (info)",
+                                "Informational in-page alert with optional title.",
+                                alert(new AlertOptions(
+                                    Message: "Your changes have been saved successfully.",
+                                    Title: "Saved",
+                                    Variant: AlertVariant.Info))),
+                            ShowcaseSection(
+                                "alert (danger, live)",
+                                "Danger live-region alert with toggle control.",
+                                div(
+                                    [class_("demo-stack")],
+                                    [
+                                        button(new ButtonOptions(
+                                            model.IsAlertVisible ? "Dismiss alert" : "Show alert",
+                                            Variant: ButtonVariant.Secondary,
+                                            Common: Clickable(new DemoMessage.ToggleAlert()))),
+                                        model.IsAlertVisible
+                                            ? alert(new AlertOptions(
+                                                Message: "Token is invalid. Please check your credentials.",
+                                                Variant: AlertVariant.Danger,
+                                                IsLive: true))
+                                            : new Empty()
+                                    ])),
+                            ShowcaseSection(
+                                "skeleton (text lines)",
+                                "Multi-line text placeholder for article or list content.",
+                                skeleton(new SkeletonOptions(
+                                    Shape: SkeletonShape.Text,
+                                    Lines: 3,
+                                    Label: "Loading article"))),
+                            ShowcaseSection(
+                                "skeleton (avatar)",
+                                "Circular avatar placeholder for user profile loading states.",
+                                skeleton(new SkeletonOptions(
+                                    Shape: SkeletonShape.Avatar,
+                                    Label: "Loading avatar")))
                         ])
                 ]));
 
