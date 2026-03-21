@@ -12,7 +12,7 @@ namespace Picea.Abies.UI;
 /// </summary>
 public static class Components
 {
-    #pragma warning disable IDE1006
+#pragma warning disable IDE1006
 
     /// <summary>
     /// Creates a button component.
@@ -630,7 +630,7 @@ public static class Components
     private static bool IsEscapeKey(KeyEventData? eventData)
         => string.Equals(eventData?.Key, "Escape", StringComparison.Ordinal);
 
-    #pragma warning restore IDE1006
+#pragma warning restore IDE1006
 }
 
 /// <summary>

@@ -19,8 +19,6 @@
 
 using System.Collections.Immutable;
 using System.Diagnostics;
-using Picea.Abies.Conduit.Domain.Shared;
-using Picea;
 
 namespace Picea.Abies.Conduit.Domain.Article;
 

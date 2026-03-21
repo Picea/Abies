@@ -7,8 +7,8 @@ using Picea.Abies.UI;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
-using static Picea.Abies.UI.Components;
 using static Picea.Abies.Subscriptions.SubscriptionModule;
+using static Picea.Abies.UI.Components;
 
 [assembly: SupportedOSPlatform("browser")]
 
@@ -22,7 +22,7 @@ internal sealed record DemoModel(
     bool IsStatusSortAscending,
     int? SelectedTableRowIndex);
 
-internal interface DemoMessage : Picea.Abies.Message
+internal interface DemoMessage : Message
 {
     sealed record ToggleModal : DemoMessage;
 
@@ -51,7 +51,7 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
     public static Subscription Subscriptions(DemoModel model)
         => None;
 
-    public static (DemoModel, Command) Transition(DemoModel model, Picea.Abies.Message message)
+    public static (DemoModel, Command) Transition(DemoModel model, Message message)
         => message switch
         {
             DemoMessage.ToggleModal => (model with { IsModalOpen = !model.IsModalOpen }, Commands.None),
@@ -294,9 +294,9 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
                     .. (isModalOpen ? [] : new[] { autofocus() })
                 ]));
 
-    private static UiCommonOptions Clickable(Picea.Abies.Message message)
+    private static UiCommonOptions Clickable(Message message)
         => new(Attributes: [onclick(message)]);
 
-    private static UiCommonOptions ClickableRow(Picea.Abies.Message message)
+    private static UiCommonOptions ClickableRow(Message message)
         => new(Attributes: [onclick(message), onkeydown(message)]);
 }

@@ -12,7 +12,6 @@ using Picea.Abies.Conduit.Api.Infrastructure;
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.Domain.User;
 using Picea.Abies.Conduit.ReadModel;
-using Picea;
 
 namespace Picea.Abies.Conduit.Api.Endpoints;
 

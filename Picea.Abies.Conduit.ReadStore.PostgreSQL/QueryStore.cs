@@ -14,10 +14,10 @@
 // =============================================================================
 
 using System.Diagnostics;
-using Picea.Abies.Conduit.ReadModel;
-using Picea;
 using Npgsql;
 using NpgsqlTypes;
+using Picea;
+using Picea.Abies.Conduit.ReadModel;
 
 namespace Picea.Abies.Conduit.ReadStore.PostgreSQL;
 
