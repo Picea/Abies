@@ -14,8 +14,6 @@
 // Optional results use Picea.Option<T> — no null.
 // =============================================================================
 
-using Picea;
-
 namespace Picea.Abies.Conduit.ReadModel;
 
 // ─── User Queries ─────────────────────────────────────────────────────────────

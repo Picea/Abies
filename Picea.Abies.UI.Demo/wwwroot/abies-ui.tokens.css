@@ -1,0 +1,82 @@
+:root {
+  --abies-ui-font: var(--abies-font-ui, "Segoe UI", sans-serif);
+  --abies-ui-font-mono: var(--abies-font-mono, "SFMono-Regular", monospace);
+  --abies-ui-radius: 8px;
+  --abies-ui-radius-sm: 6px;
+  --abies-ui-radius-lg: 12px;
+  --abies-ui-space-1: 4px;
+  --abies-ui-space-2: 8px;
+  --abies-ui-space-3: 12px;
+  --abies-ui-space-4: 16px;
+  --abies-ui-space-5: 24px;
+  --abies-ui-space-6: 32px;
+
+  --abies-ui-duration-fast: 120ms;
+  --abies-ui-duration-normal: 180ms;
+  --abies-ui-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --abies-ui-color-bg: var(--abies-bg, #ffffff);
+  --abies-ui-color-text: var(--abies-text, #101828);
+  --abies-ui-color-text-muted: var(--abies-text-muted, #475467);
+  --abies-ui-color-text-subtle: var(--abies-text-subtle, #667085);
+  --abies-ui-color-border: var(--abies-border, #e4e7ec);
+  --abies-ui-color-border-strong: var(--abies-border-strong, #d0d5dd);
+  --abies-ui-color-accent: var(--abies-accent, #89b42b);
+  --abies-ui-color-accent-hover: var(--abies-accent-hover, #71922d);
+  --abies-ui-color-accent-active: var(--abies-accent-active, #6d9026);
+  --abies-ui-color-accent-contrast: #0b1220;
+  --abies-ui-color-surface: var(--abies-bg-elevated, #f8fafc);
+  --abies-ui-color-surface-soft: var(--abies-bg-soft, #f2f4f7);
+  --abies-ui-color-overlay: rgb(16 24 40 / 0.48);
+  --abies-ui-color-focus-ring: var(--abies-focus-ring, rgb(137 180 43 / 0.42));
+  --abies-ui-color-info: var(--abies-info-500, #2e90fa);
+  --abies-ui-color-success: var(--abies-success-500, #12b76a);
+  --abies-ui-color-warning: var(--abies-warning-500, #f79009);
+  --abies-ui-color-danger: var(--abies-danger-500, #f04438);
+
+  --abies-ui-button-bg: var(--abies-ui-color-accent);
+  --abies-ui-button-bg-hover: var(--abies-ui-color-accent-hover);
+  --abies-ui-button-bg-active: var(--abies-ui-color-accent-active);
+  --abies-ui-button-fg: var(--abies-ui-color-accent-contrast);
+  --abies-ui-button-border: transparent;
+  --abies-ui-button-secondary-bg: var(--abies-ui-color-surface);
+  --abies-ui-button-secondary-fg: var(--abies-ui-color-text);
+  --abies-ui-button-secondary-border: var(--abies-ui-color-border-strong);
+  --abies-ui-button-ghost-bg: transparent;
+  --abies-ui-button-ghost-fg: var(--abies-ui-color-accent-hover);
+  --abies-ui-button-disabled-bg: var(--abies-neutral-200, #e4e7ec);
+  --abies-ui-button-disabled-fg: var(--abies-ui-color-text-subtle);
+
+  --abies-ui-input-bg: var(--abies-ui-color-bg);
+  --abies-ui-input-fg: var(--abies-ui-color-text);
+  --abies-ui-input-border: var(--abies-ui-color-border);
+  --abies-ui-input-border-focus: var(--abies-ui-color-accent);
+  --abies-ui-input-border-error: var(--abies-ui-color-danger);
+  --abies-ui-input-placeholder: var(--abies-ui-color-text-subtle);
+  --abies-ui-input-description: var(--abies-ui-color-text-muted);
+
+  --abies-ui-select-bg: var(--abies-ui-input-bg);
+  --abies-ui-select-fg: var(--abies-ui-input-fg);
+  --abies-ui-select-border: var(--abies-ui-input-border);
+
+  --abies-ui-modal-surface: var(--abies-ui-color-bg);
+  --abies-ui-modal-border: var(--abies-ui-color-border);
+  --abies-ui-modal-shadow: 0 24px 64px rgb(16 24 40 / 0.18);
+
+  --abies-ui-table-bg: var(--abies-ui-color-bg);
+  --abies-ui-table-header-bg: var(--abies-ui-color-surface-soft);
+  --abies-ui-table-row-border: var(--abies-ui-color-border);
+  --abies-ui-table-caption: var(--abies-ui-color-text-muted);
+
+  --abies-ui-spinner-track: var(--abies-brand-100, #e7f1cc);
+  --abies-ui-spinner-indicator: var(--abies-ui-color-accent);
+
+  --abies-ui-toast-info-bg: color-mix(in srgb, var(--abies-ui-color-info) 14%, var(--abies-ui-color-bg));
+  --abies-ui-toast-success-bg: color-mix(in srgb, var(--abies-ui-color-success) 14%, var(--abies-ui-color-bg));
+  --abies-ui-toast-warning-bg: color-mix(in srgb, var(--abies-ui-color-warning) 16%, var(--abies-ui-color-bg));
+  --abies-ui-toast-danger-bg: color-mix(in srgb, var(--abies-ui-color-danger) 14%, var(--abies-ui-color-bg));
+  --abies-ui-toast-border: var(--abies-ui-color-border-strong);
+  --abies-ui-toast-fg: var(--abies-ui-color-text);
+
+  --abies-ui-surface: var(--abies-ui-color-surface);
+}

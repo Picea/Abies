@@ -38,7 +38,7 @@ internal static class AnalysisHelpers
         // The method name IS the element name (e.g., Elements.div → "div", Elements.img → "img")
         // Exception: element() is the generic factory, skip it
         var name = method.Name;
-        if (name == "element" || name == "text" || name == "raw" || name == "memo" || name == "lazy")
+        if (name is "element" or "text" or "raw" or "memo" or "lazy")
         {
             return null;
         }

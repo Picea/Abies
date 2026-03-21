@@ -29,7 +29,6 @@
 // =============================================================================
 
 using System.Diagnostics;
-using Picea;
 
 namespace Picea.Abies.Server;
 
@@ -176,7 +175,7 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
                     return;
 
                 var json = url is not null
-                    ? $$"""{"type":"navigate","action":"{{action}}","url":"{{url}}"}""" 
+                    ? $$"""{"type":"navigate","action":"{{action}}","url":"{{url}}"}"""
                     : $$"""{"type":"navigate","action":"{{action}}"}""";
 
                 _ = sendText(json);

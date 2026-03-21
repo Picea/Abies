@@ -99,13 +99,16 @@ public sealed partial class TemplateProject : IAsyncDisposable
             try
             {
                 await RunDotnetAsync($"new install \"{templateDir}\" --force", tempDir, ct);
+
+                // Keep template installation and scaffold invocation in the same
+                // critical section so another test cannot uninstall the template
+                // between these two commands.
+                await RunDotnetAsync($"new {templateShortName} -n {projectName} -o \"{projectDir}\"", tempDir, ct);
             }
             finally
             {
                 _templateLock.Release();
             }
-
-            await RunDotnetAsync($"new {templateShortName} -n {projectName} -o \"{projectDir}\"", tempDir, ct);
 
             PatchCsproj(projectDir, projectName);
 

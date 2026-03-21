@@ -17,9 +17,9 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Picea.Abies.Conduit.Domain.Article;
 using Npgsql;
 using NpgsqlTypes;
+using Picea.Abies.Conduit.Domain.Article;
 
 namespace Picea.Abies.Conduit.ReadStore.PostgreSQL;
 

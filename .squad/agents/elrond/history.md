@@ -31,3 +31,4 @@
 - First review: PR #144 benchmark required-check (verified template compliance, title formatting)
 - Reviewer gate checklist: verify Conventional Commits PR title, required template sections, and explicit testing details.
 - Block merge when required CI checks fail (build, lint/format, tests, E2E when applicable).
+- Issue #152 review requires execution-ready scope boundaries, measurable accessibility gates (automated + manual), and explicit CI/release mapping before implementation proceeds.

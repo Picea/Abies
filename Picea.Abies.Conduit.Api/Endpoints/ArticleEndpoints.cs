@@ -2,12 +2,12 @@
 // Article Endpoints — CRUD, Favorites, Feed
 // =============================================================================
 
+using Picea;
 using Picea.Abies.Conduit.Api.Dto;
 using Picea.Abies.Conduit.Api.Infrastructure;
 using Picea.Abies.Conduit.Domain.Article;
 using Picea.Abies.Conduit.Domain.Shared;
 using Picea.Abies.Conduit.ReadModel;
-using Picea;
 
 namespace Picea.Abies.Conduit.Api.Endpoints;
 

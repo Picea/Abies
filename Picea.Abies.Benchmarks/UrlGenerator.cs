@@ -21,7 +21,7 @@ public static class UrlGenerator
         var urlBuilder = new StringBuilder();
         urlBuilder.Append($"{scheme}://{host}");
 
-        if (port != 80 && port != 443)
+        if (port is not 80 and not 443)
         {
             urlBuilder.Append($":{port}");
         }

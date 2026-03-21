@@ -11,7 +11,7 @@
 //   - Keeping the WASM process alive
 // =============================================================================
 
-using Picea.Abies.Counter;
 using Picea;
+using Picea.Abies.Counter;
 
 await Picea.Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
