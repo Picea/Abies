@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+    <ProjectReference Include="..\Picea.Abies.UI\Picea.Abies.UI.csproj" />
     <PackageReference Include="Praefixum" Version="2.0.1" />
   </ItemGroup>
 

@@ -134,6 +134,27 @@ public sealed class UiDemoPhase2Tests : IAsyncInitializer, IAsyncDisposable
     }
 
     [Test]
+    public async Task Modal_EscapeShouldCloseAndRestoreFocusToTrigger()
+    {
+        await _page.GotoAsync("/");
+
+        var modalTrigger = _page.Locator("#modal-trigger-button");
+        await Expect(modalTrigger).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await modalTrigger.ClickAsync();
+
+        var dialog = _page.GetByRole(AriaRole.Dialog);
+        await Expect(dialog).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await _page.Keyboard.PressAsync("Escape");
+        await Expect(dialog).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        var focusReturned = await _page.EvaluateAsync<bool>(
+            "() => document.activeElement?.id === 'modal-trigger-button'");
+
+        await Assert.That(focusReturned).IsTrue();
+    }
+
+    [Test]
     public async Task Table_ArrowKeysShouldNavigateRows()
     {
         await _page.GotoAsync("/");
@@ -150,6 +171,56 @@ public sealed class UiDemoPhase2Tests : IAsyncInitializer, IAsyncDisposable
             "() => { const rows = document.querySelectorAll('tbody tr[tabindex=\"0\"]'); return rows.length > 0 && rows[1] === document.activeElement; }");
 
         await Assert.That(hasFocusableRows).IsTrue();
+    }
+
+    [Test]
+    public async Task Table_HomeAndEndKeysShouldRespectRowBoundaries()
+    {
+        await _page.GotoAsync("/");
+
+        var firstRow = _page.Locator("tbody tr[tabindex='0']").First;
+        await Expect(firstRow).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await firstRow.ClickAsync();
+        await _page.Keyboard.PressAsync("End");
+
+        var atLastRow = await _page.EvaluateAsync<bool>(
+            "() => { const rows = document.querySelectorAll('tbody tr[tabindex=\"0\"]'); return rows.length > 0 && document.activeElement === rows[rows.length - 1]; }");
+        await Assert.That(atLastRow).IsTrue();
+
+        await _page.Keyboard.PressAsync("Home");
+
+        var atFirstRow = await _page.EvaluateAsync<bool>(
+            "() => { const rows = document.querySelectorAll('tbody tr[tabindex=\"0\"]'); return rows.length > 0 && document.activeElement === rows[0]; }");
+        await Assert.That(atFirstRow).IsTrue();
+    }
+
+    [Test]
+    public async Task ProgressBar_DeterminateShouldExposeBoundedValueContract()
+    {
+        await _page.GotoAsync("/");
+
+        var determinate = _page.Locator("[role='progressbar']").First;
+        await Expect(determinate).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Expect(determinate).ToHaveAttributeAsync("aria-valuenow", "45", new() { Timeout = 10_000 });
+        await Expect(determinate).ToHaveAttributeAsync("aria-valuemin", "0", new() { Timeout = 10_000 });
+        await Expect(determinate).ToHaveAttributeAsync("aria-valuemax", "100", new() { Timeout = 10_000 });
+        await Expect(_page.Locator(".abies-ui-progress-bar__value").First).ToHaveTextAsync("45%", new() { Timeout = 10_000 });
+    }
+
+    [Test]
+    public async Task Alert_LiveRegionShouldExposeStatusAndAssertiveContracts()
+    {
+        await _page.GotoAsync("/");
+
+        var infoStatus = _page.Locator(".abies-ui-alert[role='status']").First;
+        await Expect(infoStatus).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await Expect(infoStatus).ToHaveAttributeAsync("aria-live", "polite", new() { Timeout = 10_000 });
+
+        var dangerAlert = _page.Locator(".abies-ui-alert[role='alert']").First;
+        await Expect(dangerAlert).ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await Expect(dangerAlert).ToHaveAttributeAsync("aria-live", "assertive", new() { Timeout = 10_000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>

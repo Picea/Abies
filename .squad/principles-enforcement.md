@@ -58,6 +58,11 @@ A deviation is any action that contradicts, weakens, bypasses, or works around a
 - Choosing a pragmatic shortcut over the architecturally clean solution
 - Compromising for ergonomics or performance without demonstrating the need
 
+### Boy Scout Rule
+- Leaving code worse than you found it
+- Touching a file and not improving it (rename a poorly named variable, extract a helper, add a missing type annotation, fix a stale comment, improve an error message)
+- Ignoring existing code smells in files you're modifying
+
 ## The Protocol
 
 When any agent encounters a situation where a principle cannot be followed as written:
