@@ -136,21 +136,33 @@ function activateFocusTrap(dialog) {
 
 /**
  * Deactivates the active focus trap and restores focus to the element
- * identified by the `data-focus-return` attribute on the removed dialog,
- * or to `document.body` if no return target is found.
+ * identified by the removed dialog's `data-focus-return` attribute (if any),
+ * falling back to the target captured during activation.
+ * If no return target is found, focus falls back to `document.body`.
  * @param {Element} dialog
  */
 function deactivateFocusTrap(dialog) {
   activeTrapController?.abort();
   activeTrapController = null;
 
-  if (trapReturnTarget instanceof HTMLElement) {
-    trapReturnTarget.focus();
+  const returnId = dialog.getAttribute('data-focus-return');
+  const returnTarget =
+    (returnId ? document.getElementById(returnId) : null) ??
+    trapReturnTarget;
+
+  if (returnTarget instanceof HTMLElement) {
+    returnTarget.focus();
   } else {
     // Last resort: body may not be focusable — temporarily grant tabindex.
+    const hadTabindex = document.body.hasAttribute('tabindex');
+    const previousTabindex = document.body.getAttribute('tabindex');
     document.body.setAttribute('tabindex', '-1');
     document.body.focus();
-    document.body.removeAttribute('tabindex');
+    if (hadTabindex && previousTabindex !== null) {
+      document.body.setAttribute('tabindex', previousTabindex);
+    } else {
+      document.body.removeAttribute('tabindex');
+    }
   }
   trapReturnTarget = null;
 }
