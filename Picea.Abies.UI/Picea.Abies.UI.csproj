@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <None Include="wwwroot/abies-ui.tokens.css" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
+    <None Include="wwwroot/abies-ui.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
   </ItemGroup>
 
 </Project>

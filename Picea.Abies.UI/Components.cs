@@ -143,7 +143,7 @@ public static class Components
         modalAttributes.AddRange(BuildOptionalAttribute(keyDownHandler is not null, () => onkeydown(keyDownHandler!)));
         modalAttributes.AddRange(BuildOptionalAttribute(HasText(options.FocusReturnTargetId), () => attribute("data-focus-return", options.FocusReturnTargetId!)));
 
-        // TODO #152: Add focus trap, escape handling, and backdrop click policy in a follow-up implementation pass.
+        // Focus trap is handled by abies-ui.js (MutationObserver on role="dialog"). See issue #166.
         return options.IsOpen
             ? div(
                 BuildElementAttributes(
@@ -407,7 +407,7 @@ public static class Components
             name(options.Name)
         };
 
-        selectAttributes.AddRange(BuildOptionalAttribute(isDisabled, () => disabled()));
+        selectAttributes.AddRange(BuildOptionalAttribute(isDisabled || isReadOnly, () => disabled()));
         selectAttributes.AddRange(BuildOptionalAttribute(options.IsRequired, () => required()));
         selectAttributes.AddRange(BuildOptionalAttribute(HasText(describedBy), () => ariaDescribedby(describedBy!)));
         selectAttributes.AddRange(BuildOptionalAttribute(HasText(options.ErrorText), () => attribute("aria-invalid", "true")));
@@ -415,7 +415,17 @@ public static class Components
         selectAttributes.AddRange(BuildOptionalAttribute(isReadOnly, () => attribute("data-readonly", "true")));
         selectAttributes.AddRange(BuildOptionalAttribute(HasText(options.Label) is false, () => ariaLabel(options.AriaLabel ?? options.Name)));
 
-        // TODO #152: Native select has no true readonly mode. Preserve value semantics now and add interaction locking in a follow-up pass.
+        // When readOnly: render as disabled (locks interaction) + hidden input (preserves submitted value).
+        // Native <select> has no readonly mode (#152); disabled + hidden input is the correct workaround.
+        var controlNode = isReadOnly
+            ? div(
+                [class_("abies-ui-select__readonly-wrap")],
+                [
+                    element("select", [.. selectAttributes], children),
+                    element("input", [attribute("type", "hidden"), name(options.Name), value(options.SelectedValue ?? string.Empty)], [])
+                ])
+            : element("select", [.. selectAttributes], children);
+
         return div(
             BuildElementAttributes(
                 BuildClassName(
@@ -426,7 +436,7 @@ public static class Components
                 options.Common),
             BuildFieldChildren(
                 fieldLabel: BuildOptionalNode(HasText(options.Label), () => element("label", [for_(selectId), class_("abies-ui-select__label")], [text(options.Label!)])),
-                control: element("select", [.. selectAttributes], children),
+                control: controlNode,
                 description: BuildOptionalNode(HasText(options.Description), () => div([id(descriptionId!), class_("abies-ui-select__description")], [text(options.Description!)])),
                 validation: BuildOptionalNode(HasText(options.ErrorText), () => div([id(errorId!), class_("abies-ui-select__error")], [text(options.ErrorText!)]))));
     }
@@ -629,6 +639,292 @@ public static class Components
 
     private static bool IsEscapeKey(KeyEventData? eventData)
         => string.Equals(eventData?.Key, "Escape", StringComparison.Ordinal);
+
+    // ── Phase 2 Layout & Feedback components ──────────────────────────────────
+
+    /// <summary>
+    /// Creates a stack layout component that arranges children in a flex container.
+    /// </summary>
+    /// <param name="options">Immutable stack options.</param>
+    /// <returns>A flex-stack container node.</returns>
+    public static Node stack(StackOptions options)
+    {
+        var gapCss = ToStackGapCss(options.Gap);
+        return div(
+            BuildElementAttributes(
+                BuildClassName(
+                    "abies-ui-stack",
+                    $"abies-ui-stack--{ToStackDirectionCss(options.Direction)}",
+                    gapCss is not null ? $"abies-ui-stack--gap-{gapCss}" : null,
+                    $"abies-ui-stack--align-{ToStackAlignCss(options.Align)}",
+                    $"abies-ui-stack--justify-{ToStackJustifyCss(options.Justify)}"),
+                options.Common),
+            options.Children);
+    }
+
+    /// <summary>
+    /// Creates a card layout component with configurable elevation and padding.
+    /// </summary>
+    /// <param name="options">Immutable card options.</param>
+    /// <returns>A card container node.</returns>
+    public static Node card(CardOptions options)
+        => div(
+            BuildElementAttributes(
+                BuildClassName(
+                    "abies-ui-card",
+                    $"abies-ui-card--elevation-{ToCardElevationCss(options.Elevation)}",
+                    $"abies-ui-card--pad-{ToCardPaddingCss(options.Padding)}"),
+                options.Common),
+            options.Children);
+
+    /// <summary>
+    /// Creates a divider component — a plain rule or a labeled section separator.
+    /// </summary>
+    /// <param name="options">Immutable divider options.</param>
+    /// <returns>A divider node.</returns>
+    public static Node divider(DividerOptions options)
+    {
+        var orientationClass = $"abies-ui-divider--{ToDividerOrientationCss(options.Orientation)}";
+
+        if (HasText(options.Label))
+        {
+            return div(
+                BuildElementAttributes(
+                    BuildClassName("abies-ui-divider", orientationClass, "abies-ui-divider--labeled"),
+                    options.Common),
+                [
+                    element("hr", [role("presentation"), attribute("aria-hidden", "true")], []),
+                    span([class_("abies-ui-divider__label")], [text(options.Label!)]),
+                    element("hr", [role("presentation"), attribute("aria-hidden", "true")], [])
+                ]);
+        }
+
+        return element(
+            "hr",
+            BuildElementAttributes(
+                BuildClassName("abies-ui-divider", orientationClass),
+                options.Common,
+                role("separator")),
+            []);
+    }
+
+    /// <summary>
+    /// Creates a CSS grid layout component.
+    /// </summary>
+    /// <param name="options">Immutable grid options.</param>
+    /// <returns>A CSS-grid container node.</returns>
+    public static Node grid(GridOptions options)
+        => div(
+            BuildElementAttributes(
+                BuildClassName(
+                    "abies-ui-grid",
+                    $"abies-ui-grid--cols-{options.Columns}",
+                    options.Gap > 0 ? $"abies-ui-grid--gap-{options.Gap}" : null),
+                options.Common),
+            options.Children);
+
+    /// <summary>
+    /// Creates a progress bar feedback component, supporting both determinate and indeterminate states.
+    /// </summary>
+    /// <param name="options">Immutable progress bar options.</param>
+    /// <returns>A progress bar node.</returns>
+    public static Node progressBar(ProgressBarOptions options)
+    {
+        var isDeterminate = options.Value is not null;
+        var percent = isDeterminate
+            ? FormatProgressPercent(options.Value!.Value, options.Min, options.Max)
+            : null;
+
+        var trackAttrs = new List<Attribute>
+        {
+            class_("abies-ui-progress-bar__track"),
+            role("progressbar"),
+            attribute("aria-valuemin", FormatDouble(options.Min)),
+            attribute("aria-valuemax", FormatDouble(options.Max))
+        };
+
+        trackAttrs.AddRange(BuildOptionalAttribute(isDeterminate, () => attribute("aria-valuenow", FormatDouble(options.Value!.Value))));
+
+        var accessibleName = HasText(options.Label) ? options.Label : "Progress";
+        trackAttrs.Add(ariaLabel(accessibleName));
+
+        var fillAttrs = new List<Attribute> { class_("abies-ui-progress-bar__fill") };
+        fillAttrs.AddRange(BuildOptionalAttribute(isDeterminate, () => style($"width:{percent}%")));
+
+        return div(
+            BuildElementAttributes(
+                BuildClassName(
+                    "abies-ui-progress-bar",
+                    !isDeterminate ? "abies-ui-progress-bar--indeterminate" : null),
+                options.Common),
+            [
+                .. BuildOptionalNode(options.ShowLabel, () => span([class_("abies-ui-progress-bar__label")], [text(options.Label)])),
+                div([.. trackAttrs], [div([.. fillAttrs], [])]),
+                .. BuildOptionalNode(options.ShowValue && isDeterminate, () => span([class_("abies-ui-progress-bar__value")], [text($"{percent}%")]))
+            ]);
+    }
+
+    /// <summary>
+    /// Creates an alert feedback component with semantic live-region support.
+    /// </summary>
+    /// <param name="options">Immutable alert options.</param>
+    /// <returns>An alert node.</returns>
+    public static Node alert(AlertOptions options)
+    {
+        var roleValue = options.IsLive ? "alert" : "status";
+        var liveValue = options.IsLive ? "assertive" : "polite";
+
+        return div(
+            BuildElementAttributes(
+                BuildClassName("abies-ui-alert", $"abies-ui-alert--{ToAlertVariantCss(options.Variant)}"),
+                options.Common,
+                role(roleValue),
+                ariaLive(liveValue),
+                attribute("aria-atomic", "true")),
+            [
+                .. BuildOptionalNode(HasText(options.Icon), () => span([class_("abies-ui-alert__icon"), attribute("aria-hidden", "true")], [text(options.Icon!)])),
+                div(
+                    [class_("abies-ui-alert__content")],
+                    [
+                        .. BuildOptionalNode(HasText(options.Title), () => div([class_("abies-ui-alert__title")], [text(options.Title!)])),
+                        div([class_("abies-ui-alert__message")], [text(options.Message)])
+                    ])
+            ]);
+    }
+
+    /// <summary>
+    /// Creates a skeleton loading-state placeholder component.
+    /// </summary>
+    /// <param name="options">Immutable skeleton options.</param>
+    /// <returns>A skeleton placeholder node.</returns>
+    public static Node skeleton(SkeletonOptions options)
+    {
+        var shapeClass = $"abies-ui-skeleton--{ToSkeletonShapeCss(options.Shape)}";
+        var styleValue = BuildSkeletonStyle(options.Width, options.Height);
+
+        var skeletonAttrs = new List<Attribute>
+        {
+            attribute("aria-busy", "true"),
+            ariaLabel(options.Label)
+        };
+
+        skeletonAttrs.AddRange(BuildOptionalAttribute(HasText(styleValue), () => style(styleValue!)));
+
+        var children = options.Shape is SkeletonShape.Text && options.Lines > 1
+            ? Enumerable.Range(0, options.Lines)
+                .Select(_ => (Node)div([class_("abies-ui-skeleton abies-ui-skeleton--text-line")], []))
+                .ToArray()
+            : Array.Empty<Node>();
+
+        return div(
+            BuildElementAttributes(
+                BuildClassName("abies-ui-skeleton", shapeClass),
+                options.Common,
+                [.. skeletonAttrs]),
+            children);
+    }
+
+    private static string ToStackDirectionCss(StackDirection direction)
+        => direction switch
+        {
+            StackDirection.Horizontal => "horizontal",
+            _ => "vertical"
+        };
+
+    private static string? ToStackGapCss(StackGap gap)
+        => gap switch
+        {
+            StackGap.Gap1 => "1",
+            StackGap.Gap2 => "2",
+            StackGap.Gap3 => "3",
+            StackGap.Gap4 => "4",
+            StackGap.Gap5 => "5",
+            StackGap.Gap6 => "6",
+            _ => null
+        };
+
+    private static string ToStackAlignCss(StackAlign align)
+        => align switch
+        {
+            StackAlign.Start => "start",
+            StackAlign.Center => "center",
+            StackAlign.End => "end",
+            StackAlign.Baseline => "baseline",
+            _ => "stretch"
+        };
+
+    private static string ToStackJustifyCss(StackJustify justify)
+        => justify switch
+        {
+            StackJustify.Center => "center",
+            StackJustify.End => "end",
+            StackJustify.SpaceBetween => "space-between",
+            StackJustify.SpaceAround => "space-around",
+            _ => "start"
+        };
+
+    private static string ToCardElevationCss(CardElevation elevation)
+        => elevation switch
+        {
+            CardElevation.Low => "low",
+            CardElevation.Medium => "medium",
+            CardElevation.High => "high",
+            _ => "none"
+        };
+
+    private static string ToCardPaddingCss(CardPadding padding)
+        => padding switch
+        {
+            CardPadding.Sm => "sm",
+            CardPadding.Md => "md",
+            CardPadding.Lg => "lg",
+            _ => "none"
+        };
+
+    private static string ToDividerOrientationCss(DividerOrientation orientation)
+        => orientation switch
+        {
+            DividerOrientation.Vertical => "vertical",
+            _ => "horizontal"
+        };
+
+    private static string ToAlertVariantCss(AlertVariant variant)
+        => variant switch
+        {
+            AlertVariant.Success => "success",
+            AlertVariant.Warning => "warning",
+            AlertVariant.Danger => "danger",
+            _ => "info"
+        };
+
+    private static string ToSkeletonShapeCss(SkeletonShape shape)
+        => shape switch
+        {
+            SkeletonShape.Heading => "heading",
+            SkeletonShape.Avatar => "avatar",
+            SkeletonShape.Rectangle => "rectangle",
+            SkeletonShape.Circle => "circle",
+            _ => "text"
+        };
+
+    private static string FormatDouble(double value)
+        => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string FormatProgressPercent(double value, double min, double max)
+    {
+        var range = max - min;
+        var rawPercent = range > 0.0 ? (value - min) / range * 100.0 : 0.0;
+        var clamped = Math.Clamp(rawPercent, 0.0, 100.0);
+        return clamped % 1.0 == 0.0 ? $"{clamped:F0}" : $"{clamped:F1}";
+    }
+
+    private static string? BuildSkeletonStyle(string? width, string? height)
+    {
+        var parts = new List<string>(2);
+        if (HasText(width)) parts.Add($"width:{width}");
+        if (HasText(height)) parts.Add($"height:{height}");
+        return parts.Count > 0 ? string.Join(";", parts) : null;
+    }
 
 #pragma warning restore IDE1006
 }
@@ -850,3 +1146,161 @@ public sealed record TableRichOptions(
     Message? OnRowClick = null,
     Message? OnRowKeyDown = null,
     UiCommonOptions? Common = null);
+
+// ── Phase 2 Layout options ─────────────────────────────────────────────────
+
+/// <summary>
+/// Immutable options for the stack layout component.
+/// </summary>
+public sealed record StackOptions(
+    Node[] Children,
+    StackDirection Direction = StackDirection.Vertical,
+    StackGap Gap = StackGap.Gap3,
+    StackAlign Align = StackAlign.Stretch,
+    StackJustify Justify = StackJustify.Start,
+    UiCommonOptions? Common = null);
+
+/// <summary>Direction of the stack's main flex axis.</summary>
+public enum StackDirection
+{
+    Vertical,
+    Horizontal
+}
+
+/// <summary>Gap token index for the stack component — maps to <c>--abies-ui-space-N</c>.</summary>
+public enum StackGap
+{
+    None,
+    Gap1,
+    Gap2,
+    Gap3,
+    Gap4,
+    Gap5,
+    Gap6
+}
+
+/// <summary>Cross-axis alignment values for the stack component.</summary>
+public enum StackAlign
+{
+    Stretch,
+    Start,
+    Center,
+    End,
+    Baseline
+}
+
+/// <summary>Main-axis justification values for the stack component.</summary>
+public enum StackJustify
+{
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround
+}
+
+/// <summary>
+/// Immutable options for the card layout component.
+/// </summary>
+public sealed record CardOptions(
+    Node[] Children,
+    CardElevation Elevation = CardElevation.Low,
+    CardPadding Padding = CardPadding.Md,
+    UiCommonOptions? Common = null);
+
+/// <summary>Shadow elevation presets for the card component.</summary>
+public enum CardElevation
+{
+    None,
+    Low,
+    Medium,
+    High
+}
+
+/// <summary>Padding presets for the card component.</summary>
+public enum CardPadding
+{
+    None,
+    Sm,
+    Md,
+    Lg
+}
+
+/// <summary>
+/// Immutable options for the divider component.
+/// </summary>
+public sealed record DividerOptions(
+    string? Label = null,
+    DividerOrientation Orientation = DividerOrientation.Horizontal,
+    UiCommonOptions? Common = null);
+
+/// <summary>Orientation of the divider rule.</summary>
+public enum DividerOrientation
+{
+    Horizontal,
+    Vertical
+}
+
+/// <summary>
+/// Immutable options for the grid layout component.
+/// </summary>
+public sealed record GridOptions(
+    Node[] Children,
+    int Columns = 12,
+    int Gap = 4,
+    UiCommonOptions? Common = null);
+
+// ── Phase 2 Feedback options ───────────────────────────────────────────────
+
+/// <summary>
+/// Immutable options for the progress bar feedback component.
+/// </summary>
+public sealed record ProgressBarOptions(
+    string Label,
+    double? Value = null,
+    double Min = 0,
+    double Max = 100,
+    bool ShowLabel = true,
+    bool ShowValue = false,
+    UiCommonOptions? Common = null);
+
+/// <summary>
+/// Immutable options for the alert feedback component.
+/// </summary>
+public sealed record AlertOptions(
+    string Message,
+    AlertVariant Variant = AlertVariant.Info,
+    string? Title = null,
+    bool IsLive = false,
+    string? Icon = null,
+    UiCommonOptions? Common = null);
+
+/// <summary>Semantic variant for the alert component.</summary>
+public enum AlertVariant
+{
+    Info,
+    Success,
+    Warning,
+    Danger
+}
+
+/// <summary>
+/// Immutable options for the skeleton loading-state feedback component.
+/// </summary>
+public sealed record SkeletonOptions(
+    SkeletonShape Shape = SkeletonShape.Text,
+    string? Width = null,
+    string? Height = null,
+    string Label = "Loading",
+    int Lines = 1,
+    UiCommonOptions? Common = null);
+
+/// <summary>Visual shape preset for the skeleton component.</summary>
+public enum SkeletonShape
+{
+    Text,
+    Heading,
+    Avatar,
+    Rectangle,
+    Circle
+}
