@@ -143,7 +143,7 @@ public static class Components
         modalAttributes.AddRange(BuildOptionalAttribute(keyDownHandler is not null, () => onkeydown(keyDownHandler!)));
         modalAttributes.AddRange(BuildOptionalAttribute(HasText(options.FocusReturnTargetId), () => attribute("data-focus-return", options.FocusReturnTargetId!)));
 
-        // TODO(issue-152): Add focus trap, escape handling, and backdrop click policy in a follow-up implementation pass.
+        // TODO #152: Add focus trap, escape handling, and backdrop click policy in a follow-up implementation pass.
         return options.IsOpen
             ? div(
                 BuildElementAttributes(
@@ -415,7 +415,7 @@ public static class Components
         selectAttributes.AddRange(BuildOptionalAttribute(isReadOnly, () => attribute("data-readonly", "true")));
         selectAttributes.AddRange(BuildOptionalAttribute(HasText(options.Label) is false, () => ariaLabel(options.AriaLabel ?? options.Name)));
 
-        // TODO(issue-152): Native select has no true readonly mode. Preserve value semantics now and add interaction locking in a follow-up pass.
+        // TODO #152: Native select has no true readonly mode. Preserve value semantics now and add interaction locking in a follow-up pass.
         return div(
             BuildElementAttributes(
                 BuildClassName(
