@@ -12,3 +12,4 @@
 - Performance workflow guardrail: benchmark conclusions require js-framework-benchmark validation, not micro-benchmark wins alone.
 - PR CI gate alignment: ensure build, lint (`dotnet format --verify-no-changes`), tests, and E2E checks are present and green before merge.
 - For PR formatting corrections, prefer scoped `dotnet format ... --include` to avoid repository-wide reformat noise.
+- 2026-03-20: Issue #152 merge gate contract requires green `PR Validation`, `CD` build, `E2E`, `CodeQL Security Analysis`, and `Benchmark` checks; release requires successful `CD` on `main` including package publish steps.

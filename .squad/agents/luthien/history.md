@@ -8,6 +8,7 @@
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+- 2026-03-20: Issue #152 treats accessibility verification as a hard quality gate (automated + manual) before release; security reviews should validate these gates are enforced in CI/release criteria and not bypassed.
 
 ## Threat Intelligence Log
 
