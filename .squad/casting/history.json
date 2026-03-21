@@ -1,38 +1,17 @@
-[
-  {
-    "assignment_id": 1,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-19",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Scribe", "Ralph"]
-  },
-  {
-    "assignment_id": 2,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-19",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Gimli", "Scribe", "Ralph"]
-  },
-  {
-    "assignment_id": 3,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-20",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Gimli", "Elrond", "Scribe", "Ralph"]
-  },
-  {
-    "assignment_id": 4,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-20",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Legolas", "Gimli", "Elrond", "Scribe", "Ralph"]
-  },
-  {
-    "assignment_id": 5,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-20",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Samwise", "Legolas", "Boromir", "Gimli", "Elrond", "Scribe", "Ralph"]
-  },
-  {
-    "assignment_id": 6,
-    "universe": "Tolkien Legendarium",
-    "created_at": "2026-03-20",
-    "members": ["Gandalf", "Galadriel", "Aragorn", "Faramir", "Samwise", "Legolas", "Boromir", "Gimli", "Elrond", "Scribe", "Ralph"]
-  }
-]
+{
+  "version": "1.0",
+  "assignments": [
+    {
+      "assignment_id": "abies-2026-03-21-renewed",
+      "project": "Abies MVU Framework",
+      "universe": null,
+      "date": "2026-03-21T00:00:00Z",
+      "note": "Renewed squad — all agents legacy_named. Casting applies to any new agents added after this date.",
+      "agents": [
+        "Lead", "Architect", "C# Dev", "JS Dev", "Tech Writer",
+        "Reviewer", "Security Expert", "Performance Engineer",
+        "DevOps", "UI/UX Expert", "Scribe", "Ralph"
+      ]
+    }
+  ]
+}
