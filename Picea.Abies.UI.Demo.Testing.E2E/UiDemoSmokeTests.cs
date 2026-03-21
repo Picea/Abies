@@ -31,7 +31,7 @@ public sealed class UiDemoSmokeTests : IAsyncInitializer, IAsyncDisposable
     {
         await _page.GotoAsync("/");
 
-        await Expect(_page.GetByRole(AriaRole.Heading, new() { Name = "Phase 1 component scaffold" }))
+        await Expect(_page.GetByRole(AriaRole.Heading, new() { Name = "Phase 2 component kit" }))
             .ToBeVisibleAsync(new() { Timeout = 10_000 });
 
         await Expect(_page.GetByText("Picea.Abies.UI.Demo"))

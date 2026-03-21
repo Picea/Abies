@@ -15,17 +15,20 @@
     <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
     <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
     <UpToDateCheckInput Include="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" />
+    <UpToDateCheckInput Include="..\Picea.Abies.UI\wwwroot\abies-ui.js" />
     <Watch Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
     <Watch Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
     <Watch Include="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" />
+    <Watch Include="..\Picea.Abies.UI\wwwroot\abies-ui.js" />
   </ItemGroup>
 
   <Target Name="SyncDemoAssets" BeforeTargets="Build;ComputeFilesToPublish"
-          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js;..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css"
-          Outputs="wwwroot\abies.js;wwwroot\abies-otel.js;wwwroot\abies-ui.tokens.css">
+          Inputs="..\Picea.Abies.Browser\wwwroot\abies.js;..\Picea.Abies.Browser\wwwroot\abies-otel.js;..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css;..\Picea.Abies.UI\wwwroot\abies-ui.js"
+          Outputs="wwwroot\abies.js;wwwroot\abies-otel.js;wwwroot\abies-ui.tokens.css;wwwroot\abies-ui.js">
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies.js" DestinationFiles="wwwroot\abies.js" />
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies-otel.js" DestinationFiles="wwwroot\abies-otel.js" />
     <Copy SourceFiles="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" DestinationFiles="wwwroot\abies-ui.tokens.css" />
+    <Copy SourceFiles="..\Picea.Abies.UI\wwwroot\abies-ui.js" DestinationFiles="wwwroot\abies-ui.js" />
   </Target>
 
   <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
