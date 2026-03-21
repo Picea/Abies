@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'Picea.Abies/**'
+      - 'Picea.Abies.UI/**'
       - 'Picea.Abies.Benchmark.Wasm/**'
       - 'Picea.Abies.Benchmarks/**'
       - 'scripts/extract-allocations.py'
@@ -49,6 +50,7 @@ permissions:
 # E2E benchmarks auto-trigger on:
 # - PRs with title starting with 'perf:' or 'perf('
 # - PRs with 'performance' label
+# - PRs with 'ui' label
 # - PRs that modify benchmark workflow or scripts
 # - Pushes to main (baseline tracking)
 # - Manual workflow_dispatch
@@ -76,6 +78,7 @@ jobs:
           filters: |
             e2e-scripts:
               - 'Picea.Abies/**'
+              - 'Picea.Abies.UI/**'
               - 'Picea.Abies.Benchmark.Wasm/**'
               - '.github/workflows/benchmark.yml'
               - 'scripts/compare-benchmark.py'
@@ -235,7 +238,7 @@ jobs:
             else
               echo "run=false" >> "$GITHUB_OUTPUT"
             fi
-          elif [[ "${{ needs.changes.outputs.perf-pr }}" == "true" || "${{ needs.changes.outputs.e2e-scripts }}" == "true" || "${{ contains(github.event.pull_request.labels.*.name, 'performance') }}" == "true" ]]; then
+          elif [[ "${{ needs.changes.outputs.perf-pr }}" == "true" || "${{ needs.changes.outputs.e2e-scripts }}" == "true" || "${{ contains(github.event.pull_request.labels.*.name, 'performance') }}" == "true" || "${{ contains(github.event.pull_request.labels.*.name, 'ui') }}" == "true" ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -445,11 +448,31 @@ jobs:
         id: regression-check
         continue-on-error: true
         run: |
+          mkdir -p benchmark-results
+          set +e
           python3 scripts/compare-benchmark.py \
             --results-dir js-framework-benchmark/webdriver-ts/results \
             --baseline benchmark-results/baseline.json \
             --threshold 5.0 \
-            --framework abies
+            --framework abies | tee benchmark-results/e2e-compare.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+          exit ${EXIT_CODE}
+
+      - name: Publish benchmark comparison summary
+        if: always() && steps.should-run.outputs.run == 'true'
+        run: |
+          echo "## js-framework-benchmark comparison" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f benchmark-results/e2e-compare.log ]; then
+            echo "Comparison command exit code: ${{ steps.regression-check.outputs.exit_code }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 120 benchmark-results/e2e-compare.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No comparison log generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Report benchmark status
         if: always() && steps.should-run.outputs.run == 'true'
@@ -552,6 +575,7 @@ jobs:
           cp -r js-framework-benchmark/webdriver-ts/results/* ./e2e-results/ 2>/dev/null || true
           cp ./e2e-benchmark-results.json ./e2e-results/ 2>/dev/null || true
           cp ./e2e-benchmark-memory.json ./e2e-results/ 2>/dev/null || true
+          cp benchmark-results/e2e-compare.log ./e2e-results/ 2>/dev/null || true
 
       - name: Upload E2E benchmark results
         uses: actions/upload-artifact@v6

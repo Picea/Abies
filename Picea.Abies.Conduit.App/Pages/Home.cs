@@ -1,7 +1,9 @@
 using Picea.Abies.DOM;
+using Picea.Abies.UI;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
+using static Picea.Abies.UI.Components;
 
 namespace Picea.Abies.Conduit.App.Pages;
 
@@ -62,9 +64,15 @@ public static class Home
     private static Node Sidebar(IReadOnlyList<string> tags) =>
         div([class_("sidebar")],
         [
-            p([], [text("Popular Tags")]),
+            toast(new ToastOptions(
+                Message: "Popular Tags",
+                Title: "Discover",
+                Variant: ToastVariant.Info,
+                Common: new UiCommonOptions(Class: "conduit-sidebar-ui-proof"))),
             tags.Count == 0
-                ? text("Loading tags...")
+                ? spinner(new SpinnerOptions(
+                    Label: "Loading tags",
+                    Common: new UiCommonOptions(Class: "conduit-sidebar-tags-loading")))
                 : div([class_("tag-list")],
                     tags.Select(tag =>
                         button([
