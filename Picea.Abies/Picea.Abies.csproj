@@ -15,6 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="buildTransitive/Picea.Abies.targets"
+          Pack="true"
+          PackagePath="buildTransitive" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Picea.Abies.Tests" />
     <InternalsVisibleTo Include="Picea.Abies.Benchmarks" />
     <InternalsVisibleTo Include="Picea.Abies.Browser" />
