@@ -14,15 +14,8 @@ Because Abies views are pure functions (`Model → Document`), hot reload is sim
 
 ## Running with hot reload
 
-Add the assembly-level hot reload handler in the project that contains your `Program<TModel, TArg>` implementation:
-
-```csharp
-using System.Reflection.Metadata;
-
-#if DEBUG
-[assembly: MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
-#endif
-```
+No manual attribute setup is required. In Debug builds, Abies injects the
+`MetadataUpdateHandler` registration automatically for consuming app assemblies.
 
 Then run with `dotnet watch`.
 
@@ -57,15 +50,16 @@ Only view-layer changes are live-reloaded. Logic layer changes require a restart
 Hot reload is entirely stripped from Release builds:
 
 - `AbiesMetadataUpdateHandler` is compiled only under `#if DEBUG`.
-- The app-level `[assembly: MetadataUpdateHandler(...)]` attribute should also be wrapped in `#if DEBUG`.
+- The auto-generated assembly registration is Debug-only.
 - There is zero performance or size impact on published applications.
 
 ## How it works internally
 
-Your app assembly registers `MetadataUpdateHandlerAttribute` pointing to `AbiesMetadataUpdateHandler`:
+Abies injects an assembly-level `MetadataUpdateHandlerAttribute` in Debug builds
+for consuming app assemblies:
 
 ```csharp
-// In your app assembly — Debug builds only
+// Auto-generated in the consuming app assembly — Debug builds only
 [assembly: MetadataUpdateHandler(typeof(AbiesMetadataUpdateHandler))]
 
 public static class AbiesMetadataUpdateHandler
@@ -76,5 +70,3 @@ public static class AbiesMetadataUpdateHandler
 ```
 
 Each `Runtime<TProgram, TModel, TArg>` instance registers itself with `HotReloadRuntimeRegistry`, keyed by `typeof(TProgram).Assembly`. When types in that assembly are updated, `RefreshViewFromCurrentModel()` is called — which re-renders with the current model and pipes the diff patches to the client.
-
-In this repository, the attribute is already configured in `Picea.Abies.Counter`, `Picea.Abies.Conduit.App`, and the application templates.

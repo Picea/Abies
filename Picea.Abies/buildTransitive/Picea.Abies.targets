@@ -1,0 +1,38 @@
+<Project>
+  <!--
+    Auto-imported for PackageReference consumers (including transitive).
+    Injects Debug-only MetadataUpdateHandler registration into the consuming
+    assembly so Abies hot reload works without manual attributes.
+  -->
+
+  <PropertyGroup>
+    <EnableAbiesMetadataUpdateHandlerAutoInject Condition="'$(EnableAbiesMetadataUpdateHandlerAutoInject)' == ''">true</EnableAbiesMetadataUpdateHandlerAutoInject>
+  </PropertyGroup>
+
+  <Target Name="GenerateAbiesMetadataUpdateHandler"
+          BeforeTargets="CoreCompile"
+          Condition="'$(EnableAbiesMetadataUpdateHandlerAutoInject)' == 'true' and '$(Language)' == 'C#' and '$(Configuration)' == 'Debug'">
+    <PropertyGroup>
+      <_AbiesMetadataUpdateHandlerFile>$(IntermediateOutputPath)Abies.MetadataUpdateHandler.g.cs</_AbiesMetadataUpdateHandlerFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_AbiesMetadataUpdateHandlerLines Include="// &lt;auto-generated/&gt;" />
+      <_AbiesMetadataUpdateHandlerLines Include="#if DEBUG" />
+      <_AbiesMetadataUpdateHandlerLines Include="[assembly: System.Reflection.Metadata.MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]" />
+      <_AbiesMetadataUpdateHandlerLines Include="#endif" />
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(_AbiesMetadataUpdateHandlerFile)"
+                      Lines="@(_AbiesMetadataUpdateHandlerLines)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup>
+      <Compile Include="$(_AbiesMetadataUpdateHandlerFile)"
+               Visible="false"
+               AutoGen="true"
+               DesignTime="true" />
+    </ItemGroup>
+  </Target>
+</Project>

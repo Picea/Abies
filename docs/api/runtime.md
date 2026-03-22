@@ -257,7 +257,7 @@ Abies supports Debug-only hot reload for view functions.
 ### Build Configuration
 
 - Enabled for Debug workflows.
-- Requires app-level opt-in via `MetadataUpdateHandler` in the assembly that defines `Program<TModel, TArg>`.
+- Handler registration is auto-injected for consuming app assemblies in Debug.
 - Release builds are unaffected.
 
 ### When Restart Is Required
