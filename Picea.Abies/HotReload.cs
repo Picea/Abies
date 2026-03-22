@@ -1,8 +1,9 @@
-#if DEBUG
 using System.Reflection;
 using System.Reflection.Metadata;
 
+#if DEBUG
 [assembly: MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
 
 namespace Picea.Abies;
 
@@ -98,4 +99,3 @@ public static class AbiesMetadataUpdateHandler
     public static void ClearCache(Type[]? updatedTypes) =>
         HotReloadRuntimeRegistry.NotifyUpdatedTypes(updatedTypes);
 }
-#endif
