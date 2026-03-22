@@ -22,6 +22,10 @@ using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
 
+#if DEBUG
+[assembly: System.Reflection.Metadata.MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
+
 namespace Picea.Abies.Counter;
 
 /// <summary>

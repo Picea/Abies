@@ -86,6 +86,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private readonly Action<string>? _titleChanged;
     private readonly Action<NavigationCommand>? _navigationExecutor;
     private readonly HandlerRegistry _handlerRegistry;
+    private readonly Lock _renderGate = new();
     private Document? _currentDocument;
     private SubscriptionState _subscriptionState = SubscriptionState.Empty;
 #if DEBUG
@@ -113,45 +114,49 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     {
         using var renderActivity = _activitySource.StartActivity("Picea.Abies.Render");
 
-        var newDocument = TProgram.View(state);
-
-        var patches = Operations.Diff(_currentDocument?.Body, newDocument.Body);
-
-        var headPatches = HeadDiff.Diff(
-            _currentDocument?.Head ?? [],
-            newDocument.Head);
-
-        List<Patch>? mergedPatches = null;
-        if (headPatches.Count > 0)
+        lock (_renderGate)
         {
-            mergedPatches = new List<Patch>(patches.Count + headPatches.Count);
-            mergedPatches.AddRange(patches);
-            mergedPatches.AddRange(headPatches);
+            var newDocument = TProgram.View(state);
+
+            var patches = Operations.Diff(_currentDocument?.Body, newDocument.Body);
+
+            var headPatches = HeadDiff.Diff(
+                _currentDocument?.Head ?? [],
+                newDocument.Head);
+
+            List<Patch>? mergedPatches = null;
+            if (headPatches.Count > 0)
+            {
+                mergedPatches = new List<Patch>(patches.Count + headPatches.Count);
+                mergedPatches.AddRange(patches);
+                mergedPatches.AddRange(headPatches);
+            }
+
+            var allPatches = mergedPatches is not null
+                ? (IReadOnlyList<Patch>)mergedPatches
+                : patches;
+
+            UpdateHandlerRegistry(allPatches);
+
+            if (allPatches.Count > 0)
+            {
+                _apply(allPatches);
+            }
+
+            if (_currentDocument is null || _currentDocument.Title != newDocument.Title)
+            {
+                _titleChanged?.Invoke(newDocument.Title);
+            }
+
+            _currentDocument = newDocument;
+
+            var desiredSubscriptions = TProgram.Subscriptions(state);
+            _subscriptionState = SubscriptionManager.Update(
+                _subscriptionState, desiredSubscriptions, DispatchFromSubscription);
+
+            renderActivity?.SetTag("abies.patches", patches.Count);
         }
 
-        var allPatches = mergedPatches is not null
-            ? (IReadOnlyList<Patch>)mergedPatches
-            : patches;
-
-        UpdateHandlerRegistry(allPatches);
-
-        if (allPatches.Count > 0)
-        {
-            _apply(allPatches);
-        }
-
-        if (_currentDocument is null || _currentDocument.Title != newDocument.Title)
-        {
-            _titleChanged?.Invoke(newDocument.Title);
-        }
-
-        _currentDocument = newDocument;
-
-        var desiredSubscriptions = TProgram.Subscriptions(state);
-        _subscriptionState = SubscriptionManager.Update(
-            _subscriptionState, desiredSubscriptions, DispatchFromSubscription);
-
-        renderActivity?.SetTag("abies.patches", patches.Count);
         renderActivity?.SetStatus(ActivityStatusCode.Ok);
     }
 

@@ -6,6 +6,10 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
+#if DEBUG
+[assembly: System.Reflection.Metadata.MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
+
 // Start the Abies runtime with your application
 await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 

@@ -9,6 +9,10 @@ using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 using static Picea.Abies.Head;
 
+#if DEBUG
+[assembly: System.Reflection.Metadata.MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
+
 // =============================================================================
 // AbiesServerApp — Server-Rendered MVU Counter
 // =============================================================================

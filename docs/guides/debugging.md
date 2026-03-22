@@ -89,6 +89,16 @@ In WASM, logs appear in the browser console (F12). On the server, logs go to std
 
 Use this workflow when iterating on view functions.
 
+Prerequisite (in the app assembly that defines your `Program<TModel, TArg>`):
+
+```csharp
+using System.Reflection.Metadata;
+
+#if DEBUG
+[assembly: MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
+```
+
 ### 1. Start the correct host with `dotnet watch`
 
 Server host:

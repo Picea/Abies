@@ -8,6 +8,10 @@ using Picea.Abies.Subscriptions;
 using static Picea.Abies.Head;
 using static Picea.Abies.Html.Elements;
 
+#if DEBUG
+[assembly: System.Reflection.Metadata.MetadataUpdateHandler(typeof(Picea.Abies.AbiesMetadataUpdateHandler))]
+#endif
+
 namespace Picea.Abies.Conduit.App;
 
 public sealed class ConduitProgram : Program<Model, ConduitStartup>

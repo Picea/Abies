@@ -25,6 +25,32 @@ const FOCUSABLE_SELECTORS = [
 let activeTrapController = null;
 /** @type {HTMLElement | null} */
 let trapReturnTarget = null;
+/** @type {Element | null} */
+let activeTrapDialog = null;
+
+/**
+ * Returns whether an element is effectively visible for focus purposes.
+ * @param {Element} el
+ * @returns {boolean}
+ */
+function isElementVisible(el) {
+  const rects = el.getClientRects();
+  if (rects.length === 0) {
+    return false;
+  }
+
+  const win = el.ownerDocument.defaultView;
+  if (!win) {
+    return false;
+  }
+
+  const style = win.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Returns all focusable, visible elements within a container.
@@ -34,7 +60,10 @@ let trapReturnTarget = null;
  */
 function getFocusableElements(container) {
   return [...container.querySelectorAll(FOCUSABLE_SELECTORS)].filter(
-    (el) => !el.closest('[hidden]') && !el.closest('[inert]'),
+    (el) =>
+      isElementVisible(el) &&
+      !el.closest('[hidden]') &&
+      !el.closest('[inert]'),
   );
 }
 
@@ -50,6 +79,7 @@ function activateFocusTrap(dialog) {
 
   const controller = new AbortController();
   activeTrapController = controller;
+  activeTrapDialog = dialog;
 
   // Capture the element to restore focus to when the trap is deactivated.
   // Prefer data-focus-return on the dialog; fall back to the currently focused element.
@@ -144,6 +174,7 @@ function activateFocusTrap(dialog) {
 function deactivateFocusTrap(dialog) {
   activeTrapController?.abort();
   activeTrapController = null;
+  activeTrapDialog = null;
 
   const returnId = dialog.getAttribute('data-focus-return');
   const returnTarget =
@@ -198,8 +229,13 @@ function initFocusTrap() {
             ? node
             : node.querySelector(DIALOG_SELECTOR);
 
-        if (dialog && activeTrapController) {
-          deactivateFocusTrap(dialog);
+        if (
+          dialog &&
+          activeTrapController &&
+          activeTrapDialog &&
+          (dialog === activeTrapDialog || dialog.contains(activeTrapDialog))
+        ) {
+          deactivateFocusTrap(activeTrapDialog);
         }
       }
     }
