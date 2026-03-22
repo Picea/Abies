@@ -84,7 +84,18 @@ public sealed class ArticleServerTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 30000 });
+
+        // CI can be slow to complete the post-login server patch cycle.
+        // First wait until we have navigated away from /login, then wait for
+        // a stable authenticated shell marker to appear.
+        await _page.WaitForFunctionAsync(
+            "() => !window.location.pathname.startsWith('/login')",
+            null,
+            new() { Timeout = 30000 });
+
+        await _page.WaitForSelectorAsync(
+            ".home-page, .feed-toggle, .article-preview",
+            new() { Timeout = 30000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
