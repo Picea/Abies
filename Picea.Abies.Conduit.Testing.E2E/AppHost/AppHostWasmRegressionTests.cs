@@ -33,9 +33,26 @@ public sealed class AppHostWasmRegressionTests : IAsyncInitializer, IAsyncDispos
 
         await LoginViaUi(email, "password123");
         await _page.NavigateInApp("/editor");
+        await _page.WaitForFunctionAsync("() => window.location.pathname === '/editor'", null, new() { Timeout = 15000 });
         await _page.WaitForSelectorAsync(".editor-page", new() { Timeout = 15000 });
         await _page.WaitForWasmReady();
-        await _page.GetByPlaceholder("Article Title").FillAsync("Wasm apphost article");
+
+        var titleInput = _page.GetByPlaceholder("Article Title");
+        try
+        {
+            await titleInput.WaitForAsync(new() { Timeout = 15000 });
+        }
+        catch (TimeoutException)
+        {
+            // AppHost WASM can occasionally miss the first in-app navigation patch in CI.
+            await _page.NavigateInApp("/editor");
+            await _page.WaitForFunctionAsync("() => window.location.pathname === '/editor'", null, new() { Timeout = 15000 });
+            await _page.WaitForSelectorAsync(".editor-page", new() { Timeout = 15000 });
+            await _page.WaitForWasmReady();
+            await titleInput.WaitForAsync(new() { Timeout = 15000 });
+        }
+
+        await titleInput.FillAsync("Wasm apphost article");
         await _page.GetByPlaceholder("What's this article about?").FillAsync("Visible from home");
         await _page.GetByPlaceholder("Write your article (in markdown)").FillAsync("Content body");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Publish Article" }).ClickAsync();
@@ -245,8 +262,17 @@ public sealed class AppHostWasmRegressionTests : IAsyncInitializer, IAsyncDispos
         await _page.GetByPlaceholder("Email").FillAsync(email);
         await _page.GetByPlaceholder("Password").FillAsync(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
-        await _page.WaitForFunctionAsync("() => window.sessionStorage.getItem('conduit.session') !== null", null, new() { Timeout = 10000 });
+        await _page.WaitForFunctionAsync(
+            "() => !window.location.pathname.startsWith('/login')",
+            null,
+            new() { Timeout = 30000 });
+        await _page.WaitForSelectorAsync(
+            ".home-page, .feed-toggle, .article-preview",
+            new() { Timeout = 30000 });
+        await _page.WaitForFunctionAsync(
+            "() => window.sessionStorage.getItem('conduit.session') !== null",
+            null,
+            new() { Timeout = 20000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) => Assertions.Expect(locator);

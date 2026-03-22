@@ -234,6 +234,38 @@ The runtime emits spans via `System.Diagnostics.ActivitySource`:
 
 The browser-side `abies.js` also creates spans for DOM events and propagates `traceparent` headers on fetch requests.
 
+## Hot Reload (Debug)
+
+Abies supports Debug-only hot reload for view functions.
+
+### Scope
+
+- Applies to view rendering changes (`View` and called view helper functions).
+- Applies to active runtime instances in browser (WASM) and server sessions.
+- Preserves current model state and triggers a re-render.
+
+### Not in Scope
+
+- `Initialize`, `Transition`, commands/interpreters, and subscriptions are not hot-reloaded by this feature.
+- If your edit changes behavior outside view rendering, restart the app.
+
+### Supported Hosts
+
+- Server host (`*.Server`) in interactive modes.
+- Browser host (`*.Wasm.Host` or single-project `*.Wasm`).
+
+### Build Configuration
+
+- Enabled for Debug workflows.
+- Handler registration is auto-injected for consuming app assemblies in Debug.
+- Release builds are unaffected.
+
+### When Restart Is Required
+
+- You hit a .NET hot reload unsupported edit (rude edit).
+- You change startup/runtime wiring, not view rendering.
+- You change logic that is not part of the view pipeline.
+
 ## See Also
 
 - [Program](program.md) — The application interface the runtime executes

@@ -169,3 +169,196 @@
   color: var(--abies-ui-color-text-muted);
   text-align: right;
 }
+
+/* ── Stack ─────────────────────────────────────────────────── */
+
+.abies-ui-stack {
+  display: flex;
+}
+
+.abies-ui-stack--vertical {
+  flex-direction: column;
+}
+
+.abies-ui-stack--horizontal {
+  flex-direction: row;
+}
+
+.abies-ui-stack--gap-1 { gap: var(--abies-ui-stack-gap-1); }
+.abies-ui-stack--gap-2 { gap: var(--abies-ui-stack-gap-2); }
+.abies-ui-stack--gap-3 { gap: var(--abies-ui-stack-gap-3); }
+.abies-ui-stack--gap-4 { gap: var(--abies-ui-stack-gap-4); }
+.abies-ui-stack--gap-5 { gap: var(--abies-ui-stack-gap-5); }
+.abies-ui-stack--gap-6 { gap: var(--abies-ui-stack-gap-6); }
+
+.abies-ui-stack--align-start { align-items: flex-start; }
+.abies-ui-stack--align-center { align-items: center; }
+.abies-ui-stack--align-end { align-items: flex-end; }
+.abies-ui-stack--align-baseline { align-items: baseline; }
+.abies-ui-stack--align-stretch { align-items: stretch; }
+
+.abies-ui-stack--justify-start { justify-content: flex-start; }
+.abies-ui-stack--justify-center { justify-content: center; }
+.abies-ui-stack--justify-end { justify-content: flex-end; }
+.abies-ui-stack--justify-space-between { justify-content: space-between; }
+.abies-ui-stack--justify-space-around { justify-content: space-around; }
+
+/* ── Card ──────────────────────────────────────────────────── */
+
+.abies-ui-card {
+  background: var(--abies-ui-card-bg);
+  border: 1px solid var(--abies-ui-card-border);
+  border-radius: var(--abies-ui-card-radius);
+}
+
+.abies-ui-card--elevation-none { box-shadow: none; }
+.abies-ui-card--elevation-low { box-shadow: var(--abies-ui-card-shadow-low); }
+.abies-ui-card--elevation-medium { box-shadow: var(--abies-ui-card-shadow-medium); }
+.abies-ui-card--elevation-high { box-shadow: var(--abies-ui-card-shadow-high); }
+
+.abies-ui-card--pad-none { padding: 0; }
+.abies-ui-card--pad-sm { padding: var(--abies-ui-card-pad-sm); }
+.abies-ui-card--pad-md { padding: var(--abies-ui-card-pad-md); }
+.abies-ui-card--pad-lg { padding: var(--abies-ui-card-pad-lg); }
+
+/* ── Divider ───────────────────────────────────────────────── */
+
+.abies-ui-divider {
+  border-color: var(--abies-ui-divider-color);
+}
+
+.abies-ui-divider--horizontal {
+  width: 100%;
+}
+
+.abies-ui-divider--vertical {
+  width: 1px;
+  align-self: stretch;
+}
+
+.abies-ui-divider--labeled {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--abies-ui-space-3);
+  align-items: center;
+}
+
+.abies-ui-divider--labeled hr {
+  border: 0;
+  border-top: 1px solid var(--abies-ui-divider-color);
+  width: 100%;
+}
+
+.abies-ui-divider__label {
+  color: var(--abies-ui-divider-label-color);
+  font-size: 0.875rem;
+}
+
+/* ── Grid ──────────────────────────────────────────────────── */
+
+.abies-ui-grid {
+  display: grid;
+}
+
+.abies-ui-grid--cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.abies-ui-grid--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.abies-ui-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.abies-ui-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.abies-ui-grid--cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.abies-ui-grid--cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.abies-ui-grid--cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.abies-ui-grid--cols-8 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.abies-ui-grid--cols-9 { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+.abies-ui-grid--cols-10 { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.abies-ui-grid--cols-11 { grid-template-columns: repeat(11, minmax(0, 1fr)); }
+.abies-ui-grid--cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+
+.abies-ui-grid--gap-1 { gap: var(--abies-ui-space-1); }
+.abies-ui-grid--gap-2 { gap: var(--abies-ui-space-2); }
+.abies-ui-grid--gap-3 { gap: var(--abies-ui-space-3); }
+.abies-ui-grid--gap-4 { gap: var(--abies-ui-space-4); }
+.abies-ui-grid--gap-5 { gap: var(--abies-ui-space-5); }
+.abies-ui-grid--gap-6 { gap: var(--abies-ui-space-6); }
+
+/* ── Alert ─────────────────────────────────────────────────── */
+
+.abies-ui-alert {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--abies-ui-space-3);
+  align-items: start;
+  border: 1px solid var(--abies-ui-alert-border);
+  border-radius: var(--abies-ui-radius);
+  padding: var(--abies-ui-space-3) var(--abies-ui-space-4);
+}
+
+.abies-ui-alert--info { background: var(--abies-ui-alert-info-bg); }
+.abies-ui-alert--success { background: var(--abies-ui-alert-success-bg); }
+.abies-ui-alert--warning { background: var(--abies-ui-alert-warning-bg); }
+.abies-ui-alert--danger { background: var(--abies-ui-alert-danger-bg); }
+
+.abies-ui-alert__icon {
+  line-height: 1;
+}
+
+.abies-ui-alert__content {
+  display: grid;
+  gap: var(--abies-ui-space-1);
+}
+
+.abies-ui-alert__title {
+  font-weight: 600;
+}
+
+/* ── Skeleton ──────────────────────────────────────────────── */
+
+.abies-ui-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--abies-ui-skeleton-bg);
+  border-radius: var(--abies-ui-skeleton-radius);
+}
+
+.abies-ui-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--abies-ui-skeleton-highlight),
+    transparent
+  );
+  animation: abies-ui-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.abies-ui-skeleton--text {
+  min-height: var(--abies-ui-skeleton-text-height);
+}
+
+.abies-ui-skeleton--heading {
+  min-height: var(--abies-ui-skeleton-heading-height);
+}
+
+.abies-ui-skeleton--avatar,
+.abies-ui-skeleton--circle {
+  width: var(--abies-ui-skeleton-avatar-size);
+  height: var(--abies-ui-skeleton-avatar-size);
+  border-radius: 999px;
+}
+
+.abies-ui-skeleton--rectangle {
+  min-height: 80px;
+}
+
+.abies-ui-skeleton--text-line {
+  min-height: var(--abies-ui-skeleton-text-height);
+  margin-bottom: var(--abies-ui-space-2);
+}
+
+@keyframes abies-ui-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
