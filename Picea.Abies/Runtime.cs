@@ -74,6 +74,9 @@ public static class HeadDiff
 /// The MVU runtime: wires the Automaton kernel to View, Diff, and Subscriptions.
 /// </summary>
 public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
+#if DEBUG
+    , IHotReloadRuntime
+#endif
     where TProgram : Program<TModel, TArgument>
 {
     private static readonly ActivitySource _activitySource = new("Picea.Abies.Runtime");
@@ -85,6 +88,9 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private readonly HandlerRegistry _handlerRegistry;
     private Document? _currentDocument;
     private SubscriptionState _subscriptionState = SubscriptionState.Empty;
+#if DEBUG
+    private IDisposable? _hotReloadRegistration;
+#endif
 
     public TModel Model => _core.State;
 
@@ -97,6 +103,13 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             (apply, titleChanged, navigationExecutor, new HandlerRegistry());
 
     private ValueTask<Result<Unit, PipelineError>> Observe(TModel state, Message _, Command __)
+    {
+        Render(state);
+
+        return PipelineResult.Ok;
+    }
+
+    private void Render(TModel state)
     {
         using var renderActivity = _activitySource.StartActivity("Picea.Abies.Render");
 
@@ -140,8 +153,6 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
         renderActivity?.SetTag("abies.patches", patches.Count);
         renderActivity?.SetStatus(ActivityStatusCode.Ok);
-
-        return PipelineResult.Ok;
     }
 
     private void UpdateHandlerRegistry(IReadOnlyList<Patch> patches)
@@ -294,6 +305,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             threadSafe: threadSafe,
             trackEvents: false);
 
+#if DEBUG
+        runtime._hotReloadRegistration =
+            HotReloadRuntimeRegistry.Register(typeof(TProgram).Assembly, runtime);
+#endif
+
         var initialSubscriptions = TProgram.Subscriptions(model);
         runtime._subscriptionState = SubscriptionManager.Start(
             initialSubscriptions, runtime.DispatchFromSubscription);
@@ -318,6 +334,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.Stop");
 
+#if DEBUG
+        _hotReloadRegistration?.Dispose();
+        _hotReloadRegistration = null;
+#endif
+
         SubscriptionManager.Stop(_subscriptionState);
         _handlerRegistry.Dispatch = null;
         _handlerRegistry.Clear();
@@ -325,4 +346,9 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
+
+#if DEBUG
+    void IHotReloadRuntime.RefreshViewFromCurrentModel() =>
+        Render(_core.State);
+#endif
 }

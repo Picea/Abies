@@ -85,6 +85,55 @@ In WASM, logs appear in the browser console (F12). On the server, logs go to std
 3. **Aspire dashboard** — Full distributed traces
 4. **Debugger** — Attach to the Kestrel process normally
 
+## Hot Reload Workflow (Debug)
+
+Use this workflow when iterating on view functions.
+
+### 1. Start the correct host with `dotnet watch`
+
+Server host:
+
+```bash
+dotnet watch run --project MyApp.Server
+```
+
+WASM host (split structure):
+
+```bash
+dotnet watch run --project MyApp.Wasm.Host
+```
+
+WASM host (single-project structure):
+
+```bash
+dotnet watch run --project MyApp.Wasm
+```
+
+### 2. Edit view code and save
+
+- Change `View` or view helper functions.
+- Save the file and wait for hot reload to apply.
+
+### 3. Verify state and UI
+
+- Expected: Abies preserves current model state and re-renders the UI.
+- Example: if a counter is at `42`, it should stay at `42` after a pure view change.
+
+### Supported Modes
+
+- Server host sessions (`*.Server`, interactive modes)
+- Browser host runtime (`*.Wasm.Host` or `*.Wasm`)
+
+### Known Limitations
+
+- This workflow is for view-function edits.
+- Changes to `Initialize`, `Transition`, command/interpreter code, or subscriptions require restart.
+- Some .NET edits are not hot-reloadable (rude edits); when that happens, restart the process.
+
+### Release Impact
+
+Release builds are unaffected. Hot reload guidance in this section is Debug workflow only.
+
 ## Debugging Transition
 
 ### Print Model State
