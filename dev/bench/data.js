@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774136178199,
+  "lastUpdate": 1774191196370,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12616,6 +12616,84 @@ window.BENCHMARK_DATA = {
             "value": 59.1,
             "unit": "ms",
             "extra": "mean: 59.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1dcb9500a2cf66d45fd81b911380d40f3c02b538",
+          "message": "feat: Hot reload for view functions (#171)\n\n* chore(squad): renew squad — legacy casting migration, Members table, Scribe, Ralph\n\nRenewed squad with updated role-based agents (legacy_named: true for all).\nAdded required ## Members table to team.md for GitHub workflow automation.\nAdded Ralph entry to team.md.\nCreated casting infrastructure (policy, registry, history — migration mode).\nCreated scribe agent folder with charter + history.\n\n* chore(scribe): log Phase 2 UI components session — issue #166\n\nOrchestration logs: jsdev (abies-ui.js), csharpdev (7 components + demo update), tester (10 E2E accessibility tests).\nSession log: phase2-ui-components.\nDecisions merged: StackGap enum, FormatDouble helper, labeled divider pattern, skeleton Lines param, grid gap int, CSS modifier null convention, AbortController teardown, defer script loading, MutationObserver on body, focusable filter, TUnit boolean assertion, parallel-agent test authoring, focus trap test layering.\nInbox cleared (4 files).\nCross-agent history updated: jsdev, csharpdev, tester.\n\n* feat(ui): harden phase 2 accessibility contracts and CI gates\n\n* fix(ui): remove redundant skeleton cast\n\nClean up the skeleton text-line projection to remove a redundant cast and keep the formatted helper output stable for pre-PR validation.\n\n* chore(pr): split squad changes into follow-up branch\n\nRemove squad governance and log changes from this PR so the remaining UI hardening diff stays under the repository hard size limit. Preserved full branch state on chore/squad-renewal-followup for a separate follow-up PR.\n\n* fix(review): address PR #170 feedback\n\n- preserve and restore existing body tabindex when focus trap falls back to document.body\n- align focus-trap deactivation behavior/docs with dialog data-focus-return usage\n- remove dead progress mode state/message from UI demo model\n- add Phase 2 smoke coverage for layout and feedback component contracts\n- replace floating-point equality check with epsilon comparison in progress formatting\n\n* chore(ui): sync demo abies-ui.js copy\n\nKeep demo static asset aligned with the reviewed focus-trap fixes in Picea.Abies.UI/wwwroot/abies-ui.js.\n\n* feat: hot reload for view functions (#150)\n\nWire .NET MetadataUpdate API to Abies runtime so that saving a view\nfunction triggers an immediate re-render with current model state preserved.\n\n- Add [assembly: MetadataUpdateHandler] attribute to Picea.Abies (Debug only)\n  This is the missing link: the framework now advertises itself to dotnet watch\n  so AbiesMetadataUpdateHandler.UpdateApplication is called on any type change.\n- Runtime<TProgram,TModel,TArg> registered with HotReloadRuntimeRegistry keyed\n  by typeof(TProgram).Assembly; RefreshViewFromCurrentModel re-renders on notify\n- All hot reload code guarded by #if DEBUG; zero Release impact (verified)\n- Tests: 3 unit tests for routing, mismatch safety, and model-preserving re-render\n- Docs: new docs/guides/hot-reload.md, runtime.md section, debugging.md workflow\n\nCloses #150\n\n* fix: address PR #171 review feedback\n\n* feat: auto-inject hot reload metadata handler\n\nRemove manual app/template MetadataUpdateHandler attributes and generate\nDebug-only assembly registration automatically.\n\n- Add buildTransitive target in Picea.Abies package to emit\n  Abies.MetadataUpdateHandler.g.cs in consuming app assemblies\n- Add Directory.Build.targets parity for source-build ProjectReference flows\n- Remove manual attributes from Counter, Conduit.App, and templates\n- Update hot reload docs to reflect zero-manual setup\n\nThis keeps release behavior unchanged (no generated file in Release)\nand preserves existing runtime hot reload pipeline.\n\n* fix: expose hot reload handler type for template builds\n\n* test: increase server article login wait to reduce CI timeout flake\n\n* test: harden Conduit E2E login and editor navigation flows",
+          "timestamp": "2026-03-22T15:43:58+01:00",
+          "tree_id": "547928c70dd699dfc4527aeddc0cdfe46cd538a0",
+          "url": "https://github.com/Picea/Abies/commit/1dcb9500a2cf66d45fd81b911380d40f3c02b538"
+        },
+        "date": 1774191195764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 165.8,
+            "unit": "ms",
+            "extra": "mean: 169.0ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 177.1,
+            "unit": "ms",
+            "extra": "mean: 176.9ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 223,
+            "unit": "ms",
+            "extra": "mean: 222.2ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 26.4,
+            "unit": "ms",
+            "extra": "mean: 26.4ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 75.3,
+            "unit": "ms",
+            "extra": "mean: 75.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 51.1,
+            "unit": "ms",
+            "extra": "mean: 51.0ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1629.5,
+            "unit": "ms",
+            "extra": "mean: 1637.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 209.6,
+            "unit": "ms",
+            "extra": "mean: 208.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 53.8,
+            "unit": "ms",
+            "extra": "mean: 53.9ms, samples: 15"
           }
         ]
       }
