@@ -58,6 +58,17 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// <summary>Absolute path to the scaffolded project directory.</summary>
     public string ProjectDir => _projectDir;
 
+    /// <summary>
+    /// Publishes the scaffolded project in Release mode.
+    /// </summary>
+    public async Task PublishRelease(CancellationToken ct = default)
+    {
+        await RunDotnetAsync(
+            $"publish \"{_projectDir}\" -c Release",
+            _projectDir,
+            ct);
+    }
+
     private TemplateProject(string tempDir, string projectDir, string projectName, string templateShortName)
     {
         _tempDir = tempDir;
