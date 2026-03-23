@@ -11,6 +11,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+    # Detect whether this is a docs-only PR to skip expensive code-quality jobs
+    detect-changes:
+      name: Detect Changes
+      runs-on: ubuntu-latest
+      if: github.event.pull_request.draft == false
+      outputs:
+        docs_only: ${{ steps.check.outputs.docs_only }}
+      steps:
+        - uses: actions/checkout@v6
+          with:
+            fetch-depth: 0
+        - name: Check for non-docs changes
+          id: check
+          run: |
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+            NON_DOCS=$(echo "$CHANGED" | grep -vE '^(docs/|\.squad/|\.github/instructions/|README|CHANGELOG|CONTRIBUTING|SECURITY|LICENSE|BENCHMARK_PR_STATUS|.*\.md$)' | grep -v '^$' || true)
+            if [ -z "$NON_DOCS" ]; then
+              echo "docs_only=true" >> $GITHUB_OUTPUT
+              echo "📚 Docs-only PR — lint, security scan, and template smoke test will be skipped"
+              echo "$CHANGED" | head -20
+            else
+              echo "docs_only=false" >> $GITHUB_OUTPUT
+              echo "🔨 Code changes detected — running full PR validation"
+              echo "$NON_DOCS" | head -20
+            fi
+
   # Validate PR title follows Conventional Commits
   validate-pr-title:
     name: Validate PR Title
@@ -120,7 +146,8 @@ jobs:
   lint-check:
     name: Lint Check
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
     # Pin the SDK to the version in global.json so that `dotnet format`
     # produces identical output regardless of which SDK the runner ships.
     # Without this, a newer SDK (e.g. 10.0.201 vs 10.0.103) may apply
@@ -205,7 +232,8 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
 
     steps:
       - name: Checkout
@@ -287,7 +315,8 @@ jobs:
   template-smoke-test:
     name: Template Smoke Test
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
 
     steps:
       - name: Checkout
@@ -457,7 +486,8 @@ jobs:
   bundle-size-check:
     name: Bundle Size Check
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
 
     steps:
       - name: Checkout
@@ -571,7 +601,8 @@ jobs:
   check-todos:
     name: Check TODOs
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
 
     steps:
       - name: Checkout
@@ -599,7 +630,9 @@ jobs:
   pr-validation-summary:
     name: PR Validation Summary
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    # always() + !failure() = run even when dependencies were skipped (docs-only),
+    # but not when any dependency explicitly failed.
+    if: always() && !cancelled() && !failure() && github.event.pull_request.draft == false
     needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, template-smoke-test, bundle-size-check, check-todos]
 
     steps:

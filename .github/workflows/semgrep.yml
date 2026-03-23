@@ -3,8 +3,30 @@ name: Semgrep Security Scan
 on:
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.squad/**'
+      - '.github/instructions/**'
+      - 'LICENSE'
+      - 'CHANGELOG*'
+      - 'CONTRIBUTING*'
+      - 'SECURITY*'
+      - 'README*'
+      - 'BENCHMARK_PR_STATUS*'
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.squad/**'
+      - '.github/instructions/**'
+      - 'LICENSE'
+      - 'CHANGELOG*'
+      - 'CONTRIBUTING*'
+      - 'SECURITY*'
+      - 'README*'
+      - 'BENCHMARK_PR_STATUS*'
 
 jobs:
   semgrep:

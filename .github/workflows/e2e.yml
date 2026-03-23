@@ -7,7 +7,37 @@ on:
     branches: [ "main" ]
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.check.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check for non-docs changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+          fi
+          NON_DOCS=$(echo "$CHANGED" | grep -vE '^(docs/|\.squad/|\.github/instructions/|README|CHANGELOG|CONTRIBUTING|SECURITY|LICENSE|BENCHMARK_PR_STATUS|.*\.md$)' | grep -v '^$' || true)
+          if [ -z "$NON_DOCS" ]; then
+            echo "docs_only=true" >> $GITHUB_OUTPUT
+            echo "📚 Docs-only change — skipping E2E tests (120 min saved)"
+            echo "$CHANGED" | head -20
+          else
+            echo "docs_only=false" >> $GITHUB_OUTPUT
+            echo "🔨 Code changes detected — running E2E tests"
+            echo "$NON_DOCS" | head -20
+          fi
+
   e2e:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.docs_only == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
