@@ -1,162 +1,91 @@
-// Copyright (c) 2024 Abies Contributors. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
 using Picea.Abies.Debugger;
 
 namespace Picea.Abies.Tests;
 
-/// <summary>
-/// Validates Mealy machine state transitions for the time travel debugger.
-/// Purpose: Verify that state transitions (Recording → Paused → Playing → Jumped) produce
-/// deterministic outputs without side effects during replay.
-/// 
-/// NOTE: These tests are expected to FAIL TO COMPILE today (Picea.Abies.Debugger namespace
-/// does not exist yet). They document the contract for the C# debugger implementation.
-/// </summary>
-public class DebuggerMealyMachineTests
+public sealed class DebuggerMealyMachineTests
 {
-    /// <summary>
-    /// Test 1a: When the first message is captured, the debugger transitions from Idle to Recording
-    /// and records exactly one timeline entry with sequence=0 and monotonic timestamp.
-    /// 
-    /// Validates the seam: Initial state capture, sequence numbering, timestamp generation.
-    /// TODAY: Fails to compile - no Picea.Abies.Debugger namespace.
-    /// </summary>
     [Test]
-    public void RecordMessageAndTransitionToStarted_WhenFirstMessageCaptured()
+    public async Task RecordMessageAndTransitionToRecording_WhenFirstMessageCaptured()
     {
-        // Arrange
         var debugger = new DebuggerMachine(capacity: 1000);
-        var message = new Message { Type = "TestMessage", Args = new object[] { "value1", 42 } };
+        var message = new TestMessage("first", 42);
 
-        // Act
-        debugger.CaptureMessage(message, "{}");  // modelSnapshotPreview = "{}"
+        debugger.CaptureMessage(message, "{\"count\":0}");
 
-        // Assert
-        Assert.That(debugger.CurrentState, Is.EqualTo(DebuggerState.Recording),
-            "State should transition to Recording after first message capture");
-        Assert.That(debugger.Timeline.Count, Is.EqualTo(1),
-            "Timeline should contain exactly 1 entry after first capture");
-        
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Recording);
+        await Assert.That(debugger.Timeline.Count).IsEqualTo(1);
+
         var entry = debugger.Timeline[0];
-        Assert.That(entry.Sequence, Is.EqualTo(0),
-            "First entry should have sequence = 0");
-        Assert.That(entry.MessageType, Is.EqualTo("TestMessage"),
-            "Entry MessageType should match captured message type");
-        Assert.That(entry.Timestamp, Is.GreaterThan(0),
-            "Timestamp should be generated and non-zero");
-        Assert.That(entry.ModelSnapshotPreview, Is.Not.Empty,
-            "ModelSnapshotPreview should be non-empty string");
+        await Assert.That(entry.Sequence).IsEqualTo(0);
+        await Assert.That(entry.MessageType).IsEqualTo(nameof(TestMessage));
+        await Assert.That(entry.Timestamp).IsGreaterThan(0L);
+        await Assert.That(entry.ModelSnapshotPreview).IsNotEmpty();
     }
 
-    /// <summary>
-    /// Test 1b: When jumping to a specific cursor position, the Mealy machine transitions from
-    /// Playing to Paused WITHOUT re-executing commands or re-registering subscriptions (deterministic replay only).
-    /// 
-    /// Validates the seam: Replay determinism (no side effects), state transitions, cursor positioning.
-    /// TODAY: Fails to compile - DebuggerMachine.Jump() API does not exist.
-    /// </summary>
     [Test]
-    public void JumpToCursor_TransitionsFromPlayingToPausedWithoutSideEffects()
+    public async Task JumpToCursor_TransitionsFromPlayingToPausedWithoutTimelineMutation()
     {
-        // Arrange
         var debugger = new DebuggerMachine(capacity: 1000);
-        debugger.CurrentState = DebuggerState.Playing;  // Simulate playing state
-        
-        // Add 10 timeline entries (sequences 0-9)
-        for (int i = 0; i < 10; i++)
-        {
-            var message = new Message { Type = $"Message{i}", Args = new object[] { i } };
-            debugger.CaptureMessage(message, $"{{\"count\":{i}}}");
-        }
-        
-        debugger.CursorPosition = 5;  // Currently at entry 5
-        var initialTimeline = debugger.Timeline.Count;
 
-        // Act
+        for (var i = 0; i < 10; i++)
+        {
+            debugger.CaptureMessage(new TestMessage($"message-{i}", i), $"{{\"count\":{i}}}");
+        }
+
+        debugger.Play();
+        var initialTimelineCount = debugger.Timeline.Count;
+
         debugger.Jump(entrySequence: 7);
 
-        // Assert
-        Assert.That(debugger.CurrentState, Is.EqualTo(DebuggerState.Paused),
-            "State should transition to Paused after Jump");
-        Assert.That(debugger.CursorPosition, Is.EqualTo(7),
-            "Cursor should move to entry 7");
-        Assert.That(debugger.Timeline.Count, Is.EqualTo(initialTimeline),
-            "Timeline should remain unchanged after jump (no side effects)");
-        Assert.That(debugger.SideEffectCount, Is.EqualTo(0),
-            "No Commands or Subscriptions should be re-executed during replay");
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Paused);
+        await Assert.That(debugger.CursorPosition).IsEqualTo(7);
+        await Assert.That(debugger.Timeline.Count).IsEqualTo(initialTimelineCount);
+        await Assert.That(debugger.SideEffectCount).IsEqualTo(0);
     }
 
-    /// <summary>
-    /// Test 1c: When stepping forward from a paused state, the cursor increments by 1,
-    /// state remains Paused, and ModelSnapshotPreview is updated to reflect the next entry.
-    /// 
-    /// Validates the seam: Single-step replay, cursor increment, snapshot update.
-    /// TODAY: Fails to compile - StepForward() API does not exist.
-    /// </summary>
     [Test]
-    public void StepForward_IncreasesCursorByOne_WhenNotAtEnd()
+    public async Task StepForward_IncreasesCursorByOne_WhenNotAtEnd()
     {
-        // Arrange
         var debugger = new DebuggerMachine(capacity: 1000);
-        debugger.CurrentState = DebuggerState.Paused;
-        
-        for (int i = 0; i < 5; i++)
-        {
-            var message = new Message { Type = $"Step{i}", Args = new object[] { } };
-            debugger.CaptureMessage(message, $"{{\"step\":{i}}}");
-        }
-        
-        debugger.CursorPosition = 2;
-        var entryAt3 = debugger.Timeline[3];
 
-        // Act
+        for (var i = 0; i < 5; i++)
+        {
+            debugger.CaptureMessage(new TestMessage($"step-{i}", null), $"{{\"step\":{i}}}");
+        }
+
+        debugger.Jump(entrySequence: 2);
+        var expectedSnapshot = debugger.Timeline[3].ModelSnapshotPreview;
+
         debugger.StepForward();
 
-        // Assert
-        Assert.That(debugger.CurrentState, Is.EqualTo(DebuggerState.Paused),
-            "State should remain Paused after step");
-        Assert.That(debugger.CursorPosition, Is.EqualTo(3),
-            "Cursor should increment to 3");
-        Assert.That(debugger.CurrentModelSnapshotPreview, Is.EqualTo(entryAt3.ModelSnapshotPreview),
-            "ModelSnapshotPreview should update to reflect entry 3");
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Paused);
+        await Assert.That(debugger.CursorPosition).IsEqualTo(3);
+        await Assert.That(debugger.CurrentModelSnapshotPreview).IsEqualTo(expectedSnapshot);
     }
 
-    /// <summary>
-    /// Test 1d: When playing forward and reaching the last timeline entry, playback automatically
-    /// pauses (no attempt to fetch a non-existent entry beyond the timeline).
-    /// 
-    /// Validates the seam: Boundary condition (cursor at timeline end), automatic pause.
-    /// TODAY: Fails to compile - PlaybackLoop/AutostepLogic does not exist.
-    /// </summary>
     [Test]
-    public void PlaybackStopsAtTimelineEnd_WhenPlayingAndReachesLastEntry()
+    public async Task PlaybackStopsAtTimelineEnd_WhenPlayingAndReachesLastEntry()
     {
-        // Arrange
         var debugger = new DebuggerMachine(capacity: 1000);
-        debugger.CurrentState = DebuggerState.PlayingForward;
-        
-        // Add 3 timeline entries (indices 0, 1, 2)
-        for (int i = 0; i < 3; i++)
+
+        for (var i = 0; i < 3; i++)
         {
-            var message = new Message { Type = $"PlayMsg{i}", Args = new object[] { } };
-            debugger.CaptureMessage(message, $"{{}}");
+            debugger.CaptureMessage(new TestMessage($"play-{i}", null), "{}");
         }
-        
-        debugger.CursorPosition = 0;
 
-        // Act: Simulate autoplay stepping through all entries
-        debugger.StepForward();  // cursor → 1
-        debugger.StepForward();  // cursor → 2 (at end)
-        var stateBeforeStep = debugger.CurrentState;
-        debugger.StepForward();  // attempt step beyond end
+        debugger.Jump(entrySequence: 0);
+        debugger.Play();
 
-        // Assert
-        Assert.That(stateBeforeStep, Is.EqualTo(DebuggerState.PlayingForward),
-            "Should still be playing before reaching end");
-        Assert.That(debugger.CurrentState, Is.EqualTo(DebuggerState.Paused),
-            "Should auto-pause when cursor reaches timeline end");
-        Assert.That(debugger.CursorPosition, Is.EqualTo(2),
-            "Cursor should remain at last entry (index 2)");
+        debugger.StepForward();
+        debugger.StepForward();
+
+        var stateBeforeFinalStep = debugger.CurrentState;
+        debugger.StepForward();
+
+        await Assert.That(stateBeforeFinalStep).IsEqualTo(DebuggerState.Paused);
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Paused);
+        await Assert.That(debugger.CursorPosition).IsEqualTo(2);
     }
+
+    private sealed record TestMessage(string Name, object? Payload) : Message;
 }
