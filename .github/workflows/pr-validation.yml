@@ -95,11 +95,43 @@ jobs:
             const deletions = pr.deletions || 0;
             const totalChanges = additions + deletions;
 
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const isMaintenancePath = (path) => {
+              return (
+                path.startsWith('.squad/') ||
+                path.startsWith('docs/') ||
+                path.startsWith('.github/instructions/') ||
+                /(^|\/)README(\..+)?$/i.test(path) ||
+                /(^|\/)CHANGELOG(\..+)?$/i.test(path) ||
+                /(^|\/)CONTRIBUTING(\..+)?$/i.test(path) ||
+                /(^|\/)SECURITY(\..+)?$/i.test(path) ||
+                /(^|\/)LICENSE(\..+)?$/i.test(path) ||
+                /(^|\/)BENCHMARK_PR_STATUS(\..+)?$/i.test(path) ||
+                path.endsWith('.md')
+              );
+            };
+
+            const maintenanceOnly = files.length > 0 && files.every((f) => isMaintenancePath(f.filename));
+
             // Soft limit (warning) and hard limit (failure)
             const hardLimit = 1500;
             const softLimit = 400;
 
             if (totalChanges > hardLimit) {
+              if (maintenanceOnly) {
+                core.warning(
+                  `⚠️  Large maintenance-only PR (${totalChanges} lines changed). ` +
+                  `Allowing because all changed files are docs/.squad/instructions metadata.`
+                );
+                return;
+              }
+
               core.setFailed(
                 `⚠️  PR is too large (${totalChanges} lines changed). ` +
                 `Please consider breaking it into smaller PRs (< ${hardLimit} lines).`
@@ -439,10 +471,23 @@ jobs:
             fi
           done
 
+          TRIVY_IMAGE=""
+          for candidate in ghcr.io/aquasecurity/trivy:latest aquasec/trivy:latest; do
+            if docker pull "$candidate" >/dev/null 2>&1; then
+              TRIVY_IMAGE="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$TRIVY_IMAGE" ]; then
+            echo "❌ Could not pull a usable Trivy image."
+            exit 1
+          fi
+
           docker run --rm \
             -v "$PWD:/src" \
             -v "$OUT_ROOT:/scan" \
-            aquasec/trivy:latest fs \
+            "$TRIVY_IMAGE" fs \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --scanners vuln,misconfig,secret \
