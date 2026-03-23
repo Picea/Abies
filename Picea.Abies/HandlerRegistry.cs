@@ -1,4 +1,7 @@
 using Picea.Abies.DOM;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies;
 
@@ -32,6 +35,16 @@ public sealed class HandlerRegistry
 
         return null;
     }
+
+#if DEBUG
+    internal static void CaptureMessageToDebugger(object? message, string modelSnapshotPreview)
+    {
+        if (DebuggerRuntimeRegistry.CurrentDebugger != null && message != null)
+        {
+            DebuggerRuntimeRegistry.CurrentDebugger.CaptureMessage(message, modelSnapshotPreview);
+        }
+    }
+#endif
 
     internal void Clear() => _handlers.Clear();
 
