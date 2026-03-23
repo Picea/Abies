@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Text.Json;
+using Picea.Abies.Browser.Debugger;
 
 namespace Picea.Abies.Browser.Tests;
 
@@ -61,7 +62,7 @@ public class DebuggerAdapterTests
         
         // Verify NO side effects (no command execution, no state mutation)
         await Assert.That(adapter.PendingCommands).IsEmpty();
-        await Assert.That(adapter.CurrentState).IsEqualTo(DebuggerAdapterState.Idle);
+        await Assert.That((int)adapter.CurrentState).IsEqualTo((int)DebuggerAdapterState.Idle);
     }
 
     /// <summary>
@@ -79,15 +80,14 @@ public class DebuggerAdapterTests
     {
         // Arrange
         var adapter = new Picea.Abies.Browser.Debugger.DebuggerAdapter();
-        
-        var c_Response = """
+
+        var c_Response = JsonSerializer.Serialize(new DebuggerAdapterResponse
         {
-            "status": "paused",
-            "cursorPosition": 5,
-            "timelineSize": 10,
-            "modelSnapshotPreview": "{\\"count\\": 5, \\"items\\": [...]}"
-        }
-        """;
+            Status = "paused",
+            CursorPosition = 5,
+            TimelineSize = 10,
+            ModelSnapshotPreview = "{\"count\":5,\"items\":[1,2,3]}"
+        });
 
         var initialCommandQueueSize = adapter.PendingCommands.Count;
 
@@ -184,37 +184,6 @@ public class DebuggerAdapterTests
         
         // No side effects
         await Assert.That(adapter.PendingCommands).IsEmpty();
-        await Assert.That(adapter.CurrentState).IsEqualTo(DebuggerAdapterState.Idle);
+        await Assert.That((int)adapter.CurrentState).IsEqualTo((int)DebuggerAdapterState.Idle);
     }
-}
-
-/// <summary>
-/// Mock/contract definition for DebuggerAdapterMessage.
-/// This defines the input contract for the adapter layer.
-/// </summary>
-public class DebuggerAdapterMessage
-{
-    public required string Type { get; init; }
-    public int? EntryId { get; init; }
-    public object? Data { get; init; }
-}
-
-/// <summary>
-/// Mock/contract definition for the adapter's deserialized response.
-/// </summary>
-public class DebuggerAdapterResponse
-{
-    public required string Status { get; init; }
-    public int CursorPosition { get; init; }
-    public int TimelineSize { get; init; }
-    public string ModelSnapshotPreview { get; init; } = "";
-}
-
-/// <summary>
-/// Enum for adapter state (should remain Idle, transport-only).
-/// </summary>
-public enum DebuggerAdapterState
-{
-    Idle,
-    Error
 }
