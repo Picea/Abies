@@ -1,4 +1,0 @@
-### 2026-03-22T00:00:00Z: Issue #150 hot reload MVP direction locked
-**By:** Gandalf (Architect)
-**What:** Implement Debug-only hot reload for Abies view functions using .NET MetadataUpdateHandler + a runtime view-refresh registry keyed by `typeof(TProgram).Assembly`, with opt-in assembly attributes in app projects/templates, immediate model-preserving re-render in active Runtime/Session instances, and explicit non-goals excluding command/update/subscription hot reload.
-**Why:** Delivers the highest DX impact now (save → refreshed UI without restart) across Server and WASM while keeping scope practical, preserving MVU model state, and guaranteeing zero Release impact via compile-time Debug guards.
