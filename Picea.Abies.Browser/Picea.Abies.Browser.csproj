@@ -32,4 +32,10 @@
     <None Include="build/Picea.Abies.Browser.targets" Pack="true" PackagePath="build" />
   </ItemGroup>
 
+  <!-- Exclude debugger.js from Release builds -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Remove="wwwroot/debugger.js" />
+    <None Remove="wwwroot/debugger.js" />
+  </ItemGroup>
+
 </Project>
