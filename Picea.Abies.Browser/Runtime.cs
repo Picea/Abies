@@ -82,6 +82,12 @@ namespace Picea.Abies.Browser;
 /// </example>
 /// </remarks>
 [SupportedOSPlatform("browser")]
+public sealed record BrowserRuntimeOptions
+{
+    public bool UseDebugger { get; init; }
+}
+
+[SupportedOSPlatform("browser")]
 public static class Runtime
 {
     /// <summary>
@@ -166,7 +172,8 @@ public static class Runtime
     /// <returns>A task that never completes (keeps the WASM process alive).</returns>
     public static async Task Run<TProgram, TModel, TArgument>(
         TArgument argument = default!,
-        Interpreter<Command, Message>? interpreter = null)
+        Interpreter<Command, Message>? interpreter = null,
+        bool useDebugger = false)
         where TProgram : Program<TModel, TArgument>
     {
         // Step 1: Load the abies.js module.
@@ -239,6 +246,13 @@ public static class Runtime
             titleChanged: Interop.SetTitle,
             navigationExecutor: NavigationExecutor,
             initialUrl: initialUrl);
+
+#if DEBUG
+        if (useDebugger)
+        {
+            runtime.UseDebugger();
+        }
+#endif
 
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
         // The [JSExport] DispatchDomEvent method is static, so it needs a static
