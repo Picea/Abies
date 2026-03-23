@@ -111,12 +111,27 @@ jobs:
           exit 0
         fi
 
+        TRIVY_IMAGE=""
+        for candidate in ghcr.io/aquasecurity/trivy:latest aquasec/trivy:latest; do
+          if docker pull "$candidate" >/dev/null 2>&1; then
+            TRIVY_IMAGE="$candidate"
+            break
+          fi
+        done
+
+        if [ -z "$TRIVY_IMAGE" ]; then
+          echo "❌ Could not pull a usable Trivy image."
+          exit 1
+        fi
+
+        echo "Using Trivy image: $TRIVY_IMAGE"
+
         while IFS= read -r image_tag; do
           [ -z "$image_tag" ] && continue
           echo "Scanning image: $image_tag"
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:latest image \
+            "$TRIVY_IMAGE" image \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --exit-code 1 \
