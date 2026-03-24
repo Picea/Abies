@@ -407,12 +407,12 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
         _hotReloadRegistration?.Dispose();
         _hotReloadRegistration = null;
-    if (ReferenceEquals(DebuggerRuntimeRegistry.CurrentDebugger, _debuggerMachine))
-    {
-        DebuggerRuntimeRegistry.CurrentDebugger = null;
-    }
+        if (ReferenceEquals(DebuggerRuntimeRegistry.CurrentDebugger, _debuggerMachine))
+        {
+            DebuggerRuntimeRegistry.CurrentDebugger = null;
+        }
 
-    _debuggerMachine = null;
+        _debuggerMachine = null;
 #endif
 
         SubscriptionManager.Stop(_subscriptionState);

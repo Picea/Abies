@@ -3,8 +3,6 @@
 
 #if DEBUG
 
-using System.Diagnostics;
-
 namespace Picea.Abies.Debugger;
 
 public enum DebuggerState
@@ -233,11 +231,11 @@ public sealed class DebuggerMachine
             // Simple reflection-based serialization of message args and properties
             var messageType = message.GetType();
             var properties = messageType.GetProperties();
-            
+
             if (properties.Length == 0)
                 return "{}";
 
-            var fields = new System.Collections.Generic.Dictionary<string, string>();
+            var fields = new Dictionary<string, string>();
             foreach (var prop in properties)
             {
                 try

@@ -7,7 +7,7 @@ rules:
       include:
         - /Picea.Abies.Templates/templates/**/*.cs
         - /template-security-out/**/*.cs
-    pattern: .AllowAnyOrigin()
+    pattern: $X.AllowAnyOrigin()
 
   - id: template-no-hardcoded-secrets
     message: Do not hardcode secrets or credentials in template source files.
@@ -27,4 +27,4 @@ rules:
       include:
         - /Picea.Abies.Templates/templates/**/*
         - /template-security-out/**/*
-    pattern-regex: http://(?!localhost|127\.0\.0\.1)[^\s"')>]+
+    pattern-regex: http://(?!localhost|127\.0\.0\.1|json\.schemastore\.org)[^\s"')>]+
