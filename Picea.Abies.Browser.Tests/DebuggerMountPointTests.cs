@@ -13,9 +13,9 @@ namespace Picea.Abies.Browser.Tests;
 /// is completely isolated from main app, and only loads when in Debug mode.
 /// 
 /// Mount Point Contract:
-/// - Single DOM element: id="abies-debugger-timeline" (C# template supplies this in Debug mode)
-/// - debugger.js module: Optional JS file that initializes mount point when present
-/// - Release build: NO debugger.js file, NO mount point in HTML
+/// - Single DOM element: id="abies-debugger-timeline" (browser runtime injects this in Debug mode)
+/// - debugger.js exposes the mount helper and guards against duplicate injection
+/// - Release build: no debugger mount injection
 /// 
 /// Test Strategy: Mix of C# unit tests + integration tests
 /// - C# tests: Validate mount point element presence/absence in rendered HTML

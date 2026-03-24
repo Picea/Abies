@@ -25,10 +25,10 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
 ### Added
 
 - **Debugger auto-mount with C# API** (see [ADR-026](docs/adr/ADR-026-debugger-auto-mount-with-csharp-api.md))
-  - The Abies Time Travel Debugger now mounts automatically in Debug builds (zero setup required)
+  - The Abies Time Travel Debugger now mounts automatically in Debug builds for **browser** (`Picea.Abies.Browser`) applications (zero setup required)
   - Disable explicitly with: `DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })`
   - Release builds strip the debugger entirely (zero bytes, zero overhead)
-  - Works in both WASM and Server render modes
+  - The current auto-mount path is implemented in the browser runtime startup flow
 - **New documentation**:
   - [docs/guides/devtools.md](docs/guides/devtools.md) — Complete Abies Time Travel Debugger guide with time travel, debugging strategies, and troubleshooting
   - Template READMEs: [abies-browser](Picea.Abies.Templates/templates/abies-browser/README.md), [abies-browser-empty](Picea.Abies.Templates/templates/abies-browser-empty/README.md), [abies-server](Picea.Abies.Templates/templates/abies-server/README.md)
