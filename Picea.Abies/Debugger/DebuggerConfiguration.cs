@@ -1,3 +1,5 @@
+#if DEBUG
+
 namespace Picea.Abies.Debugger;
 
 /// <summary>
@@ -41,3 +43,5 @@ public static class DebuggerConfiguration
         _default = options ?? new DebuggerOptions { Enabled = true };
     }
 }
+
+#endif
