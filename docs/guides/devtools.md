@@ -1,206 +1,105 @@
-# Abies DevTools: Time Travel Debugger
+# Abies Time Travel Debugger
 
-Debug builds of Abies include a built-in time-travel debugger. It captures every message and model snapshot as they flow through `Transition`, and lets you step backward and forward through your app's history — or replay sequences automatically.
+The Abies Time Travel Debugger provides a complete trace of your application's MVU loop: every message, state transition, and rendered DOM patch.
 
-This guide shows you how to enable it, navigate the timeline, and use the intent transport contract for advanced integrations.
+## Quick Start (Auto-Enabled)
 
-> **Debug builds only.** The debugger is compiled out of Release builds entirely. There is no runtime overhead in production. See [Release build behaviour](#release-build-behaviour).
+The debugger is **automatically enabled in Debug builds**. No setup required — it just works.
 
----
+When you run your app in Debug mode:
+1. Open your application in the browser
+2. Look for the **Abies Time Travel Debugger** panel (appears as a timeline at the bottom or side of the screen)
+3. Interact with your app — see each action, transition, and render recorded in the timeline
 
-## Prerequisites
+In Release builds, the debugger is completely stripped out (zero bytes, zero overhead).
 
-- An Abies app with a `Wasm.Host` or `.Server` project that you can modify
-- Running in Debug configuration (`dotnet run` defaults to Debug)
-- Familiarity with the [MVU Architecture](../concepts/mvu-architecture.md)
+## Disabling the Debugger
 
----
+If you want to disable the debugger in Debug builds (e.g., in CI environments or shared installations), configure it before starting your application:
 
-## Step 1: Add the mount point to your host HTML
+**Example (in Program.cs):**
 
-The debugger UI mounts into a DOM element with `id="abies-debugger-timeline"`. Add it to your host page — typically `wwwroot/index.html` (WASM) or `_Host.cshtml` / `App.razor` equivalent (Server).
+```csharp
+using Picea.Abies.Debugger;
 
-```html
-<!-- Anywhere in <body> — typically at the bottom -->
-<div id="abies-debugger-timeline"></div>
+// Before calling Runtime.Run():
+DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
+await Picea.Abies.Browser.Runtime.Run<MyProgram, MyModel, Unit>();
 ```
 
-The debugger renders its own full Abies MVU application inside that element. If the element is absent, the debugger silently does nothing.
+The debugger will not appear, but your app runs normally.
 
----
+## Debugger UI — Timeline Tab
 
-## Step 2: Start your app in Debug
+The debugger timeline shows a chronological list of every event in your MVU loop.
 
-Run your app normally:
+### Event Details
 
-```bash
-dotnet run --project YourApp.Wasm.Host
-# or
-dotnet run --project YourApp.Server
-```
+Each event in the timeline captures:
 
-Debug is the default configuration. The debugger activates automatically — no additional flags or packages required.
+| Field | What It Means |
+|-------|---------------|
+| **Message** | The name and details of the message (e.g., `Increment`, `UserClicked { id = 42 }`) |
+| **Old Model** | Your application state **before** the message was processed |
+| **New Model** | Your application state **after** the transition |
+| **Patches** | The DOM changes that were rendered (e.g., "Add node", "Set class", "Update text") |
+| **Subscriptions** | Any subscriptions that were live during this transition |
 
-Open your app in the browser. The timeline panel appears at the bottom of the page as soon as the first message is dispatched.
+### Interaction
 
----
+- **Hover** over an event to see a compact summary
+- **Click** an event to expand it and see full details
+- **Search** timeline by message name (e.g., search "Increment" to find all increment messages)
+- **Clear** the timeline to reset and start fresh
 
-## The Timeline UI
+## Time Travel (Advanced)
 
-### What each entry shows
+You can rewind your application to any past state by clicking on an event in the timeline.
 
-Every message that passes through `Transition` creates one entry in the timeline:
+**How it works:**
+1. Click a past event in the timeline
+2. The debugger reloads your entire application state to that point
+3. The UI re-renders to match that state
+4. Continue forward from that point, or inspect further
 
-| Field | Description |
-| --- | --- |
-| **Message type** | The C# type name of the dispatched message (e.g., `CounterMessage.Increment`) |
-| **Args preview** | A short string preview of the message payload |
-| **Timestamp** | Wall-clock time when the message was processed |
-| **Model snapshot preview** | A short string preview of the model state *after* the transition |
+This is useful for:
+- Reproducing bugs (step back to the exact moment before the bug occurred)
+- Understanding state evolution (see how your model changed over time)
+- Testing edge cases (rewind to a specific scenario and make different choices)
 
-Entries are stored in a ring buffer. The buffer holds the last N messages — older entries are discarded when the buffer is full.
+## Release Builds
 
-### Current cursor position
-
-The active entry (the one the app is currently replaying from) is highlighted. When you are at the live end of the timeline, the app behaves normally. When you step back, execution pauses at the selected snapshot.
-
----
-
-## Playback Controls
-
-### Buttons
-
-| Button | Action |
-| --- | --- |
-| ▶ Play | Replay forward from the current cursor position |
-| ⏸ Pause | Stop automatic replay and freeze at the current entry |
-| → Step Forward | Advance the cursor one entry forward |
-| ← Step Back | Move the cursor one entry backward |
-| ✕ Clear | Remove all entries from the timeline and reset the cursor |
-
-### Keyboard shortcuts
-
-The debugger panel captures keyboard input when focused:
-
-| Key | Action |
-| --- | --- |
-| `Space` | Toggle play / pause |
-| `→` ArrowRight | Step forward one entry |
-| `←` ArrowLeft | Step back one entry |
-| `J` | Focus the jump input |
-| `Escape` | Blur the debugger panel |
-
-Click inside the timeline panel to focus it before using keyboard shortcuts.
-
----
-
-## Jumping to a specific point
-
-To jump directly to an entry:
-
-1. Press `J` (or click the jump input field).
-2. Type the entry ID shown in the timeline.
-3. Press `Enter`.
-
-The cursor moves to that entry immediately. The app replays state up to that point.
-
-You can also click any timeline entry directly — the cursor jumps to it.
-
----
-
-## Release build behaviour
-
-`debugger.js` is excluded from Release builds via a `Condition` on its `<Content>` item in the `.csproj`:
-
-```xml
-<Content Update="wwwroot/debugger.js"
-         Condition="'$(Configuration)' == 'Release'"
-         CopyToPublishDirectory="Never" />
-```
-
-The C# debugger classes are guarded by `#if DEBUG`. Neither the UI code nor the bridge code is compiled into Release binaries.
-
-This means:
-- **Zero production bundle size increase** — the JS file is not deployed
-- **Zero runtime overhead** — no event listeners, no ring buffer, no DOM element
-- **No opt-out required** — stripping is automatic
-
-Do not add the `<div id="abies-debugger-timeline">` mount point to production HTML templates. It has no effect in Release, but it is unnecessary noise in the DOM.
-
----
-
-## Advanced: The intent transport contract
-
-The debugger uses a custom event protocol to decouple the UI from the runtime bridge. If you need to drive the debugger programmatically (integration tests, custom tooling), you can dispatch intents directly.
-
-### Attribute contract
-
-Debugger-aware elements carry two attributes:
-
-| Attribute | Value |
-| --- | --- |
-| `data-abies-debugger-intent` | The intent name (e.g., `"Jump"`, `"StepForward"`, `"StepBackward"`, `"Play"`, `"Pause"`, `"ClearTimeline"`) |
-| `data-abies-debugger-payload` | Optional. A string payload for intents that require one (e.g., an entry ID for `Jump`) |
-
-### Event contract
-
-`debugger.js` listens for click events on elements with `data-abies-debugger-intent` and translates them to the `abies:debugger:intent` custom event on `window`.
-
-You can also dispatch the event directly from JavaScript:
-
-```javascript
-window.dispatchEvent(new CustomEvent('abies:debugger:intent', {
-  detail: {
-    intent: 'Jump',
-    payload: '42'   // entry ID
-  }
-}));
-
-window.dispatchEvent(new CustomEvent('abies:debugger:intent', {
-  detail: { intent: 'StepForward' }
-}));
-
-window.dispatchEvent(new CustomEvent('abies:debugger:intent', {
-  detail: { intent: 'Play' }
-}));
-```
-
-**Available intents:**
-
-| Intent | Payload | Description |
-| --- | --- | --- |
-| `Jump` | Entry ID (string) | Move cursor to the specified timeline entry |
-| `StepForward` | — | Advance cursor one step |
-| `StepBackward` | — | Move cursor one step back |
-| `Play` | — | Start automatic replay |
-| `Pause` | — | Stop automatic replay |
-| `ClearTimeline` | — | Remove all entries, reset cursor |
-
-The `DebuggerRuntimeBridge` handles these events and translates them into commands for the `DebuggerMachine`.
-
----
+**Release builds have zero debugger overhead:**
+- No JavaScript or WebAssembly bytes spent on the debugger
+- All debugger code is compiled out at build time (via `#if DEBUG` preprocessor directives)
+- Your Release bundle is smaller and faster
 
 ## Troubleshooting
 
-**Timeline panel does not appear.**
+### Q: I don't see the debugger panel
 
-- Confirm the app is running in Debug, not Release.
-- Confirm `<div id="abies-debugger-timeline"></div>` is present in the host HTML.
-- Check the browser console for errors during startup.
+**A:** One of these reasons:
+- You're running in Release mode (debugger is stripped out)
+- You're using `DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })` (explicitly disabled)
+- Your app hasn't rendered yet (wait a moment for the page to load)
 
-**Keyboard shortcuts do not respond.**
+**Solution:** Check your build configuration and confirm `#DEBUG` is enabled, or remove the explicit disable if you added it.
 
-- Click inside the timeline panel to give it focus first.
+### Q: The timeline grows too large / memory usage is high
 
-**Entries stop appearing.**
+**A:** The debugger keeps all events in memory until you close the browser tab or clear the timeline.
 
-- The ring buffer has a capacity limit. The oldest entries are dropped when it fills. Use the Clear button to reset and resume capturing.
+**Solution:**
+- Click **Clear** in the debugger UI to reset the timeline
+- Reload the page (`Ctrl+R` or `Cmd+R`) to start fresh
+- For long development sessions, periodically clear the timeline
 
----
+### Q: Can I use the debugger in Server Render mode?
+
+**A:** Yes! The debugger works in both WASM and Server render modes (see [ADR-024: Four Render Modes](../adr/ADR-024-four-render-modes.md)). The API is the same in both modes.
 
 ## See Also
 
-- [Debugging](./debugging.md) — Tracing, console logging, and hot reload
-- [Tutorial 8: Distributed Tracing](../tutorials/08-tracing.md) — OpenTelemetry instrumentation
-- [MVU Architecture](../concepts/mvu-architecture.md) — How Model-View-Update works
-- [ADR-025](../adr/ADR-025-issue-160-debugger-boundary-contract-phase1.md) — Architecture decision for the debugger boundary contract
+- [Debugging Guide](debugging.md) — Additional debugging strategies for MVU applications
+- [ADR-026: Debugger Auto-Mount with C# API](../adr/ADR-026-debugger-auto-mount-with-csharp-api.md) — Design decisions and rationale
+- [ADR-025: Debugger Boundary Contract](../adr/ADR-025-debugger-boundary-contract.md) — Debugger interface and semantics
