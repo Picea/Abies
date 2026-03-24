@@ -12,8 +12,7 @@ Project-specific learnings from documentation work. Read this before every sessi
 *None yet — recurring structures and templates will be captured here.*
 
 ## Gaps Identified
-
-- **2026-03-24 (PR #181)**: Time Travel Debugger shipped with zero docs. Resolved: `docs/guides/devtools.md` created, `debugging.md` updated, `index.md` updated.
+*None yet — undocumented features and missing guides tracked here.*
 
 ## Style Exceptions
 *None yet — deviations from standard style and their justification.*

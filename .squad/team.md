@@ -1,20 +1,5 @@
 # Team Roster
 
-## Members
-
-| Agent | Role | Expertise Focus | GitHub Label |
-|-------|------|-----------------|--------------|
-| Lead | Coordinator | Work decomposition, triage, unlocking | `squad:lead` |
-| Architect | Design Authority | System design, namespace planning, domain modeling | `squad:architect` |
-| C# Dev | C#/.NET Implementation | Functional DDD, .NET 10, constrained types, TUnit | `squad:csharpdev` |
-| JS Dev | JavaScript Implementation | Vanilla JS, Web Components, ES2024+ | `squad:jsdev` |
-| Tech Writer | Documentation | API docs, tutorials, ADRs, onboarding | `squad:techwriter` |
-| Reviewer | Code Quality | Independent review, correctness, accessibility | `squad:reviewer` |
-| Security Expert | Application Security | SAST/SCA/DAST, pentesting, threat modeling | `squad:securitydev` |
-| Performance Engineer | Performance | Profiling, benchmarking, load testing | `squad:perfeng` |
-| DevOps | CI/CD & Infrastructure | GitHub Actions, Docker, Aspire, release automation | `squad:devops` |
-| UI/UX Expert | Experience Design | Interaction design, accessibility, API DX | `squad:uxdev` |
-
 ## Lead
 - **Role:** Coordinator, triager, unblocker
 - **Expertise:** Work decomposition, agent assignment, ceremony facilitation, lightweight review

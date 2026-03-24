@@ -19,6 +19,3 @@ This file captures project-specific learnings from the Architect's work. It grow
 
 ## Mistakes & Lessons
 *None yet — and that's a good thing. But it won't last.*
-
-## Learnings
-- 2026-03-23: For issue 160, debugger architecture must be anchored to `Runtime.cs` seams (`_apply`, `InterpretCommand`, `SubscriptionManager.Start/Update`, `navigationExecutor`) so replay gating is enforceable in the core runtime, while JavaScript remains adapter-only and debugger domain stays in `Picea.Abies`.
