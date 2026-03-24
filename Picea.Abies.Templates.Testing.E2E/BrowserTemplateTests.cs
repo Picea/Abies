@@ -44,6 +44,25 @@ public class BrowserTemplateTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => GC.SuppressFinalize(this);
 
+    private static ILocator CounterValueLocator(IPage page) =>
+        page.Locator(".count, .counter-value");
+
+    private static async Task ClickFirstAvailableButton(IPage page, params string[] buttonNames)
+    {
+        foreach (var buttonName in buttonNames)
+        {
+            var button = page.GetByRole(AriaRole.Button, new() { Name = buttonName });
+            if (await button.CountAsync() > 0)
+            {
+                await button.First.ClickAsync();
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not find any button with names: {string.Join(", ", buttonNames)}");
+    }
+
     // ─── Static Rendering Tests ───────────────────────────────────────
 
     [Test]
@@ -70,7 +89,7 @@ public class BrowserTemplateTests : IAsyncDisposable
     {
         await _page.GotoAsync("/");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("0", new() { Timeout = 30_000 });
     }
 
@@ -95,9 +114,9 @@ public class BrowserTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForWasmInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
+        await ClickFirstAvailableButton(_page, "+", "Increase");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("1", new() { Timeout = 5_000 });
     }
 
@@ -107,9 +126,9 @@ public class BrowserTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForWasmInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "\u2212" }).ClickAsync();
+        await ClickFirstAvailableButton(_page, "\u2212", "Decrease");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });
     }
 }
