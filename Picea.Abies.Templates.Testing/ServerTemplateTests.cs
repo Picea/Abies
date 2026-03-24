@@ -142,9 +142,10 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
                     return;
                 }
             }
-            catch (PlaywrightException)
+            catch (Exception)
             {
-                // Playwright operation timed out — server not interactive yet.
+                // Not interactive yet. See BrowserTemplateTests for explanation of
+                // why Exception (not PlaywrightException) is caught here.
             }
 
             await Task.Delay(200);
