@@ -1,10 +1,12 @@
 # Abies Time Travel Debugger
 
+> **Scope: browser runtime only.**  The auto-mount path described in this guide is implemented in `Picea.Abies.Browser.Runtime` and `debugger.js`. It is not available for server render mode. For server-side debugging, see the [Debugging Guide](debugging.md).
+
 The Abies Time Travel Debugger provides a complete trace of your application's MVU loop: every message, state transition, and rendered DOM patch.
 
-## Quick Start (Auto-Enabled)
+## Quick Start (Auto-Enabled — browser runtime only)
 
-The debugger is **automatically enabled in Debug builds**. No setup required — it just works.
+When your app starts through `Picea.Abies.Browser.Runtime.Run(...)` in a Debug build, the debugger is enabled by default and the browser runtime mounts it automatically. No host-page markup is required.
 
 When you run your app in Debug mode:
 1. Open your application in the browser
@@ -12,6 +14,14 @@ When you run your app in Debug mode:
 3. Interact with your app — see each action, transition, and render recorded in the timeline
 
 In Release builds, the debugger is completely stripped out (zero bytes, zero overhead).
+
+The supported configuration surface is the C# API:
+
+```csharp
+DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
+```
+
+Use `ConfigureDebugger(...)` before `Runtime.Run(...)`; do not treat `DebuggerConfiguration.Default` as a mutable configuration object.
 
 ## Disabling the Debugger
 
@@ -81,6 +91,7 @@ This is useful for:
 **A:** One of these reasons:
 - You're running in Release mode (debugger is stripped out)
 - You're using `DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })` (explicitly disabled)
+- Your app did not start through the current browser runtime auto-mount path
 - Your app hasn't rendered yet (wait a moment for the page to load)
 
 **Solution:** Check your build configuration and confirm `#DEBUG` is enabled, or remove the explicit disable if you added it.
@@ -96,7 +107,7 @@ This is useful for:
 
 ### Q: Can I use the debugger in Server Render mode?
 
-**A:** Yes! The debugger works in both WASM and Server render modes (see [ADR-024: Four Render Modes](../adr/ADR-024-four-render-modes.md)). The API is the same in both modes.
+**A:** No. The auto-mount debugger is **browser runtime only**. The implementation lives entirely in `Picea.Abies.Browser.Runtime` and `debugger.js`; there is no equivalent server-mode path. For server render mode, use the debugging workflow in [debugging.md](debugging.md): server logs, browser DevTools, and tracing.
 
 ## See Also
 

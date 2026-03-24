@@ -5,7 +5,7 @@ namespace Picea.Abies.Tests.Debugger;
 public sealed class BrowserRuntimeUseDebuggerContractTests
 {
     [Test]
-    public async Task BrowserRuntimeRun_ExposesUseDebuggerOptIn()
+    public async Task BrowserRuntimeRun_DoesNotExposeLegacyUseDebuggerParameter()
     {
         var browserRuntimeType = GetBrowserRuntimeType();
 
@@ -21,33 +21,66 @@ public sealed class BrowserRuntimeUseDebuggerContractTests
         var hasUseDebuggerBoolean = runMethod.GetParameters()
             .Any(parameter => parameter.Name == "useDebugger" && parameter.ParameterType == typeof(bool));
 
-        if (!hasUseDebuggerBoolean)
+        if (hasUseDebuggerBoolean)
         {
             throw new InvalidOperationException(
-                "Missing debugger opt-in on browser runtime surface. Expected Run<TProgram,TModel,TArgument>(..., bool useDebugger = false)."
+                "Legacy browser debugger opt-in still exists. Expected debugger enablement to flow only through DebuggerConfiguration.ConfigureDebugger(...)."
             );
         }
 
-        await Assert.That(hasUseDebuggerBoolean).IsTrue();
+        await Assert.That(hasUseDebuggerBoolean).IsFalse();
     }
 
     [Test]
-    public async Task BrowserRuntimeOptions_DefinesUseDebuggerSwitch()
+    public async Task BrowserRuntime_DoesNotDefineLegacyBrowserRuntimeOptionsType()
     {
         var browserRuntimeType = GetBrowserRuntimeType();
         var optionsType = browserRuntimeType.Assembly.GetType("Picea.Abies.Browser.BrowserRuntimeOptions", throwOnError: false);
 
-        if (optionsType is null)
+        if (optionsType is not null)
         {
             throw new InvalidOperationException(
-                "Missing BrowserRuntimeOptions type. Expected public type Picea.Abies.Browser.BrowserRuntimeOptions with bool UseDebugger { get; init; }."
+                "Legacy BrowserRuntimeOptions type still exists. Expected debugger configuration to stay on the core DebuggerConfiguration API."
             );
         }
 
-        var useDebuggerProperty = optionsType.GetProperty("UseDebugger", BindingFlags.Public | BindingFlags.Instance);
-        var hasExpectedUseDebuggerProperty = useDebuggerProperty is not null && useDebuggerProperty.PropertyType == typeof(bool);
+        await Assert.That(optionsType).IsNull();
+    }
 
-        await Assert.That(hasExpectedUseDebuggerProperty).IsTrue();
+    [Test]
+    public async Task DebuggerConfiguration_ExposesCurrentApi_WithEnabledDefaultInDebugBuild()
+    {
+        var abiesAssembly = System.Reflection.Assembly.Load("Picea.Abies");
+        var debuggerConfigurationType = abiesAssembly.GetType("Picea.Abies.Debugger.DebuggerConfiguration", throwOnError: false);
+
+        if (debuggerConfigurationType is null)
+        {
+            throw new InvalidOperationException(
+                "DebuggerConfiguration type is missing from the Debug build. Expected Picea.Abies.Debugger.DebuggerConfiguration to be available."
+            );
+        }
+
+        var configureMethod = debuggerConfigurationType.GetMethod(
+            "ConfigureDebugger",
+            BindingFlags.Public | BindingFlags.Static);
+        var defaultProperty = debuggerConfigurationType.GetProperty(
+            "Default",
+            BindingFlags.Public | BindingFlags.Static);
+
+        if (configureMethod is null || defaultProperty is null)
+        {
+            throw new InvalidOperationException(
+                "DebuggerConfiguration is missing its mainline API surface. Expected Default and ConfigureDebugger(...)."
+            );
+        }
+
+        var configureParameter = configureMethod.GetParameters().SingleOrDefault();
+        var defaultOptions = defaultProperty.GetValue(null);
+        var enabledProperty = defaultOptions?.GetType().GetProperty("Enabled", BindingFlags.Public | BindingFlags.Instance);
+        var enabled = enabledProperty?.GetValue(defaultOptions) is true;
+
+        await Assert.That(configureParameter?.ParameterType.FullName).IsEqualTo("Picea.Abies.Debugger.DebuggerOptions");
+        await Assert.That(enabled).IsTrue();
     }
 
     private static Type GetBrowserRuntimeType()

@@ -55,7 +55,9 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
+#if DEBUG
 using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Browser;
 
@@ -82,18 +84,6 @@ namespace Picea.Abies.Browser;
 /// </code>
 /// </example>
 /// </remarks>
-[SupportedOSPlatform("browser")]
-/// <summary>
-/// Options controlling browser runtime startup behavior.
-/// </summary>
-public sealed record BrowserRuntimeOptions
-{
-    /// <summary>
-    /// Enables debugger capture and mount behavior for Debug builds.
-    /// </summary>
-    public bool UseDebugger { get; init; }
-}
-
 [SupportedOSPlatform("browser")]
 public static class Runtime
 {
@@ -179,8 +169,7 @@ public static class Runtime
     /// <returns>A task that never completes (keeps the WASM process alive).</returns>
     public static async Task Run<TProgram, TModel, TArgument>(
         TArgument argument = default!,
-        Interpreter<Command, Message>? interpreter = null,
-        bool useDebugger = false)
+        Interpreter<Command, Message>? interpreter = null)
         where TProgram : Program<TModel, TArgument>
     {
         // Step 1: Load the abies.js module.
@@ -255,11 +244,12 @@ public static class Runtime
             initialUrl: initialUrl);
 
 #if DEBUG
-    if (Debugger.DebuggerConfiguration.Default.Enabled)
-    {
-        runtime.UseDebugger();
-        Interop.MountDebugger();
-    }
+        if (DebuggerConfiguration.Default.Enabled)
+        {
+            await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
+            runtime.UseDebugger();
+            Interop.MountDebugger();
+        }
 #endif
 
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
