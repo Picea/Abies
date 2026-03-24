@@ -46,4 +46,13 @@
           DestinationFiles="$(OutputPath)AppBundle\abies-otel.js" />
   </Target>
 
+  <!-- Copy debugger.js from Picea.Abies.Browser to AppBundle for Debug builds only. -->
+  <Target Name="CopyDebuggerJs" AfterTargets="CopyAbiesJs"
+          Condition="'$(Configuration)' == 'Debug'"
+          Inputs="..\Picea.Abies.Browser\wwwroot\debugger.js"
+          Outputs="$(OutputPath)AppBundle\debugger.js">
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\debugger.js"
+          DestinationFiles="$(OutputPath)AppBundle\debugger.js" />
+  </Target>
+
 </Project>
