@@ -14,9 +14,6 @@ namespace Picea.Abies.Browser.Tests;
 /// The adapter is a TRANSPORT-ONLY layer: JSON serialization/deserialization, no state machine transitions.
 /// All replay logic lives in C# (Mealy machine).
 /// 
-/// NOTE: These tests are expected to FAIL TO COMPILE today (Picea.Abies.Browser.Debugger namespace
-/// and DebuggerAdapter class do not exist yet). They document the contract for the JS adapter implementation.
-/// 
 /// Test Strategy: Option A (C# unit tests with mocking)
 /// - Mock the JS bridge via Moq or manual mock
 /// - Test the C#→JS message serialization contract
@@ -24,20 +21,19 @@ namespace Picea.Abies.Browser.Tests;
 /// </summary>
 public class DebuggerAdapterTests
 {
+    private static readonly string RepoRoot =
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
+
     /// <summary>
     /// Test 1a: When user requests a "jump to entry" action, the adapter serializes the request
     /// to a valid JSON message conforming to the bridge contract.
     /// 
     /// Validates the seam: UI message → JSON serialization → C# transport contract.
-    /// 
-    /// TODAY: Fails to compile - Picea.Abies.Browser.Debugger.DebuggerAdapter does not exist.
-    /// TOMORROW: Passes when DebuggerAdapter is implemented with SerializeMessage() method.
     /// </summary>
     [Test]
     public async Task AdapterSerializesJumpMessageToJSON_WhenUserRequestedJump()
     {
         // Arrange
-        // EXPECTED FAILURE: Picea.Abies.Browser.Debugger.DebuggerAdapter does not exist
         var adapter = new Picea.Abies.Browser.Debugger.DebuggerAdapter();
         
         var jumpRequest = new DebuggerAdapterMessage
@@ -71,9 +67,6 @@ public class DebuggerAdapterTests
     /// restore model state or execute any replay logic (C# Mealy machine owns that).
     /// 
     /// Validates the seam: C# response → JSON deserialization → no replay side effects.
-    /// 
-    /// TODAY: Fails to compile - No DeserializeResponse() API exists.
-    /// TOMORROW: Passes when deserialization is implemented.
     /// </summary>
     [Test]
     public async Task AdapterDeserializesJumpResponseFromC_WithoutReplayingCommands()
@@ -111,9 +104,6 @@ public class DebuggerAdapterTests
     /// This validates input validation at the transport boundary.
     /// 
     /// Validates the seam: Error handling for invalid messages, graceful failure.
-    /// 
-    /// TODAY: Fails to compile - No input validation in adapter yet.
-    /// TOMORROW: Passes when validation is implemented.
     /// </summary>
     [Test]
     public async Task AdapterDiscardsUnknownMessageTypes_WhenMalformedInputReceived()
@@ -152,9 +142,6 @@ public class DebuggerAdapterTests
     /// Each produces valid JSON with correct structure and NO side effects.
     /// 
     /// Validates the seam: Message type coverage in serialization contract.
-    /// 
-    /// TODAY: Fails to compile - Adapter class does not exist.
-    /// TOMORROW: Passes when all message types are supported.
     /// </summary>
     [Test]
     [Arguments("step-forward")]
@@ -185,5 +172,33 @@ public class DebuggerAdapterTests
         // No side effects
         await Assert.That(adapter.PendingCommands).IsEmpty();
         await Assert.That((int)adapter.CurrentState).IsEqualTo((int)DebuggerAdapterState.Idle);
+    }
+
+    [Test]
+    public async Task DebuggerJsContainsOnlyMountAndTransportLogic_NoReplayDomainReferences()
+    {
+        var debuggerJsPath = Path.Combine(RepoRoot, "Picea.Abies.Browser", "wwwroot", "debugger.js");
+        await Assert.That(File.Exists(debuggerJsPath)).IsTrue();
+
+        var content = await File.ReadAllTextAsync(debuggerJsPath);
+
+        // JS adapter should not embed C# replay/domain internals.
+        var forbiddenTokens = new[]
+        {
+            "DebuggerMachine",
+            "CaptureMessage",
+            "StepForward(",
+            "StepBackward(",
+            "ClearTimeline(",
+            "CurrentDebugger",
+            "GenerateModelSnapshot"
+        };
+
+        foreach (var token in forbiddenTokens)
+        {
+            await Assert.That(content.Contains(token, StringComparison.Ordinal)).IsFalse();
+        }
+
+        await Assert.That(content).Contains("abies:debugger:message-dispatched");
     }
 }
