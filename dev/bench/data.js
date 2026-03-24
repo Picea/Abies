@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774365919810,
+  "lastUpdate": 1774365921333,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13564,6 +13564,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.87490940093994,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "9c97df76d79af0efa076836f1cffdebf99755492",
+          "message": "fix(e2e): support new browser template counter selectors",
+          "timestamp": "2026-03-24T16:16:04+01:00",
+          "tree_id": "d999ed0580cc4ab3e4578e110f80e36dc0cf6af0",
+          "url": "https://github.com/Picea/Abies/commit/9c97df76d79af0efa076836f1cffdebf99755492"
+        },
+        "date": 1774365920819,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.114030838012695,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.88944721221924,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
