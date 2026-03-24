@@ -21,6 +21,25 @@ namespace Picea.Abies.Templates.Testing.E2E.Helpers;
 /// </summary>
 public static class InteractivityHelpers
 {
+    private static ILocator CounterValueLocator(IPage page) =>
+        page.Locator(".count, .counter-value");
+
+    private static async Task ClickFirstAvailableButton(IPage page, params string[] buttonNames)
+    {
+        foreach (var buttonName in buttonNames)
+        {
+            var button = page.GetByRole(AriaRole.Button, new() { Name = buttonName });
+            if (await button.CountAsync() > 0)
+            {
+                await button.First.ClickAsync();
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not find any button with names: {string.Join(", ", buttonNames)}");
+    }
+
     /// <summary>
     /// Waits for the server template's WebSocket connection to establish and
     /// the MVU runtime to start processing events.
@@ -52,7 +71,7 @@ public static class InteractivityHelpers
         IPage page, int timeoutSeconds, bool hasReset, string timeoutMessage)
     {
         // Wait for the counter to be visible first
-        await Assertions.Expect(page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(page))
             .ToBeVisibleAsync(new() { Timeout = 30_000 });
 
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
@@ -67,7 +86,7 @@ public static class InteractivityHelpers
                 Console.WriteLine("[InteractivityHelper] No interactivity after 30s — reloading page...");
                 await page.ReloadAsync(new() { WaitUntil = WaitUntilState.Load });
 
-                await Assertions.Expect(page.Locator(".count"))
+                await Assertions.Expect(CounterValueLocator(page))
                     .ToBeVisibleAsync(new() { Timeout = 15_000 });
 
                 nextReloadAt = DateTime.UtcNow.AddSeconds(30);
@@ -75,8 +94,8 @@ public static class InteractivityHelpers
 
             try
             {
-                await page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
-                var countText = await page.Locator(".count").TextContentAsync();
+                await ClickFirstAvailableButton(page, "+", "Increase");
+                var countText = await CounterValueLocator(page).TextContentAsync();
 
                 if (countText is not null and not "0")
                 {
@@ -86,15 +105,14 @@ public static class InteractivityHelpers
                         // Server template has Reset — use it to return to "0"
                         await page.GetByRole(AriaRole.Button, new() { Name = "Reset" })
                             .ClickAsync();
-                        await Assertions.Expect(page.Locator(".count"))
+                        await Assertions.Expect(CounterValueLocator(page))
                             .ToHaveTextAsync("0", new() { Timeout = 5_000 });
                     }
                     else
                     {
                         // Browser template has no Reset — click decrement to return to "0"
-                        await page.GetByRole(AriaRole.Button, new() { Name = "\u2212" })
-                            .ClickAsync();
-                        await Assertions.Expect(page.Locator(".count"))
+                        await ClickFirstAvailableButton(page, "\u2212", "Decrease");
+                        await Assertions.Expect(CounterValueLocator(page))
                             .ToHaveTextAsync("0", new() { Timeout = 5_000 });
                     }
 
