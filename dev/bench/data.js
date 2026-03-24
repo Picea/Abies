@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774388436233,
+  "lastUpdate": 1774388437782,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13678,6 +13678,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.88944721221924,
+            "unit": "MB",
+            "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "e19d0efcaae77ecb56555195a5b0ef4d5ff09ff1",
+          "message": "docs(adr): fix ADR-026 DebuggerConfiguration example with #if DEBUG guards\n\nAddresses reviewer feedback (PR #182): DebuggerConfiguration is only compiled in\nDebug builds (#if DEBUG in source), so Program.cs usage must be guarded with\n#if DEBUG to prevent Release build compilation errors.\n\nAdded proper conditional compilation guards to the example code to show the\ncorrect usage pattern that will compile in both Debug and Release configurations.",
+          "timestamp": "2026-03-24T22:31:01+01:00",
+          "tree_id": "e31aa36c6616d7cc86f60f9564fea151f3505f1e",
+          "url": "https://github.com/Picea/Abies/commit/e19d0efcaae77ecb56555195a5b0ef4d5ff09ff1"
+        },
+        "date": 1774388437510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.097551345825195,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.8748254776001,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
           }
