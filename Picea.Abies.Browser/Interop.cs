@@ -152,6 +152,21 @@ public static partial class Interop
     internal static partial void SetupNavigation();
 
     /// <summary>
+    /// Mounts the debugger UI by injecting a mount point div into the document.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called automatically in Debug builds during Runtime.Run(). In Release builds,
+    /// this method is compiled out and never called.
+    /// </para>
+    /// <para>
+    /// The debugger mount point is idempotent — calling multiple times has no effect.
+    /// </para>
+    /// </remarks>
+    [JSImport("mountDebugger", "Abies")]
+    internal static partial void MountDebugger();
+
+    /// <summary>
     /// Gets the current browser URL (window.location.href).
     /// </summary>
     [JSImport("getCurrentUrl", "Abies")]
