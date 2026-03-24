@@ -25,6 +25,11 @@ public record Increment : Message;
 public record Decrement : Message;
 
 /// <summary>
+/// Message to reset the counter to zero.
+/// </summary>
+public record Reset : Message;
+
+/// <summary>
 /// Counter application implementing the MVU pattern.
 /// </summary>
 public class Counter : Program<Model, Unit>
@@ -43,6 +48,7 @@ public class Counter : Program<Model, Unit>
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            Reset => (model with { Count = 0 }, Commands.None),
             _ => (model, Commands.None)
         };
 
@@ -71,19 +77,23 @@ public class Counter : Program<Model, Unit>
                 // Main content
                 main([class_("content")],
                 [
-                    h1([], [text("Counter")]),
+                    h1([], [text("Abies Counter")]),
                     p([class_("subtitle")], [text("Model-View-Update in action")]),
 
                     div([class_("counter")],
                     [
                         button(
                             [type("button"), onclick(new Decrement()), class_("btn")],
-                            [text("\u2212")]
+                            [text("Decrease")]
                         ),
-                        span([class_("count")], [text(model.Count.ToString())]),
+                        span([class_("counter-value")], [text(model.Count.ToString())]),
                         button(
                             [type("button"), onclick(new Increment()), class_("btn")],
-                            [text("+")]
+                            [text("Increase")]
+                        ),
+                        button(
+                            [type("button"), onclick(new Reset()), class_("btn")],
+                            [text("Reset")]
                         )
                     ]),
 
