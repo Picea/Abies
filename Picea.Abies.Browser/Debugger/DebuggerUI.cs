@@ -3,8 +3,8 @@
 
 #if DEBUG
 
-using Picea.Abies.DOM;
 using Picea.Abies.Debugger;
+using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
