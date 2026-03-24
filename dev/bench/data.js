@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774365921333,
+  "lastUpdate": 1774388436233,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12772,6 +12772,84 @@ window.BENCHMARK_DATA = {
             "value": 50.8,
             "unit": "ms",
             "extra": "mean: 51.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "e19d0efcaae77ecb56555195a5b0ef4d5ff09ff1",
+          "message": "docs(adr): fix ADR-026 DebuggerConfiguration example with #if DEBUG guards\n\nAddresses reviewer feedback (PR #182): DebuggerConfiguration is only compiled in\nDebug builds (#if DEBUG in source), so Program.cs usage must be guarded with\n#if DEBUG to prevent Release build compilation errors.\n\nAdded proper conditional compilation guards to the example code to show the\ncorrect usage pattern that will compile in both Debug and Release configurations.",
+          "timestamp": "2026-03-24T22:31:01+01:00",
+          "tree_id": "e31aa36c6616d7cc86f60f9564fea151f3505f1e",
+          "url": "https://github.com/Picea/Abies/commit/e19d0efcaae77ecb56555195a5b0ef4d5ff09ff1"
+        },
+        "date": 1774388435923,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 166.7,
+            "unit": "ms",
+            "extra": "mean: 167.7ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 176.3,
+            "unit": "ms",
+            "extra": "mean: 176.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 223.3,
+            "unit": "ms",
+            "extra": "mean: 223.7ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.9,
+            "unit": "ms",
+            "extra": "mean: 29.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 89.5,
+            "unit": "ms",
+            "extra": "mean: 88.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 59.2,
+            "unit": "ms",
+            "extra": "mean: 59.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 1639,
+            "unit": "ms",
+            "extra": "mean: 1638.1ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 219.4,
+            "unit": "ms",
+            "extra": "mean: 220.0ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 58.1,
+            "unit": "ms",
+            "extra": "mean: 56.9ms, samples: 15"
           }
         ]
       }
