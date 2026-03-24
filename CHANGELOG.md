@@ -24,6 +24,15 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
 
 ### Added
 
+- **Debugger auto-mount with C# API** (see [ADR-026](docs/adr/ADR-026-debugger-auto-mount-with-csharp-api.md))
+  - The Abies Time Travel Debugger now mounts automatically in Debug builds (zero setup required)
+  - Disable explicitly with: `DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })`
+  - Release builds strip the debugger entirely (zero bytes, zero overhead)
+  - Works in both WASM and Server render modes
+- **New documentation**:
+  - [docs/guides/devtools.md](docs/guides/devtools.md) — Complete Abies Time Travel Debugger guide with time travel, debugging strategies, and troubleshooting
+  - Template READMEs: [abies-browser](Picea.Abies.Templates/templates/abies-browser/README.md), [abies-browser-empty](Picea.Abies.Templates/templates/abies-browser-empty/README.md), [abies-server](Picea.Abies.Templates/templates/abies-server/README.md)
+  - Updated [docs/guides/debugging.md](docs/guides/debugging.md) with debugger-first workflow
 - **Four render modes**: Static, InteractiveServer, InteractiveWasm, InteractiveAuto (see [ADR-024](docs/adr/ADR-024-four-render-modes.md))
   - `Picea.Abies.Server` — SSR runtime with WebSocket-based MVU loop
   - `Picea.Abies.Server.Kestrel` — Kestrel integration with `MapAbies<>()` endpoint
@@ -34,7 +43,7 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
   - `Abies.Server` → forwards to `Picea.Abies.Server`
 - **Roslyn Analyzers**: `Picea.Abies.Analyzers` package for compile-time HTML validation
 - **Routing documentation**: Pattern-matching routing guide (replaces deprecated parser combinators)
-- **Architecture Decision Records**: ADR-022 (Picea Migration), ADR-023 (Package Rename), ADR-024 (Four Render Modes)
+- **Architecture Decision Records**: ADR-022 (Picea Migration), ADR-023 (Package Rename), ADR-024 (Four Render Modes), ADR-026 (Debugger Auto-Mount)
 
 ### Deprecated
 
