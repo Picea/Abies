@@ -11,9 +11,7 @@ public enum DebuggerState
 {
     Recording,
     Paused,
-    PlayingForward,
-    PlayingBackward,
-    Jumped
+    PlayingForward
 }
 
 /// <summary>
@@ -28,8 +26,8 @@ public sealed record TimestampedEntry(
 );
 
 /// <summary>
-/// Mealy machine managing debugger state transitions and replay.
-/// Pure immutable state transformations — deterministic, no side effects during replay.
+/// Stateful Mealy machine managing debugger state transitions and replay over a mutable timeline buffer.
+/// Internally mutates its own state but performs deterministic transitions with no side effects on the host application during replay.
 /// </summary>
 public sealed class DebuggerMachine
 {

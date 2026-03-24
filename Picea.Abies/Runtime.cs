@@ -369,11 +369,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         Message message, CancellationToken cancellationToken = default)
     {
 #if DEBUG
-        // Capture message to debugger if enabled
+        // Capture message to the runtime-owned debugger instance if enabled.
         if (_debuggerMachine != null)
         {
             var modelSnapshot = GenerateModelSnapshot(_core.State);
-            HandlerRegistry.CaptureMessageToDebugger(message, modelSnapshot);
+            _debuggerMachine.CaptureMessage(message, modelSnapshot);
         }
 #endif
         return _core.Dispatch(message, cancellationToken);
@@ -407,8 +407,12 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
         _hotReloadRegistration?.Dispose();
         _hotReloadRegistration = null;
-        _debuggerMachine = null;
+    if (ReferenceEquals(DebuggerRuntimeRegistry.CurrentDebugger, _debuggerMachine))
+    {
         DebuggerRuntimeRegistry.CurrentDebugger = null;
+    }
+
+    _debuggerMachine = null;
 #endif
 
         SubscriptionManager.Stop(_subscriptionState);
