@@ -24,11 +24,12 @@ This approach worked, but added friction:
 
 ```csharp
 // In Program.cs (before Runtime.Run):
+#if DEBUG
 DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = true });
 // Or:
 DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });  // Disable explicitly
+#endif
 ```
-
 ### Design Rationale
 
 1. **Auto-mount is the default** — Most developers want to use the debugger when available. Defaulting to enabled matches developer expectations.
