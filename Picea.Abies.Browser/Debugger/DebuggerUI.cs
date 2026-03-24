@@ -3,9 +3,11 @@
 
 #if DEBUG
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Picea.Abies.DOM;
+using Picea.Abies.Debugger;
+using Picea.Abies.Subscriptions;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
 
 namespace Picea.Abies.Browser.Debugger;
 
@@ -14,7 +16,7 @@ namespace Picea.Abies.Browser.Debugger;
 /// to the adapter for message dispatch.
 /// 
 /// CRITICAL: This class coordinates user input → message dispatching → response rendering.
-/// It does NOT contain replay logic (that's in the C# Mealy machine).
+/// It does NOT contain replay logic or runtime command execution.
 /// 
 /// Responsibilities:
 /// - Mount/unmount at DOM element (id="abies-debugger-timeline")
@@ -24,22 +26,31 @@ namespace Picea.Abies.Browser.Debugger;
 /// </summary>
 public sealed class DebuggerUI
 {
-    private const string DefaultMountPointId = "abies-debugger-timeline";
-    
-    private string _mountPointId = DefaultMountPointId;
-    private bool _isMounted = false;
-    private int _currentCursorPosition = 0;
-    private List<DebuggerTimelineEntry> _timelineEntries = [];
-    private Dictionary<string, bool> _elementPresence = [];
-    private bool _mainAppModified = false;
+    private const string _defaultMountPointId = "abies-debugger-timeline";
 
-    public bool IsMounted => _isMounted;
+    private DebuggerUiModel _model = DebuggerUiProgram.Initialize(
+        new DebuggerUiInit(_defaultMountPointId)).Item1;
+    private Document _document;
+
+    public DebuggerUI()
+    {
+        _document = DebuggerUiProgram.View(_model);
+    }
+
+    public bool IsMounted => _model.IsMounted;
     public int CurrentCursorPosition
     {
-        get => _currentCursorPosition;
-        set => _currentCursorPosition = value;
+        get => _model.CursorPosition;
+        set
+        {
+            Dispatch(new DebuggerUiCursorUpdated(value));
+        }
     }
-    public bool MainAppModified => _mainAppModified;
+    public bool MainAppModified => _model.MainAppModified;
+
+    internal Document CurrentDocument => _document;
+
+    public string RenderHtml() => Render.Html(_document.Body);
 
     /// <summary>
     /// Event fired when a message is dispatched to the adapter (play, pause, step, jump, etc).
@@ -51,15 +62,11 @@ public sealed class DebuggerUI
     /// </summary>
     public void InitializeMount(string mountPointId)
     {
-        _mountPointId = string.IsNullOrWhiteSpace(mountPointId) ? DefaultMountPointId : mountPointId;
-        _isMounted = true;
+        var effectiveMountPointId = string.IsNullOrWhiteSpace(mountPointId)
+            ? _defaultMountPointId
+            : mountPointId;
 
-        _elementPresence.Clear();
-
-        // Initialize expected UI elements
-        _elementPresence["message-log"] = true;
-        _elementPresence["control-bar"] = true;
-        _elementPresence["timeline-inspector"] = true;
+        Dispatch(new DebuggerUiMounted(effectiveMountPointId));
     }
 
     /// <summary>
@@ -67,7 +74,7 @@ public sealed class DebuggerUI
     /// </summary>
     public bool ContainsElement(string elementId)
     {
-        return _elementPresence.TryGetValue(elementId, out var exists) && exists;
+        return ContainsElementById(_document.Body, elementId);
     }
 
     /// <summary>
@@ -75,7 +82,7 @@ public sealed class DebuggerUI
     /// </summary>
     public void AddTimelineEntry(DebuggerTimelineEntry entry)
     {
-        _timelineEntries.Add(entry);
+        Dispatch(new DebuggerUiTimelineEntryAdded(entry));
     }
 
     /// <summary>
@@ -92,6 +99,8 @@ public sealed class DebuggerUI
             "clear-button" => "clear-timeline",
             _ => throw new ArgumentException($"Unknown button: {buttonId}", nameof(buttonId))
         };
+
+        Dispatch(new DebuggerUiControlInvoked(messageType));
 
         var message = new DebuggerAdapterMessage { Type = messageType };
         OnMessageDispatched?.Invoke(message);
@@ -124,6 +133,8 @@ public sealed class DebuggerUI
             return;  // Unknown key, no action
         }
 
+        Dispatch(new DebuggerUiKeyboardShortcutInvoked(keyCode));
+
         var message = new DebuggerAdapterMessage { Type = messageType };
         OnMessageDispatched?.Invoke(message);
     }
@@ -134,8 +145,7 @@ public sealed class DebuggerUI
     /// </summary>
     public void UpdateFromResponse(DebuggerAdapterResponse response)
     {
-        _currentCursorPosition = response.CursorPosition;
-        // UI would update based on response (in real implementation, update DOM)
+        Dispatch(new DebuggerUiResponseApplied(response));
     }
 
     /// <summary>
@@ -143,7 +153,7 @@ public sealed class DebuggerUI
     /// </summary>
     public DebuggerTimelineEntry? GetHighlightedEntry()
     {
-        return _timelineEntries.FirstOrDefault(e => e.Sequence == _currentCursorPosition);
+        return _model.TimelineEntries.FirstOrDefault(e => e.Sequence == _model.CursorPosition);
     }
 
     /// <summary>
@@ -154,13 +164,220 @@ public sealed class DebuggerUI
     {
         UpdateFromResponse(response);
     }
+
+    /// <summary>
+    /// Synchronizes the debugger panel from the runtime debugger machine snapshot.
+    /// </summary>
+    public void SyncFromRuntimeDebugger(DebuggerMachine debugger)
+    {
+        var entries = debugger.Timeline
+            .Select(entry => new DebuggerTimelineEntry
+            {
+                Sequence = checked((int)entry.Sequence),
+                MessageType = entry.MessageType,
+                ArgsPreview = entry.ArgsPreview,
+                Timestamp = entry.Timestamp,
+                ModelSnapshotPreview = entry.ModelSnapshotPreview
+            })
+            .ToArray();
+
+        Dispatch(new DebuggerUiRuntimeSnapshotApplied(entries, debugger.CursorPosition));
+    }
+
+    private void Dispatch(DebuggerUiMessage message)
+    {
+        var (model, _) = DebuggerUiProgram.Transition(_model, message);
+        _model = model;
+        _document = DebuggerUiProgram.View(_model);
+    }
+
+    private static bool ContainsElementById(Node node, string targetId)
+    {
+        return node switch
+        {
+            Element element when element.Id == targetId => true,
+            Element element => element.Children.Any(child => ContainsElementById(child, targetId)),
+            LazyMemoNode lazy => ContainsElementById(lazy.CachedNode ?? lazy.Evaluate(), targetId),
+            MemoNode memo => ContainsElementById(memo.CachedNode, targetId),
+            _ => false
+        };
+    }
+}
+
+internal readonly record struct DebuggerUiInit(string MountPointId);
+
+internal sealed record DebuggerUiModel(
+    string MountPointId,
+    bool IsMounted,
+    int CursorPosition,
+    string Status,
+    IReadOnlyList<DebuggerTimelineEntry> TimelineEntries,
+    bool MainAppModified
+);
+
+internal interface DebuggerUiMessage : Message;
+
+internal sealed record DebuggerUiMounted(string MountPointId) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiTimelineEntryAdded(DebuggerTimelineEntry Entry) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiCursorUpdated(int CursorPosition) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiControlInvoked(string ControlType) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiKeyboardShortcutInvoked(string KeyCode) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiResponseApplied(DebuggerAdapterResponse Response) : DebuggerUiMessage;
+
+internal sealed record DebuggerUiRuntimeSnapshotApplied(
+    IReadOnlyList<DebuggerTimelineEntry> Entries,
+    int CursorPosition
+) : DebuggerUiMessage;
+
+internal sealed class DebuggerUiProgram : Program<DebuggerUiModel, DebuggerUiInit>
+{
+    public static (DebuggerUiModel, Command) Initialize(DebuggerUiInit init) =>
+        (new DebuggerUiModel(
+            MountPointId: init.MountPointId,
+            IsMounted: false,
+            CursorPosition: 0,
+            Status: "idle",
+            TimelineEntries: [],
+            MainAppModified: false),
+         Commands.None);
+
+    public static (DebuggerUiModel, Command) Transition(DebuggerUiModel model, Message message) =>
+        message switch
+        {
+            DebuggerUiMounted mount =>
+                (model with { MountPointId = mount.MountPointId, IsMounted = true }, Commands.None),
+
+            DebuggerUiTimelineEntryAdded timelineAdded =>
+                (model with { TimelineEntries = model.TimelineEntries.Append(timelineAdded.Entry).ToArray() }, Commands.None),
+
+            DebuggerUiCursorUpdated cursor =>
+                (model with { CursorPosition = cursor.CursorPosition }, Commands.None),
+
+            DebuggerUiControlInvoked control =>
+                (model with { Status = StatusFromControl(control.ControlType) }, Commands.None),
+
+            DebuggerUiKeyboardShortcutInvoked key =>
+                (model with { Status = StatusFromKeyboardShortcut(model.Status, key.KeyCode) }, Commands.None),
+
+            DebuggerUiResponseApplied response =>
+                (model with
+                {
+                    CursorPosition = response.Response.CursorPosition,
+                    Status = response.Response.Status
+                },
+                 Commands.None),
+
+            DebuggerUiRuntimeSnapshotApplied snapshot =>
+                (model with
+                {
+                    TimelineEntries = snapshot.Entries,
+                    CursorPosition = snapshot.CursorPosition
+                },
+                 Commands.None),
+
+            _ => (model, Commands.None)
+        };
+
+    public static Document View(DebuggerUiModel model)
+    {
+        var timelineSummary = model.IsMounted
+            ? $"Timeline: {model.TimelineEntries.Count} entries"
+            : "Timeline: not mounted";
+
+        var logText = model.IsMounted
+            ? "Debugger timeline initialized"
+            : "Debugger not mounted";
+
+        return new Document(
+            "Abies Debugger",
+            div([id(model.MountPointId), class_("abies-debugger-root")],
+            [
+                div([id("control-bar"), class_("debugger-control-bar")],
+                [
+                    button([
+                        id("play-button"),
+                        data("abies-debugger-intent", "play"),
+                        data("abies-debugger-payload", "{}")
+                    ], [text("▶ Play")]),
+                    button([
+                        id("pause-button"),
+                        data("abies-debugger-intent", "pause"),
+                        data("abies-debugger-payload", "{}")
+                    ], [text("⏸ Pause")]),
+                    button([
+                        id("step-forward-button"),
+                        data("abies-debugger-intent", "step-forward"),
+                        data("abies-debugger-payload", "{}")
+                    ], [text("→ Step")]),
+                    button([
+                        id("step-back-button"),
+                        data("abies-debugger-intent", "step-back"),
+                        data("abies-debugger-payload", "{}")
+                    ], [text("← Back")]),
+                    input([
+                        id("jump-input"),
+                        type("number"),
+                        min("0"),
+                        placeholder("Jump to entry..."),
+                        data("abies-debugger-intent", "jump-to-entry")
+                    ]),
+                    button([
+                        id("clear-button"),
+                        data("abies-debugger-intent", "clear-timeline"),
+                        data("abies-debugger-payload", "{}")
+                    ], [text("✕ Clear")])
+                ]),
+                div([id("message-log"), class_("debugger-message-log")],
+                [
+                    div([class_("log-entry")], [text(logText)])
+                ]),
+                div([id("timeline-inspector"), class_("debugger-timeline-inspector")],
+                [
+                    text(timelineSummary)
+                ]),
+                ul([id("timeline-list"), class_("debugger-timeline-list")],
+                    model.TimelineEntries
+                        .Select(entry => li(
+                            [data("sequence", entry.Sequence.ToString())],
+                            [
+                                text($"#{entry.Sequence} {entry.MessageType} {entry.ArgsPreview}")
+                            ]))
+                        .ToArray())
+            ]));
+    }
+
+    public static Subscription Subscriptions(DebuggerUiModel _) =>
+        new Subscription.None();
+
+    private static string StatusFromControl(string controlType) =>
+        controlType switch
+        {
+            "play" => "playing",
+            "pause" => "paused",
+            "clear-timeline" => "recording",
+            _ => "paused"
+        };
+
+    private static string StatusFromKeyboardShortcut(string currentStatus, string keyCode) =>
+        keyCode switch
+        {
+            " " => currentStatus == "playing" ? "paused" : "playing",
+            "ArrowRight" => "paused",
+            "ArrowLeft" => "paused",
+            _ => currentStatus
+        };
 }
 
 /// <summary>
 /// Timeline entry representing a single message + model snapshot history point.
 /// Used for rendering the timeline UI.
 /// </summary>
-public class DebuggerTimelineEntry
+public sealed record DebuggerTimelineEntry
 {
     public int Sequence { get; init; }
     public required string MessageType { get; init; }
