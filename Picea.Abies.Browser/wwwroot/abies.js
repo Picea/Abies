@@ -1037,43 +1037,6 @@ export function setDispatchCallback(callback) {
 }
 
 // =============================================================================
-// Debugger Mounting (Debug Builds Only)
-// =============================================================================
-// Injects the debugger timeline UI mount point into the DOM.
-// In Release builds, this export is never called and the debugger is not loaded.
-// =============================================================================
-
-/**
- * Mounts the debugger UI by injecting a mount point div into the document.
- * This is called automatically from Runtime.cs during initialization (Debug builds only).
- * 
- * Idempotent: calling multiple times has no effect. If the debugger mount point
- * already exists, this function returns early.
- */
-export function mountDebugger() {
-    // Check if the mount point already exists (idempotency)
-    if (document.getElementById("abies-debugger-timeline")) {
-        return;
-    }
-
-    // Create the mount point div
-    const mountPoint = document.createElement("div");
-    mountPoint.id = "abies-debugger-timeline";
-    
-    // Add a transparency comment so developers understand what they're seeing
-    // Comments are visible in DevTools' Elements inspector, making it clear
-    // that this is injected by the framework (not in their HTML)
-    const comment = document.createComment(
-        " Abies Time Travel Debugger (Debug builds only). " +
-        "Disable: DebuggerConfiguration.Default = new DebuggerOptions { Enabled = false }. "
-    );
-    mountPoint.appendChild(comment);
-
-    // Inject the mount point into the document
-    document.body.appendChild(mountPoint);
-}
-
-// =============================================================================
 // WASM Bootstrap — Self-Initializing Module
 // =============================================================================
 // This section makes abies.js the single entry point for browser WASM apps.

@@ -20,7 +20,7 @@ This approach worked, but added friction:
 
 ## Decision
 
-**The debugger is now auto-mounted at runtime with a C# configuration API:**
+**The debugger is auto-mounted during browser runtime startup and configured through a C# API:**
 
 ```csharp
 // In Program.cs (before Runtime.Run):
@@ -35,7 +35,7 @@ DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })
 2. **Explicit opt-out over implicit opt-in** — An escape hatch (`Enabled = false`) lets developers disable it when needed (e.g., in shared CI environments, or when the UI is unwanted).
 3. **C# configuration API** — Keeps all app setup in one place (Program.cs) instead of split between C# and HTML.
 4. **Compile-time stripping in Release** — The entire debugger infrastructure lives inside `#if DEBUG` blocks. Release builds have **zero bytes** of debugger code — no footprint, no runtime cost.
-5. **Both WASM and Server modes** — The auto-mount happens in `Runtime.cs`, which is used by both `Picea.Abies.Browser.Runtime` (WASM) and `Picea.Abies.Server.Runtime` (Server). The debugger works in both modes without special handling.
+5. **C#-first configuration with browser runtime auto-mount** — On current main, the automatic mount is implemented in `Picea.Abies.Browser.Runtime` and the debug-only `debugger.js` module. The public configuration surface remains the C# API, even though the mount itself happens on the browser side.
 ### API Shape
 
 ```csharp
@@ -47,8 +47,8 @@ namespace Picea.Abies.Debugger;
 public record DebuggerOptions
 {
     /// <summary>
-    /// Enable or disable the debugger UI. 
-    /// Defaults to true in Debug builds, false in Release builds.
+   /// Enable or disable the debugger UI.
+   /// Defaults to true. In Release builds, the debugger is compiled out so this has no effect.
     /// </summary>
     public bool Enabled { get; init; } = true;
 }
@@ -67,21 +67,22 @@ public static class DebuggerConfiguration
 
 ### Implementation Strategy
 
-1. **Mount point injection** happens in `Runtime.cs` (platform-agnostic MVU runtime):
+1. **Mount point injection** happens in `Picea.Abies.Browser/Runtime.cs`:
    - After the core MVU loop is initialized
-   - Check: `if (debuggerOptions.Enabled && DEBUG)`
-   - Create the mount div, inject it into the DOM (via JavaScript interop)
-   - Idempotent: check if already present before injecting
+   - Check: `if (DebuggerConfiguration.Default.Enabled)` inside `#if DEBUG`
+   - Call `runtime.UseDebugger()` and `Interop.MountDebugger()`
+   - Idempotent: the JS side returns early if the mount point already exists
 
 2. **JavaScript side** (`debugger.js`):
-   - When injected, the mount div includes a transparency comment/attribute
-   - Existing `debugger.js` timeline UI mounts into the provided div
+   - The browser runtime imports the debug-only module and calls `mountDebugger()`
+   - `mountDebugger()` creates `#abies-debugger-timeline` when needed and then initializes the adapter wiring
+   - The function appends the mount point to `document.body`
 
 3. **Compile-time stripping**:
    - The `#if DEBUG` blocks in `Runtime.cs` ensure no debugger code in Release builds
    - The `.csproj` file already has conditions to exclude `debugger.js` from Release publishes
 4. **Idempotency**:
-   - Multiple calls to `ConfigureDebugger()` (or re-importing the module) don't create duplicate mount points
+   - Multiple browser-runtime startups do not create duplicate mount points
    - JavaScript checks for existing `#abies-debugger-timeline` before injecting
 
 ### Alternatives Considered
@@ -112,7 +113,7 @@ public static class DebuggerConfiguration
 |--------|--------|------|
 | **Enabled by default** | Yes | Requires explicit `Enabled = false` to opt out, may surprise users who don't want the overhead (negligible in Debug builds) |
 | **C# configuration** | Yes | Adds ~10 lines of C# code per template (trivial) |
-| **Auto-mount vs manual** | Auto-mount | Sacrifices explicitness for convenience — justified because Release builds strip it anyway |
+| **Auto-mount vs manual** | Auto-mount in browser runtime | Current implementation is narrower than a cross-runtime abstraction, but matches the shipped code path |
 | **Release stripping** | Via `#if DEBUG` | Requires discipline in codebase — mitigated by code review and static analysis |
 
 ### Future Extensibility
@@ -150,12 +151,11 @@ Release builds strip the debugger entirely, so there is no security exposure.
 - [docs/guides/debugging.md](../guides/debugging.md) — Debugging strategies for MVU applications
 ## Implementation Checklist
 
-- [ ] Create `DebuggerOptions` record
-- [ ] Add `ConfigureDebugger()` API method
-- [ ] Store options in `Program`
-- [ ] Inject mount point in `Runtime.cs` (Debug builds only)
-- [ ] Update `debugger.js` with idempotent mount logic
-- [ ] Update `devtools.md` (remove manual mount step)
-- [ ] Update template READMEs
-- [ ] Add CHANGELOG entry
-- [ ] Update all three templates (`abies-browser`, `abies-browser-empty`, `abies-server`)
+- [x] Create `DebuggerOptions` record
+- [x] Add `ConfigureDebugger()` API method
+- [x] Store options via `DebuggerConfiguration`
+- [x] Inject mount point in `Picea.Abies.Browser/Runtime.cs` (Debug builds only)
+- [x] Update `debugger.js` with idempotent mount logic
+- [x] Update `devtools.md` (remove manual mount step)
+- [x] Update template READMEs
+- [x] Add CHANGELOG entry

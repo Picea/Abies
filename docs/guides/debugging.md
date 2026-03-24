@@ -14,7 +14,7 @@ Debugging MVU applications follows a predictable pattern:
 
 ## Abies Time Travel Debugger (Recommended)
 
-The **Abies Time Travel Debugger** is the primary debugging tool — it's automatically enabled in Debug builds and provides a complete trace of your MVU loop.
+For browser runtime apps, the **Abies Time Travel Debugger** is the primary debugging tool. In Debug builds, it auto-mounts when your app starts through `Picea.Abies.Browser.Runtime.Run(...)` and provides a complete trace of your MVU loop.
 
 See [devtools.md](devtools.md) for the full guide, including:
 - How to use the timeline to inspect every message and state transition
@@ -95,9 +95,16 @@ In WASM, logs appear in the browser console (F12). On the server, logs go to std
 
 ## Abies Time Travel Debugger
 
-Abies includes a built-in time-travel debugger that captures every message and model snapshot during a Debug session. You can step forward and backward through your app's history, replay sequences, and inspect model state at any point in time. The debugger is a full Abies MVU app that mounts into your host page — it is compiled out of Release builds entirely and adds zero production overhead.
+In browser runtime Debug sessions, Abies includes a built-in time-travel debugger that captures every message and model snapshot. You can step forward and backward through your app's history, replay sequences, and inspect model state at any point in time. The browser runtime injects the debugger mount point automatically when the debugger is enabled, and Release builds compile the debugger out entirely.
 
-To enable it, add `<div id="abies-debugger-timeline"></div>` to your host HTML and run in Debug configuration. The timeline panel appears automatically once the first message is dispatched.
+To disable it in Debug builds, configure it before calling `Runtime.Run()`:
+
+```csharp
+using Picea.Abies.Debugger;
+
+DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
+await Picea.Abies.Browser.Runtime.Run<MyProgram, MyModel, Unit>();
+```
 
 For full setup, keyboard shortcuts, the intent transport contract, and Release build details, see [Abies DevTools: Time Travel Debugger](./devtools.md).
 

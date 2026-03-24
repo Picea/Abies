@@ -151,6 +151,7 @@ public static partial class Interop
     [JSImport("setupNavigation", "Abies")]
     internal static partial void SetupNavigation();
 
+#if DEBUG
     /// <summary>
     /// Mounts the debugger UI by injecting a mount point div into the document.
     /// </summary>
@@ -163,8 +164,9 @@ public static partial class Interop
     /// The debugger mount point is idempotent — calling multiple times has no effect.
     /// </para>
     /// </remarks>
-    [JSImport("mountDebugger", "Abies")]
+    [JSImport("mountDebugger", "AbiesDebugger")]
     internal static partial void MountDebugger();
+#endif
 
     /// <summary>
     /// Gets the current browser URL (window.location.href).

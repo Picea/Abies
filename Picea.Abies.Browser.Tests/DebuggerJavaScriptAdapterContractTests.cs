@@ -8,14 +8,17 @@ namespace Picea.Abies.Browser.Tests;
 public sealed class DebuggerJavaScriptAdapterContractTests
 {
     [Test]
-    public async Task DebuggerJsMountAdapter_DoesNotBuildUiDom()
+    public async Task DebuggerJsMountAdapter_CreatesOnlyMountPointContainer()
     {
         var script = ReadDebuggerScript();
 
-        var domConstructionPatterns = new[]
+        await Assert.That(script).Contains("export function mountDebugger");
+        await Assert.That(script).Contains("document.createElement('div')");
+        await Assert.That(script).Contains("mountPoint.id = MountPointId");
+        await Assert.That(script).Contains("document.body.appendChild(mountPoint)");
+
+        var uiConstructionPatterns = new[]
         {
-            "document.createElement(",
-            "appendChild(",
             "innerHTML =",
             "play-button",
             "pause-button",
@@ -27,7 +30,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
             "timeline-inspector"
         };
 
-        var found = domConstructionPatterns
+        var found = uiConstructionPatterns
             .Where(pattern => script.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
@@ -78,6 +81,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     {
         var script = ReadDebuggerScript();
 
+        await Assert.That(script).Contains("mountDebugger");
         await Assert.That(script).Contains("initializeDebuggerAdapter");
         await Assert.That(script).Contains("bootstrapIntentTransport");
         await Assert.That(script).Contains("forwardIntentToRuntimeBridge");
