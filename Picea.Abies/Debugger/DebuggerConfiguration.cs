@@ -1,5 +1,3 @@
-#if DEBUG
-
 namespace Picea.Abies.Debugger;
 
 /// <summary>

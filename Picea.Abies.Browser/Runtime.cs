@@ -55,6 +55,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
+using Picea.Abies.Debugger;
 
 namespace Picea.Abies.Browser;
 
@@ -254,10 +255,11 @@ public static class Runtime
             initialUrl: initialUrl);
 
 #if DEBUG
-        if (useDebugger)
-        {
-            runtime.UseDebugger();
-        }
+    if (Debugger.DebuggerConfiguration.Default.Enabled)
+    {
+        runtime.UseDebugger();
+        Interop.MountDebugger();
+    }
 #endif
 
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
