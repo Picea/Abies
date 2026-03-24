@@ -118,7 +118,9 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
     /// </summary>
     private static async Task WaitForWasmInteractivity(IPage page)
     {
-        var timeout = TimeSpan.FromSeconds(60);
+        // 120 s gives adequate headroom on loaded CI runners where WASM startup
+        // (4 MB bundle download + .NET runtime init) can easily take 60+ seconds.
+        var timeout = TimeSpan.FromSeconds(120);
         var deadline = DateTime.UtcNow + timeout;
 
         var count = page.Locator(".counter-value");
@@ -144,9 +146,13 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
                     return;
                 }
             }
-            catch (PlaywrightException)
+            catch (Exception)
             {
-                // Playwright operation timed out — WASM not interactive yet.
+                // Not interactive yet. Catch-all is intentional: Playwright's
+                // ClickAsync uses Task.WaitAsync internally which throws
+                // System.TimeoutException — a type that does NOT inherit from
+                // PlaywrightException — so a narrower catch silently escapes
+                // the retry loop.
             }
 
             await Task.Delay(500);
