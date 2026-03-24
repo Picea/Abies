@@ -5,191 +5,121 @@
  * Abies Time Travel Debugger — Debug-only JavaScript module
  * 
  * This module is EXCLUDED from Release builds and only loads during Debug.
- * It initializes the debugger UI mount point and wires event handlers.
+ * It initializes debugger adapter wiring at the mount point.
  * 
  * The actual replay logic and state machine live in C# (Mealy machine).
- * This module only coordinates user input → adapter message dispatch.
+ * This module only coordinates UI intent -> adapter message dispatch.
  */
 
 (function() {
     'use strict';
 
     const MountPointId = 'abies-debugger-timeline';
+    const InitializationFlag = 'abiesDebuggerAdapterInitialized';
+    const IntentEventName = 'abies:debugger:intent';
+    const IntentAttributeName = 'data-abies-debugger-intent';
+    const PayloadAttributeName = 'data-abies-debugger-payload';
     const DebuggerEvents = {
         MessageDispatched: 'abies:debugger:message-dispatched'
     };
 
     /**
-     * Initialize the debugger UI when the module loads.
+     * Initialize debugger adapter wiring when the module loads.
      */
-    function initializeDebugger() {
+    function initializeDebuggerAdapter() {
         const mountPoint = document.getElementById(MountPointId);
         if (!mountPoint) {
-            console.debug('[Abies Debugger] Mount point not found. Skipping initialization.');
+            console.debug('[Abies Debugger] Mount point not found. Skipping adapter initialization.');
             return;
         }
 
-        if (mountPoint.dataset.abiesDebuggerInitialized === '1') {
+        if (mountPoint.dataset[InitializationFlag] === '1') {
             return;
         }
 
-        mountPoint.dataset.abiesDebuggerInitialized = '1';
+        mountPoint.dataset[InitializationFlag] = '1';
+        bootstrapIntentTransport(mountPoint);
 
-        console.debug('[Abies Debugger] Initializing at mount point:', MountPointId);
-
-        // Build minimal timeline UI structure
-        const ui = buildDebuggerUI(mountPoint);
-        
-        // Wire event handlers
-        wireEventHandlers(ui, mountPoint);
-        
-        console.debug('[Abies Debugger] Initialization complete.');
+        console.debug('[Abies Debugger] Adapter initialized at mount point:', MountPointId);
     }
 
     /**
-     * Build the debugger UI structure in the mount point.
+     * Attach event listeners that forward UI intent to the runtime bridge event.
      */
-    function buildDebuggerUI(mountPoint) {
-        const ui = {
-            controlBar: document.createElement('div'),
-            messageLog: document.createElement('div'),
-            timelineInspector: document.createElement('div'),
-            playButton: document.createElement('button'),
-            pauseButton: document.createElement('button'),
-            stepForwardButton: document.createElement('button'),
-            stepBackButton: document.createElement('button'),
-            jumpInput: document.createElement('input'),
-            clearButton: document.createElement('button')
-        };
-
-        // Set IDs for test verification
-        ui.controlBar.id = 'control-bar';
-        ui.messageLog.id = 'message-log';
-        ui.timelineInspector.id = 'timeline-inspector';
-        ui.playButton.id = 'play-button';
-        ui.pauseButton.id = 'pause-button';
-        ui.stepForwardButton.id = 'step-forward-button';
-        ui.stepBackButton.id = 'step-back-button';
-        ui.jumpInput.id = 'jump-input';
-        ui.clearButton.id = 'clear-button';
-
-        // Set button labels
-        ui.playButton.textContent = '▶ Play';
-        ui.pauseButton.textContent = '⏸ Pause';
-        ui.stepForwardButton.textContent = '→ Step';
-        ui.stepBackButton.textContent = '← Back';
-        ui.clearButton.textContent = '✕ Clear';
-
-        ui.jumpInput.type = 'number';
-        ui.jumpInput.placeholder = 'Jump to entry...';
-        ui.jumpInput.min = '0';
-
-        // Build structure
-        ui.controlBar.className = 'debugger-control-bar';
-        ui.controlBar.appendChild(ui.playButton);
-        ui.controlBar.appendChild(ui.pauseButton);
-        ui.controlBar.appendChild(ui.stepForwardButton);
-        ui.controlBar.appendChild(ui.stepBackButton);
-        ui.controlBar.appendChild(ui.jumpInput);
-        ui.controlBar.appendChild(ui.clearButton);
-
-        ui.messageLog.className = 'debugger-message-log';
-        ui.messageLog.innerHTML = '<div class="log-entry">Debugger timeline initialized</div>';
-
-        ui.timelineInspector.className = 'debugger-timeline-inspector';
-        ui.timelineInspector.textContent = 'Timeline: 0 entries';
-
-        mountPoint.appendChild(ui.controlBar);
-        mountPoint.appendChild(ui.messageLog);
-        mountPoint.appendChild(ui.timelineInspector);
-
-        return ui;
-    }
-
-    /**
-     * Wire event handlers for button clicks and keyboard shortcuts.
-     */
-    function wireEventHandlers(ui, mountPoint) {
-        // Button click handlers
-        ui.playButton.addEventListener('click', () => {
-            dispatchDebuggerMessage({ type: 'play' });
+    function bootstrapIntentTransport(mountPoint) {
+        mountPoint.addEventListener(IntentEventName, (event) => {
+            forwardIntentToRuntimeBridge(event?.detail, mountPoint);
         });
 
-        ui.pauseButton.addEventListener('click', () => {
-            dispatchDebuggerMessage({ type: 'pause' });
-        });
+        mountPoint.addEventListener('click', (event) => {
+            const target = event.target instanceof Element
+                ? event.target.closest(`[${IntentAttributeName}]`)
+                : null;
 
-        ui.stepForwardButton.addEventListener('click', () => {
-            dispatchDebuggerMessage({ type: 'step-forward' });
-        });
-
-        ui.stepBackButton.addEventListener('click', () => {
-            dispatchDebuggerMessage({ type: 'step-back' });
-        });
-
-        ui.clearButton.addEventListener('click', () => {
-            dispatchDebuggerMessage({ type: 'clear-timeline' });
-        });
-
-        ui.jumpInput.addEventListener('keydown', (evt) => {
-            if (evt.key === 'Enter' && ui.jumpInput.value) {
-                const entryNumber = parseInt(ui.jumpInput.value, 10);
-                if (!isNaN(entryNumber)) {
-                    dispatchDebuggerMessage({
-                        type: 'jump-to-entry',
-                        entryId: entryNumber
-                    });
-                }
-            }
-        });
-
-        // Keyboard shortcuts global handlers
-        document.addEventListener('keydown', (evt) => {
-            // Only dispatch if not typing in input fields
-            if (evt.target === ui.jumpInput) {
+            if (!target) {
                 return;
             }
 
-            switch (evt.key) {
-                case ' ': // Space → play/pause toggle
-                    evt.preventDefault();
-                    dispatchDebuggerMessage({ type: 'play' });
-                    break;
-                case 'ArrowRight': // Right arrow → step forward
-                    evt.preventDefault();
-                    dispatchDebuggerMessage({ type: 'step-forward' });
-                    break;
-                case 'ArrowLeft': // Left arrow → step backward
-                    evt.preventDefault();
-                    dispatchDebuggerMessage({ type: 'step-back' });
-                    break;
-                case 'j':
-                case 'J': // J → focus jump input
-                    evt.preventDefault();
-                    ui.jumpInput.focus();
-                    break;
-                case 'Escape': // Escape → blur/close
-                    evt.preventDefault();
-                    document.activeElement?.blur();
-                    break;
+            const intent = target.getAttribute(IntentAttributeName);
+            if (!intent) {
+                return;
             }
-        });
 
-        // Focus indicators for keyboard navigation
-        mountPoint.addEventListener('focusin', () => {
-            mountPoint.classList.add('focused');
-        });
-
-        mountPoint.addEventListener('focusout', () => {
-            mountPoint.classList.remove('focused');
+            const payload = parsePayload(target.getAttribute(PayloadAttributeName));
+            emitIntent(mountPoint, {
+                intent,
+                payload
+            });
         });
     }
 
     /**
-     * Dispatch a debugger message event.
-     * The C# bridge will handle the actual replay logic.
+     * Emit a normalized debugger intent event from UI controls.
+     * This is the single source of truth for intent propagation from click controls.
      */
-    function dispatchDebuggerMessage(message) {
+    function emitIntent(mountPoint, detail) {
+        mountPoint.dispatchEvent(new CustomEvent(IntentEventName, {
+            detail,
+            bubbles: false,
+            cancelable: false
+        }));
+    }
+
+    /**
+     * Parse optional JSON payload for data-abies-debugger-payload.
+     */
+    function parsePayload(rawPayload) {
+        if (!rawPayload) {
+            return undefined;
+        }
+
+        try {
+            return JSON.parse(rawPayload);
+        } catch {
+            return rawPayload;
+        }
+    }
+
+    /**
+     * Normalize incoming intent detail and dispatch to runtime bridge event.
+     */
+    function forwardIntentToRuntimeBridge(detail, mountPoint) {
+        let message = detail;
+
+        if (!message || typeof message !== 'object') {
+            return;
+        }
+
+        if (typeof message.type !== 'string' && typeof message.intent === 'string') {
+            message = typeof message.payload === 'object' && message.payload !== null
+                ? { ...message.payload, type: message.intent }
+                : { type: message.intent };
+        }
+
+        if (typeof message.type !== 'string' || !message.type) {
+            return;
+        }
+
         const event = new CustomEvent(DebuggerEvents.MessageDispatched, {
             detail: message,
             bubbles: true,
@@ -197,22 +127,28 @@
         });
 
         document.dispatchEvent(event);
-        console.debug('[Abies Debugger] Message dispatched:', message);
+        mountPoint.dispatchEvent(new CustomEvent('abies:debugger:bridge-dispatched', {
+            detail: message,
+            bubbles: true,
+            cancelable: false
+        }));
     }
 
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeDebugger);
+        document.addEventListener('DOMContentLoaded', initializeDebuggerAdapter);
     } else {
-        initializeDebugger();
+        initializeDebuggerAdapter();
     }
 
     // Export for testing
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
-            initializeDebugger,
-            buildDebuggerUI,
-            wireEventHandlers
+            initializeDebuggerAdapter,
+            bootstrapIntentTransport,
+            forwardIntentToRuntimeBridge,
+            parsePayload,
+            emitIntent
         };
     }
 })();
