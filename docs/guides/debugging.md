@@ -85,6 +85,14 @@ In WASM, logs appear in the browser console (F12). On the server, logs go to std
 3. **Aspire dashboard** — Full distributed traces
 4. **Debugger** — Attach to the Kestrel process normally
 
+## Abies Time Travel Debugger
+
+Abies includes a built-in time-travel debugger that captures every message and model snapshot during a Debug session. You can step forward and backward through your app's history, replay sequences, and inspect model state at any point in time. The debugger is a full Abies MVU app that mounts into your host page — it is compiled out of Release builds entirely and adds zero production overhead.
+
+To enable it, add `<div id="abies-debugger-timeline"></div>` to your host HTML and run in Debug configuration. The timeline panel appears automatically once the first message is dispatched.
+
+For full setup, keyboard shortcuts, the intent transport contract, and Release build details, see [Abies DevTools: Time Travel Debugger](./devtools.md).
+
 ## Hot Reload Workflow (Debug)
 
 Use this workflow when iterating on view functions.
