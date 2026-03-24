@@ -13,7 +13,8 @@ public sealed class RuntimeReplayGatingTests
         ReplayProbeProgram.Reset();
         var interpreterCalls = 0;
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         ValueTask<Result<Message[], PipelineError>> Interpreter(Command command)
         {
@@ -37,7 +38,8 @@ public sealed class RuntimeReplayGatingTests
     {
         ReplayProbeProgram.Reset();
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
             ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
@@ -55,7 +57,8 @@ public sealed class RuntimeReplayGatingTests
         ReplayProbeProgram.Reset();
         var navigationCalls = 0;
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
             ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
@@ -108,8 +111,7 @@ public sealed class RuntimeReplayGatingTests
             };
         }
 
-        var startTask = startMethod.Invoke(null, invocationArguments) as Task<Runtime<ReplayProbeProgram, ReplayProbeModel, Unit>>;
-        if (startTask is null)
+        if (startMethod.Invoke(null, invocationArguments) is not Task<Runtime<ReplayProbeProgram, ReplayProbeModel, Unit>> startTask)
         {
             throw new InvalidOperationException("Runtime.Start replay invocation returned an unexpected task type.");
         }
