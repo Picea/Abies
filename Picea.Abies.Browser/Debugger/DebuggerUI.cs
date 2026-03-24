@@ -113,27 +113,26 @@ public sealed class DebuggerUI
     /// - Space: play/pause toggle
     /// - ArrowRight: step forward
     /// - ArrowLeft: step backward
-    /// - J: focus jump input
-    /// - Escape: close/blur
+    /// - J: focus jump input (UI-only)
+    /// - Escape: close/blur (UI-only)
     /// </summary>
     public void SimulateKeyboardEvent(string keyCode)
     {
+        // Always notify the UI state machine about shortcut activity.
+        Dispatch(new DebuggerUiKeyboardShortcutInvoked(keyCode));
+
         var messageType = keyCode switch
         {
             " " => "play",  // Space → play/pause toggle
             "ArrowRight" => "step-forward",
             "ArrowLeft" => "step-back",
-            "j" or "J" => "jump-focus",
-            "Escape" => "blur",
             _ => null
         };
 
         if (messageType is null)
         {
-            return;  // Unknown key, no action
+            return;  // Unknown or UI-only key, no adapter message
         }
-
-        Dispatch(new DebuggerUiKeyboardShortcutInvoked(keyCode));
 
         var message = new DebuggerAdapterMessage { Type = messageType };
         OnMessageDispatched?.Invoke(message);
