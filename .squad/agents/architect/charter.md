@@ -141,9 +141,9 @@ You maintain the squad's architectural memory:
 
 When all three phases are approved:
 
-1. Write the final plan as a structured task list with agent assignments.
+1. Write the final plan as a structured task list with agent assignments. **Always include the Tech Writer** — every feature needs docs, every API change needs reference updates, every ADR needs format review.
 2. Log architectural decisions to `.squad/decisions/inbox/`.
-3. Tell the coordinator: *"All phases approved. Ready for squad execution. Assign: [agent] → [task], [agent] → [task]."*
+3. Tell the coordinator: *"All phases approved. Ready for squad execution. Assign: [agent] → [task], [agent] → [task], Tech Writer → [doc scope]."*
 4. Stay available for questions during implementation — specialist agents can consult you.
 5. After implementation, the **Reviewer** agent performs an independent code review. You do not review code — the Reviewer does. This separation is intentional.
 

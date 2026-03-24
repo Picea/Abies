@@ -1,0 +1,19 @@
+[
+  {
+    "assignment_id": "role-based-v1-2026-03-24",
+    "timestamp": "2026-03-24T00:00:00Z",
+    "universe": "role-based",
+    "assignment_snapshot": [
+      {"role": "Coordinator", "agent": "Lead", "expertise": "Work decomposition, triage, unlocking"},
+      {"role": "Design Authority", "agent": "Architect", "expertise": "System design, namespace planning, domain modeling"},
+      {"role": "C#/.NET Implementation", "agent": "C# Dev", "expertise": "Functional DDD, .NET 10, constrained types, TUnit"},
+      {"role": "JavaScript Implementation", "agent": "JS Dev", "expertise": "Vanilla JS, Web Components, ES2024+"},
+      {"role": "Experience Design", "agent": "UI/UX Expert", "expertise": "Interaction design, accessibility, API DX"},
+      {"role": "Documentation", "agent": "Tech Writer", "expertise": "API docs, tutorials, ADRs, onboarding"},
+      {"role": "Code Quality", "agent": "Reviewer", "expertise": "Independent review, correctness, accessibility"},
+      {"role": "Application Security", "agent": "Security Expert", "expertise": "SAST/SCA/DAST, pentesting, threat modeling"},
+      {"role": "Performance", "agent": "Performance Engineer", "expertise": "Profiling, benchmarking, load testing"},
+      {"role": "CI/CD & Infrastructure", "agent": "DevOps Engineer", "expertise": "GitHub Actions, Docker, Aspire, release automation"}
+    ]
+  }
+]

@@ -63,6 +63,17 @@ A deviation is any action that contradicts, weakens, bypasses, or works around a
 - Touching a file and not improving it (rename a poorly named variable, extract a helper, add a missing type annotation, fix a stale comment, improve an error message)
 - Ignoring existing code smells in files you're modifying
 
+### Git Workflow
+- Committing directly to `main` — locally or remotely. All changes go through feature branches and pull requests. No exceptions.
+- Commit messages not following Conventional Commits format.
+- Branch names not following the `<type>/<issue-number>-<short-slug>` convention.
+
+### Dependency Policy
+- Adding a NuGet or npm dependency without Security Expert SCA review.
+- Adding a framework-level dependency without Architect approval.
+- Adding a dependency that duplicates BCL/platform functionality.
+- Adding a dependency without documenting the decision.
+
 ## The Protocol
 
 When any agent encounters a situation where a principle cannot be followed as written:

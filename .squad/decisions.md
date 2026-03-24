@@ -168,6 +168,120 @@ The Reviewer checks for this. If a file was modified and obvious improvements we
 
 ---
 
+## Git Workflow
+
+### Never Commit to Main
+No agent and no human commits directly to `main` — locally or remotely. All changes go through feature branches and pull requests. No exceptions. No `--force`, no "just this once," no "it's a tiny fix." Main is protected. PRs are the only way in.
+
+### Conventional Commits
+All commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. No free-form messages.
+
+Format: `<type>(<scope>): <description>`
+
+| Type | When |
+|---|---|
+| `feat` | New feature or capability |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `test` | Adding or updating tests |
+| `perf` | Performance improvement |
+| `security` | Security fix or hardening |
+| `ci` | CI/CD pipeline changes |
+| `build` | Build system or dependency changes |
+| `chore` | Maintenance (no production code change) |
+
+Scope is the bounded context or component: `feat(authentication): add token versioning`, `fix(articles): handle empty slug`, `docs(api): update endpoint reference`.
+
+Breaking changes use `!` after the type: `feat(api)!: remove deprecated v1 endpoints`.
+
+### Branch Naming
+All branches follow this convention:
+
+`<type>/<issue-number>-<short-slug>`
+
+Examples:
+- `feature/42-token-versioning`
+- `fix/87-empty-slug-crash`
+- `docs/91-api-reference-update`
+- `security/103-xss-sanitization`
+- `refactor/110-extract-workflow-module`
+- `test/115-e2e-article-publishing`
+- `perf/120-cache-token-lookup`
+
+Types match Conventional Commits. Always include the issue number. Slug is lowercase, hyphen-separated, max ~5 words.
+
+---
+
+## Dependency Approval Policy
+
+### Every New Dependency Requires Review
+No NuGet package or npm module is added without explicit review. Dependencies are liabilities — they add attack surface, maintenance burden, transitive risk, and upgrade obligations.
+
+### Approval Flow
+
+1. **Specialist proposes.** The C# Dev or JS Dev identifies a need and proposes a specific package.
+2. **Security Expert reviews.** SCA scan for known CVEs, license compatibility check, transitive dependency audit. This is mandatory — no exceptions.
+3. **Architect approves** (for framework-level dependencies). If the dependency introduces a new architectural pattern, affects multiple bounded contexts, or creates a significant coupling — the Architect reviews. For leaf dependencies used in one module, the Security Expert's approval is sufficient.
+4. **Document the decision.** Every dependency addition gets a brief entry in `.squad/decisions/inbox/`: what package, why it's needed, what alternatives were considered, what the Security Expert found.
+
+### Criteria for Approval
+- **Is it necessary?** Does the BCL/platform already provide this? (`crypto.randomUUID()` over `uuid`, `System.Text.Json` over `Newtonsoft`, `fetch` over `axios`). If yes — rejected.
+- **Is it maintained?** Active commits in the last 6 months. Responsive to security issues. Not a single-maintainer abandoned project.
+- **Is it safe?** No known critical/high CVEs. Acceptable license (MIT, Apache 2.0, BSD). Reasonable transitive dependency tree (not pulling in 200 packages).
+- **Is the scope right?** Prefer small, focused packages over kitchen-sink frameworks. Don't add a library for one function.
+
+### Removal
+Unused dependencies are removed. The Security Expert audits the dependency tree periodically. If a package is no longer imported anywhere — it's gone.
+
+---
+
+## Definition of Done
+
+### A Task Is Not Done Until All of These Are True
+
+Every task — feature, bug fix, refactoring, or any code change — must satisfy all applicable items before it can be considered complete. This is the squad's shared understanding of "done."
+
+**Code:**
+- [ ] Implementation follows all established principles (functional DDD, state machines, smart constructors, namespaces, etc.)
+- [ ] No principle deviations without documented user approval
+- [ ] Boy Scout Rule applied — touched files left better than found
+
+**Testing:**
+- [ ] Unit tests cover new logic (smart constructors, workflows, edge cases)
+- [ ] Integration/E2E tests run via Aspire AppHost
+- [ ] Security regression tests added for any new threat mitigations
+- [ ] All tests pass (`dotnet test`)
+
+**Observability:**
+- [ ] OTEL traces cover the full functional flow (visible in Aspire dashboard)
+- [ ] Custom `ActivitySource` spans on workflow entry points
+- [ ] Error spans include exception info
+
+**Security:**
+- [ ] Threat model updated if attack surface changed
+- [ ] Security scanning (SAST/SCA) passes with no critical/high findings
+- [ ] No hardcoded secrets
+
+**Documentation:**
+- [ ] Docs updated or created for any user-facing change (Tech Writer involved)
+- [ ] API reference current
+- [ ] ADR created for significant architectural decisions
+- [ ] CHANGELOG updated
+
+**Review:**
+- [ ] Reviewer approved (no open 🔴 Must Fix findings)
+- [ ] UX Expert approved (for user-facing changes)
+- [ ] No undocumented principle deviations
+
+**Git:**
+- [ ] Commit messages follow Conventional Commits
+- [ ] Branch follows naming convention
+- [ ] PR targets `main` (never direct commit)
+- [ ] Pre-Push Quality Gate passes
+
+---
+
 ## Review
 
 ### Independent Reviewer

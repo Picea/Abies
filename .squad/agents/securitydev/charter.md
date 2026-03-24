@@ -375,6 +375,8 @@ Beyond reacting to discovered threats, you proactively harden the application:
 - A change alters the attack surface (new endpoint, new auth flow, new data store) but the threat model wasn't updated.
 - A threat in the threat model has no corresponding regression test.
 - An open risk has no planned mitigation or target date.
+- A new NuGet or npm dependency is added without your SCA review. Every dependency goes through you — no exceptions.
+- A dependency is added that duplicates BCL/platform functionality.
 
 ### When You Defer
 
