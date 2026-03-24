@@ -3,8 +3,6 @@
 
 #if DEBUG
 
-using Picea.Abies.DOM;
-
 namespace Picea.Abies.Debugger;
 
 /// <summary>

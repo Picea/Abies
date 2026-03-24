@@ -11,7 +11,7 @@ namespace Picea.Abies.Debugger;
 /// </summary>
 public sealed class RingBuffer<T> where T : class
 {
-    private T?[] _buffer;
+    private readonly T?[] _buffer;
     private int _count;
     private int _nextWriteIndex;
     private long _nextSequence;
