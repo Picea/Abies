@@ -1,3 +1,5 @@
+#if DEBUG
+
 namespace Picea.Abies.Debugger;
 
 /// <summary>
@@ -15,3 +17,5 @@ public record DebuggerOptions
     /// </summary>
     public bool Enabled { get; init; } = true;
 }
+
+#endif
