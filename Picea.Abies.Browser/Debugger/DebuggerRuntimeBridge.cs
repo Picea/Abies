@@ -44,12 +44,21 @@ public static class DebuggerRuntimeBridge
 
         return new DebuggerAdapterResponse
         {
-            Status = debugger.CurrentState.ToString().ToLowerInvariant(),
+            Status = MapStatus(debugger.CurrentState),
             CursorPosition = debugger.CursorPosition,
             TimelineSize = debugger.Timeline.Count,
             ModelSnapshotPreview = debugger.CurrentModelSnapshotPreview
         };
     }
+
+    private static string MapStatus(DebuggerState state) =>
+        state switch
+        {
+            DebuggerState.Recording => "recording",
+            DebuggerState.Paused => "paused",
+            DebuggerState.PlayingForward => "playing",
+            _ => "paused"
+        };
 }
 
 #endif

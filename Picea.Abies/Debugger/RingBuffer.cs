@@ -39,7 +39,7 @@ public sealed class RingBuffer<T> where T : class
         get
         {
             if (index < 0 || index >= _count)
-                throw new IndexOutOfRangeException($"Index {index} out of range [0, {_count - 1})");
+                throw new IndexOutOfRangeException($"Index must be between 0 and {_count - 1} (inclusive).");
 
             if (_count < _buffer.Length)
             {

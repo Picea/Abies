@@ -28,14 +28,6 @@ public sealed class DebuggerAdapter
         WriteIndented = false
     };
 
-    private readonly List<object> _pendingCommands = [];
-    private readonly List<object> _executedTransactions = [];
-    private DebuggerAdapterState _currentState = DebuggerAdapterState.Idle;
-
-    public IReadOnlyList<object> PendingCommands => _pendingCommands.AsReadOnly();
-    public IReadOnlyList<object> ExecutedTransactions => _executedTransactions.AsReadOnly();
-    public DebuggerAdapterState CurrentState => _currentState;
-
     /// <summary>
     /// Serializes a debugger message (jump, step, play, etc.) to JSON.
     /// Validates message type against the contract.
@@ -159,18 +151,6 @@ public record DebuggerAdapterResponse
 
     [JsonPropertyName("modelSnapshotPreview")]
     public required string ModelSnapshotPreview { get; init; }
-}
-
-/// <summary>
-/// State machine states for the debugger adapter.
-/// Used to track whether debugger is idle, playing, paused, etc.
-/// </summary>
-public enum DebuggerAdapterState
-{
-    Idle,
-    Playing,
-    Paused,
-    Error
 }
 
 #endif

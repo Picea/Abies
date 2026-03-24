@@ -82,8 +82,14 @@ namespace Picea.Abies.Browser;
 /// </example>
 /// </remarks>
 [SupportedOSPlatform("browser")]
+/// <summary>
+/// Options controlling browser runtime startup behavior.
+/// </summary>
 public sealed record BrowserRuntimeOptions
 {
+    /// <summary>
+    /// Enables debugger capture and mount behavior for Debug builds.
+    /// </summary>
     public bool UseDebugger { get; init; }
 }
 
