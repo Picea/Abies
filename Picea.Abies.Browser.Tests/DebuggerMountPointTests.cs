@@ -3,6 +3,7 @@
 
 using System.Text.RegularExpressions;
 using Picea.Abies.Browser.Debugger;
+using Picea.Abies.Debugger;
 
 namespace Picea.Abies.Browser.Tests;
 
@@ -16,10 +17,6 @@ namespace Picea.Abies.Browser.Tests;
 /// - debugger.js module: Optional JS file that initializes mount point when present
 /// - Release build: NO debugger.js file, NO mount point in HTML
 /// 
-/// NOTE: These tests are expected to FAIL TO COMPILE or FAIL AT RUNTIME today.
-/// - Tests 2a/2b: Fail because debugger.js does not exist or mount logic not implemented
-/// - Tests 2c: May pass vacuously if debugger UI is not exposed yet
-/// 
 /// Test Strategy: Mix of C# unit tests + integration tests
 /// - C# tests: Validate mount point element presence/absence in rendered HTML
 /// - Integration: Load actual wwwroot/ files and check structure
@@ -31,9 +28,6 @@ public class DebuggerMountPointTests
     /// (id="abies-debugger-timeline") exists in the document and contains expected UI structure.
     /// 
     /// Validates the seam: Mount point DOM element presence, correct ID, UI isolation from main app.
-    /// 
-    /// TODAY: Fails - debugger.js does not exist or mount logic not implemented.
-    /// TOMORROW: Passes when debugger.js mounts the UI panel.
     /// </summary>
     [Test]
     public async Task DebuggerPanelMountsAtCorrectDOMElement_WhenDebuggerEnabled()
@@ -61,7 +55,6 @@ public class DebuggerMountPointTests
         );
 
         // Act: Load debugger.js module (simulated)
-        // EXPECTED FAILURE: Picea.Abies.Browser.Debugger.DebuggerUI does not have InitializeMount() method
         var debuggerUI = new Picea.Abies.Browser.Debugger.DebuggerUI();
         debuggerUI.InitializeMount(mountPointId);
 
@@ -79,15 +72,34 @@ public class DebuggerMountPointTests
         await Assert.That(debuggerUI.MainAppModified).IsFalse();
     }
 
+    [Test]
+    public async Task DebuggerMvuViewRendersControlBarAndTimeline_WithAbiesEventHandlers()
+    {
+        var debuggerUI = new DebuggerUI();
+        debuggerUI.InitializeMount("abies-debugger-timeline");
+        debuggerUI.AddTimelineEntry(new DebuggerTimelineEntry
+        {
+            Sequence = 0,
+            MessageType = "Init",
+            ArgsPreview = "{}",
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ModelSnapshotPreview = "{}"
+        });
+
+        var html = debuggerUI.RenderHtml();
+
+        await Assert.That(html).Contains("id=\"control-bar\"");
+        await Assert.That(html).Contains("id=\"timeline-inspector\"");
+        await Assert.That(html).Contains("id=\"timeline-list\"");
+        await Assert.That(html).Contains("data-abies-debugger-intent=\"play\"");
+    }
+
     /// <summary>
     /// Test 2b: When debugger.js is NOT loaded (i.e., only abies.js is loaded with no debugger module),
     /// the debugger UI is NOT present in the DOM, and the main app loads and functions normally.
     /// This validates that debugger panel is optional.
     /// 
     /// Validates the seam: Debugger is optional, doesn't interfere with main app when absent.
-    /// 
-    /// TODAY: Passes vacuously (debugger UI doesn't exist, so naturally not present).
-    /// TOMORROW: Continues to pass when debugger.js optional loading is implemented.
     /// </summary>
     [Test]
     public async Task DebuggerWidgetNotPresentWhenDebuggerJS_NotLoaded()
@@ -137,11 +149,6 @@ public class DebuggerMountPointTests
     /// and updates the UI based on the response.
     /// 
     /// Validates the seam: UI responsiveness, message dispatch, response handling.
-    /// 
-    /// NOTE: This test requires Playwright or similar browser automation—
-    /// can be skipped in this phase if E2E harness unavailable.
-    /// TODAY: Fails at runtime - debugger UI not implemented.
-    /// TOMORROW: Passes when UI events are wired to adapter.
     /// </summary>
     [Test]
     public async Task DebuggerUIRespondsToPlayButton_WithMessageDispatch()
@@ -175,11 +182,10 @@ public class DebuggerMountPointTests
         };
 
         // Act: Click play button
-        // EXPECTED FAILURE: No PlayButton element or click handler
         debuggerUI.ClickButton("play-button");
 
         // Wait for async response (simulated)
-        System.Threading.Thread.Sleep(100);
+        await Task.Delay(100);
 
         // Simulate C# response: auto-step cursor
         debuggerUI.UpdateFromResponse(new DebuggerAdapterResponse
@@ -191,11 +197,35 @@ public class DebuggerMountPointTests
         });
 
         // Assert
-        await Assert.That(messageDispatchCount).IsGreaterThan(0);
+        await Assert.That(messageDispatchCount).IsEqualTo(1);
         await Assert.That(lastDispatchedMessageType).IsEqualTo("play");
         
         await Assert.That(debuggerUI.CurrentCursorPosition).IsEqualTo(1);
         
+        await Assert.That(debuggerUI.GetHighlightedEntry()?.Sequence).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task DebuggerAdapterMessageAppliesToRuntimeDebugger_AndSyncsMvuModel()
+    {
+        var debuggerMachine = new DebuggerMachine(16);
+        debuggerMachine.CaptureMessage(new TestMessage { Type = "first" }, "{\"state\":0}");
+        debuggerMachine.CaptureMessage(new TestMessage { Type = "second" }, "{\"state\":1}");
+        debuggerMachine.Jump(0);
+
+        var debuggerUI = new DebuggerUI();
+        debuggerUI.InitializeMount("abies-debugger-timeline");
+        debuggerUI.SyncFromRuntimeDebugger(debuggerMachine);
+
+        var response = DebuggerRuntimeBridge.Execute(
+            new DebuggerAdapterMessage { Type = "step-forward" },
+            debuggerMachine);
+
+        debuggerUI.SyncFromRuntimeDebugger(debuggerMachine);
+
+        await Assert.That(response.CursorPosition).IsEqualTo(1);
+        await Assert.That(response.TimelineSize).IsEqualTo(2);
+        await Assert.That(debuggerUI.CurrentCursorPosition).IsEqualTo(1);
         await Assert.That(debuggerUI.GetHighlightedEntry()?.Sequence).IsEqualTo(1);
     }
 
@@ -208,9 +238,6 @@ public class DebuggerMountPointTests
     /// - Escape: Close debugger
     /// 
     /// Validates the seam: Keyboard accessibility, no interfering with main app shortcuts.
-    /// 
-    /// TODAY: Fails at runtime - keyboard handlers not implemented.
-    /// TOMORROW: Passes when keyboard event handlers are wired.
     /// </summary>
     [Test]
     [Arguments(" ", "play")]  // Space → play/pause toggle
@@ -223,14 +250,19 @@ public class DebuggerMountPointTests
         debuggerUI.InitializeMount("abies-debugger-timeline");
         debuggerUI.CurrentCursorPosition = 2;
 
+        var dispatchCount = 0;
         string? lastDispatchedType = null;
-        debuggerUI.OnMessageDispatched += (msg) => lastDispatchedType = msg.Type;
+        debuggerUI.OnMessageDispatched += (msg) =>
+        {
+            dispatchCount++;
+            lastDispatchedType = msg.Type;
+        };
 
         // Act
-        // EXPECTED FAILURE: No keyboard event handler registered
         debuggerUI.SimulateKeyboardEvent(keyCode);
 
         // Assert
+        await Assert.That(dispatchCount).IsEqualTo(1);
         await Assert.That(lastDispatchedType).IsEqualTo(expectedMessage);
     }
 }
