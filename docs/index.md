@@ -108,6 +108,7 @@ Practical how-to guides for specific tasks.
 | [Choosing a Render Mode](./guides/render-mode-selection.md) | When to use Static, Server, WASM, or Auto |
 | [Testing](./guides/testing.md) | Testing strategies for Abies apps |
 | [Debugging](./guides/debugging.md) | Debugging techniques and tools |
+| [Abies DevTools: Time Travel Debugger](./guides/devtools.md) | Step through message history, replay sequences, inspect model state |
 | [Performance](./guides/performance.md) | Optimization tips and benchmark methodology |
 | [Error Handling](./guides/error-handling.md) | Error patterns and recovery |
 | [Head Management](./guides/head-management.md) | Dynamic `<head>` content (title, meta, stylesheets) |
