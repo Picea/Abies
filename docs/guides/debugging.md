@@ -12,7 +12,15 @@ Debugging MVU applications follows a predictable pattern:
 4. **Check the View** — Is the DOM correct?
 5. **Verify Commands** — Did side effects execute?
 
-## Distributed Tracing (Recommended)
+## Abies Time Travel Debugger (Recommended)
+
+The **Abies Time Travel Debugger** is the primary debugging tool — it's automatically enabled in Debug builds and provides a complete trace of your MVU loop.
+
+See [devtools.md](devtools.md) for the full guide, including:
+- How to use the timeline to inspect every message and state transition
+- Time travel: rewind your app to any past state
+- How to disable the debugger if needed
+- Troubleshooting tips
 
 Abies includes built-in OpenTelemetry tracing that shows the complete flow from user interaction to API response.
 
