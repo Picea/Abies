@@ -14,10 +14,12 @@
   <ItemGroup>
     <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
     <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
+    <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\debugger.js" />
     <UpToDateCheckInput Include="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" />
     <UpToDateCheckInput Include="..\Picea.Abies.UI\wwwroot\abies-ui.js" />
     <Watch Include="..\Picea.Abies.Browser\wwwroot\abies.js" />
     <Watch Include="..\Picea.Abies.Browser\wwwroot\abies-otel.js" />
+    <Watch Include="..\Picea.Abies.Browser\wwwroot\debugger.js" />
     <Watch Include="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" />
     <Watch Include="..\Picea.Abies.UI\wwwroot\abies-ui.js" />
   </ItemGroup>
@@ -29,6 +31,13 @@
     <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\abies-otel.js" DestinationFiles="wwwroot\abies-otel.js" />
     <Copy SourceFiles="..\Picea.Abies.UI\wwwroot\abies-ui.tokens.css" DestinationFiles="wwwroot\abies-ui.tokens.css" />
     <Copy SourceFiles="..\Picea.Abies.UI\wwwroot\abies-ui.js" DestinationFiles="wwwroot\abies-ui.js" />
+  </Target>
+
+  <Target Name="CopyDebuggerJs" AfterTargets="SyncDemoAssets"
+          Condition="'$(Configuration)' == 'Debug'"
+          Inputs="..\Picea.Abies.Browser\wwwroot\debugger.js"
+          Outputs="wwwroot\debugger.js">
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\debugger.js" DestinationFiles="wwwroot\debugger.js" />
   </Target>
 
   <Target Name="RemoveDuplicateAbiesJs" AfterTargets="ComputeFilesToPublish">
