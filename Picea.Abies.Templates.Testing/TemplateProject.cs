@@ -73,6 +73,13 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     public async Task PublishRelease(CancellationToken ct = default)
     {
+        // Debugger runtime asset is copied for Debug test runs when using
+        // ProjectReference-based scaffolds. Remove it before Release publish to
+        // preserve the release-strip contract.
+        var releaseDebugAssetPath = Path.Join(_projectDir, "wwwroot", "debugger.js");
+        if (File.Exists(releaseDebugAssetPath))
+            File.Delete(releaseDebugAssetPath);
+
         await RunDotnetAsync(
             $"publish \"{_projectDir}\" -c Release",
             _projectDir,
@@ -355,7 +362,8 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// For WebAssembly projects that reference <c>Picea.Abies.Browser</c>, this also
-    /// copies static assets (<c>abies.js</c>, <c>abies-otel.js</c>) into the project's
+    /// copies static assets (<c>abies.js</c>, <c>abies-otel.js</c>, <c>debugger.js</c>)
+    /// into the project's
     /// <c>wwwroot/</c> directory. This is necessary because <c>Picea.Abies.Browser</c>
     /// uses the plain <c>Microsoft.NET.Sdk</c> — its <c>wwwroot/</c> files are not
     /// automatically served as static web assets by the WebAssembly SDK dev server
@@ -390,7 +398,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
     }
 
     /// <summary>
-    /// Copies <c>abies.js</c> and <c>abies-otel.js</c> from the
+    /// Copies <c>abies.js</c>, <c>abies-otel.js</c>, and <c>debugger.js</c> from the
     /// <c>Picea.Abies.Browser/wwwroot/</c> source directory into the scaffolded
     /// project's <c>wwwroot/</c> so that the <c>WasmAppHost</c> dev server can
     /// serve them at the root path (matching the template's <c>index.html</c> refs).
@@ -401,7 +409,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
         var targetWwwroot = Path.Join(projectDir, "wwwroot");
         Directory.CreateDirectory(targetWwwroot);
 
-        foreach (var fileName in new[] { "abies.js", "abies-otel.js" })
+        foreach (var fileName in new[] { "abies.js", "abies-otel.js", "debugger.js" })
         {
             var source = Path.Join(browserWwwroot, fileName);
             if (File.Exists(source))
