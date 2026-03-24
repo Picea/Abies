@@ -36,13 +36,17 @@ Default assignments for common patterns. First match wins. Named routing (user s
 | Web Component definitions | JS Dev | Custom Elements |
 | Service Worker / Web Worker scripts | JS Dev | Worker scripts |
 
-### Documentation
+### Documentation (mandatory on every feature/change)
 | Pattern / Trigger | Owner | Reason |
 |---|---|---|
-| `docs/**`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | Tech Writer | Documentation |
+| Any new feature being built | Tech Writer (alongside specialists) | Docs ship with code |
+| Any API endpoint added/modified/removed | Tech Writer | API reference update |
+| Any ADR created by Architect | Tech Writer | Format review + architecture docs |
+| Any config/env var/setup change | Tech Writer | Setup and config docs |
+| Any Aspire AppHost topology change | Tech Writer | Infrastructure docs |
+| Any `dotnet new` template change | Tech Writer | Template docs and README |
+| `docs/**`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | Tech Writer | Documentation files |
 | `/docs/adr/**` (formatting) | Tech Writer | ADR formatting and clarity |
-| New feature shipped without docs | Tech Writer | Documentation gap |
-| API reference generation | Tech Writer | Public API docs |
 
 ### Security
 | Pattern / Trigger | Owner | Reason |
