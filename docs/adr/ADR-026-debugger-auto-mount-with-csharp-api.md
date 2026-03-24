@@ -4,11 +4,9 @@
 **Date:** 2026-03-24  
 **Decision Makers:** Maurice Peters  
 **Related:** ADR-025 (Debugger Boundary Contract), ADR-005 (WebAssembly), ADR-011 (JavaScript Interop)
-
 ## Context
 
 The Abies Time Travel Debugger (from ADR-025) provides a complete trace of the MVU loop: every message, transition, and render operation. However, enabling the debugger required manual setup:
-
 1. **Developer creates the mount div** in `index.html`:
    ```html
    <div id="abies-debugger-timeline"></div>
@@ -34,15 +32,10 @@ DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false })
 ### Design Rationale
 
 1. **Auto-mount is the default** — Most developers want to use the debugger when available. Defaulting to enabled matches developer expectations.
-
 2. **Explicit opt-out over implicit opt-in** — An escape hatch (`Enabled = false`) lets developers disable it when needed (e.g., in shared CI environments, or when the UI is unwanted).
-
 3. **C# configuration API** — Keeps all app setup in one place (Program.cs) instead of split between C# and HTML.
-
 4. **Compile-time stripping in Release** — The entire debugger infrastructure lives inside `#if DEBUG` blocks. Release builds have **zero bytes** of debugger code — no footprint, no runtime cost.
-
 5. **Both WASM and Server modes** — The auto-mount happens in `Runtime.cs`, which is used by both `Picea.Abies.Browser.Runtime` (WASM) and `Picea.Abies.Server.Runtime` (Server). The debugger works in both modes without special handling.
-
 ### API Shape
 
 ```csharp
@@ -87,7 +80,6 @@ public static class DebuggerConfiguration
 3. **Compile-time stripping**:
    - The `#if DEBUG` blocks in `Runtime.cs` ensure no debugger code in Release builds
    - The `.csproj` file already has conditions to exclude `debugger.js` from Release publishes
-
 4. **Idempotency**:
    - Multiple calls to `ConfigureDebugger()` (or re-importing the module) don't create duplicate mount points
    - JavaScript checks for existing `#abies-debugger-timeline` before injecting
@@ -142,11 +134,9 @@ public record DebuggerOptions
 - **Debug builds**: ~50 bytes (mount point div + comment)
 - **Runtime cost**: Negligible (one-time injection at startup)
 - **Browser memory**: The timeline grows with usage (bounded by browser memory, cleared on hard reload)
-
 ### Security Considerations
 
 The debugger exposes **internal MVU state** (messages, model state, transitions). In Debug builds, this is acceptable because:
-
 1. Debug builds are not deployed to production
 2. The debugger UI runs only in the browser (not exposed to network)
 3. Developers can disable it explicitly with `Enabled = false`
@@ -158,7 +148,6 @@ Release builds strip the debugger entirely, so there is no security exposure.
 - [ADR-025: Debugger Boundary Contract](ADR-025-debugger-boundary-contract.md) — Interface and semantics of debugger integration
 - [docs/guides/devtools.md](../guides/devtools.md) — User guide: Using the debugger
 - [docs/guides/debugging.md](../guides/debugging.md) — Debugging strategies for MVU applications
-
 ## Implementation Checklist
 
 - [ ] Create `DebuggerOptions` record
