@@ -23,6 +23,30 @@ public sealed class UserEndpointTests : IAsyncDisposable
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    private async Task<(HttpClient Client, UserResponse User)> RegisterAndAuthenticateAsync(
+        string username,
+        string email,
+        string password = "securepassword123")
+    {
+        using var anonymous = _factory.CreateClient();
+        var register = new RegisterUserRequest(new RegisterUserBody(
+            Username: username,
+            Email: email,
+            Password: password));
+
+        var registerResponse = await anonymous.PostAsJsonAsync("/api/users", register, JsonOptions);
+        await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+        var user = await registerResponse.Content.ReadFromJsonAsync<UserResponse>(JsonOptions);
+        await Assert.That(user).IsNotNull();
+        await Assert.That(user!.User.Token).IsNotNull();
+        await Assert.That(user.User.Token).IsNotEmpty();
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("Authorization", $"Token {user.User.Token}");
+        return (client, user);
+    }
+
     [Test]
     public async Task GetCurrentUser_Authenticated_ReturnsUser()
     {
@@ -91,6 +115,82 @@ public sealed class UserEndpointTests : IAsyncDisposable
         var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    // ─── Email Uniqueness (finding #5) ───────────────────────────────────────
+
+    [Test]
+    public async Task UpdateCurrentUser_ChangeToExistingEmail_ReturnsUnprocessableEntity()
+    {
+        // Two registered users; user B attempts to claim user A's email address.
+        var userA = await RegisterAndAuthenticateAsync("uniqueuser_a", "alice-unique@example.com");
+        using var _ = userA.Client;
+        var userB = await RegisterAndAuthenticateAsync("uniqueuser_b", "bob-unique@example.com");
+        using var client = userB.Client;
+
+        var request = new UpdateUserRequest(new UpdateUserBody(
+            Email: userA.User.User.Email,
+            Username: userB.User.User.Username,
+            Password: null, Bio: null, Image: null));
+
+        var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Test]
+    public async Task UpdateCurrentUser_KeepSameEmail_ReturnsOk()
+    {
+        // Updating other fields while keeping the same email must NOT trigger a duplicate-email error.
+        var registered = await RegisterAndAuthenticateAsync("diana_sameemail", "diana-sameemail@example.com");
+        using var client = registered.Client;
+
+        var request = new UpdateUserRequest(new UpdateUserBody(
+            Email: registered.User.User.Email,
+            Username: registered.User.User.Username,
+            Password: null, Bio: "hello world", Image: null));
+
+        var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    // ─── Username Uniqueness (finding #5) ─────────────────────────────────────
+
+    [Test]
+    public async Task UpdateCurrentUser_ChangeToExistingUsername_ReturnsUnprocessableEntity()
+    {
+        // Two registered users; user B attempts to claim user A's username.
+        var userA = await RegisterAndAuthenticateAsync("eve_unique", "eve-unique@example.com");
+        using var _ = userA.Client;
+        var userB = await RegisterAndAuthenticateAsync("frank_unique", "frank-unique@example.com");
+        using var client = userB.Client;
+
+        var request = new UpdateUserRequest(new UpdateUserBody(
+            Email: userB.User.User.Email,
+            Username: userA.User.User.Username,
+            Password: null, Bio: null, Image: null));
+
+        var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Test]
+    public async Task UpdateCurrentUser_KeepSameUsername_ReturnsOk()
+    {
+        // Updating other fields while keeping the same username must NOT trigger a duplicate-username error.
+        var registered = await RegisterAndAuthenticateAsync("george_same", "george-same@example.com");
+        using var client = registered.Client;
+
+        var request = new UpdateUserRequest(new UpdateUserBody(
+            Email: registered.User.User.Email,
+            Username: registered.User.User.Username,
+            Password: null, Bio: "still me", Image: null));
+
+        var response = await client.PutAsJsonAsync("/api/user", request, JsonOptions);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     /// <inheritdoc />

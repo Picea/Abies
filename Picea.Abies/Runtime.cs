@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Picea.Abies.DOM;
+using Picea.Abies.Html;
 using Picea.Abies.Subscriptions;
 #if DEBUG
 using Picea.Abies.Debugger;
@@ -88,8 +89,10 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private readonly Apply _apply;
     private readonly Action<string>? _titleChanged;
     private readonly Action<NavigationCommand>? _navigationExecutor;
+    private readonly Action<SubscriptionFault>? _subscriptionFaulted;
     private readonly HandlerRegistry _handlerRegistry;
     private readonly bool _replay;
+    private readonly string _viewCacheScope = $"runtime:{Guid.CreateVersion7()}";
     private readonly Lock _renderGate = new();
     private Document? _currentDocument;
     private SubscriptionState _subscriptionState = SubscriptionState.Empty;
@@ -112,9 +115,10 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         Apply apply,
         Action<string>? titleChanged,
         Action<NavigationCommand>? navigationExecutor,
+        Action<SubscriptionFault>? subscriptionFaulted,
         bool replay) =>
-        (_apply, _titleChanged, _navigationExecutor, _handlerRegistry, _replay) =
-            (apply, titleChanged, navigationExecutor, new HandlerRegistry(), replay);
+        (_apply, _titleChanged, _navigationExecutor, _subscriptionFaulted, _handlerRegistry, _replay) =
+            (apply, titleChanged, navigationExecutor, subscriptionFaulted, new HandlerRegistry(), replay);
 
 #if DEBUG
     public void UseDebugger(int capacity = 10000)
@@ -137,7 +141,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
         lock (_renderGate)
         {
-            var newDocument = TProgram.View(state);
+            Document newDocument;
+            using (Elements.EnterViewCacheScope(_viewCacheScope))
+            {
+                newDocument = TProgram.View(state);
+            }
 
             var patches = Operations.Diff(_currentDocument?.Body, newDocument.Body);
 
@@ -173,7 +181,10 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             {
                 var desiredSubscriptions = TProgram.Subscriptions(state);
                 _subscriptionState = SubscriptionManager.Update(
-                    _subscriptionState, desiredSubscriptions, DispatchFromSubscription);
+                    _subscriptionState,
+                    desiredSubscriptions,
+                    DispatchFromSubscription,
+                    ObserveSubscriptionFault);
             }
 
             renderActivity?.SetTag("abies.patches", patches.Count);
@@ -247,12 +258,29 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             ? default
             : _core.Dispatch(message);
 
+    private void ObserveSubscriptionFault(SubscriptionFault fault)
+    {
+        using var activity = _activitySource.StartActivity("Picea.Abies.SubscriptionFault");
+        activity?.SetTag("subscription.key", fault.Key.Value);
+        activity?.SetStatus(ActivityStatusCode.Error, fault.Exception.Message);
+
+        try
+        {
+            _subscriptionFaulted?.Invoke(fault);
+        }
+        catch
+        {
+            // Fault observation must not interfere with runtime execution.
+        }
+    }
+
     public static async Task<Runtime<TProgram, TModel, TArgument>> Start(
         Apply apply,
         Interpreter<Command, Message> interpreter,
         TArgument argument = default!,
         Action<string>? titleChanged = null,
         Action<NavigationCommand>? navigationExecutor = null,
+        Action<SubscriptionFault>? subscriptionFaulted = null,
         Url? initialUrl = null,
         bool threadSafe = false,
         bool replay = false)
@@ -260,13 +288,22 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         using var activity = _activitySource.StartActivity("Picea.Abies.Start");
         activity?.SetTag("abies.program", typeof(TProgram).Name);
 
-        var runtime = new Runtime<TProgram, TModel, TArgument>(apply, titleChanged, navigationExecutor, replay);
+        var runtime = new Runtime<TProgram, TModel, TArgument>(
+            apply,
+            titleChanged,
+            navigationExecutor,
+            subscriptionFaulted,
+            replay);
 
         runtime._handlerRegistry.Dispatch = runtime.DispatchFromSubscription;
 
         var (model, initialCommand) = TProgram.Initialize(argument);
 
-        var document = TProgram.View(model);
+        Document document;
+        using (Elements.EnterViewCacheScope(runtime._viewCacheScope))
+        {
+            document = TProgram.View(model);
+        }
         var bodyPatches = Operations.Diff(null, document.Body);
         var headPatches = HeadDiff.Diff([], document.Head);
 
@@ -350,7 +387,9 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         {
             var initialSubscriptions = TProgram.Subscriptions(model);
             runtime._subscriptionState = SubscriptionManager.Start(
-                initialSubscriptions, runtime.DispatchFromSubscription);
+                initialSubscriptions,
+                runtime.DispatchFromSubscription,
+                runtime.ObserveSubscriptionFault);
 
             await runtime._core.InterpretEffect(initialCommand);
         }
@@ -416,6 +455,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #endif
 
         SubscriptionManager.Stop(_subscriptionState);
+        Elements.RemoveViewCacheScope(_viewCacheScope);
         _handlerRegistry.Dispatch = null;
         _handlerRegistry.Clear();
         _core.Dispose();

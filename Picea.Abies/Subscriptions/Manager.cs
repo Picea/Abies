@@ -18,19 +18,30 @@ public readonly record struct SubscriptionState(
 public sealed record RunningSubscription(SubscriptionKey Key, CancellationTokenSource CTS, Task Task);
 
 /// <summary>
+/// A fault raised by a running subscription source.
+/// </summary>
+/// <param name="Key">Subscription key that produced the fault.</param>
+/// <param name="Exception">Observed exception from the subscription task.</param>
+public readonly record struct SubscriptionFault(SubscriptionKey Key, Exception Exception);
+
+/// <summary>
 /// Manages subscription lifecycle by diffing desired subscriptions against running ones.
 /// </summary>
 internal static class SubscriptionManager
 {
     private static readonly ActivitySource _activitySource = new("Picea.Abies.Subscriptions");
 
-    internal static SubscriptionState Start(Subscription subscription, Dispatch dispatch) =>
-        Update(SubscriptionState.Empty, subscription, dispatch);
+    internal static SubscriptionState Start(
+        Subscription subscription,
+        Dispatch dispatch,
+        Action<SubscriptionFault>? faultObserver = null) =>
+        Update(SubscriptionState.Empty, subscription, dispatch, faultObserver);
 
     internal static SubscriptionState Update(
         SubscriptionState current,
         Subscription desired,
-        Dispatch dispatch)
+        Dispatch dispatch,
+        Action<SubscriptionFault>? faultObserver = null)
     {
         using var activity = _activitySource.StartActivity("Subscriptions.Update");
 
@@ -45,7 +56,7 @@ internal static class SubscriptionManager
             }
             else
             {
-                var running = StartSubscription(source, dispatch);
+                var running = StartSubscription(source, dispatch, faultObserver);
                 newRunning[source.Key] = running;
             }
         }
@@ -103,7 +114,10 @@ internal static class SubscriptionManager
         }
     }
 
-    private static RunningSubscription StartSubscription(Subscription.Source source, Dispatch dispatch)
+    private static RunningSubscription StartSubscription(
+        Subscription.Source source,
+        Dispatch dispatch,
+        Action<SubscriptionFault>? faultObserver)
     {
         using var activity = _activitySource.StartActivity("Subscription.Start");
         activity?.SetTag("subscription.key", source.Key.Value);
@@ -117,6 +131,21 @@ internal static class SubscriptionManager
             }
             catch (OperationCanceledException)
             {
+            }
+            catch (Exception ex)
+            {
+                using var faultActivity = _activitySource.StartActivity("Subscription.Fault");
+                faultActivity?.SetTag("subscription.key", source.Key.Value);
+                faultActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
+                try
+                {
+                    faultObserver?.Invoke(new SubscriptionFault(source.Key, ex));
+                }
+                catch
+                {
+                    // Observer callbacks should never crash subscription teardown.
+                }
             }
         });
 

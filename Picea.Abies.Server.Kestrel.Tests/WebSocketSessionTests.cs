@@ -310,7 +310,7 @@ public class WebSocketSessionTests
         // Read patches
         var patches = new List<PatchEntry>(patchCount);
         const int headerSize = 8;
-        const int entrySize = 16;
+        const int entrySize = 20;
 
         for (var i = 0; i < patchCount; i++)
         {
@@ -319,12 +319,14 @@ public class WebSocketSessionTests
             var f1Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 4)..]);
             var f2Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 8)..]);
             var f3Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 12)..]);
+            var f4Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 16)..]);
 
             patches.Add(new PatchEntry(
                 type,
                 f1Idx >= 0 ? strings[f1Idx] : null,
                 f2Idx >= 0 ? strings[f2Idx] : null,
-                f3Idx >= 0 ? strings[f3Idx] : null));
+                f3Idx >= 0 ? strings[f3Idx] : null,
+                f4Idx >= 0 ? strings[f4Idx] : null));
         }
 
         return new PatchBatch(patchCount, strings, patches);
@@ -510,5 +512,5 @@ public class WebSocketSessionTests
     private record PatchBatch(int PatchCount, List<string> Strings, List<PatchEntry> Patches);
 
     /// <summary>A single patch entry with resolved string values.</summary>
-    private record PatchEntry(int Type, string? Field1, string? Field2, string? Field3);
+    private record PatchEntry(int Type, string? Field1, string? Field2, string? Field3, string? Field4);
 }

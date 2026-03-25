@@ -17,11 +17,12 @@
 //     int32 patchCount
 //     int32 stringTableOffset
 //
-//   Patches (16 bytes each):
+//   Patches (20 bytes each):
 //     int32 type (BinaryPatchType enum)
 //     int32 field1 (string table index, -1 = null)
 //     int32 field2 (string table index, -1 = null)
 //     int32 field3 (string table index, -1 = null)
+//     int32 field4 (string table index, -1 = null)
 //
 //   String Table:
 //     Sequence of LEB128-prefixed UTF-8 strings
@@ -88,23 +89,46 @@
 
     // =========================================================================
     // Event types to register for delegation
+    // Must match all helpers exposed in Picea.Abies/Html/Events.cs
     // =========================================================================
     const COMMON_EVENT_TYPES = [
-        "click", "dblclick", "input", "change", "submit",
+        // Mouse events
+        "click", "dblclick", "mousedown", "mouseup", "mousemove",
+        "mouseenter", "mouseleave", "mouseover", "mouseout", "wheel", "contextmenu",
+        // Keyboard events
         "keydown", "keyup", "keypress",
+        // Input / Form events
+        "input", "change", "submit", "reset", "invalid", "select",
+        // Focus events
         "focus", "blur", "focusin", "focusout",
-        "mousedown", "mouseup", "mousemove",
-        "mouseenter", "mouseleave", "mouseover", "mouseout",
-        "wheel", "scroll",
-        "touchstart", "touchmove", "touchend",
-        "pointerdown", "pointerup", "pointermove",
-        "contextmenu",
-        "drag", "dragstart", "dragend", "dragover",
-        "drop", "dragenter", "dragleave",
+        // Pointer events
+        "pointerdown", "pointerup", "pointermove", "pointercancel",
+        "pointerover", "pointerout", "pointerenter", "pointerleave",
+        "gotpointercapture", "lostpointercapture",
+        // Touch events
+        "touchstart", "touchend", "touchmove", "touchcancel",
+        // Drag events
+        "drag", "dragstart", "dragend", "dragenter", "dragleave", "dragover", "drop",
+        // Scroll & Resize
+        "scroll", "resize",
+        // Clipboard events
         "copy", "cut", "paste",
-        "animationstart", "animationend", "transitionend",
-        "load", "error", "resize",
-        "select", "reset", "toggle"
+        // Animation events
+        "animationstart", "animationend", "animationiteration", "animationcancel",
+        // Transition events
+        "transitionstart", "transitionend", "transitionrun", "transitioncancel",
+        // Media events
+        "play", "pause", "ended", "timeupdate", "volumechange",
+        "seeking", "seeked", "ratechange", "durationchange",
+        "canplay", "canplaythrough", "waiting", "playing",
+        "stalled", "suspend", "emptied", "loadeddata", "loadedmetadata",
+        "loadstart", "progress", "abort",
+        // Load & Error events
+        "load", "error", "unload", "beforeunload",
+        // Toggle & Misc events
+        "toggle", "close", "cancel", "fullscreenchange", "fullscreenerror",
+        // Composition events (for IME / CJK input)
+        "compositionstart", "compositionupdate", "compositionend"
     ];
 
     // =========================================================================
@@ -116,10 +140,65 @@
     // HTML fragment parser — uses <template> for context-independent parsing
     // =========================================================================
     const _fragmentTemplate = document.createElement("template");
+    const TEXT_MARKER_PREFIX = "abies-text:";
+    const TEXT_MARKER_START_SUFFIX = ":start";
+    const TEXT_MARKER_END_SUFFIX = ":end";
 
     function parseHtmlFragment(html) {
         _fragmentTemplate.innerHTML = html;
         return _fragmentTemplate.content.firstElementChild;
+    }
+
+    function textMarkerValue(id, isStart) {
+        return `${TEXT_MARKER_PREFIX}${id}${isStart ? TEXT_MARKER_START_SUFFIX : TEXT_MARKER_END_SUFFIX}`;
+    }
+
+    function createManagedTextFragment(id, value) {
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(document.createComment(textMarkerValue(id, true)));
+        fragment.appendChild(document.createTextNode(value));
+        fragment.appendChild(document.createComment(textMarkerValue(id, false)));
+        return fragment;
+    }
+
+    function findManagedTextRange(parent, id) {
+        const startValue = textMarkerValue(id, true);
+        const endValue = textMarkerValue(id, false);
+
+        for (const child of parent.childNodes) {
+            if (child.nodeType !== Node.COMMENT_NODE || child.data !== startValue) {
+                continue;
+            }
+
+            let current = child.nextSibling;
+            let textNode = null;
+            while (current) {
+                if (current.nodeType === Node.COMMENT_NODE && current.data === endValue) {
+                    return { start: child, text: textNode, end: current };
+                }
+
+                if (!textNode && current.nodeType === Node.TEXT_NODE) {
+                    textNode = current;
+                }
+
+                current = current.nextSibling;
+            }
+        }
+
+        return null;
+    }
+
+    function removeManagedTextRange(range) {
+        let current = range.start;
+        while (current) {
+            const next = current.nextSibling;
+            current.remove();
+            if (current === range.end) {
+                break;
+            }
+
+            current = next;
+        }
     }
 
     // =========================================================================
@@ -218,7 +297,7 @@
     // DOM Mutation — applies a single patch
     // =========================================================================
 
-    function applyPatch(type, f1, f2, f3) {
+    function applyPatch(type, f1, f2, f3, f4) {
         switch (type) {
             case OP_ADD_ROOT: {
                 document.body.innerHTML = f2;
@@ -326,9 +405,23 @@
             case OP_UPDATE_TEXT: {
                 const parent = document.getElementById(f1);
                 if (parent) {
+                    const range = findManagedTextRange(parent, f2);
+                    if (range) {
+                        if (range.text) {
+                            range.text.textContent = f3;
+                        } else {
+                            parent.insertBefore(document.createTextNode(f3), range.end);
+                        }
+
+                        range.start.data = textMarkerValue(f4, true);
+                        range.end.data = textMarkerValue(f4, false);
+                        break;
+                    }
+
+                    // Backward compatibility for pre-marker DOM.
                     for (const child of parent.childNodes) {
                         if (child.nodeType === Node.TEXT_NODE) {
-                            child.textContent = f2;
+                            child.textContent = f3;
                             break;
                         }
                     }
@@ -338,13 +431,20 @@
 
             case OP_ADD_TEXT: {
                 const parent = document.getElementById(f1);
-                if (parent) parent.appendChild(document.createTextNode(f2));
+                if (parent) parent.appendChild(createManagedTextFragment(f3, f2));
                 break;
             }
 
             case OP_REMOVE_TEXT: {
                 const parent = document.getElementById(f1);
                 if (parent) {
+                    const range = findManagedTextRange(parent, f2);
+                    if (range) {
+                        removeManagedTextRange(range);
+                        break;
+                    }
+
+                    // Backward compatibility for pre-marker DOM.
                     for (const child of parent.childNodes) {
                         if (child.nodeType === Node.TEXT_NODE) {
                             child.remove();
@@ -437,7 +537,7 @@
         const strings = readStringTable(bytes, stringTableOffset, bytes.byteLength);
 
         const headerSize = 8;
-        const entrySize = 16;
+        const entrySize = 20;
 
         for (let i = 0; i < patchCount; i++) {
             const offset = headerSize + (i * entrySize);
@@ -445,12 +545,14 @@
             const f1Idx = view.getInt32(offset + 4, true);
             const f2Idx = view.getInt32(offset + 8, true);
             const f3Idx = view.getInt32(offset + 12, true);
+            const f4Idx = view.getInt32(offset + 16, true);
 
             const f1 = f1Idx >= 0 ? strings[f1Idx] : null;
             const f2 = f2Idx >= 0 ? strings[f2Idx] : null;
             const f3 = f3Idx >= 0 ? strings[f3Idx] : null;
+            const f4 = f4Idx >= 0 ? strings[f4Idx] : null;
 
-            applyPatch(type, f1, f2, f3);
+            applyPatch(type, f1, f2, f3, f4);
         }
     }
 
