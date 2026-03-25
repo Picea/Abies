@@ -201,7 +201,7 @@ All branches follow this convention:
 `<type>/<issue-number>-<short-slug>`
 
 Examples:
-- `feature/42-token-versioning`
+- `feat/42-token-versioning`
 - `fix/87-empty-slug-crash`
 - `docs/91-api-reference-update`
 - `security/103-xss-sanitization`
