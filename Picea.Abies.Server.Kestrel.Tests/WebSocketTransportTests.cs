@@ -15,6 +15,7 @@
 using System.IO.Pipes;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 
 namespace Picea.Abies.Server.Kestrel.Tests;
 
@@ -102,6 +103,61 @@ public class WebSocketTransportTests
         await Assert.That(e.EventData).IsEqualTo(string.Empty);
     }
 
+    [Test]
+    public async Task ReceiveEvent_FragmentedTextMessage_ReassemblesBeforeDeserializing()
+    {
+        await using var pair = WebSocketPair.Create();
+        using var transport = new WebSocketTransport(pair.Server);
+        var receiveEvent = transport.CreateReceiveEvent();
+
+        var json = JsonSerializer.Serialize(new
+        {
+            commandId = "cmd-frag",
+            eventName = "input",
+            eventData = "{\"value\":\"abc\"}"
+        });
+        var bytes = Encoding.UTF8.GetBytes(json);
+        var split = bytes.Length / 2;
+
+        await pair.Client.SendAsync(bytes.AsMemory(0, split), WebSocketMessageType.Text, endOfMessage: false, CancellationToken.None);
+        await pair.Client.SendAsync(bytes.AsMemory(split), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
+
+        var domEvent = await receiveEvent(CancellationToken.None);
+
+        await Assert.That(domEvent).IsNotNull();
+        var e = domEvent!.Value;
+        await Assert.That(e.CommandId).IsEqualTo("cmd-frag");
+        await Assert.That(e.EventName).IsEqualTo("input");
+        await Assert.That(e.EventData).IsEqualTo("{\"value\":\"abc\"}");
+    }
+
+    [Test]
+    public async Task ReceiveEvent_LargePayloadOver4Kb_ParsesCorrectly()
+    {
+        await using var pair = WebSocketPair.Create();
+        using var transport = new WebSocketTransport(pair.Server);
+        var receiveEvent = transport.CreateReceiveEvent();
+
+        var largeEventData = new string('x', 8192);
+        var json = JsonSerializer.Serialize(new
+        {
+            commandId = "cmd-large",
+            eventName = "input",
+            eventData = largeEventData
+        });
+
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await pair.Client.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var domEvent = await receiveEvent(CancellationToken.None);
+
+        await Assert.That(domEvent).IsNotNull();
+        var e = domEvent!.Value;
+        await Assert.That(e.CommandId).IsEqualTo("cmd-large");
+        await Assert.That(e.EventData.Length).IsEqualTo(8192);
+        await Assert.That(e.EventData).IsEqualTo(largeEventData);
+    }
+
     // =========================================================================
     // CloseAsync — Graceful Shutdown
     // =========================================================================
@@ -141,6 +197,48 @@ public class WebSocketTransportTests
         await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
         await Assert.That(result.EndOfMessage).IsTrue();
         await Assert.That(result.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task SendOperations_ConcurrentCalls_DoNotRaceAndPreserveBoundaries()
+    {
+        await using var pair = WebSocketPair.Create();
+        using var transport = new WebSocketTransport(pair.Server);
+
+        var sendText = transport.CreateSendText();
+        var sendPatches = transport.CreateSendPatches();
+
+        var sends = new List<Task>
+        {
+            sendText("text-0").AsTask(),
+            sendPatches(new byte[] { 1, 2, 3, 4 }).AsTask(),
+            sendText("text-1").AsTask(),
+            sendPatches(new byte[] { 9, 8, 7 }).AsTask()
+        };
+
+        await Task.WhenAll(sends);
+
+        var buffer = new byte[1024];
+
+        var result1 = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
+        await Assert.That(result1.MessageType).IsEqualTo(WebSocketMessageType.Text);
+        await Assert.That(result1.EndOfMessage).IsTrue();
+        await Assert.That(Encoding.UTF8.GetString(buffer, 0, result1.Count)).IsEqualTo("text-0");
+
+        var result2 = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
+        await Assert.That(result2.MessageType).IsEqualTo(WebSocketMessageType.Binary);
+        await Assert.That(result2.EndOfMessage).IsTrue();
+        await Assert.That(buffer[..result2.Count]).IsEquivalentTo(new byte[] { 1, 2, 3, 4 });
+
+        var result3 = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
+        await Assert.That(result3.MessageType).IsEqualTo(WebSocketMessageType.Text);
+        await Assert.That(result3.EndOfMessage).IsTrue();
+        await Assert.That(Encoding.UTF8.GetString(buffer, 0, result3.Count)).IsEqualTo("text-1");
+
+        var result4 = await pair.Client.ReceiveAsync(buffer, CancellationToken.None);
+        await Assert.That(result4.MessageType).IsEqualTo(WebSocketMessageType.Binary);
+        await Assert.That(result4.EndOfMessage).IsTrue();
+        await Assert.That(buffer[..result4.Count]).IsEquivalentTo(new byte[] { 9, 8, 7 });
     }
 }
 

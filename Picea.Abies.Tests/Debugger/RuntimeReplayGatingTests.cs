@@ -103,6 +103,7 @@ public sealed class RuntimeReplayGatingTests
                 "argument" => default(Unit),
                 "titleChanged" => null,
                 "navigationExecutor" => navigationExecutor,
+                "subscriptionFaulted" => null,
                 "initialUrl" => null,
                 "threadSafe" => false,
                 "replay" => true,

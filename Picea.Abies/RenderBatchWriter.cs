@@ -34,7 +34,7 @@ internal enum BinaryPatchType : int
 internal sealed class RenderBatchWriter
 {
     private const int HeaderSize = 8;
-    private const int PatchEntrySize = 16;
+    private const int PatchEntrySize = 20;
     private const int NullIndex = -1;
 
     private readonly ArrayBufferWriter<byte> _buffer = new(4096);
@@ -79,6 +79,7 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.AddRoot,
                     Intern(p.Element.Id),
                     Intern(Render.Html(p.Element)),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -86,26 +87,30 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.ReplaceChild,
                     Intern(p.OldElement.Id),
                     Intern(p.NewElement.Id),
-                    Intern(Render.Html(p.NewElement)));
+                    Intern(Render.Html(p.NewElement)),
+                    NullIndex);
                 break;
 
             case AddChild p:
                 WriteEntry(BinaryPatchType.AddChild,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Id),
-                    Intern(Render.Html(p.Child)));
+                    Intern(Render.Html(p.Child)),
+                    NullIndex);
                 break;
 
             case RemoveChild p:
                 WriteEntry(BinaryPatchType.RemoveChild,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Id),
+                    NullIndex,
                     NullIndex);
                 break;
 
             case ClearChildren p:
                 WriteEntry(BinaryPatchType.ClearChildren,
                     Intern(p.Parent.Id),
+                    NullIndex,
                     NullIndex,
                     NullIndex);
                 break;
@@ -114,6 +119,7 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.SetChildrenHtml,
                     Intern(p.Parent.Id),
                     Intern(Render.HtmlChildren(p.Children)),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -121,6 +127,7 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.AppendChildrenHtml,
                     Intern(p.Parent.Id),
                     Intern(Render.HtmlChildren(p.Children)),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -128,27 +135,31 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.MoveChild,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Id),
-                    p.BeforeId is not null ? Intern(p.BeforeId) : NullIndex);
+                    p.BeforeId is not null ? Intern(p.BeforeId) : NullIndex,
+                    NullIndex);
                 break;
 
             case UpdateAttribute p:
                 WriteEntry(BinaryPatchType.UpdateAttribute,
                     Intern(p.Element.Id),
                     Intern(p.Attribute.Name),
-                    Intern(p.Value));
+                    Intern(p.Value),
+                    NullIndex);
                 break;
 
             case AddAttribute p:
                 WriteEntry(BinaryPatchType.AddAttribute,
                     Intern(p.Element.Id),
                     Intern(p.Attribute.Name),
-                    Intern(p.Attribute.Value));
+                    Intern(p.Attribute.Value),
+                    NullIndex);
                 break;
 
             case RemoveAttribute p:
                 WriteEntry(BinaryPatchType.RemoveAttribute,
                     Intern(p.Element.Id),
                     Intern(p.Attribute.Name),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -156,26 +167,30 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.AddHandler,
                     Intern(p.Element.Id),
                     Intern(p.Handler.Name),
-                    Intern(p.Handler.CommandId));
+                    Intern(p.Handler.CommandId),
+                    NullIndex);
                 break;
 
             case RemoveHandler p:
                 WriteEntry(BinaryPatchType.RemoveHandler,
                     Intern(p.Element.Id),
                     Intern(p.Handler.Name),
-                    Intern(p.Handler.CommandId));
+                    Intern(p.Handler.CommandId),
+                    NullIndex);
                 break;
 
             case UpdateHandler p:
                 WriteEntry(BinaryPatchType.UpdateHandler,
                     Intern(p.Element.Id),
                     Intern(p.OldHandler.Name),
-                    Intern(p.NewHandler.CommandId));
+                    Intern(p.NewHandler.CommandId),
+                    NullIndex);
                 break;
 
             case UpdateText p:
                 WriteEntry(BinaryPatchType.UpdateText,
                     Intern(p.Parent.Id),
+                    Intern(p.Node.Id),
                     Intern(p.Text),
                     Intern(p.NewId));
                 break;
@@ -184,13 +199,15 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.AddText,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Value),
-                    Intern(p.Child.Id));
+                    Intern(p.Child.Id),
+                    NullIndex);
                 break;
 
             case RemoveText p:
                 WriteEntry(BinaryPatchType.RemoveText,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Id),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -198,13 +215,15 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.AddRaw,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Html),
-                    Intern(p.Child.Id));
+                    Intern(p.Child.Id),
+                    NullIndex);
                 break;
 
             case RemoveRaw p:
                 WriteEntry(BinaryPatchType.RemoveRaw,
                     Intern(p.Parent.Id),
                     Intern(p.Child.Id),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -212,20 +231,23 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.ReplaceRaw,
                     Intern(p.OldNode.Id),
                     Intern(p.NewNode.Id),
-                    Intern(p.NewNode.Html));
+                    Intern(p.NewNode.Html),
+                    NullIndex);
                 break;
 
             case UpdateRaw p:
                 WriteEntry(BinaryPatchType.UpdateRaw,
                     Intern(p.Node.Id),
                     Intern(p.Html),
-                    Intern(p.NewId));
+                    Intern(p.NewId),
+                    NullIndex);
                 break;
 
             case AddHeadElement p:
                 WriteEntry(BinaryPatchType.AddHeadElement,
                     Intern(p.Content.Key),
                     Intern(p.Content.ToHtml()),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -233,6 +255,7 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.UpdateHeadElement,
                     Intern(p.Content.Key),
                     Intern(p.Content.ToHtml()),
+                    NullIndex,
                     NullIndex);
                 break;
 
@@ -240,18 +263,20 @@ internal sealed class RenderBatchWriter
                 WriteEntry(BinaryPatchType.RemoveHeadElement,
                     Intern(p.Key),
                     NullIndex,
+                    NullIndex,
                     NullIndex);
                 break;
         }
     }
 
-    private void WriteEntry(BinaryPatchType type, int field1, int field2, int field3)
+    private void WriteEntry(BinaryPatchType type, int field1, int field2, int field3, int field4)
     {
         var span = _buffer.GetSpan(PatchEntrySize);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(span[..4], (int)type);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(span[4..8], field1);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(span[8..12], field2);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(span[12..16], field3);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(span[16..20], field4);
         _buffer.Advance(PatchEntrySize);
     }
 

@@ -17,6 +17,12 @@ public interface UserError
     /// <summary>A constrained type validation failed (email format, password length, etc.).</summary>
     record Validation(string Message) : UserError;
 
+    /// <summary>A user with this email already exists (prevents duplicate registration).</summary>
+    record DuplicateEmail : UserError;
+
+    /// <summary>A user with this username already exists (prevents duplicate registration).</summary>
+    record DuplicateUsername : UserError;
+
     /// <summary>The user has already been registered (duplicate Register command).</summary>
     record AlreadyRegistered : UserError;
 

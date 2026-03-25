@@ -24,11 +24,12 @@
 //       PatchCount:       int32 (4 bytes)
 //       StringTableOffset: int32 (4 bytes)
 //
-//     Patch Entries (16 bytes each):
+//     Patch Entries (20 bytes each):
 //       Type:  int32 (4 bytes) — BinaryPatchType enum value
 //       Field1: int32 (4 bytes) — string table index (-1 = null)
 //       Field2: int32 (4 bytes) — string table index (-1 = null)
 //       Field3: int32 (4 bytes) — string table index (-1 = null)
+//       Field4: int32 (4 bytes) — string table index (-1 = null)
 //
 //     String Table:
 //       LEB128 length prefix + UTF-8 bytes for each string

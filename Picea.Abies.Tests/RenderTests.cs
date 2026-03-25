@@ -75,7 +75,7 @@ public class RenderTests
 
         var html = Render.Html(node);
 
-        await Assert.That(html).IsEqualTo("""<div id="e1"><span id="e2">hello</span></div>""");
+        await Assert.That(html).IsEqualTo("""<div id="e1"><span id="e2"><!--abies-text:t1:start-->hello<!--abies-text:t1:end--></span></div>""");
     }
 
     [Test]
@@ -89,7 +89,7 @@ public class RenderTests
         var html = Render.Html(node);
 
         await Assert.That(html).IsEqualTo(
-            """<ul id="e1"><li id="li1">A</li><li id="li2">B</li><li id="li3">C</li></ul>""");
+            """<ul id="e1"><li id="li1"><!--abies-text:t1:start-->A<!--abies-text:t1:end--></li><li id="li2"><!--abies-text:t2:start-->B<!--abies-text:t2:end--></li><li id="li3"><!--abies-text:t3:start-->C<!--abies-text:t3:end--></li></ul>""");
     }
 
     // =========================================================================
@@ -103,7 +103,7 @@ public class RenderTests
 
         var html = Render.Html(node);
 
-        await Assert.That(html).IsEqualTo("""<p id="e1">Hello, World!</p>""");
+        await Assert.That(html).IsEqualTo("""<p id="e1"><!--abies-text:t1:start-->Hello, World!<!--abies-text:t1:end--></p>""");
     }
 
     [Test]
@@ -285,7 +285,7 @@ public class RenderTests
 
         var html = Render.Html(memo);
 
-        await Assert.That(html).IsEqualTo("""<div id="e1">cached</div>""");
+        await Assert.That(html).IsEqualTo("""<div id="e1"><!--abies-text:t1:start-->cached<!--abies-text:t1:end--></div>""");
     }
 
     [Test]
@@ -296,7 +296,7 @@ public class RenderTests
 
         var html = Render.Html(lazy);
 
-        await Assert.That(html).IsEqualTo("""<span id="e1">lazy</span>""");
+        await Assert.That(html).IsEqualTo("""<span id="e1"><!--abies-text:t1:start-->lazy<!--abies-text:t1:end--></span>""");
     }
 
     // =========================================================================
@@ -316,7 +316,7 @@ public class RenderTests
         var html = Render.HtmlChildren(children);
 
         await Assert.That(html).IsEqualTo(
-            """<li id="li1">A</li><li id="li2">B</li><li id="li3">C</li>""");
+            """<li id="li1"><!--abies-text:t1:start-->A<!--abies-text:t1:end--></li><li id="li2"><!--abies-text:t2:start-->B<!--abies-text:t2:end--></li><li id="li3"><!--abies-text:t3:start-->C<!--abies-text:t3:end--></li>""");
     }
 
     [Test]
@@ -338,6 +338,6 @@ public class RenderTests
 
         var html = Render.HtmlChildren(children);
 
-        await Assert.That(html).IsEqualTo("""<p id="e1">memoized</p>""");
+        await Assert.That(html).IsEqualTo("""<p id="e1"><!--abies-text:t1:start-->memoized<!--abies-text:t1:end--></p>""");
     }
 }
