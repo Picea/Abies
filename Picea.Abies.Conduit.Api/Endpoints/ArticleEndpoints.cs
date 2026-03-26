@@ -77,15 +77,14 @@ public static class ArticleEndpoints
         int offset = 0,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = JwtTokenService.GetUserId(context.User);
-        if (currentUserId is null)
+        if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
             return ApiErrors.Unauthorized();
 
         var paginationValidationError = ValidatePagination(limit, offset);
         if (paginationValidationError is not null)
             return paginationValidationError;
 
-        var result = await getFeed(currentUserId.Value, limit, offset, cancellationToken)
+        var result = await getFeed(currentUserId, limit, offset, cancellationToken)
             .ConfigureAwait(false);
 
         return Results.Ok(new MultipleArticlesResponse(
@@ -218,8 +217,7 @@ public static class ArticleEndpoints
                 context,
                 async ct =>
                 {
-                    var currentUserId = JwtTokenService.GetUserId(context.User);
-                    if (currentUserId is null)
+                    if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
                         return ApiErrors.Unauthorized();
 
                     var body = request.Article;
@@ -239,9 +237,8 @@ public static class ArticleEndpoints
                     var tags = new HashSet<Tag>();
                     if (body.TagList is { Length: > 0 })
                     {
-                        foreach (var tagStr in body.TagList)
+                        foreach (var tagResult in body.TagList.Select(Tag.Create))
                         {
-                            var tagResult = Tag.Create(tagStr);
                             if (tagResult.IsErr)
                                 return ApiErrors.FromArticleError(tagResult.Error);
                             tags.Add(tagResult.Value);
@@ -265,7 +262,7 @@ public static class ArticleEndpoints
                     var articleId = ArticleId.New();
                     var command = new ArticleCommand.CreateArticle(
                         articleId, titleResult.Value, descriptionResult.Value, bodyResult.Value,
-                        tags, new UserId(currentUserId.Value), Timestamp.Now());
+                        tags, new UserId(currentUserId), Timestamp.Now());
 
                     var result = await aggregateStore.HandleUniqueArticleCreation(
                         articleId.Value,
@@ -278,7 +275,7 @@ public static class ArticleEndpoints
                         {
                             var articleOption = await FindArticleWithShadowFallback(
                                 state.Slug.Value,
-                                currentUserId.Value,
+                                currentUserId,
                                 findArticleBySlug,
                                 aggregateStore,
                                 findUserById,
@@ -314,8 +311,7 @@ public static class ArticleEndpoints
                 context,
                 async ct =>
                 {
-                    var currentUserId = JwtTokenService.GetUserId(context.User);
-                    if (currentUserId is null)
+                    if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
                         return ApiErrors.Unauthorized();
 
                     var articleIdOption = await findArticleIdBySlug(slug, ct)
@@ -355,7 +351,7 @@ public static class ArticleEndpoints
 
                     var command = new ArticleCommand.UpdateArticle(
                         titleOption, descriptionOption, bodyOption,
-                        new UserId(currentUserId.Value), Timestamp.Now());
+                        new UserId(currentUserId), Timestamp.Now());
 
                     var result = await aggregateStore.HandleArticleCommand(
                         articleId, command, ct).ConfigureAwait(false);
@@ -365,7 +361,7 @@ public static class ArticleEndpoints
                         {
                             var articleOption = await FindArticleWithShadowFallback(
                                 state.Slug.Value,
-                                currentUserId.Value,
+                                currentUserId,
                                 findArticleBySlug,
                                 aggregateStore,
                                 findUserById,
@@ -407,8 +403,7 @@ public static class ArticleEndpoints
             context,
             async ct =>
             {
-                var currentUserId = JwtTokenService.GetUserId(context.User);
-                if (currentUserId is null)
+                if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
                     return ApiErrors.Unauthorized();
 
                 var articleIdOption = await findArticleIdBySlug(slug, ct)
@@ -416,7 +411,7 @@ public static class ArticleEndpoints
                 if (articleIdOption.IsNone)
                     return ApiErrors.NotFound("Article not found.");
 
-                var command = new ArticleCommand.DeleteArticle(new UserId(currentUserId.Value));
+                var command = new ArticleCommand.DeleteArticle(new UserId(currentUserId));
                 var result = await aggregateStore.HandleArticleCommand(
                     articleIdOption.Value, command, ct).ConfigureAwait(false);
 
@@ -440,8 +435,7 @@ public static class ArticleEndpoints
             context,
             async ct =>
             {
-                var currentUserId = JwtTokenService.GetUserId(context.User);
-                if (currentUserId is null)
+                if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
                     return ApiErrors.Unauthorized();
 
                 var articleIdOption = await findArticleIdBySlug(slug, ct)
@@ -449,7 +443,7 @@ public static class ArticleEndpoints
                 if (articleIdOption.IsNone)
                     return ApiErrors.NotFound("Article not found.");
 
-                var command = new ArticleCommand.FavoriteArticle(new UserId(currentUserId.Value));
+                var command = new ArticleCommand.FavoriteArticle(new UserId(currentUserId));
                 var result = await aggregateStore.HandleArticleCommand(
                     articleIdOption.Value, command, ct).ConfigureAwait(false);
 
@@ -458,7 +452,7 @@ public static class ArticleEndpoints
                     {
                         var articleOption = await findArticleBySlug(
                                 slug,
-                                Option<Guid>.Some(currentUserId.Value),
+                                Option<Guid>.Some(currentUserId),
                                 ct)
                             .ConfigureAwait(false);
 
@@ -485,8 +479,7 @@ public static class ArticleEndpoints
             context,
             async ct =>
             {
-                var currentUserId = JwtTokenService.GetUserId(context.User);
-                if (currentUserId is null)
+                if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
                     return ApiErrors.Unauthorized();
 
                 var articleIdOption = await findArticleIdBySlug(slug, ct)
@@ -494,7 +487,7 @@ public static class ArticleEndpoints
                 if (articleIdOption.IsNone)
                     return ApiErrors.NotFound("Article not found.");
 
-                var command = new ArticleCommand.UnfavoriteArticle(new UserId(currentUserId.Value));
+                var command = new ArticleCommand.UnfavoriteArticle(new UserId(currentUserId));
                 var result = await aggregateStore.HandleArticleCommand(
                     articleIdOption.Value, command, ct).ConfigureAwait(false);
 
@@ -503,7 +496,7 @@ public static class ArticleEndpoints
                     {
                         var articleOption = await findArticleBySlug(
                                 slug,
-                                Option<Guid>.Some(currentUserId.Value),
+                                Option<Guid>.Some(currentUserId),
                                 ct)
                             .ConfigureAwait(false);
 

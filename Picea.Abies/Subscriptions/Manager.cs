@@ -50,12 +50,16 @@ internal static class SubscriptionManager
 
         foreach (var source in desiredSources)
         {
-            if (current.Running.TryGetValue(source.Key, out var existing))
+            if (current.Running.TryGetValue(source.Key, out var existing)
+                && !existing.Task.IsCompleted)
             {
                 newRunning[source.Key] = existing;
             }
             else
             {
+                // Either no existing subscription, or the task completed/faulted — start fresh.
+                if (existing?.Task.IsCompleted == true)
+                    StopSubscription(existing);
                 var running = StartSubscription(source, dispatch, faultObserver);
                 newRunning[source.Key] = running;
             }
@@ -142,7 +146,7 @@ internal static class SubscriptionManager
                 {
                     faultObserver?.Invoke(new SubscriptionFault(source.Key, ex));
                 }
-                catch
+                catch (Exception)
                 {
                     // Observer callbacks should never crash subscription teardown.
                 }

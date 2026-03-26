@@ -260,9 +260,15 @@ public sealed class AggregateStore
             if (result.IsOk)
             {
                 if (emailChanging)
+                {
+                    _registeredEmails.TryRemove(NormalizeUniquenessKey(currentState.Email.Value), out _);
                     _registeredEmails.TryAdd(NormalizeUniquenessKey(newEmail!), 0);
+                }
                 if (usernameChanging)
+                {
+                    _registeredUsernames.TryRemove(NormalizeUniquenessKey(currentState.Username.Value), out _);
                     _registeredUsernames.TryAdd(NormalizeUniquenessKey(newUsername!), 0);
+                }
             }
 
             return result;
@@ -480,6 +486,7 @@ public sealed class AggregateStore
                 && !string.Equals(oldSlug, newSlug, StringComparison.OrdinalIgnoreCase))
             {
                 _recentArticlesBySlug.TryRemove(oldSlug, out _);
+                _registeredArticleSlugs.TryRemove(NormalizeUniquenessKey(oldSlug), out _);
             }
 
             _recentArticleSlugById[articleId] = newSlug;
@@ -507,6 +514,7 @@ public sealed class AggregateStore
         {
             _recentArticlesBySlug.TryRemove(removedSlug, out _);
             _recentArticleSlugVersions.TryRemove(removedSlug, out _);
+            _registeredArticleSlugs.TryRemove(NormalizeUniquenessKey(removedSlug), out _);
         }
     }
 
