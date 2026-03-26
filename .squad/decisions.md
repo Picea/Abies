@@ -332,3 +332,8 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **By:** JS Dev
 **What:** In template counter UIs (`abies-browser` and `abies-server`), render visible button labels as `+` and `-` while setting explicit ARIA labels (`Increase`/`Decrease`) for accessible button names.
 **Why:** User requested plain plus/minus buttons in templates, and accessibility should remain descriptive rather than symbol-only.
+
+### 2026-03-26T13:33:43Z: Always engage the squad for work in this repo
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot)
+**What:** All work in this repo routes through squad coordination. No direct commits, no solo agent work outside the team structure.
+**Why:** User directive — enforcing squad discipline and coordination for all contributions.
