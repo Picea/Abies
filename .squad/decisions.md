@@ -298,3 +298,37 @@ Reviewer checks for OTEL trace coverage, custom spans, error recording, cross-se
 
 ### Threat Model Review
 If a change adds an entry point, alters a trust boundary, or changes auth — the threat model must be updated. Missing updates are 🔴 Must Fix.
+
+---
+
+## Issue Prioritization
+
+### Open Issue Priority Label Rule (2026-03-25)
+All open issues in Picea/Abies must have exactly one priority label at all times.
+
+Current normalized distribution:
+- `priority:p0`: #127, #79, #81, #153, #158
+- `priority:p1`: #151, #154, #155, #156, #157, #161, #162, #163, #164, #83
+- `priority:p2`: #159, #165
+
+Verification performed on 2026-03-25: every open issue has exactly one priority label.
+
+### Issue #127 Hardening Baseline (2026-03-25)
+- WebSocket transport must reassemble fragmented inbound frames, enforce a max inbound payload size, and serialize outbound sends.
+- Conduit article list/feed must validate `limit`/`offset` and return `422` for invalid values.
+- Conduit create/update endpoints must not return null-success; when unavailable they return explicit `503` Conduit error responses.
+- Required regression coverage: `WebSocketTransportTests` and `ArticleEndpointTests`.
+
+---
+
+## Session Decisions
+
+### 2026-03-26T00:00:00Z: Template defaults enable debugger + OTEL with WASM host proxy
+**By:** Maurice Cornelius Gerardus Petrus Peters (via C# Dev)
+**What:** Browser templates (`abies-browser`, `abies-browser-empty`) now default OTEL on (`otel-verbosity=user`) and include an `AbiesApp.Host` project that serves the WASM AppBundle and maps `/otlp/v1/*` via `MapOtlpProxy()`. Server template defaults now map `MapOtlpProxy()` and configure OpenTelemetry tracing with `AddConsoleExporter()`.
+**Why:** Ensure generated templates are observable by default, support browser-to-backend tracing flow out of the box, and use console exporter as the default trace sink.
+
+### 2026-03-26T00:00:00Z: Template counter buttons use symbol labels with accessible names
+**By:** JS Dev
+**What:** In template counter UIs (`abies-browser` and `abies-server`), render visible button labels as `+` and `-` while setting explicit ARIA labels (`Increase`/`Decrease`) for accessible button names.
+**Why:** User requested plain plus/minus buttons in templates, and accessibility should remain descriptive rather than symbol-only.
