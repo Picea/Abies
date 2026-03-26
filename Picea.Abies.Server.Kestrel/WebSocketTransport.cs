@@ -232,7 +232,7 @@ public sealed class WebSocketTransport : IDisposable
         {
             await previousSend.ConfigureAwait(false);
         }
-        catch
+        catch (Exception)
         {
             // Previous send failure must not block later queued sends.
         }

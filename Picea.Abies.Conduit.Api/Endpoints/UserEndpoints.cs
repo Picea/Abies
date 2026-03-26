@@ -44,11 +44,10 @@ public static class UserEndpoints
         JwtTokenService jwtTokenService,
         CancellationToken cancellationToken)
     {
-        var userId = JwtTokenService.GetUserId(context.User);
-        if (userId is null)
+        if (JwtTokenService.GetUserId(context.User) is not { } userId)
             return ApiErrors.Unauthorized();
 
-        var userOption = await findUserById(userId.Value, cancellationToken).ConfigureAwait(false);
+        var userOption = await findUserById(userId, cancellationToken).ConfigureAwait(false);
 
         return userOption.Match(
             user =>
@@ -83,8 +82,7 @@ public static class UserEndpoints
             context,
             async ct =>
             {
-                var userId = JwtTokenService.GetUserId(context.User);
-                if (userId is null)
+                if (JwtTokenService.GetUserId(context.User) is not { } userId)
                     return ApiErrors.Unauthorized();
 
                 var body = request.User;
@@ -150,7 +148,7 @@ public static class UserEndpoints
                 {
                     var existingByEmail = await findUserByEmail(emailOption.Value.Value, ct)
                         .ConfigureAwait(false);
-                    if (existingByEmail.IsSome && existingByEmail.Value.Id != userId.Value)
+                    if (existingByEmail.IsSome && existingByEmail.Value.Id != userId)
                         return ApiErrors.FromUserError(new UserError.DuplicateEmail());
                 }
 
@@ -158,7 +156,7 @@ public static class UserEndpoints
                 {
                     var existingByUsername = await findUserByUsername(usernameOption.Value.Value, ct)
                         .ConfigureAwait(false);
-                    if (existingByUsername.IsSome && existingByUsername.Value.Id != userId.Value)
+                    if (existingByUsername.IsSome && existingByUsername.Value.Id != userId)
                         return ApiErrors.FromUserError(new UserError.DuplicateUsername());
                 }
                 // ────────────────────────────────────────────────────────────────────────
@@ -168,7 +166,7 @@ public static class UserEndpoints
                     bioOption, imageOption, Timestamp.Now());
 
                 var result = await aggregateStore.HandleUniqueUserUpdate(
-                    userId.Value,
+                    userId,
                     command,
                     newEmail: emailOption.IsSome ? emailOption.Value.Value : null,
                     newUsername: usernameOption.IsSome ? usernameOption.Value.Value : null,
@@ -178,7 +176,7 @@ public static class UserEndpoints
                     state =>
                     {
                         var token = jwtTokenService.GenerateToken(
-                            userId.Value, state.Username.Value, state.Email.Value);
+                            userId, state.Username.Value, state.Email.Value);
 
                         return Results.Ok(new UserResponse(new UserDto(
                             Email: state.Email.Value,

@@ -268,7 +268,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         {
             _subscriptionFaulted?.Invoke(fault);
         }
-        catch
+        catch (Exception)
         {
             // Fault observation must not interfere with runtime execution.
         }
