@@ -210,10 +210,20 @@ public sealed class RequestIdempotencyStore
     {
         var now = DateTimeOffset.UtcNow;
 
-        while (_responseOrder.TryPeek(out var scope)
-               && _responses.TryGetValue(scope, out var stored)
-               && stored.ExpiresAtUtc <= now)
+        while (_responseOrder.TryPeek(out var scope))
         {
+            if (!_responses.TryGetValue(scope, out var stored))
+            {
+                // Scope was removed elsewhere (e.g. expired inline in ExecuteAsync).
+                // Drain the stale queue entry so trimming can continue.
+                _responseOrder.TryDequeue(out _);
+                _locks.TryRemove(scope, out _);
+                continue;
+            }
+
+            if (stored.ExpiresAtUtc > now)
+                break;
+
             _responseOrder.TryDequeue(out _);
             _responses.TryRemove(scope, out _);
             _locks.TryRemove(scope, out _);
