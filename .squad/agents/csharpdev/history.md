@@ -35,3 +35,9 @@ Project-specific learnings from C#/.NET functional domain modeling work. Read th
 
 ## Conventions
 *None yet — propose team-wide conventions via `.squad/decisions/inbox/`.*
+
+## Learnings
+- 2026-03-26: WASM templates now ship with an additional `AbiesApp.Host` project that serves the WASM AppBundle and maps `MapOtlpProxy()` so browser OTel spans can flow to a backend endpoint by default.
+- 2026-03-26: Keep `AbiesApp.Host/**` excluded from the root WASM project (`Compile/Content/EmbeddedResource/None Remove`) to avoid top-level statement collisions during normal `dotnet build` of the generated WASM project.
+- 2026-03-26: Template defaults for browser tracing are now enabled via `<meta name="otel-verbosity" content="user">` in template `wwwroot/index.html` files.
+- 2026-03-26: Server-side template tracing defaults use OpenTelemetry with `.AddConsoleExporter()` and `MapOtlpProxy()` to provide immediate observable end-to-end trace flow.

@@ -15,6 +15,12 @@ This file captures project-specific learnings from the Reviewer's code reviews. 
 ## Deferred Items
 *None yet — items flagged but not blocking, to revisit later.*
 
+## Learnings
+- 2026-03-26: Template counter UI now uses plain '-' and '+' labels with aria labels ('Decrease'/'Increase'); tests were updated to query accessible names where appropriate.
+- 2026-03-26: Browser and browser-empty templates now include '.Host' projects with OTEL setup and OTLP proxy mapping; defaults tests assert host file presence plus 'app.MapOtlpProxy()' and '.AddConsoleExporter()'.
+- 2026-03-26: TUnit filtering in this repo should use tree-node filters (or full runs); FullyQualifiedName filters result in zero-test runs.
+- 2026-03-26: One template build-test failure observed was infrastructure-related (Nerdbank.GitVersioning CompareFiles EndOfStreamException), not a functional assertion failure in the reviewed requirements.
+
 ## Review Statistics
 | Date | Scope | Verdict | 🔴 | ⚠️ | 💡 | Files |
 |---|---|---|---|---|---|---|
