@@ -13,10 +13,9 @@
 // - ADR-002: Pure Functional Programming
 // =============================================================================
 
+using System.Collections.Concurrent;
 using Picea.Abies.DOM;
 using Praefixum;
-using System.Collections.Concurrent;
-using System.Threading;
 
 namespace Picea.Abies.Html;
 

@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
-using Picea.Abies.Conduit.Api.Authentication;
 
 namespace Picea.Abies.Conduit.Api.Infrastructure;
 
@@ -54,12 +53,12 @@ public sealed class RequestIdempotencyStore
                 }
                 else
                 {
-                if (!string.Equals(stored.Fingerprint, fingerprint, StringComparison.Ordinal))
-                    return ApiErrors.Validation(
-                        "Idempotency key cannot be reused with a different request payload.");
+                    if (!string.Equals(stored.Fingerprint, fingerprint, StringComparison.Ordinal))
+                        return ApiErrors.Validation(
+                            "Idempotency key cannot be reused with a different request payload.");
 
-                context.Response.Headers[ReplayHeaderName] = "true";
-                return stored.Response;
+                    context.Response.Headers[ReplayHeaderName] = "true";
+                    return stored.Response;
                 }
             }
 
