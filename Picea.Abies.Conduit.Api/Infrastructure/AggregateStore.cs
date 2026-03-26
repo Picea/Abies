@@ -212,67 +212,67 @@ public sealed class AggregateStore
         return runner.State;
     }
 
-        /// <summary>
-        /// Handles a profile update command with an atomic in-process uniqueness gate.
-        /// Only checks/reserves email and username that are actually changing (i.e., differ
-        /// from the current state). This prevents false conflicts when a user keeps their
-        /// existing email or username.
-        /// </summary>
-        public async ValueTask<Result<UserState, UserError>> HandleUniqueUserUpdate(
-            Guid userId,
-            UserCommand.UpdateProfile command,
-            string? newEmail,
-            string? newUsername,
-            CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Handles a profile update command with an atomic in-process uniqueness gate.
+    /// Only checks/reserves email and username that are actually changing (i.e., differ
+    /// from the current state). This prevents false conflicts when a user keeps their
+    /// existing email or username.
+    /// </summary>
+    public async ValueTask<Result<UserState, UserError>> HandleUniqueUserUpdate(
+        Guid userId,
+        UserCommand.UpdateProfile command,
+        string? newEmail,
+        string? newUsername,
+        CancellationToken cancellationToken = default)
+    {
+        // If neither email nor username is being changed, skip uniqueness gate entirely
+        if (newEmail is null && newUsername is null)
+            return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        // Get current user state to determine which values are actually changing
+        var currentState = await GetUserState(userId, cancellationToken).ConfigureAwait(false);
+
+        // Only enforce uniqueness on values that differ from the current ones
+        var emailChanging = newEmail is not null &&
+            NormalizeUniquenessKey(newEmail) != NormalizeUniquenessKey(currentState.Email.Value);
+        var usernameChanging = newUsername is not null &&
+            NormalizeUniquenessKey(newUsername) != NormalizeUniquenessKey(currentState.Username.Value);
+
+        if (!emailChanging && !usernameChanging)
+            return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        var lockKeys = new List<string>();
+        if (emailChanging)
+            lockKeys.Add($"user:email:{NormalizeUniquenessKey(newEmail!)}");
+        if (usernameChanging)
+            lockKeys.Add($"user:username:{NormalizeUniquenessKey(newUsername!)}");
+
+        await using var guard = await AcquireUniquenessLocks(lockKeys, cancellationToken).ConfigureAwait(false);
+
+        if (emailChanging && _registeredEmails.ContainsKey(NormalizeUniquenessKey(newEmail!)))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateEmail());
+
+        if (usernameChanging && _registeredUsernames.ContainsKey(NormalizeUniquenessKey(newUsername!)))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateUsername());
+
+        var result = await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        if (result.IsOk)
         {
-            // If neither email nor username is being changed, skip uniqueness gate entirely
-            if (newEmail is null && newUsername is null)
-                return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
-
-            // Get current user state to determine which values are actually changing
-            var currentState = await GetUserState(userId, cancellationToken).ConfigureAwait(false);
-
-            // Only enforce uniqueness on values that differ from the current ones
-            var emailChanging = newEmail is not null &&
-                NormalizeUniquenessKey(newEmail) != NormalizeUniquenessKey(currentState.Email.Value);
-            var usernameChanging = newUsername is not null &&
-                NormalizeUniquenessKey(newUsername) != NormalizeUniquenessKey(currentState.Username.Value);
-
-            if (!emailChanging && !usernameChanging)
-                return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
-
-            var lockKeys = new List<string>();
             if (emailChanging)
-                lockKeys.Add($"user:email:{NormalizeUniquenessKey(newEmail!)}");
-            if (usernameChanging)
-                lockKeys.Add($"user:username:{NormalizeUniquenessKey(newUsername!)}");
-
-            await using var guard = await AcquireUniquenessLocks(lockKeys, cancellationToken).ConfigureAwait(false);
-
-            if (emailChanging && _registeredEmails.ContainsKey(NormalizeUniquenessKey(newEmail!)))
-                return Result<UserState, UserError>.Err(new UserError.DuplicateEmail());
-
-            if (usernameChanging && _registeredUsernames.ContainsKey(NormalizeUniquenessKey(newUsername!)))
-                return Result<UserState, UserError>.Err(new UserError.DuplicateUsername());
-
-            var result = await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
-
-            if (result.IsOk)
             {
-                if (emailChanging)
-                {
-                    _registeredEmails.TryRemove(NormalizeUniquenessKey(currentState.Email.Value), out _);
-                    _registeredEmails.TryAdd(NormalizeUniquenessKey(newEmail!), 0);
-                }
-                if (usernameChanging)
-                {
-                    _registeredUsernames.TryRemove(NormalizeUniquenessKey(currentState.Username.Value), out _);
-                    _registeredUsernames.TryAdd(NormalizeUniquenessKey(newUsername!), 0);
-                }
+                _registeredEmails.TryRemove(NormalizeUniquenessKey(currentState.Email.Value), out _);
+                _registeredEmails.TryAdd(NormalizeUniquenessKey(newEmail!), 0);
             }
-
-            return result;
+            if (usernameChanging)
+            {
+                _registeredUsernames.TryRemove(NormalizeUniquenessKey(currentState.Username.Value), out _);
+                _registeredUsernames.TryAdd(NormalizeUniquenessKey(newUsername!), 0);
+            }
         }
+
+        return result;
+    }
 
     private async ValueTask<AggregateRunner<User, UserState, UserCommand, UserEvent, UserEffect, UserError, Unit>> GetOrLoadUserRunner(
         string streamId,

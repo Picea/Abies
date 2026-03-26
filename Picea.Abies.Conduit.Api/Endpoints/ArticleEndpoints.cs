@@ -178,211 +178,211 @@ public static class ArticleEndpoints
             Author: author));
     }
 
-        private static async Task<Option<ArticleQueryResult>> FindArticleWithShadowFallback(
-            string slug,
-            Guid currentUserId,
-            FindArticleBySlug findArticleBySlug,
-            AggregateStore aggregateStore,
-            FindUserById findUserById,
-            GetProfile getProfile,
-            CancellationToken cancellationToken)
-        {
-            var currentUserOption = Option<Guid>.Some(currentUserId);
+    private static async Task<Option<ArticleQueryResult>> FindArticleWithShadowFallback(
+        string slug,
+        Guid currentUserId,
+        FindArticleBySlug findArticleBySlug,
+        AggregateStore aggregateStore,
+        FindUserById findUserById,
+        GetProfile getProfile,
+        CancellationToken cancellationToken)
+    {
+        var currentUserOption = Option<Guid>.Some(currentUserId);
 
-            var articleOption = await findArticleBySlug(slug, currentUserOption, cancellationToken)
-                .ConfigureAwait(false);
-            if (articleOption.IsSome)
-                return articleOption;
+        var articleOption = await findArticleBySlug(slug, currentUserOption, cancellationToken)
+            .ConfigureAwait(false);
+        if (articleOption.IsSome)
+            return articleOption;
 
-            return await GetShadowArticle(
-                slug,
-                aggregateStore,
-                findUserById,
-                getProfile,
-                currentUserOption,
-                cancellationToken).ConfigureAwait(false);
-        }
+        return await GetShadowArticle(
+            slug,
+            aggregateStore,
+            findUserById,
+            getProfile,
+            currentUserOption,
+            cancellationToken).ConfigureAwait(false);
+    }
 
-        private static async Task<IResult> CreateArticle(
-            CreateArticleRequest request,
-            HttpContext context,
-            RequestIdempotencyStore idempotencyStore,
-            AggregateStore aggregateStore,
-            FindArticleBySlug findArticleBySlug,
-            FindUserById findUserById,
-            GetProfile getProfile,
-            CancellationToken cancellationToken)
-        {
-            return await idempotencyStore.ExecuteAsync(
-                context,
-                async ct =>
+    private static async Task<IResult> CreateArticle(
+        CreateArticleRequest request,
+        HttpContext context,
+        RequestIdempotencyStore idempotencyStore,
+        AggregateStore aggregateStore,
+        FindArticleBySlug findArticleBySlug,
+        FindUserById findUserById,
+        GetProfile getProfile,
+        CancellationToken cancellationToken)
+    {
+        return await idempotencyStore.ExecuteAsync(
+            context,
+            async ct =>
+            {
+                if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
+                    return ApiErrors.Unauthorized();
+
+                var body = request.Article;
+
+                var titleResult = Title.Create(body.Title);
+                if (titleResult.IsErr)
+                    return ApiErrors.FromArticleError(titleResult.Error);
+
+                var descriptionResult = Description.Create(body.Description);
+                if (descriptionResult.IsErr)
+                    return ApiErrors.FromArticleError(descriptionResult.Error);
+
+                var bodyResult = Body.Create(body.Body);
+                if (bodyResult.IsErr)
+                    return ApiErrors.FromArticleError(bodyResult.Error);
+
+                var tags = new HashSet<Tag>();
+                if (body.TagList is { Length: > 0 })
                 {
-                    if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
-                        return ApiErrors.Unauthorized();
+                    foreach (var tagResult in body.TagList.Select(Tag.Create))
+                    {
+                        if (tagResult.IsErr)
+                            return ApiErrors.FromArticleError(tagResult.Error);
+                        tags.Add(tagResult.Value);
+                    }
+                }
 
-                    var body = request.Article;
+                // ─── Pre-commit Uniqueness Checks (Phase 2, Task 1) ──────────────────────
+                // Generate slug from title to check for duplicates
+                var slug = Slug.FromTitle(titleResult.Value);
 
+                // Check if article with this slug already exists (prevents duplicate articles)
+                var existingArticle = await findArticleBySlug(
+                    slug.Value,
+                    Option<Guid>.None,
+                    ct).ConfigureAwait(false);
+
+                if (existingArticle.IsSome)
+                    return ApiErrors.FromArticleError(new ArticleError.DuplicateSlug());
+                // ────────────────────────────────────────────────────────────────────────
+
+                var articleId = ArticleId.New();
+                var command = new ArticleCommand.CreateArticle(
+                    articleId, titleResult.Value, descriptionResult.Value, bodyResult.Value,
+                    tags, new UserId(currentUserId), Timestamp.Now());
+
+                var result = await aggregateStore.HandleUniqueArticleCreation(
+                    articleId.Value,
+                    command,
+                    slug.Value,
+                    ct).ConfigureAwait(false);
+
+                return await result.Match(
+                    ok: async state =>
+                    {
+                        var articleOption = await FindArticleWithShadowFallback(
+                            state.Slug.Value,
+                            currentUserId,
+                            findArticleBySlug,
+                            aggregateStore,
+                            findUserById,
+                            getProfile,
+                            ct).ConfigureAwait(false);
+
+                        return articleOption.Match(
+                            some: article => Results.Created(
+                                $"/api/articles/{article.Slug}",
+                                new SingleArticleResponse(article.ToArticleDto())),
+                            none: () => ApiErrors.ServiceUnavailable(
+                                "Article was created but is temporarily unavailable. Please retry."));
+                    },
+                    err: error => Task.FromResult(ApiErrors.FromArticleError(error)));
+            },
+            payloadFingerprintInput: System.Text.Json.JsonSerializer.Serialize(request),
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IResult> UpdateArticle(
+        string slug,
+        UpdateArticleRequest request,
+        HttpContext context,
+        RequestIdempotencyStore idempotencyStore,
+        AggregateStore aggregateStore,
+        FindArticleBySlug findArticleBySlug,
+        FindArticleIdBySlug findArticleIdBySlug,
+        FindUserById findUserById,
+        GetProfile getProfile,
+        CancellationToken cancellationToken)
+    {
+        return await idempotencyStore.ExecuteAsync(
+            context,
+            async ct =>
+            {
+                if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
+                    return ApiErrors.Unauthorized();
+
+                var articleIdOption = await findArticleIdBySlug(slug, ct)
+                    .ConfigureAwait(false);
+                if (articleIdOption.IsNone)
+                    return ApiErrors.NotFound("Article not found.");
+
+                var articleId = articleIdOption.Value;
+                var body = request.Article;
+
+                var titleOption = Option<Title>.None;
+                if (body.Title is not null)
+                {
                     var titleResult = Title.Create(body.Title);
                     if (titleResult.IsErr)
                         return ApiErrors.FromArticleError(titleResult.Error);
+                    titleOption = Option<Title>.Some(titleResult.Value);
+                }
 
-                    var descriptionResult = Description.Create(body.Description);
-                    if (descriptionResult.IsErr)
-                        return ApiErrors.FromArticleError(descriptionResult.Error);
+                var descriptionOption = Option<Description>.None;
+                if (body.Description is not null)
+                {
+                    var descResult = Description.Create(body.Description);
+                    if (descResult.IsErr)
+                        return ApiErrors.FromArticleError(descResult.Error);
+                    descriptionOption = Option<Description>.Some(descResult.Value);
+                }
 
+                var bodyOption = Option<Body>.None;
+                if (body.Body is not null)
+                {
                     var bodyResult = Body.Create(body.Body);
                     if (bodyResult.IsErr)
                         return ApiErrors.FromArticleError(bodyResult.Error);
+                    bodyOption = Option<Body>.Some(bodyResult.Value);
+                }
 
-                    var tags = new HashSet<Tag>();
-                    if (body.TagList is { Length: > 0 })
+                var command = new ArticleCommand.UpdateArticle(
+                    titleOption, descriptionOption, bodyOption,
+                    new UserId(currentUserId), Timestamp.Now());
+
+                var result = await aggregateStore.HandleArticleCommand(
+                    articleId, command, ct).ConfigureAwait(false);
+
+                return await result.Match(
+                    ok: async state =>
                     {
-                        foreach (var tagResult in body.TagList.Select(Tag.Create))
-                        {
-                            if (tagResult.IsErr)
-                                return ApiErrors.FromArticleError(tagResult.Error);
-                            tags.Add(tagResult.Value);
-                        }
-                    }
+                        var articleOption = await FindArticleWithShadowFallback(
+                            state.Slug.Value,
+                            currentUserId,
+                            findArticleBySlug,
+                            aggregateStore,
+                            findUserById,
+                            getProfile,
+                            ct).ConfigureAwait(false);
 
-                    // ─── Pre-commit Uniqueness Checks (Phase 2, Task 1) ──────────────────────
-                    // Generate slug from title to check for duplicates
-                    var slug = Slug.FromTitle(titleResult.Value);
-
-                    // Check if article with this slug already exists (prevents duplicate articles)
-                    var existingArticle = await findArticleBySlug(
-                        slug.Value,
-                        Option<Guid>.None,
-                        ct).ConfigureAwait(false);
-
-                    if (existingArticle.IsSome)
-                        return ApiErrors.FromArticleError(new ArticleError.DuplicateSlug());
-                    // ────────────────────────────────────────────────────────────────────────
-
-                    var articleId = ArticleId.New();
-                    var command = new ArticleCommand.CreateArticle(
-                        articleId, titleResult.Value, descriptionResult.Value, bodyResult.Value,
-                        tags, new UserId(currentUserId), Timestamp.Now());
-
-                    var result = await aggregateStore.HandleUniqueArticleCreation(
-                        articleId.Value,
-                        command,
-                        slug.Value,
-                        ct).ConfigureAwait(false);
-
-                    return await result.Match(
-                        ok: async state =>
-                        {
-                            var articleOption = await FindArticleWithShadowFallback(
-                                state.Slug.Value,
-                                currentUserId,
-                                findArticleBySlug,
-                                aggregateStore,
-                                findUserById,
-                                getProfile,
-                                ct).ConfigureAwait(false);
-
-                            return articleOption.Match(
-                                some: article => Results.Created(
-                                    $"/api/articles/{article.Slug}",
-                                    new SingleArticleResponse(article.ToArticleDto())),
-                                none: () => ApiErrors.ServiceUnavailable(
-                                    "Article was created but is temporarily unavailable. Please retry."));
-                        },
-                        err: error => Task.FromResult(ApiErrors.FromArticleError(error)));
-                },
-                payloadFingerprintInput: System.Text.Json.JsonSerializer.Serialize(request),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-
-        private static async Task<IResult> UpdateArticle(
-            string slug,
-            UpdateArticleRequest request,
-            HttpContext context,
-            RequestIdempotencyStore idempotencyStore,
-            AggregateStore aggregateStore,
-            FindArticleBySlug findArticleBySlug,
-            FindArticleIdBySlug findArticleIdBySlug,
-            FindUserById findUserById,
-            GetProfile getProfile,
-            CancellationToken cancellationToken)
-        {
-            return await idempotencyStore.ExecuteAsync(
-                context,
-                async ct =>
-                {
-                    if (JwtTokenService.GetUserId(context.User) is not { } currentUserId)
-                        return ApiErrors.Unauthorized();
-
-                    var articleIdOption = await findArticleIdBySlug(slug, ct)
-                        .ConfigureAwait(false);
-                    if (articleIdOption.IsNone)
-                        return ApiErrors.NotFound("Article not found.");
-
-                    var articleId = articleIdOption.Value;
-                    var body = request.Article;
-
-                    var titleOption = Option<Title>.None;
-                    if (body.Title is not null)
-                    {
-                        var titleResult = Title.Create(body.Title);
-                        if (titleResult.IsErr)
-                            return ApiErrors.FromArticleError(titleResult.Error);
-                        titleOption = Option<Title>.Some(titleResult.Value);
-                    }
-
-                    var descriptionOption = Option<Description>.None;
-                    if (body.Description is not null)
-                    {
-                        var descResult = Description.Create(body.Description);
-                        if (descResult.IsErr)
-                            return ApiErrors.FromArticleError(descResult.Error);
-                        descriptionOption = Option<Description>.Some(descResult.Value);
-                    }
-
-                    var bodyOption = Option<Body>.None;
-                    if (body.Body is not null)
-                    {
-                        var bodyResult = Body.Create(body.Body);
-                        if (bodyResult.IsErr)
-                            return ApiErrors.FromArticleError(bodyResult.Error);
-                        bodyOption = Option<Body>.Some(bodyResult.Value);
-                    }
-
-                    var command = new ArticleCommand.UpdateArticle(
-                        titleOption, descriptionOption, bodyOption,
-                        new UserId(currentUserId), Timestamp.Now());
-
-                    var result = await aggregateStore.HandleArticleCommand(
-                        articleId, command, ct).ConfigureAwait(false);
-
-                    return await result.Match(
-                        ok: async state =>
-                        {
-                            var articleOption = await FindArticleWithShadowFallback(
-                                state.Slug.Value,
-                                currentUserId,
-                                findArticleBySlug,
-                                aggregateStore,
-                                findUserById,
-                                getProfile,
-                                ct).ConfigureAwait(false);
-
-                            return articleOption.Match(
-                                some: article => Results.Ok(
-                                    new SingleArticleResponse(article.ToArticleDto())),
-                                none: () => ApiErrors.ServiceUnavailable(
-                                    "Article was updated but is temporarily unavailable. Please retry."));
-                        },
-                        err: error => Task.FromResult(ApiErrors.FromArticleError(error)));
-                },
-                payloadFingerprintInput: System.Text.Json.JsonSerializer.Serialize(request),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
+                        return articleOption.Match(
+                            some: article => Results.Ok(
+                                new SingleArticleResponse(article.ToArticleDto())),
+                            none: () => ApiErrors.ServiceUnavailable(
+                                "Article was updated but is temporarily unavailable. Please retry."));
+                    },
+                    err: error => Task.FromResult(ApiErrors.FromArticleError(error)));
+            },
+            payloadFingerprintInput: System.Text.Json.JsonSerializer.Serialize(request),
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
 
     private static IResult? ValidatePagination(int limit, int offset)
     {
-        if (limit < MinLimit || limit > MaxLimit)
+        if (limit is < MinLimit or > MaxLimit)
             return ApiErrors.Validation($"limit must be between {MinLimit} and {MaxLimit}.");
 
         if (offset < 0)
