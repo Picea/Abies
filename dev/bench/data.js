@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774513068758,
+  "lastUpdate": 1774513070682,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13794,6 +13794,42 @@ window.BENCHMARK_DATA = {
             "value": 36.8748254776001,
             "unit": "MB",
             "extra": "mean: 36.9MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "6a3d15d25b356998a1beaa5a38160cfea3495612",
+          "message": "style: fix formatter issues from PR review updates\n\n- normalize whitespace/indentation in Conduit API endpoint and infrastructure files\n- apply final newline/import ordering fixes in touched test/core files\n- keep changes scoped to files touched by review-comment follow-up",
+          "timestamp": "2026-03-26T09:07:06+01:00",
+          "tree_id": "d11e78a0dfb59c4d6df82b374df84671cacfd27f",
+          "url": "https://github.com/Picea/Abies/commit/6a3d15d25b356998a1beaa5a38160cfea3495612"
+        },
+        "date": 1774513070272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.12678527832031,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.20541954040527,
+            "unit": "MB",
+            "extra": "mean: 37.2MB, samples: 1"
           }
         ]
       }
