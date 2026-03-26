@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774388437782,
+  "lastUpdate": 1774513068758,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12850,6 +12850,84 @@ window.BENCHMARK_DATA = {
             "value": 58.1,
             "unit": "ms",
             "extra": "mean: 56.9ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "6a3d15d25b356998a1beaa5a38160cfea3495612",
+          "message": "style: fix formatter issues from PR review updates\n\n- normalize whitespace/indentation in Conduit API endpoint and infrastructure files\n- apply final newline/import ordering fixes in touched test/core files\n- keep changes scoped to files touched by review-comment follow-up",
+          "timestamp": "2026-03-26T09:07:06+01:00",
+          "tree_id": "d11e78a0dfb59c4d6df82b374df84671cacfd27f",
+          "url": "https://github.com/Picea/Abies/commit/6a3d15d25b356998a1beaa5a38160cfea3495612"
+        },
+        "date": 1774513068379,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 352.9,
+            "unit": "ms",
+            "extra": "mean: 354.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 359.6,
+            "unit": "ms",
+            "extra": "mean: 361.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 221.7,
+            "unit": "ms",
+            "extra": "mean: 220.6ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 31.1,
+            "unit": "ms",
+            "extra": "mean: 31.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 90.2,
+            "unit": "ms",
+            "extra": "mean: 89.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 55.2,
+            "unit": "ms",
+            "extra": "mean: 56.2ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3358.9,
+            "unit": "ms",
+            "extra": "mean: 3353.6ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 392.2,
+            "unit": "ms",
+            "extra": "mean: 393.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 60.8,
+            "unit": "ms",
+            "extra": "mean: 60.5ms, samples: 15"
           }
         ]
       }
