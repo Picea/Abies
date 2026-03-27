@@ -29,6 +29,10 @@
 // =============================================================================
 
 using System.Diagnostics;
+using System.Text.Json;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Server;
 
@@ -107,20 +111,24 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
     /// message directly into the MVU loop.
     /// </summary>
     private const string _urlChangedCommandId = "__url_changed__";
+    private const string _debuggerCommandId = "__debugger_command__";
 
     private readonly Runtime<TProgram, TModel, TArgument> _runtime;
     private readonly ReceiveEvent _receiveEvent;
     private readonly SendPatches _sendPatches;
+    private readonly SendText? _sendText;
     private bool _disposed;
 
     private Session(
         Runtime<TProgram, TModel, TArgument> runtime,
         ReceiveEvent receiveEvent,
-        SendPatches sendPatches)
+        SendPatches sendPatches,
+        SendText? sendText)
     {
         _runtime = runtime;
         _receiveEvent = receiveEvent;
         _sendPatches = sendPatches;
+        _sendText = sendText;
     }
 
     /// <summary>
@@ -191,9 +199,16 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             initialUrl: initialUrl,
             threadSafe: true);
 
+#if DEBUG
+        if (DebuggerConfiguration.Default.Enabled)
+        {
+            runtime.UseDebugger();
+        }
+#endif
+
         activity?.SetStatus(ActivityStatusCode.Ok);
 
-        return new Session<TProgram, TModel, TArgument>(runtime, receiveEvent, sendPatches);
+        return new Session<TProgram, TModel, TArgument>(runtime, receiveEvent, sendPatches, sendText);
     }
 
     /// <summary>
@@ -228,6 +243,14 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
                 break;
 
             var evt = domEvent.Value;
+            using var eventActivity = StartReceiveEventActivity(evt);
+
+            eventActivity?.SetTag("abies.event.commandId", evt.CommandId);
+            eventActivity?.SetTag("abies.event.name", evt.EventName);
+            if (evt.TraceParent is { Length: > 0 } traceParent)
+                eventActivity?.SetTag("abies.event.traceparent", traceParent);
+            if (evt.TraceState is { Length: > 0 } traceState)
+                eventActivity?.SetTag("abies.event.tracestate", traceState);
 
             // Handle URL change events from client-side navigation.
             // These bypass the HandlerRegistry — there is no DOM element handler
@@ -237,6 +260,14 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             {
                 var url = Navigation.ParseUrl(evt.EventData);
                 await _runtime.Dispatch(new UrlChanged(url), cancellationToken);
+                eventActivity?.SetStatus(ActivityStatusCode.Ok);
+                continue;
+            }
+
+            if (evt.CommandId == _debuggerCommandId)
+            {
+                await HandleDebuggerCommand(evt, cancellationToken);
+                eventActivity?.SetStatus(ActivityStatusCode.Ok);
                 continue;
             }
 
@@ -247,9 +278,146 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
             // Dispatch into the MVU loop
             await _runtime.Dispatch(message, cancellationToken);
+            eventActivity?.SetStatus(ActivityStatusCode.Ok);
         }
 
         activity?.SetStatus(ActivityStatusCode.Ok);
+    }
+
+    private async Task HandleDebuggerCommand(DomEvent evt, CancellationToken cancellationToken)
+    {
+        if (!TryParseDebuggerPayload(evt.EventData, out var requestId, out var commandType, out var entryId))
+        {
+            if (_sendText is not null)
+            {
+                await _sendText("{\"type\":\"debugger-response\",\"requestId\":\"unknown\",\"status\":\"error\",\"cursorPosition\":-1,\"timelineSize\":0}");
+            }
+
+            return;
+        }
+
+#if DEBUG
+        var debugger = _runtime.Debugger;
+        if (debugger is not null)
+        {
+            var response = ExecuteDebuggerCommand(debugger, commandType, entryId);
+            if (_sendText is not null)
+            {
+                var json = $"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"status\":\"{response.Status}\",\"cursorPosition\":{response.CursorPosition},\"timelineSize\":{response.TimelineSize}}}";
+                await _sendText(json);
+            }
+
+            return;
+        }
+#endif
+
+        if (_sendText is not null)
+        {
+            var unavailable = $"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"status\":\"unavailable\",\"cursorPosition\":-1,\"timelineSize\":0}}";
+            await _sendText(unavailable);
+        }
+    }
+
+    private static bool TryParseDebuggerPayload(string payload, out string requestId, out string commandType, out int entryId)
+    {
+        requestId = "unknown";
+        commandType = string.Empty;
+        entryId = -1;
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+
+            if (root.TryGetProperty("requestId", out var requestIdProperty) && requestIdProperty.ValueKind == JsonValueKind.String)
+            {
+                requestId = requestIdProperty.GetString() ?? "unknown";
+            }
+
+            if (root.TryGetProperty("type", out var typeProperty) && typeProperty.ValueKind == JsonValueKind.String)
+            {
+                commandType = typeProperty.GetString() ?? string.Empty;
+            }
+
+            if (root.TryGetProperty("entryId", out var entryIdProperty) && entryIdProperty.TryGetInt32(out var parsed))
+            {
+                entryId = parsed;
+            }
+
+            return !string.IsNullOrWhiteSpace(commandType);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+#if DEBUG
+    private static (string Status, int CursorPosition, int TimelineSize) ExecuteDebuggerCommand(
+        DebuggerMachine debugger,
+        string commandType,
+        int entryId)
+    {
+        switch (commandType)
+        {
+            case "jump-to-entry":
+                if (entryId >= 0)
+                {
+                    debugger.Jump(entryId);
+                }
+                break;
+            case "step-forward":
+                debugger.StepForward();
+                break;
+            case "step-back":
+                debugger.StepBackward();
+                break;
+            case "play":
+                debugger.Play();
+                break;
+            case "pause":
+                debugger.Pause();
+                break;
+            case "clear-timeline":
+                debugger.ClearTimeline();
+                break;
+        }
+
+        var status = debugger.CurrentState switch
+        {
+            DebuggerState.Recording => "recording",
+            DebuggerState.Paused => "paused",
+            DebuggerState.PlayingForward => "playing",
+            _ => "paused"
+        };
+
+        return (status, debugger.CursorPosition, debugger.Timeline.Count);
+    }
+#endif
+
+    private static Activity? StartReceiveEventActivity(DomEvent domEvent)
+    {
+        if (TryParseParentContext(domEvent, out var parentContext))
+        {
+            var propagatedActivity = _activitySource.StartActivity(
+                "Picea.Abies.Server.Session.ReceiveEvent",
+                ActivityKind.Server,
+                parentContext);
+            propagatedActivity?.SetTag("abies.trace.propagated", true);
+            return propagatedActivity;
+        }
+
+        return _activitySource.StartActivity(
+            "Picea.Abies.Server.Session.ReceiveEvent",
+            ActivityKind.Server);
+    }
+
+    private static bool TryParseParentContext(DomEvent domEvent, out ActivityContext parentContext)
+    {
+        parentContext = default;
+
+        return domEvent.TraceParent is { Length: > 0 } traceParent
+            && ActivityContext.TryParse(traceParent, domEvent.TraceState, out parentContext);
     }
 
     /// <inheritdoc/>

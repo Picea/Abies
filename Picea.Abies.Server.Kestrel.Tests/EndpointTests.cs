@@ -310,6 +310,22 @@ public class EndpointTests
     }
 
     [Test]
+    public async Task StaticFiles_ServesDebuggerModuleFromServerAssetPath()
+    {
+        await using var host = await AbiesTestHost.Create(new RenderMode.Static());
+        using var client = host.CreateClient();
+
+        var response = await client.GetAsync("/_abies/debugger.js");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType)
+            .IsEqualTo("text/javascript");
+
+        var content = await response.Content.ReadAsStringAsync();
+        await Assert.That(content).Contains("mountDebugger");
+    }
+
+    [Test]
     public async Task StaticFiles_ServesWithCorrectContentType()
     {
         await using var host = await AbiesTestHost.Create(new RenderMode.Static());

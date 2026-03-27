@@ -175,6 +175,239 @@ let dispatchDomEvent = null;
 // OpenTelemetry module — loaded dynamically when configured
 // =============================================================================
 let otelModule = null;
+let debuggerModuleUrl = null;
+let debuggerFallbackInteractionsAttached = false;
+
+// =============================================================================
+// Debugger UI startup configuration
+// =============================================================================
+// Runtime defaults to debugger enabled in Debug builds. This resolver adds a
+// JS-level opt-out that can be controlled without changing app code:
+//   1. URL query:  ?abies-debugger=off|false|0
+//   2. Global:     window.__abiesDebugger = { enabled: false }
+//                  window.__abiesDebugger = false
+//   3. Meta tag:   <meta name="abies-debugger" content="off">
+// Any unrecognized value falls back to default enabled.
+
+function parseToggleValue(value) {
+    if (typeof value === "boolean") return value;
+    if (value == null) return null;
+
+    const normalized = String(value).trim().toLowerCase();
+    if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes" || normalized === "enabled") {
+        return true;
+    }
+
+    if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no" || normalized === "disabled") {
+        return false;
+    }
+
+    return null;
+}
+
+function resolveDebuggerEnabled() {
+    // 1. URL query params
+    try {
+        const url = new URL(window.location.href);
+        const queryValue =
+            url.searchParams.get("abies-debugger") ??
+            url.searchParams.get("debugger");
+        const parsed = parseToggleValue(queryValue);
+        if (parsed !== null) {
+            return parsed;
+        }
+    } catch {
+        // Ignore URL parsing issues
+    }
+
+    // 2. Global config object/flag
+    if (typeof globalThis !== "undefined" && "__abiesDebugger" in globalThis) {
+        const config = globalThis.__abiesDebugger;
+        if (typeof config === "boolean") {
+            return config;
+        }
+
+        if (config && typeof config === "object" && "enabled" in config) {
+            const parsed = parseToggleValue(config.enabled);
+            if (parsed !== null) {
+                return parsed;
+            }
+        }
+    }
+
+    // 3. Meta tag
+    const meta =
+        document.querySelector('meta[name="abies-debugger"]') ||
+        document.querySelector('meta[name="debugger"]');
+    if (meta && typeof meta.content === "string") {
+        const parsed = parseToggleValue(meta.content);
+        if (parsed !== null) {
+            return parsed;
+        }
+    }
+
+    // Default: enabled
+    return true;
+}
+
+function initializeDebuggerDefaults() {
+    const enabled = resolveDebuggerEnabled();
+
+    const existing = globalThis.__abiesDebugger;
+    if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+        existing.enabled = enabled;
+    } else {
+        globalThis.__abiesDebugger = { enabled };
+    }
+}
+
+function ensureDebuggerSurfaceVisible() {
+    if (!resolveDebuggerEnabled()) {
+        return;
+    }
+
+    const mountPoint = document.getElementById("abies-debugger-timeline");
+    if (!mountPoint || mountPoint.children.length > 0) {
+        return;
+    }
+
+    if (mountPoint.querySelector('[data-abies-debugger-shell="1"]')) {
+        return;
+    }
+
+    const shell = document.createElement("button");
+    shell.type = "button";
+    shell.setAttribute("data-abies-debugger-shell", "1");
+    shell.setAttribute("data-abies-debugger-intent", "toggle-panel");
+    shell.style.position = "fixed";
+    shell.style.right = "12px";
+    shell.style.bottom = "12px";
+    shell.style.zIndex = "2147483647";
+    shell.style.background = "#101828";
+    shell.style.color = "#F2F4F7";
+    shell.style.border = "1px solid rgba(242,244,247,0.24)";
+    shell.style.borderRadius = "8px";
+    shell.style.padding = "8px 10px";
+    shell.style.font = "12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    shell.style.cursor = "pointer";
+    shell.textContent = "Abies Debugger";
+    mountPoint.appendChild(shell);
+}
+
+function ensureDebuggerFallbackPanel(mountPoint) {
+    if (!mountPoint) {
+        return null;
+    }
+
+    let panel = mountPoint.querySelector('[data-abies-debugger-panel="1"]');
+    if (panel) {
+        return panel;
+    }
+
+    panel = document.createElement("div");
+    panel.setAttribute("data-abies-debugger-panel", "1");
+    panel.style.position = "fixed";
+    panel.style.right = "12px";
+    panel.style.bottom = "52px";
+    panel.style.zIndex = "2147483647";
+    panel.style.background = "#101828";
+    panel.style.color = "#F2F4F7";
+    panel.style.border = "1px solid rgba(242,244,247,0.24)";
+    panel.style.borderRadius = "8px";
+    panel.style.padding = "10px 12px";
+    panel.style.maxWidth = "280px";
+    panel.style.font = "12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    panel.style.display = "none";
+    panel.textContent = "Debugger panel opened. Use the runtime controls when available.";
+    mountPoint.appendChild(panel);
+    return panel;
+}
+
+function toggleDebuggerFallbackPanel(mountPoint) {
+    const panel = ensureDebuggerFallbackPanel(mountPoint);
+    if (!panel) {
+        return;
+    }
+
+    const isExpanded = mountPoint.getAttribute("data-abies-debugger-expanded") === "1";
+    const nextExpanded = !isExpanded;
+    mountPoint.setAttribute("data-abies-debugger-expanded", nextExpanded ? "1" : "0");
+    panel.style.display = nextExpanded ? "block" : "none";
+}
+
+function initializeDebuggerFallbackInteractions() {
+    if (debuggerFallbackInteractionsAttached) {
+        return;
+    }
+
+    debuggerFallbackInteractionsAttached = true;
+
+    document.addEventListener("click", event => {
+        const target = event.target instanceof Element
+            ? event.target.closest('[data-abies-debugger-intent="toggle-panel"]')
+            : null;
+
+        if (!target) {
+            return;
+        }
+
+        const mountPoint = document.getElementById("abies-debugger-timeline");
+        if (!mountPoint) {
+            return;
+        }
+
+        // If debugger.js adapter wiring is active, let it own panel toggling.
+        if (
+            mountPoint.dataset?.abiesDebuggerAdapterInitialized === "1" ||
+            mountPoint.querySelector('[data-abies-debugger-status="1"]')
+        ) {
+            return;
+        }
+
+        toggleDebuggerFallbackPanel(mountPoint);
+    });
+}
+
+async function initializeDebugger() {
+    if (!resolveDebuggerEnabled()) {
+        return;
+    }
+
+    try {
+        const moduleUrl = new URL("./debugger.js", import.meta.url);
+        debuggerModuleUrl = moduleUrl.href;
+        const mod = await import(/* webpackIgnore: true */ debuggerModuleUrl);
+        if (mod && typeof mod.mountDebugger === "function") {
+            mod.mountDebugger();
+        }
+    } catch {
+        // Keep this best-effort: debugger.js is absent in Release builds.
+    } finally {
+        ensureDebuggerSurfaceVisible();
+    }
+}
+
+function remountDebuggerAfterRootPatch() {
+    if (!resolveDebuggerEnabled()) {
+        return;
+    }
+
+    const moduleUrl = debuggerModuleUrl ?? new URL("./debugger.js", import.meta.url).href;
+
+    Promise.resolve()
+        .then(() => import(/* webpackIgnore: true */ moduleUrl))
+        .then(mod => {
+            if (mod && typeof mod.mountDebugger === "function") {
+                mod.mountDebugger();
+            }
+        })
+        .catch(() => {
+            // Keep this best-effort: debugger.js is absent in Release builds.
+        })
+        .finally(() => {
+            ensureDebuggerSurfaceVisible();
+        });
+}
 
 /**
  * Resolves OTel verbosity from multiple configuration sources.
@@ -529,7 +762,12 @@ function applyPatch(type, f1, f2, f3, f4) {
         case OP_ADD_ROOT: {
             // f1 = rootId (unused — we render directly into document.body)
             // f2 = html
+            const existingDebuggerMount = document.getElementById("abies-debugger-timeline");
             document.body.innerHTML = f2;
+            if (existingDebuggerMount && !document.getElementById("abies-debugger-timeline")) {
+                document.body.appendChild(existingDebuggerMount);
+            }
+            remountDebuggerAfterRootPatch();
             break;
         }
 
@@ -1013,6 +1251,11 @@ export function getCurrentUrl() {
  * Called once during initialization.
  */
 export function setupEventDelegation() {
+    // Resolve debugger default/opt-out config early so debugger.js can read it.
+    initializeDebuggerDefaults();
+    initializeDebuggerFallbackInteractions();
+    Promise.resolve().then(() => initializeDebugger());
+
     COMMON_EVENT_TYPES.forEach(registerEventType);
 
     // Initialize OpenTelemetry if configured (non-blocking)

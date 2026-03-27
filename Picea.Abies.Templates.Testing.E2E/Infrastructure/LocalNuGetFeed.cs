@@ -57,7 +57,7 @@ public sealed class LocalNuGetFeed : IAsyncInitializer, IAsyncDisposable
         {
             var projectPath = Path.Join(solutionDir, project, $"{project}.csproj");
             Console.WriteLine($"[LocalNuGetFeed] Packing {project}...");
-            await DotNetCli.PackAsync(projectPath, FeedDir);
+            await DotNetCli.PackAsync(projectPath, FeedDir, "Debug");
         }
 
         // Discover the NBGV version from one of the generated .nupkg filenames.

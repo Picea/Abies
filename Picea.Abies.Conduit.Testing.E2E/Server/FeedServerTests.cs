@@ -82,6 +82,23 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
             new() { Timeout = 15000 });
     }
 
+    [Test]
+    public async Task ServerRuntime_DebuggerBadgeClick_ShouldTogglePanel()
+    {
+        await _page.GotoAsync("/");
+        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
+        await shell.ClickAsync();
+        await Expect(panel).ToBeVisibleAsync(new() { Timeout = 10000 });
+
+        await shell.ClickAsync();
+        await Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10000 });
+    }
+
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
 }

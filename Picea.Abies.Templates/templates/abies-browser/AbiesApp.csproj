@@ -21,4 +21,11 @@
     <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="AbiesApp.Host/**/*.cs" />
+    <Content Remove="AbiesApp.Host/**" />
+    <EmbeddedResource Remove="AbiesApp.Host/**" />
+    <None Remove="AbiesApp.Host/**" />
+  </ItemGroup>
+
 </Project>

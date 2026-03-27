@@ -89,6 +89,47 @@ public class ServerTemplateTests : IAsyncDisposable
         await Assert.That(content.Length).IsGreaterThan(0);
     }
 
+    [Test]
+    public async Task InitialLoad_DefaultDebuggerStartup_ImportsAndMountsDebugger()
+    {
+        var debuggerResponseTask = _page.WaitForResponseAsync(response =>
+            response.Url.Contains("/_abies/debugger.js", StringComparison.Ordinal)
+            && response.Status == 200);
+
+        await _page.GotoAsync("/");
+
+        var debuggerResponse = await debuggerResponseTask;
+        await Assert.That(debuggerResponse.Ok).IsTrue();
+
+        await Assertions.Expect(_page.Locator("#abies-debugger-timeline"))
+            .ToHaveAttributeAsync(
+                "data-abies-debugger-adapter-initialized",
+                "1",
+                new() { Timeout = 15_000 });
+
+        var debuggerEnabled = await _page.EvaluateAsync<bool>(
+            "() => Boolean(window.__abiesDebugger && window.__abiesDebugger.enabled)");
+
+        await Assert.That(debuggerEnabled).IsTrue();
+    }
+
+    [Test]
+    public async Task InitialLoad_DebuggerBadgeClick_TogglesDebuggerPanel()
+    {
+        await _page.GotoAsync("/");
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        await Assertions.Expect(shell).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
     // ─── Interactivity Tests ──────────────────────────────────────────
 
     [Test]
@@ -97,7 +138,7 @@ public class ServerTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForServerInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Increase" }).ClickAsync();
 
         await Assertions.Expect(_page.Locator(".count"))
             .ToHaveTextAsync("1", new() { Timeout = 5_000 });
@@ -109,7 +150,7 @@ public class ServerTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForServerInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "\u2212" }).ClickAsync();
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Decrease" }).ClickAsync();
 
         await Assertions.Expect(_page.Locator(".count"))
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });
@@ -121,7 +162,7 @@ public class ServerTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForServerInteractivity(_page);
 
-        var increment = _page.GetByRole(AriaRole.Button, new() { Name = "+" });
+        var increment = _page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
         await increment.ClickAsync();
         await increment.ClickAsync();
         await increment.ClickAsync();
