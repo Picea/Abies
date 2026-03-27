@@ -175,4 +175,28 @@ public class ServerTemplateTests : IAsyncDisposable
         await Assertions.Expect(_page.Locator(".count"))
             .ToHaveTextAsync("0", new() { Timeout = 5_000 });
     }
+
+    [Test]
+    public async Task DebuggerStepBackAndForward_ReplaysVisibleCounterState()
+    {
+        await _page.GotoAsync("/");
+        await InteractivityHelpers.WaitForServerInteractivity(_page);
+
+        var increment = _page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
+        await increment.ClickAsync();
+        await increment.ClickAsync();
+        await Assertions.Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        await shell.ClickAsync();
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Back" }).ClickAsync();
+        await Assertions.Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("1", new() { Timeout = 5_000 });
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Step" }).ClickAsync();
+        await Assertions.Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+    }
 }

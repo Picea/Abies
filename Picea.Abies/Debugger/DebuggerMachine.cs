@@ -30,9 +30,11 @@ public sealed record TimestampedEntry(
 public sealed class DebuggerMachine
 {
     private readonly RingBuffer<TimestampedEntry> _timeline;
+    private readonly RingBuffer<object?> _timelineModelSnapshots;
     private DebuggerState _currentState;
     private int _cursorPosition;
     private string _currentModelSnapshotPreview;
+    private object? _currentModelSnapshot;
     private bool _isCapturing;
     private long _lastTimestamp;
     private int _sideEffectCount;
@@ -40,9 +42,11 @@ public sealed class DebuggerMachine
     public DebuggerMachine(int capacity = 10000)
     {
         _timeline = new RingBuffer<TimestampedEntry>(capacity);
+        _timelineModelSnapshots = new RingBuffer<object?>(capacity);
         _currentState = DebuggerState.Recording;
         _cursorPosition = -1;
         _currentModelSnapshotPreview = string.Empty;
+        _currentModelSnapshot = null;
         _isCapturing = true;
         _lastTimestamp = 0;
         _sideEffectCount = 0;
@@ -52,12 +56,13 @@ public sealed class DebuggerMachine
     public IReadOnlyList<TimestampedEntry> Timeline => _timeline.Entries;
     public int CursorPosition => _cursorPosition;
     public string CurrentModelSnapshotPreview => _currentModelSnapshotPreview;
+    public object? CurrentModelSnapshot => _currentModelSnapshot;
     public int SideEffectCount => _sideEffectCount;
 
     /// <summary>
     /// Captures a message and transitions from Recording.
     /// </summary>
-    public void CaptureMessage(object message, string modelSnapshotPreview)
+    public void CaptureMessage(object message, string modelSnapshotPreview, object? modelSnapshot = null)
     {
         if (!_isCapturing)
             return;
@@ -77,12 +82,14 @@ public sealed class DebuggerMachine
         );
 
         _timeline.Add(entry);
+        _timelineModelSnapshots.Add(modelSnapshot);
 
         // Update cursor if we're in Recording state
         if (_currentState == DebuggerState.Recording)
         {
             _cursorPosition = (int)(_timeline.NextSequence - 1);
             _currentModelSnapshotPreview = modelSnapshotPreview;
+            _currentModelSnapshot = modelSnapshot;
         }
 
         _lastTimestamp = timestamp;
@@ -104,6 +111,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[targetCursor];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
+            _currentModelSnapshot = _timelineModelSnapshots[targetCursor];
         }
 
         _currentState = DebuggerState.Paused;
@@ -133,6 +141,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[_cursorPosition];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
+            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition];
         }
 
         // Check if we've reached the end after step
@@ -155,6 +164,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[_cursorPosition];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
+            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition];
         }
     }
 
@@ -180,8 +190,10 @@ public sealed class DebuggerMachine
     public void ClearTimeline()
     {
         _timeline.Clear();
+        _timelineModelSnapshots.Clear();
         _cursorPosition = -1;
         _currentModelSnapshotPreview = string.Empty;
+        _currentModelSnapshot = null;
         _currentState = DebuggerState.Recording;
         _sideEffectCount = 0;
     }
