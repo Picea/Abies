@@ -25,3 +25,8 @@ Project-specific learnings from documentation work. Read this before every sessi
 ## Cross-References
 
 *None yet — links between docs that have been established.*
+
+## Learnings
+
+- 2026-03-27: Scribe sessions should merge all files under `.squad/decisions/inbox/` into `.squad/decisions.md` in one pass, then delete merged inbox files to keep decision state canonical.
+- 2026-03-27: Orchestration and session logs should use the same ISO 8601 UTC timestamp to make agent activity correlation deterministic.

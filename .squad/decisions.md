@@ -110,6 +110,9 @@ All integration and E2E tests start the SUT via `DistributedApplicationTestingBu
 ### E2E Tests for User Journeys
 Always write E2E tests for user journeys. TUnit + Playwright via TUnit.Playwright.
 
+### Playwright MCP for Browsing
+When browsing, inspecting web pages, or running browser diagnostics — always prefer the **Playwright MCP server** over curl, wget, or raw HTTP clients. Playwright gives you a real browser context: JavaScript execution, rendered DOM, network interception, cookies, auth flows, screenshots. Use it for debugging UI issues, verifying rendered output, inspecting Aspire dashboard traces, and validating DAST targets. Fall back to curl/fetch only if Playwright MCP is unavailable.
+
 ---
 
 ## Aspire & Observability
@@ -201,7 +204,7 @@ All branches follow this convention:
 `<type>/<issue-number>-<short-slug>`
 
 Examples:
-- `feat/42-token-versioning`
+- `feature/42-token-versioning`
 - `fix/87-empty-slug-crash`
 - `docs/91-api-reference-update`
 - `security/103-xss-sanitization`
@@ -337,3 +340,43 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot)
 **What:** All work in this repo routes through squad coordination. No direct commits, no solo agent work outside the team structure.
 **Why:** User directive — enforcing squad discipline and coordination for all contributions.
+
+### 2026-03-27T07:38:22Z: Browser OTLP export uses protobuf exporter with pinned CDN versions
+**By:** JS Dev
+**What:** Browser OTLP export now uses the protobuf trace exporter path, pins CDN API/SDK/exporter package versions to a known-compatible set, performs explicit export-on-span-end in the browser path, and excludes `/otlp/v1/traces` from self-instrumentation.
+**Why:** Live Conduit WASM verification showed the backend proxy path accepted OTLP posts (HTTP 200) while browser-side export behavior required a browser-focused exporter strategy and deterministic CDN versioning to restore reliable end-to-end browser trace export.
+
+### 2026-03-27T08:03:52Z: Browser OTEL sets explicit service.name to avoid unknown_service
+**By:** Maurice Cornelius Gerardus Petrus Peters (via JS Dev)
+**What:** Browser OTEL runtime now sets a stable resource `service.name` and allows per-app override via `<meta name="otel-service-name" content="...">` (with legacy `abies-otel-service-name` compatibility), preventing browser traces from falling back to `unknown_service`.
+**Why:** Aspire trace grouping becomes reliable and identifiable for UI-originated spans when service naming is explicit instead of implicit.
+
+### 2026-03-27T00:00:00Z: InteractiveServer debugger asset is package-owned under /_abies/
+**By:** C# Dev
+**What:** InteractiveServer and InteractiveAuto bootstrap resolve debugger startup from sibling `/_abies/debugger.js` shipped by `Picea.Abies.Server.Kestrel`, and that debug-only asset is excluded from Release builds.
+**Why:** Relative import to `/debugger.js` depended on host-app static files that were not guaranteed, so default-on debugger startup could silently no-op even when bootstrap executed.
+
+### 2026-03-27T00:00:00Z: Explicit debug UI default in WASM startups and browser templates
+**By:** Maurice Cornelius Gerardus Petrus Peters (via C# Dev)
+**What:** WASM startup files and browser templates set debugger defaults explicitly using `DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = !debugUiOptOut })` with `ABIES_DEBUG_UI=0` opt-out.
+**Why:** Ensures normal Debug starts keep debug UI enabled by default while preserving a clear opt-out path.
+
+### 2026-03-27T00:00:00Z: Runtime debugger UI defaults on with JS-level opt-out
+**By:** JS Dev
+**What:** Browser and server runtime startup resolve debugger enablement from query/meta/global config, default to enabled, and expose unified state via `window.__abiesDebugger.enabled`; startup import remains best-effort when assets are absent.
+**Why:** Keeps debugger visible by default in Debug startup while preserving a non-breaking opt-out path.
+
+### 2026-03-27T00:00:00Z: WASM input handling must not depend on debugger bootstrap success
+**By:** JS Dev
+**What:** Browser runtime startup now wires event handler registry immediately after runtime start and before optional debugger bootstrap. Debugger bootstrap is treated as best-effort in Debug builds.
+**Why:** If debugger bootstrap throws first, UI can render but never process input events when handler wiring is skipped.
+
+### 2026-03-27T00:00:00Z: Browser OTEL export uses protobuf and explicit export-on-end fallback
+**By:** JS Dev
+**What:** Browser OTEL export uses `@opentelemetry/exporter-trace-otlp-proto`, pins compatible CDN package versions, exports spans explicitly on end in the browser path, and skips self-instrumentation for `/otlp/v1/traces`.
+**Why:** Live Conduit WASM validation showed JSON export produced HTTP 415 and CDN ESM runtime behavior required deterministic browser-focused exporter handling.
+
+### 2026-03-27T00:00:00Z: InteractiveServer debugger startup requires runtime browser coverage
+**By:** Lead
+**What:** Add browser-executed verification that waits for successful `/_abies/debugger.js`, then asserts `#abies-debugger-timeline[data-abies-debugger-adapter-initialized="1"]` and `window.__abiesDebugger.enabled === true`.
+**Why:** Static asset checks alone do not prove dynamic sibling import path execution in `abies-server.js`.
