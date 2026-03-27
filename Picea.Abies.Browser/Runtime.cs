@@ -259,6 +259,7 @@ public static class Runtime
             {
                 await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
                 runtime.UseDebugger();
+                Interop.Debugger = runtime.Debugger;
                 Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage);
                 Interop.MountDebugger();
             }
