@@ -158,6 +158,7 @@ public static partial class Interop
 
 #if DEBUG
     internal static DebuggerMachine? Debugger { get; set; }
+    internal static Func<object?, bool>? ApplyDebuggerSnapshot { get; set; }
 
     /// <summary>
     /// Mounts the debugger UI by injecting a mount point div into the document.
@@ -203,6 +204,12 @@ public static partial class Interop
             };
 
             var response = DebuggerRuntimeBridge.Execute(message, Debugger);
+
+            if (ApplyDebuggerSnapshot is not null)
+            {
+                _ = ApplyDebuggerSnapshot(Debugger.CurrentModelSnapshot);
+            }
+
             return $"{response.Status}{separator}{response.CursorPosition}{separator}{response.TimelineSize}";
         }
         catch

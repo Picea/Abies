@@ -301,6 +301,7 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         if (debugger is not null)
         {
             var response = ExecuteDebuggerCommand(debugger, commandType, entryId);
+            _ = _runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
             if (_sendText is not null)
             {
                 var json = $"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"status\":\"{response.Status}\",\"cursorPosition\":{response.CursorPosition},\"timelineSize\":{response.TimelineSize}}}";
