@@ -8,12 +8,15 @@
   -->
   <Target Name="CopyAbiesJsFromNuGet"
           BeforeTargets="Build;ComputeFilesToPublish"
-          Inputs="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies.js;$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies-otel.js"
-          Outputs="$(ProjectDir)wwwroot/abies.js;$(ProjectDir)wwwroot/abies-otel.js">
+        Inputs="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies.js;$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies-otel.js;$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/debugger.js"
+        Outputs="$(ProjectDir)wwwroot/abies.js;$(ProjectDir)wwwroot/abies-otel.js;$(ProjectDir)wwwroot/debugger.js">
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies.js"
           DestinationFolder="$(ProjectDir)wwwroot/" />
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/abies-otel.js"
           DestinationFolder="$(ProjectDir)wwwroot/" />
+      <Copy SourceFiles="$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/debugger.js"
+        DestinationFolder="$(ProjectDir)wwwroot/"
+        Condition="Exists('$(MSBuildThisFileDirectory)../contentFiles/any/any/wwwroot/debugger.js')" />
   </Target>
 
 </Project>

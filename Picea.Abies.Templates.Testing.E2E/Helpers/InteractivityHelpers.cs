@@ -111,7 +111,7 @@ public static class InteractivityHelpers
                     else
                     {
                         // Browser template has no Reset — click decrement to return to "0"
-                        await ClickFirstAvailableButton(page, "\u2212", "Decrease");
+                        await ClickFirstAvailableButton(page, "-", "Decrease");
                         await Assertions.Expect(CounterValueLocator(page))
                             .ToHaveTextAsync("0", new() { Timeout = 5_000 });
                     }

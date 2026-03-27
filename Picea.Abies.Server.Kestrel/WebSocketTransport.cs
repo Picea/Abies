@@ -13,7 +13,10 @@
 //
 // Event protocol (Client → Server):
 //   WebSocket text frames containing JSON:
-//     { "commandId": "...", "eventName": "...", "eventData": "..." }
+//     { "commandId": "...", "eventName": "...", "eventData": "...",
+//       "traceparent": "...", "tracestate": "..." }
+//   The trace fields are optional and preserve backward compatibility with
+//   existing clients that only send the original three fields.
 //
 // The transport is stateless — it adapts a single WebSocket connection.
 // One WebSocketTransport per Session per client connection.
@@ -184,12 +187,18 @@ public sealed class WebSocketTransport : IDisposable
 
             activity?.SetTag("abies.event.commandId", domEvent.CommandId);
             activity?.SetTag("abies.event.name", domEvent.EventName);
+            if (!string.IsNullOrWhiteSpace(domEvent.TraceParent))
+                activity?.SetTag("abies.event.traceparent", domEvent.TraceParent);
+            if (!string.IsNullOrWhiteSpace(domEvent.TraceState))
+                activity?.SetTag("abies.event.tracestate", domEvent.TraceState);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
             return new DomEvent(
                 domEvent.CommandId ?? string.Empty,
                 domEvent.EventName ?? string.Empty,
-                domEvent.EventData ?? string.Empty);
+                domEvent.EventData ?? string.Empty,
+                domEvent.TraceParent,
+                domEvent.TraceState);
         }
         catch (WebSocketException) when (cancellationToken.IsCancellationRequested)
         {
@@ -279,5 +288,7 @@ public sealed class WebSocketTransport : IDisposable
     private sealed record DomEventDto(
         [property: JsonPropertyName("commandId")] string? CommandId,
         [property: JsonPropertyName("eventName")] string? EventName,
-        [property: JsonPropertyName("eventData")] string? EventData);
+        [property: JsonPropertyName("eventData")] string? EventData,
+        [property: JsonPropertyName("traceparent")] string? TraceParent,
+        [property: JsonPropertyName("tracestate")] string? TraceState);
 }

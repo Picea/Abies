@@ -243,20 +243,31 @@ public static class Runtime
             navigationExecutor: NavigationExecutor,
             initialUrl: initialUrl);
 
-#if DEBUG
-        if (DebuggerConfiguration.Default.Enabled)
-        {
-            await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
-            runtime.UseDebugger();
-            Interop.MountDebugger();
-        }
-#endif
-
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
         // The [JSExport] DispatchDomEvent method is static, so it needs a static
         // reference to the runtime's handler registry. Safe because WASM is
-        // single-threaded — one runtime, one registry per browser tab.
+        // single-threaded - one runtime, one registry per browser tab.
+        //
+        // This wiring must happen before any optional debugger bootstrap so that
+        // the UI stays interactive even if debugger startup fails.
         Interop.Handlers = runtime.Handlers;
+
+#if DEBUG
+        if (DebuggerConfiguration.Default.Enabled)
+        {
+            try
+            {
+                await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
+                runtime.UseDebugger();
+                Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage);
+                Interop.MountDebugger();
+            }
+            catch
+            {
+                // Debugger bootstrap is optional and must never block normal app input.
+            }
+        }
+#endif
 
         // Step 10: Keep the WASM process alive indefinitely.
         // Main must not return or the .NET runtime is torn down.

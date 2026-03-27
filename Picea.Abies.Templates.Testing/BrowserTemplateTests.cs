@@ -39,6 +39,10 @@ public sealed class BrowserTemplateTests(BrowserTemplateFixture fixture)
         var heading = page.Locator("h1");
         await Assertions.Expect(heading).ToBeVisibleAsync();
         await Assertions.Expect(heading).ToContainTextAsync("Abies Counter");
+
+        var buttons = page.Locator(".counter .btn");
+        await Assertions.Expect(buttons.Nth(0)).ToHaveTextAsync("-");
+        await Assertions.Expect(buttons.Nth(1)).ToHaveTextAsync("+");
     }
 
     [Test]

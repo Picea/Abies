@@ -106,6 +106,23 @@ public class BrowserTemplateTests : IAsyncDisposable
         await Assert.That(content.Length).IsGreaterThan(0);
     }
 
+    [Test]
+    public async Task InitialLoad_DebuggerBadgeClick_TogglesDebuggerPanel()
+    {
+        await _page.GotoAsync("/");
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        await Assertions.Expect(shell).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
     // ─── Interactivity Tests ──────────────────────────────────────────
 
     [Test]
@@ -126,7 +143,7 @@ public class BrowserTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForWasmInteractivity(_page);
 
-        await ClickFirstAvailableButton(_page, "\u2212", "Decrease");
+        await ClickFirstAvailableButton(_page, "-", "Decrease");
 
         await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });

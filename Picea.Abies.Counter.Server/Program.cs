@@ -27,6 +27,10 @@ var app = builder.Build();
 app.UseWebSockets();
 app.UseStaticFiles();
 app.UseAbiesStaticFiles();
+
+// OTEL: Proxy browser traces to server's OTLP endpoint
+app.MapOtlpProxy();
+
 app.MapAbies<CounterProgram, CounterModel, Unit>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer());

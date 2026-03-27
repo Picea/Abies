@@ -67,10 +67,10 @@ public static class DotNetCli
     /// <summary>
     /// Packs a project into a NuGet package.
     /// </summary>
-    public static async Task PackAsync(string projectPath, string outputDir)
+    public static async Task PackAsync(string projectPath, string outputDir, string configuration = "Release")
     {
         var (exitCode, stdOut, stdErr) = await RunAsync(
-            $"pack \"{projectPath}\" -c Release -o \"{outputDir}\" --no-restore",
+            $"pack \"{projectPath}\" -c {configuration} -o \"{outputDir}\" --no-restore",
             timeoutSeconds: 120);
 
         if (exitCode != 0)
