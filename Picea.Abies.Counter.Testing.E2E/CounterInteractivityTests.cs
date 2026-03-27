@@ -121,6 +121,35 @@ public sealed class CounterWasmInteractivityTests : IAsyncInitializer, IAsyncDis
             .ToHaveTextAsync("3", new() { Timeout = 5_000 });
     }
 
+    [Test]
+    public async Task DebuggerBackAndStep_ShouldRewindAndReplayCounterModel()
+    {
+        await _page.GotoAsync("/");
+        await InteractivityHelpers.WaitForWasmInteractivity(_page);
+
+        var incrementButton = _page.GetByRole(AriaRole.Button, new() { Name = "+" });
+        await incrementButton.ClickAsync();
+        await incrementButton.ClickAsync();
+
+        await Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Abies Debugger" }).ClickAsync();
+
+        var backButton = _page.GetByRole(AriaRole.Button, new() { Name = "Back" });
+        await Assertions.Expect(backButton).ToBeEnabledAsync();
+        await backButton.ClickAsync();
+
+        await Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("1", new() { Timeout = 5_000 });
+
+        var stepButton = _page.GetByRole(AriaRole.Button, new() { Name = "Step" });
+        await stepButton.ClickAsync();
+
+        await Expect(_page.Locator(".count"))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+    }
+
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
 }

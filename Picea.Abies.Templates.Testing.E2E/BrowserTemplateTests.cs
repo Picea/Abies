@@ -148,4 +148,27 @@ public class BrowserTemplateTests : IAsyncDisposable
         await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });
     }
+
+    [Test]
+    public async Task DebuggerStepBackAndForward_ReplaysVisibleCounterState()
+    {
+        await _page.GotoAsync("/");
+        await InteractivityHelpers.WaitForWasmInteractivity(_page);
+
+        await ClickFirstAvailableButton(_page, "+", "Increase");
+        await ClickFirstAvailableButton(_page, "+", "Increase");
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        await shell.ClickAsync();
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Back" }).ClickAsync();
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("1", new() { Timeout = 5_000 });
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Step" }).ClickAsync();
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+    }
 }

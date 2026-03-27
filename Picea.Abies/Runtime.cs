@@ -256,7 +256,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private void DispatchFromSubscription(Message message) =>
         _ = _replay
             ? default
-            : _core.Dispatch(message);
+            : Dispatch(message);
 
     private void ObserveSubscriptionFault(SubscriptionFault fault)
     {
@@ -404,19 +404,36 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         return runtime;
     }
 
-    public ValueTask<Result<Unit, PipelineError>> Dispatch(
+    public async ValueTask<Result<Unit, PipelineError>> Dispatch(
         Message message, CancellationToken cancellationToken = default)
     {
+        var dispatchResult = await _core.Dispatch(message, cancellationToken);
+
 #if DEBUG
-        // Capture message to the runtime-owned debugger instance if enabled.
-        if (_debuggerMachine != null)
+        // Capture debugger snapshots after transition so timeline entries represent
+        // user-visible post-message state.
+        if (_debuggerMachine != null && dispatchResult.IsOk)
         {
             var modelSnapshot = GenerateModelSnapshot(_core.State);
-            _debuggerMachine.CaptureMessage(message, modelSnapshot);
+            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
         }
 #endif
-        return _core.Dispatch(message, cancellationToken);
+
+        return dispatchResult;
     }
+
+#if DEBUG
+    public bool TryApplyDebuggerSnapshot(object? snapshot)
+    {
+        if (snapshot is not TModel typedSnapshot)
+        {
+            return false;
+        }
+
+        Render(typedSnapshot);
+        return true;
+    }
+#endif
 
 #if DEBUG
     private string GenerateModelSnapshot(TModel model)
