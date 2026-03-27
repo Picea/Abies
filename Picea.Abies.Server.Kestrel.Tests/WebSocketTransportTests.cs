@@ -69,6 +69,27 @@ public class WebSocketTransportTests
     }
 
     [Test]
+    public async Task ReceiveEvent_OptionalTraceparentProperty_DoesNotBreakDeserialization()
+    {
+        await using var pair = WebSocketPair.Create();
+        using var transport = new WebSocketTransport(pair.Server);
+        var receiveEvent = transport.CreateReceiveEvent();
+
+        var json = """{ "commandId":"cmd-trace","eventName":"click","eventData":"{}","traceparent":"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"}""";
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await pair.Client.SendAsync(
+            bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var domEvent = await receiveEvent(CancellationToken.None);
+
+        await Assert.That(domEvent).IsNotNull();
+        var e = domEvent!.Value;
+        await Assert.That(e.CommandId).IsEqualTo("cmd-trace");
+        await Assert.That(e.EventName).IsEqualTo("click");
+        await Assert.That(e.EventData).IsEqualTo("{}");
+    }
+
+    [Test]
     public async Task ReceiveEvent_CloseFrame_ReturnsNull()
     {
         await using var pair = WebSocketPair.Create();
@@ -101,6 +122,26 @@ public class WebSocketTransportTests
         var e = domEvent!.Value; // Safe: IsNotNull asserted above
         await Assert.That(e.CommandId).IsEqualTo("cmd-2");
         await Assert.That(e.EventData).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task ReceiveEvent_ParsesTraceContextFields()
+    {
+        await using var pair = WebSocketPair.Create();
+        using var transport = new WebSocketTransport(pair.Server);
+        var receiveEvent = transport.CreateReceiveEvent();
+
+        var json = """{ "commandId":"cmd-trace","eventName":"click","eventData":"{}","traceparent":"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01","tracestate":"vendor=value"}""";
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await pair.Client.SendAsync(
+            bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var domEvent = await receiveEvent(CancellationToken.None);
+
+        await Assert.That(domEvent).IsNotNull();
+        var e = domEvent!.Value;
+        await Assert.That(e.TraceParent).IsEqualTo("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+        await Assert.That(e.TraceState).IsEqualTo("vendor=value");
     }
 
     [Test]

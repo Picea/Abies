@@ -29,7 +29,8 @@
 //
 // Event Protocol (Client → Server):
 //   JSON text frames:
-//     { "commandId": "...", "eventName": "...", "eventData": "..." }
+//     { "commandId": "...", "eventName": "...", "eventData": "...",
+//       "traceparent": "..."?, "tracestate": "..."? }
 //
 // Navigation Protocol:
 //   URL changes are sent as events with a reserved commandId:
@@ -86,6 +87,7 @@
     // Reserved command ID for URL change events
     // =========================================================================
     const URL_CHANGED_COMMAND_ID = "__url_changed__";
+    const DEBUGGER_COMMAND_ID = "__debugger_command__";
 
     // =========================================================================
     // Event types to register for delegation
@@ -135,6 +137,223 @@
     // UTF-8 text decoder (reused)
     // =========================================================================
     const utf8Decoder = new TextDecoder("utf-8");
+
+    // =========================================================================
+    // OpenTelemetry — optional event trace context propagation
+    // =========================================================================
+    let otelModule = null;
+    let debuggerModuleUrl = null;
+
+    // =========================================================================
+    // Debugger UI startup configuration
+    // =========================================================================
+    // Default behavior: enabled in startup flow. Opt-out options:
+    //   - URL query: ?abies-debugger=off|false|0
+    //   - Global: window.__abiesDebugger = { enabled: false } or false
+    //   - Meta: <meta name="abies-debugger" content="off">
+    // Unknown values are ignored and fall back to enabled.
+
+    function parseToggleValue(value) {
+        if (typeof value === "boolean") return value;
+        if (value == null) return null;
+
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes" || normalized === "enabled") {
+            return true;
+        }
+
+        if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no" || normalized === "disabled") {
+            return false;
+        }
+
+        return null;
+    }
+
+    function resolveDebuggerEnabled() {
+        try {
+            const url = new URL(window.location.href);
+            const queryValue =
+                url.searchParams.get("abies-debugger") ??
+                url.searchParams.get("debugger");
+            const parsed = parseToggleValue(queryValue);
+            if (parsed !== null) {
+                return parsed;
+            }
+        } catch {
+            // Ignore URL parsing issues
+        }
+
+        if (typeof globalThis !== "undefined" && "__abiesDebugger" in globalThis) {
+            const config = globalThis.__abiesDebugger;
+            if (typeof config === "boolean") {
+                return config;
+            }
+
+            if (config && typeof config === "object" && "enabled" in config) {
+                const parsed = parseToggleValue(config.enabled);
+                if (parsed !== null) {
+                    return parsed;
+                }
+            }
+        }
+
+        const meta =
+            document.querySelector('meta[name="abies-debugger"]') ||
+            document.querySelector('meta[name="debugger"]');
+        if (meta && typeof meta.content === "string") {
+            const parsed = parseToggleValue(meta.content);
+            if (parsed !== null) {
+                return parsed;
+            }
+        }
+
+        return true;
+    }
+
+    function initializeDebuggerDefaults() {
+        const enabled = resolveDebuggerEnabled();
+
+        const existing = globalThis.__abiesDebugger;
+        if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+            existing.enabled = enabled;
+        } else {
+            globalThis.__abiesDebugger = { enabled };
+        }
+
+        return enabled;
+    }
+
+    function ensureDebuggerSurfaceVisible() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        const mountPoint = document.getElementById("abies-debugger-timeline");
+        if (!mountPoint || mountPoint.children.length > 0) {
+            return;
+        }
+
+        if (mountPoint.querySelector('[data-abies-debugger-shell="1"]')) {
+            return;
+        }
+
+        const shell = document.createElement("button");
+        shell.type = "button";
+        shell.setAttribute("data-abies-debugger-shell", "1");
+        shell.setAttribute("data-abies-debugger-intent", "toggle-panel");
+        shell.style.position = "fixed";
+        shell.style.right = "12px";
+        shell.style.bottom = "12px";
+        shell.style.zIndex = "2147483647";
+        shell.style.background = "#101828";
+        shell.style.color = "#F2F4F7";
+        shell.style.border = "1px solid rgba(242,244,247,0.24)";
+        shell.style.borderRadius = "8px";
+        shell.style.padding = "8px 10px";
+        shell.style.font = "12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        shell.style.cursor = "pointer";
+        shell.textContent = "Abies Debugger";
+        mountPoint.appendChild(shell);
+    }
+
+    async function initializeDebugger(scriptTag) {
+        if (!initializeDebuggerDefaults()) {
+            return;
+        }
+
+        try {
+            // Keep this best-effort: debugger.js is debug-only and absent in Release.
+            // Resolve it as a sibling to abies-server.js so the server package owns
+            // both assets under the same guaranteed /_abies/ static path.
+            const moduleUrl = new URL("./debugger.js", scriptTag.src || window.location.href);
+            debuggerModuleUrl = moduleUrl.href;
+            const mod = await import(/* webpackIgnore: true */ debuggerModuleUrl);
+            if (mod && typeof mod.mountDebugger === "function") {
+                mod.mountDebugger();
+            }
+
+            if (mod && typeof mod.setRuntimeBridge === "function") {
+                mod.setRuntimeBridge((type, entryId) => sendDebuggerCommand(type, entryId));
+            }
+        } catch {
+            // No-op when debugger bundle is missing (Release or non-browser host).
+        }
+    }
+
+    function remountDebuggerAfterRootPatch() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        const moduleUrl = debuggerModuleUrl ?? new URL("/_abies/debugger.js", window.location.href).href;
+
+        Promise.resolve()
+            .then(() => import(/* webpackIgnore: true */ moduleUrl))
+            .then(mod => {
+                if (mod && typeof mod.mountDebugger === "function") {
+                    mod.mountDebugger();
+                }
+            })
+            .catch(() => {
+                // Keep this best-effort: debugger.js is absent in Release builds.
+            })
+            .finally(() => {
+                ensureDebuggerSurfaceVisible();
+            });
+    }
+
+    function resolveOtelVerbosity() {
+        try {
+            const url = new URL(window.location.href);
+            const urlVerbosity = url.searchParams.get("otel-verbosity");
+            if (typeof urlVerbosity === "string" && urlVerbosity.length > 0) {
+                return urlVerbosity;
+            }
+        } catch {
+            // Ignore URL parsing issues
+        }
+
+        if (typeof window !== "undefined" && window.__otel && typeof window.__otel.verbosity === "string") {
+            if (window.__otel.verbosity.length > 0) {
+                return window.__otel.verbosity;
+            }
+        }
+
+        const meta =
+            document.querySelector('meta[name="otel-verbosity"]') ||
+            document.querySelector('meta[name="abies-otel-verbosity"]');
+
+        if (meta && typeof meta.content === "string" && meta.content.length > 0) {
+            return meta.content;
+        }
+
+        return null;
+    }
+
+    async function initializeOtel(scriptTag) {
+        const verbosity = resolveOtelVerbosity();
+        if (!verbosity || verbosity === "off") return;
+
+        try {
+            const moduleUrl = new URL("../abies-otel.js", scriptTag.src || window.location.href);
+            const mod = await import(/* webpackIgnore: true */ moduleUrl.href);
+            const success = await mod.initialize(verbosity);
+            otelModule = success ? mod : null;
+        } catch (err) {
+            console.warn("[abies-server] Failed to load OTel module. Tracing disabled.", err);
+            otelModule = null;
+        }
+    }
+
+    function createEventTraceContext(commandId, eventName, eventData) {
+        if (!otelModule) return null;
+
+        try {
+            return otelModule.traceEvent(commandId, eventName, eventData);
+        } catch {
+            return null;
+        }
+    }
 
     // =========================================================================
     // HTML fragment parser — uses <template> for context-independent parsing
@@ -300,7 +519,12 @@
     function applyPatch(type, f1, f2, f3, f4) {
         switch (type) {
             case OP_ADD_ROOT: {
+                const existingDebuggerMount = document.getElementById("abies-debugger-timeline");
                 document.body.innerHTML = f2;
+                if (existingDebuggerMount && !document.getElementById("abies-debugger-timeline")) {
+                    document.body.appendChild(existingDebuggerMount);
+                }
+                remountDebuggerAfterRootPatch();
                 break;
             }
 
@@ -562,6 +786,8 @@
 
     const registeredEventTypes = new Set();
     let ws = null;
+    let debuggerRequestSeq = 0;
+    const pendingDebuggerResponses = new Map();
 
     // =========================================================================
     // WASM Handoff (InteractiveAuto)
@@ -574,15 +800,47 @@
     // =========================================================================
     let wasmActive = false;
 
-    function sendEvent(commandId, eventName, eventData) {
+    function sendEvent(commandId, eventName, eventData, traceContext) {
         if (wasmActive) return;
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
+            const payload = {
                 commandId: commandId,
                 eventName: eventName,
                 eventData: eventData
-            }));
+            };
+
+            if (traceContext && typeof traceContext.traceparent === "string" && traceContext.traceparent.length > 0) {
+                payload.traceparent = traceContext.traceparent;
+            }
+
+            if (traceContext && typeof traceContext.tracestate === "string" && traceContext.tracestate.length > 0) {
+                payload.tracestate = traceContext.tracestate;
+            }
+
+            ws.send(JSON.stringify(payload));
         }
+    }
+
+    function sendDebuggerCommand(type, entryId) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            return Promise.resolve("unavailable|-1|0");
+        }
+
+        const requestId = `dbg-${++debuggerRequestSeq}`;
+        const eventData = JSON.stringify({ requestId, type, entryId });
+
+        return new Promise(resolve => {
+            pendingDebuggerResponses.set(requestId, resolve);
+            sendEvent(DEBUGGER_COMMAND_ID, "debugger-command", eventData);
+
+            setTimeout(() => {
+                const pending = pendingDebuggerResponses.get(requestId);
+                if (pending) {
+                    pendingDebuggerResponses.delete(requestId);
+                    pending("error|-1|0");
+                }
+            }, 2000);
+        });
     }
 
     function registerEventType(eventType) {
@@ -600,7 +858,8 @@
                 if (el.hasAttribute && el.hasAttribute(attrName)) {
                     const commandId = el.getAttribute(attrName);
                     const eventData = extractEventData(event);
-                    sendEvent(commandId, eventType, eventData);
+                    const traceContext = createEventTraceContext(commandId, eventType, eventData);
+                    sendEvent(commandId, eventType, eventData, traceContext);
 
                     if (eventType === "submit") {
                         event.preventDefault();
@@ -762,6 +1021,15 @@
                     const msg = JSON.parse(event.data);
                     if (msg.type === "navigate") {
                         handleNavigationMessage(msg);
+                    } else if (msg.type === "debugger-response" && typeof msg.requestId === "string") {
+                        const resolve = pendingDebuggerResponses.get(msg.requestId);
+                        if (resolve) {
+                            pendingDebuggerResponses.delete(msg.requestId);
+                            const status = typeof msg.status === "string" ? msg.status : "unknown";
+                            const cursor = Number.isFinite(msg.cursorPosition) ? msg.cursorPosition : -1;
+                            const size = Number.isFinite(msg.timelineSize) ? msg.timelineSize : 0;
+                            resolve(`${status}|${cursor}|${size}`);
+                        }
                     }
                 } catch (e) {
                     // Ignore malformed text frames
@@ -823,6 +1091,12 @@
         // via WebSocket while WASM downloads. Once WASM is ready, we hand
         // off to it and tear down the server connection.
         const isAutoMode = scriptTag.getAttribute("data-auto") === "true";
+
+        // Best-effort debug UI startup (non-blocking).
+        initializeDebugger(scriptTag);
+        Promise.resolve().then(() => ensureDebuggerSurfaceVisible());
+
+        initializeOtel(scriptTag);
 
         // Register all common event types for delegation
         COMMON_EVENT_TYPES.forEach(registerEventType);

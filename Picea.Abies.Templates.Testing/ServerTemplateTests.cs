@@ -52,8 +52,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForServerInteractivity(page);
 
-        // The server template uses "+" text for the increment button.
-        await page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Increase" }).ClickAsync();
 
         var count = page.Locator(".count");
         await Assertions.Expect(count).ToHaveTextAsync("1");
@@ -66,8 +65,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForServerInteractivity(page);
 
-        // The server template uses "−" (U+2212) for the decrement button label.
-        await page.GetByRole(AriaRole.Button, new() { Name = "\u2212" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Decrease" }).ClickAsync();
 
         var count = page.Locator(".count");
         await Assertions.Expect(count).ToHaveTextAsync("-1");
@@ -81,7 +79,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await WaitForServerInteractivity(page);
 
         // Increment a few times first.
-        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
         await incrementBtn.ClickAsync();
         await incrementBtn.ClickAsync();
         await Assertions.Expect(page.Locator(".count")).ToHaveTextAsync("2");
@@ -98,7 +96,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         await page.GotoAsync(fixture.BaseUrl);
         await WaitForServerInteractivity(page);
 
-        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
         for (var i = 0; i < 5; i++)
             await incrementBtn.ClickAsync();
 
@@ -120,7 +118,7 @@ public sealed class ServerTemplateTests(ServerTemplateFixture fixture)
         var deadline = DateTime.UtcNow + timeout;
 
         var count = page.Locator(".count");
-        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "+" });
+        var incrementBtn = page.GetByRole(AriaRole.Button, new() { Name = "Increase" });
 
         while (DateTime.UtcNow < deadline)
         {

@@ -20,6 +20,7 @@
 // =============================================================================
 
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -80,6 +81,43 @@ public class WebSocketSessionTests
         var updatedBatch = await ReceiveBinaryBatch(ws);
         var allStrings = string.Join(" ", updatedBatch.Strings);
         await Assert.That(allStrings).Contains("Count: 1");
+    }
+
+    [Test]
+    public async Task WebSocket_ClickIncrement_WithTraceparent_PropagatesTraceToServerActivities()
+    {
+        using var activityCapture = ActivityCapture.Start();
+        await using var host = await AbiesTestHost.Create(
+            new RenderMode.InteractiveServer());
+
+        using var ws = await ConnectWebSocket(host);
+        var initialBatch = await ReceiveInitialBatch(ws);
+
+        var incrementCommandId = FindHandlerCommandId(initialBatch, "increment");
+        await Assert.That(incrementCommandId).IsNotNull();
+
+        var parentTraceId = ActivityTraceId.CreateRandom();
+        var parentSpanId = ActivitySpanId.CreateRandom();
+        var traceparent = $"00-{parentTraceId}-{parentSpanId}-01";
+
+        await SendClickEvent(ws, incrementCommandId!, traceparent);
+
+        _ = await ReceiveBinaryBatch(ws);
+
+        var sessionActivity = await activityCapture.WaitForAsync(activity =>
+            activity.Source.Name == "Picea.Abies.Server.Session"
+            && activity.OperationName == "Picea.Abies.Server.Session.ReceiveEvent"
+            && activity.TraceId == parentTraceId);
+
+        await Assert.That(sessionActivity).IsNotNull();
+        await Assert.That(sessionActivity!.ParentSpanId).IsEqualTo(parentSpanId);
+
+        var runtimeActivity = await activityCapture.WaitForAsync(activity =>
+            activity.Source.Name == "Picea.Abies.Runtime"
+            && activity.OperationName == "Picea.Abies.Render"
+            && activity.TraceId == parentTraceId);
+
+        await Assert.That(runtimeActivity).IsNotNull();
     }
 
     [Test]
@@ -235,13 +273,19 @@ public class WebSocketSessionTests
     /// <summary>
     /// Sends a click event as a JSON text frame.
     /// </summary>
-    private static async Task SendClickEvent(WebSocket ws, string commandId)
+    private static async Task SendClickEvent(
+        WebSocket ws,
+        string commandId,
+        string? traceparent = null,
+        string? tracestate = null)
     {
         var json = JsonSerializer.Serialize(new
         {
             commandId,
             eventName = "click",
-            eventData = "{}"
+            eventData = "{}",
+            traceparent,
+            tracestate
         });
 
         var bytes = Encoding.UTF8.GetBytes(json);
@@ -513,4 +557,64 @@ public class WebSocketSessionTests
 
     /// <summary>A single patch entry with resolved string values.</summary>
     private record PatchEntry(int Type, string? Field1, string? Field2, string? Field3, string? Field4);
+
+    private sealed class ActivityCapture : IDisposable
+    {
+        private readonly Lock _gate = new();
+        private readonly List<Activity> _activities = [];
+        private readonly ActivityListener _listener;
+
+        private ActivityCapture()
+        {
+            _listener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name.StartsWith("Picea.Abies", StringComparison.Ordinal),
+                Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+                SampleUsingParentId = static (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = activity =>
+                {
+                    lock (_gate)
+                    {
+                        _activities.Add(activity);
+                    }
+                }
+            };
+
+            ActivitySource.AddActivityListener(_listener);
+        }
+
+        public static ActivityCapture Start() => new();
+
+        public async Task<Activity?> WaitForAsync(Func<Activity, bool> predicate, int timeoutMs = 5000)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(timeoutMs);
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var match = Find(predicate);
+                if (match is not null)
+                    return match;
+
+                await Task.Delay(25);
+            }
+
+            return Find(predicate);
+        }
+
+        private Activity? Find(Func<Activity, bool> predicate)
+        {
+            lock (_gate)
+            {
+                foreach (var activity in _activities)
+                {
+                    if (predicate(activity))
+                        return activity;
+                }
+
+                return null;
+            }
+        }
+
+        public void Dispose() => _listener.Dispose();
+    }
 }

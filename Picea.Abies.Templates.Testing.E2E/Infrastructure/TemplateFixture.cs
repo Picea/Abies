@@ -219,6 +219,9 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
         var config = $"""
             <?xml version="1.0" encoding="utf-8"?>
             <configuration>
+                            <config>
+                                <add key="globalPackagesFolder" value=".nuget/packages" />
+                            </config>
               <packageSources>
                 <clear />
                 <add key="local-e2e-feed" value="{Feed.FeedDir}" />

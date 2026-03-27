@@ -52,6 +52,10 @@
 // =============================================================================
 
 using System.Runtime.InteropServices.JavaScript;
+#if DEBUG
+using Picea.Abies.Browser.Debugger;
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Browser;
 
@@ -153,6 +157,8 @@ public static partial class Interop
     internal static partial void SetupNavigation();
 
 #if DEBUG
+    internal static DebuggerMachine? Debugger { get; set; }
+
     /// <summary>
     /// Mounts the debugger UI by injecting a mount point div into the document.
     /// </summary>
@@ -167,6 +173,43 @@ public static partial class Interop
     /// </remarks>
     [JSImport("mountDebugger", "AbiesDebugger")]
     internal static partial void MountDebugger();
+
+    [JSImport("setRuntimeBridge", "AbiesDebugger")]
+    internal static partial void SetRuntimeBridge(
+        [JSMarshalAs<JSType.Function<JSType.String, JSType.Number, JSType.String>>]
+        Func<string, int, string> callback);
+
+    [JSExport]
+    public static string DispatchDebuggerMessage(string messageType, int entryId)
+    {
+        const char separator = '|';
+
+        if (Debugger is null)
+        {
+            return $"unavailable{separator}-1{separator}0";
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(messageType))
+            {
+                return $"error{separator}{Debugger.CursorPosition}{separator}{Debugger.Timeline.Count}";
+            }
+
+            var message = new DebuggerAdapterMessage
+            {
+                Type = messageType,
+                EntryId = entryId >= 0 ? entryId : null
+            };
+
+            var response = DebuggerRuntimeBridge.Execute(message, Debugger);
+            return $"{response.Status}{separator}{response.CursorPosition}{separator}{response.TimelineSize}";
+        }
+        catch
+        {
+            return $"error{separator}{Debugger.CursorPosition}{separator}{Debugger.Timeline.Count}";
+        }
+    }
 #endif
 
     /// <summary>

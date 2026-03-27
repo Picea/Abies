@@ -21,6 +21,12 @@
     <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" Pack="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <EmbeddedResource Remove="wwwroot\_abies\debugger.js" />
+    <Content Remove="wwwroot\_abies\debugger.js" />
+    <None Remove="wwwroot\_abies\debugger.js" />
+  </ItemGroup>
+
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>Picea.Abies.Server.Kestrel</PackageId>

@@ -16,25 +16,11 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         await Assert.That(script).Contains("document.createElement('div')");
         await Assert.That(script).Contains("mountPoint.id = MountPointId");
         await Assert.That(script).Contains("document.body.appendChild(mountPoint)");
-
-        var uiConstructionPatterns = new[]
-        {
-            "innerHTML =",
-            "play-button",
-            "pause-button",
-            "step-forward-button",
-            "step-back-button",
-            "jump-input",
-            "control-bar",
-            "message-log",
-            "timeline-inspector"
-        };
-
-        var found = uiConstructionPatterns
-            .Where(pattern => script.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        await Assert.That(found).IsEmpty();
+        await Assert.That(script).Contains("ensureDebuggerShellVisible");
+        await Assert.That(script).Contains("ensureDebuggerPanel");
+        await Assert.That(script).Contains("data-abies-debugger-shell");
+        await Assert.That(script).Contains("data-abies-debugger-panel");
+        await Assert.That(script).Contains("data-abies-debugger-intent");
     }
 
     [Test]
@@ -51,7 +37,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     }
 
     [Test]
-    public async Task DebuggerJsMountAdapter_DoesNotContainKeyboardOrReplayDomainLogic()
+    public async Task DebuggerJsMountAdapter_DoesNotContainDocumentKeyboardShortcutSwitches()
     {
         var script = ReadDebuggerScript();
 
@@ -61,12 +47,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
             @"case\s+'ArrowLeft'",
             @"case\s+'Escape'",
             @"case\s+'j'",
-            @"jump-to-entry",
-            @"step-forward",
-            @"step-back",
-            @"clear-timeline",
-            @"\bplay\b",
-            @"\bpause\b"
+            "addEventListener\\(\\s*['\\\"]keydown['\\\"]"
         };
 
         var found = disallowedPatterns
@@ -88,6 +69,24 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         await Assert.That(script).Contains("parsePayload");
     }
 
+    [Test]
+    public async Task DebuggerJsRuntimeBridge_AwaitsAsyncBridgeResponses()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("await Promise.resolve(runtimeBridge(message.type, entryId))");
+        await Assert.That(script).Contains("void invokeRuntimeBridge(message, mountPoint)");
+    }
+
+    [Test]
+    public async Task BrowserRuntime_DebuggerBootstrap_WiresRuntimeBridgeWhenEnabled()
+    {
+        var runtimeScript = ReadBrowserRuntimeSource();
+
+        await Assert.That(runtimeScript).Contains("Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage);");
+        await Assert.That(runtimeScript).Contains("runtime.UseDebugger();");
+    }
+
     private static string ReadDebuggerScript()
     {
         var repoRoot = FindRepoRoot();
@@ -99,6 +98,19 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         }
 
         return File.ReadAllText(debuggerScriptPath);
+    }
+
+    private static string ReadBrowserRuntimeSource()
+    {
+        var repoRoot = FindRepoRoot();
+        var runtimePath = Path.Combine(repoRoot, "Picea.Abies.Browser", "Runtime.cs");
+
+        if (!File.Exists(runtimePath))
+        {
+            throw new FileNotFoundException("Could not locate browser Runtime.cs for debugger bootstrap tests.", runtimePath);
+        }
+
+        return File.ReadAllText(runtimePath);
     }
 
     private static string FindRepoRoot()
