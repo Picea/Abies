@@ -12,7 +12,7 @@ namespace Picea.Abies.Browser.Debugger;
 /// Transport layer for the time travel debugger.
 /// Serializes user requests to JSON and deserializes C# responses.
 /// CRITICAL: Contains ZERO replay logic. All state machine transitions live in C# (Mealy machine).
-/// 
+///
 /// This adapter is a pure serialization/deserialization bridge between UI and backend.
 /// The protocol DTOs (<see cref="DebuggerAdapterMessage"/>, <see cref="DebuggerAdapterResponse"/>,
 /// <see cref="DebuggerAdapterTimelineEntry"/>) live in the shared <c>Picea.Abies.Debugger</c>
@@ -23,7 +23,7 @@ public sealed class DebuggerAdapter
     /// <summary>
     /// Serializes a debugger message (jump, step, play, etc.) to JSON.
     /// Validates message type against the contract.
-    /// 
+    ///
     /// NO SIDE EFFECTS: Does not modify state, execute commands, or transition state machine.
     /// </summary>
     public string SerializeMessage(object request)
@@ -36,23 +36,20 @@ public sealed class DebuggerAdapter
             );
         }
 
-        // Validate message type is known
         if (!IsValidMessageType(msg.Type))
         {
             throw new ArgumentException(
-                $"Unknown message type: {msg.Type}. Must be one of: jump-to-entry, step-forward, step-back, play, pause, clear-timeline.",
+                $"Unknown message type: {msg.Type}. Must be one of: jump-to-entry, step-forward, step-back, play, pause, clear-timeline, get-timeline, export-session, import-session.",
                 nameof(request)
             );
         }
 
-        // Serialize to JSON using source-generated context (AOT/WASM safe)
-        var json = JsonSerializer.Serialize(msg, DebuggerAdapterJsonContext.Default.DebuggerAdapterMessage);
-        return json;
+        return JsonSerializer.Serialize(msg, DebuggerAdapterJsonContext.Default.DebuggerAdapterMessage);
     }
 
     /// <summary>
     /// Deserializes a C# response JSON into a strongly-typed object.
-    /// 
+    ///
     /// NO SIDE EFFECTS: Does not replay commands or modify state machine.
     /// </summary>
     public DebuggerAdapterResponse DeserializeResponse(string json)
@@ -80,12 +77,8 @@ public sealed class DebuggerAdapter
         }
     }
 
-    /// <summary>
-    /// Validates that a message type is part of the contract.
-    /// </summary>
-    private static bool IsValidMessageType(string type)
-    {
-        return type switch
+    private static bool IsValidMessageType(string type) =>
+        type switch
         {
             "jump-to-entry" => true,
             "step-forward" => true,
@@ -94,9 +87,10 @@ public sealed class DebuggerAdapter
             "pause" => true,
             "clear-timeline" => true,
             "get-timeline" => true,
+            "export-session" => true,
+            "import-session" => true,
             _ => false
         };
-    }
 }
 
 #endif

@@ -11,14 +11,39 @@ public sealed class HandlerRegistry
 
     internal Action<Message>? Dispatch { get; set; }
 
-    public void Register(Handler handler) =>
+    public void Register(Handler handler)
+    {
+#if DEBUG
+        if (Environment.GetEnvironmentVariable("ABIES_DEBUG_HANDLERS") == "1")
+            System.Diagnostics.Debug.WriteLine($"[HandlerRegistry] Register: {handler.CommandId} ({handler.Name})");
+#endif
         _handlers[handler.CommandId] = handler;
+    }
 
-    public void Unregister(string commandId) =>
+    public void Unregister(string commandId)
+    {
+#if DEBUG
+        if (Environment.GetEnvironmentVariable("ABIES_DEBUG_HANDLERS") == "1")
+            System.Diagnostics.Debug.WriteLine($"[HandlerRegistry] Unregister: {commandId}");
+#endif
         _handlers.Remove(commandId);
+    }
 
     public Message? CreateMessage(string commandId, string eventData)
     {
+#if DEBUG
+        const string envKey = "ABIES_DEBUG_HANDLERS";
+        bool logEnabled = Environment.GetEnvironmentVariable(envKey) == "1";
+        if (logEnabled)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[HandlerRegistry] CreateMessage called. CommandId={commandId}, RegisteredCount={_handlers.Count}, EventDataLen={eventData?.Length ?? 0}");
+            if (!_handlers.ContainsKey(commandId))
+                System.Diagnostics.Debug.WriteLine(
+                    $"[HandlerRegistry] MISS: CommandId={commandId} not found. Available: {string.Join(", ", _handlers.Keys.Take(10))}{(_handlers.Count > 10 ? "..." : "")}");
+        }
+#endif
+        
         if (!_handlers.TryGetValue(commandId, out var handler))
             return null;
 

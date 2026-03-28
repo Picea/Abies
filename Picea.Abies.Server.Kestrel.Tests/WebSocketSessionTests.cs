@@ -252,6 +252,26 @@ public class WebSocketSessionTests
         ws.Dispose();
     }
 
+    [Test]
+    public async Task WebSocket_DebuggerCommand_ReceivesDebuggerResponseEnvelope()
+    {
+        await using var host = await AbiesTestHost.Create(
+            new RenderMode.InteractiveServer());
+
+        using var ws = await ConnectWebSocket(host);
+        _ = await ReceiveInitialBatch(ws);
+
+        await SendDebuggerCommand(ws, "get-timeline");
+
+        using var response = await ReceiveTextJson(ws);
+        var root = response.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("debugger-response");
+        await Assert.That(root.GetProperty("requestId").GetString()).IsNotNull();
+        await Assert.That(root.GetProperty("status").GetString()).IsNotEqualTo("error");
+        await Assert.That(root.TryGetProperty("timelineSize", out _)).IsTrue();
+    }
+
     // =========================================================================
     // Helpers — WebSocket Connection
     // =========================================================================
@@ -310,6 +330,26 @@ public class WebSocketSessionTests
             bytes, WebSocketMessageType.Text, true, CancellationToken.None);
     }
 
+    private static async Task SendDebuggerCommand(WebSocket ws, string type, int entryId = -1)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            requestId = "dbg-test-1",
+            type,
+            entryId
+        });
+
+        var json = JsonSerializer.Serialize(new
+        {
+            commandId = "__debugger_command__",
+            eventName = "debugger-command",
+            eventData = payload
+        });
+
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+    }
+
     // =========================================================================
     // Helpers — Binary Batch Reading
     // =========================================================================
@@ -325,8 +365,6 @@ public class WebSocketSessionTests
 
     /// <summary>
     /// Receives a single binary WebSocket frame and parses it as a patch batch.
-    /// Skips over any interleaved text frames (e.g., debugger timeline-changed
-    /// notifications) that may arrive before the binary patch data.
     /// </summary>
     private static async Task<PatchBatch> ReceiveBinaryBatch(
         WebSocket ws, int timeoutMs = 5000)
@@ -334,16 +372,26 @@ public class WebSocketSessionTests
         var buffer = new byte[64 * 1024]; // 64KB — plenty for test patches
         using var cts = new CancellationTokenSource(timeoutMs);
 
-        WebSocketReceiveResult result;
-        do
-        {
-            result = await ws.ReceiveAsync(buffer, cts.Token);
-        } while (result.MessageType == WebSocketMessageType.Text);
+        var result = await ws.ReceiveAsync(buffer, cts.Token);
 
         await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
         await Assert.That(result.EndOfMessage).IsTrue();
 
         return ParseBinaryBatch(buffer.AsSpan(0, result.Count));
+    }
+
+    private static async Task<JsonDocument> ReceiveTextJson(WebSocket ws, int timeoutMs = 5000)
+    {
+        var buffer = new byte[64 * 1024];
+        using var cts = new CancellationTokenSource(timeoutMs);
+
+        var result = await ws.ReceiveAsync(buffer, cts.Token);
+
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Text);
+        await Assert.That(result.EndOfMessage).IsTrue();
+
+        var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+        return JsonDocument.Parse(json);
     }
 
     /// <summary>

@@ -323,6 +323,7 @@ public class EndpointTests
 
         var content = await response.Content.ReadAsStringAsync();
         await Assert.That(content).Contains("mountDebugger");
+        await Assert.That(content).Contains("Timeline position");
     }
 
     [Test]

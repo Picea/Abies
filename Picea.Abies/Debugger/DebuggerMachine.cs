@@ -33,7 +33,7 @@ public sealed class DebuggerMachine
 {
     /// <summary>
     /// Wraps a model snapshot to satisfy the non-nullable class constraint on <see cref="RingBuffer{T}"/>.
-    /// Debug-only — allocation overhead is negligible.
+    /// Debug-only - allocation overhead is negligible.
     /// </summary>
     private sealed record ModelSnapshotBox(object? Snapshot);
 
@@ -48,6 +48,8 @@ public sealed class DebuggerMachine
     private int _sideEffectCount;
     private string _initialModelSnapshotPreview;
     private object? _initialModelSnapshot;
+
+    public event Action? TimelineChanged;
 
     public DebuggerMachine(int capacity = 10000)
     {
@@ -126,6 +128,7 @@ public sealed class DebuggerMachine
         }
 
         _lastTimestamp = timestamp;
+    TimelineChanged?.Invoke();
     }
 
     /// <summary>
@@ -231,6 +234,7 @@ public sealed class DebuggerMachine
         _sideEffectCount = 0;
         _initialModelSnapshotPreview = string.Empty;
         _initialModelSnapshot = null;
+        TimelineChanged?.Invoke();
     }
 
     /// <summary>
@@ -275,6 +279,93 @@ public sealed class DebuggerMachine
     public void RecordSideEffect()
     {
         _sideEffectCount++;
+    }
+
+    /// <summary>
+    /// Builds an exportable debugger session payload with app identity metadata.
+    /// </summary>
+    public DebuggerAdapterSession ExportSession(DebuggerAppIdentity appIdentity)
+    {
+        ArgumentNullException.ThrowIfNull(appIdentity);
+
+        return new DebuggerAdapterSession
+        {
+            App = appIdentity,
+            Status = _currentState switch
+            {
+                DebuggerState.Recording => "recording",
+                DebuggerState.Paused => "paused",
+                DebuggerState.PlayingForward => "playing",
+                _ => "paused"
+            },
+            CursorPosition = _cursorPosition,
+            InitialModelSnapshotPreview = _initialModelSnapshotPreview,
+            TimelineEntries = _timeline
+                .Entries
+                .Select(entry => new DebuggerAdapterTimelineEntry
+                {
+                    Sequence = entry.Sequence,
+                    MessageType = entry.MessageType,
+                    ArgsPreview = entry.ArgsPreview,
+                    Timestamp = entry.Timestamp,
+                    PatchCount = entry.PatchCount,
+                    ModelSnapshotPreview = entry.ModelSnapshotPreview
+                })
+                .ToArray()
+        };
+    }
+
+    /// <summary>
+    /// Replaces the current timeline with an imported debugger session.
+    /// </summary>
+    public void ImportSession(DebuggerAdapterSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        _timeline.Clear();
+        _timelineModelSnapshots.Clear();
+
+        _initialModelSnapshotPreview = session.InitialModelSnapshotPreview ?? string.Empty;
+        _initialModelSnapshot = null;
+        _currentModelSnapshot = null;
+        _sideEffectCount = 0;
+
+        foreach (var entry in session.TimelineEntries)
+        {
+            var importedEntry = new TimestampedEntry(
+                Sequence: entry.Sequence,
+                MessageType: entry.MessageType,
+                ArgsPreview: entry.ArgsPreview,
+                Timestamp: entry.Timestamp,
+                ModelSnapshotPreview: entry.ModelSnapshotPreview ?? string.Empty,
+                PatchCount: entry.PatchCount);
+
+            _timeline.Add(importedEntry);
+            _timelineModelSnapshots.Add(new ModelSnapshotBox(null));
+            _lastTimestamp = Math.Max(_lastTimestamp, entry.Timestamp);
+        }
+
+        _cursorPosition = _timeline.Count == 0
+            ? -1
+            : Math.Clamp(session.CursorPosition, 0, _timeline.Count - 1);
+
+        if (_cursorPosition >= 0)
+        {
+            _currentModelSnapshotPreview = _timeline[_cursorPosition].ModelSnapshotPreview;
+        }
+        else
+        {
+            _currentModelSnapshotPreview = _initialModelSnapshotPreview;
+        }
+
+        _currentState = session.Status switch
+        {
+            "recording" => DebuggerState.Recording,
+            "playing" => DebuggerState.PlayingForward,
+            _ => DebuggerState.Paused
+        };
+        _isCapturing = true;
+        TimelineChanged?.Invoke();
     }
 
     // =====================

@@ -53,7 +53,6 @@
 
 using System.Runtime.InteropServices.JavaScript;
 #if DEBUG
-using Picea.Abies.Browser.Debugger;
 using Picea.Abies.Debugger;
 #endif
 
@@ -177,26 +176,28 @@ public static partial class Interop
 
     [JSImport("setRuntimeBridge", "AbiesDebugger")]
     internal static partial void SetRuntimeBridge(
-        [JSMarshalAs<JSType.Function<JSType.String, JSType.Number, JSType.String>>]
-        Func<string, int, string> callback);
+        [JSMarshalAs<JSType.Function<JSType.String, JSType.Number, JSType.String, JSType.String>>]
+        Func<string, int, string, string> callback);
 
     /// <summary>
-    /// Called from C# after each <c>CaptureMessage</c> to push a timeline refresh into the
-    /// debugger UI. The JS side fetches the latest timeline via the existing bridge.
+    /// Called from C# after each debugger timeline mutation so the browser UI can refresh.
     /// </summary>
     [JSImport("notifyTimelineChanged", "AbiesDebugger")]
     internal static partial void NotifyTimelineChanged();
 
     [JSExport]
-    public static string DispatchDebuggerMessage(string messageType, int entryId)
+    public static string DispatchDebuggerMessage(string messageType, int entryId, string dataJson)
     {
         if (Debugger is null)
         {
             return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
             {
                 Status = "unavailable",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
                 CursorPosition = -1,
                 TimelineSize = 0,
+                InitialModelSnapshotPreview = string.Empty,
                 ModelSnapshotPreview = string.Empty
             }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
         }
@@ -208,18 +209,29 @@ public static partial class Interop
                 return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
                 {
                     Status = "error",
+                    AppName = string.Empty,
+                    AppVersion = string.Empty,
                     CursorPosition = Debugger.CursorPosition,
                     TimelineSize = Debugger.Timeline.Count,
                     AtStart = Debugger.AtStart,
                     AtEnd = Debugger.AtEnd,
+                    InitialModelSnapshotPreview = Debugger.InitialModelSnapshotPreview,
                     ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
                 }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+            }
+
+            object? data = null;
+            if (!string.IsNullOrWhiteSpace(dataJson))
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(dataJson);
+                data = document.RootElement.Clone();
             }
 
             var message = new DebuggerAdapterMessage
             {
                 Type = messageType,
-                EntryId = entryId >= 0 ? entryId : null
+                EntryId = entryId >= 0 ? entryId : null,
+                Data = data
             };
 
             var response = DebuggerRuntimeBridge.Execute(message, Debugger);
@@ -237,10 +249,13 @@ public static partial class Interop
             return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
             {
                 Status = "error",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
                 CursorPosition = Debugger.CursorPosition,
                 TimelineSize = Debugger.Timeline.Count,
                 AtStart = Debugger.AtStart,
                 AtEnd = Debugger.AtEnd,
+                InitialModelSnapshotPreview = Debugger.InitialModelSnapshotPreview,
                 ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
             }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
         }

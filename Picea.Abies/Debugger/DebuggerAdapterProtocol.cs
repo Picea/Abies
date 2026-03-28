@@ -14,6 +14,9 @@ namespace Picea.Abies.Debugger;
 [JsonSerializable(typeof(DebuggerAdapterMessage))]
 [JsonSerializable(typeof(DebuggerAdapterResponse))]
 [JsonSerializable(typeof(DebuggerAdapterTimelineEntry))]
+[JsonSerializable(typeof(DebuggerAppIdentity))]
+[JsonSerializable(typeof(DebuggerAdapterSession))]
+[JsonSerializable(typeof(DebuggerSessionImportRequest))]
 public partial class DebuggerAdapterJsonContext : JsonSerializerContext;
 
 /// <summary>
@@ -41,6 +44,12 @@ public record DebuggerAdapterResponse
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
+    [JsonPropertyName("appName")]
+    public required string AppName { get; init; }
+
+    [JsonPropertyName("appVersion")]
+    public required string AppVersion { get; init; }
+
     [JsonPropertyName("cursorPosition")]
     public int CursorPosition { get; init; }
 
@@ -56,6 +65,9 @@ public record DebuggerAdapterResponse
     [JsonPropertyName("currentEntry")]
     public DebuggerAdapterTimelineEntry? CurrentEntry { get; init; }
 
+    [JsonPropertyName("initialModelSnapshotPreview")]
+    public required string InitialModelSnapshotPreview { get; init; }
+
     [JsonPropertyName("modelSnapshotPreview")]
     public required string ModelSnapshotPreview { get; init; }
 
@@ -68,6 +80,20 @@ public record DebuggerAdapterResponse
     [JsonPropertyName("timelineEntries")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<DebuggerAdapterTimelineEntry>? TimelineEntries { get; init; }
+
+    /// <summary>
+    /// Human-readable error text for invalid debugger commands and import validation failures.
+    /// </summary>
+    [JsonPropertyName("error")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// Exported debugger session payload. Populated for <c>export-session</c>.
+    /// </summary>
+    [JsonPropertyName("session")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DebuggerAdapterSession? Session { get; init; }
 }
 
 /// <summary>
@@ -89,6 +115,53 @@ public record DebuggerAdapterTimelineEntry
 
     [JsonPropertyName("patchCount")]
     public int PatchCount { get; init; }
+
+    [JsonPropertyName("modelSnapshotPreview")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ModelSnapshotPreview { get; init; }
+}
+
+/// <summary>
+/// Runtime identity used for debugger session compatibility checks.
+/// </summary>
+public record DebuggerAppIdentity
+{
+    [JsonPropertyName("appName")]
+    public required string AppName { get; init; }
+
+    [JsonPropertyName("appVersion")]
+    public required string AppVersion { get; init; }
+}
+
+/// <summary>
+/// Exportable/importable debugger session data for the C# runtime bridge protocol.
+/// This shape is intentionally distinct from the browser-only payload used by debugger.js.
+/// </summary>
+public record DebuggerAdapterSession
+{
+    [JsonPropertyName("app")]
+    public required DebuggerAppIdentity App { get; init; }
+
+    [JsonPropertyName("status")]
+    public required string Status { get; init; }
+
+    [JsonPropertyName("cursorPosition")]
+    public int CursorPosition { get; init; }
+
+    [JsonPropertyName("initialModelSnapshotPreview")]
+    public string InitialModelSnapshotPreview { get; init; } = string.Empty;
+
+    [JsonPropertyName("timelineEntries")]
+    public required IReadOnlyList<DebuggerAdapterTimelineEntry> TimelineEntries { get; init; }
+}
+
+/// <summary>
+/// Wrapper request for importing a debugger session.
+/// </summary>
+public record DebuggerSessionImportRequest
+{
+    [JsonPropertyName("session")]
+    public DebuggerAdapterSession? Session { get; init; }
 }
 
 #endif

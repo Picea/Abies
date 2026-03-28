@@ -55,8 +55,11 @@ let lastResponse = null;
 let filterText = '';
 let panelExpanded = false;
 let playbackTimer = null;
+let detachedImportedSession = false;
+let currentRuntimeMetadata = { appName: '', appVersion: '' };
 
 const PLAYBACK_INTERVAL_MS = 250;
+const SESSION_SCHEMA_VERSION = 1;
 
 // DOM element references (set once during panel creation)
 let els = {};
@@ -133,7 +136,7 @@ export function mountDebugger() {
 
 /**
  * Wires the .NET runtime bridge callback.
- * Signature: (messageType: string, entryId: number) => string (JSON)
+ * Signature: (messageType: string, entryId: number, dataJson: string) => string (JSON)
  */
 export function setRuntimeBridge(callback) {
     runtimeBridge = typeof callback === 'function' ? callback : null;
@@ -156,22 +159,24 @@ export function notifyTimelineChanged() {
 // Bridge Invocation
 // ═══════════════════════════════════════════════════════════════════
 
-async function invokeRuntimeBridge(messageType, entryId) {
+async function invokeRuntimeBridge(messageType, entryId, dataJson) {
     if (!runtimeBridge) return;
 
     try {
+        detachedImportedSession = false;
         const raw = await Promise.resolve(
-            runtimeBridge(messageType, Number.isFinite(entryId) ? entryId : -1)
+            runtimeBridge(messageType, Number.isFinite(entryId) ? entryId : -1, dataJson ?? '')
         );
         const response = JSON.parse(raw);
         lastResponse = response;
+        syncRuntimeMetadata(response);
 
         // Sync local timeline when size changes or full list provided
         if (response.timelineEntries) {
             localTimeline = response.timelineEntries;
         } else if (response.timelineSize !== localTimeline.length) {
             // Timeline size changed but entries weren't included — fetch full list
-            const syncRaw = await Promise.resolve(runtimeBridge('get-timeline', -1));
+            const syncRaw = await Promise.resolve(runtimeBridge('get-timeline', -1, ''));
             const syncResponse = JSON.parse(syncRaw);
             if (syncResponse.timelineEntries) {
                 localTimeline = syncResponse.timelineEntries;
@@ -257,6 +262,22 @@ function createDebuggerUI(mp) {
     header.append(els.statusBadge, els.stepCounter);
     panel.appendChild(header);
 
+    els.notice = mkEl('div', {
+        role: 'status',
+        'aria-live': 'polite',
+        style: css({
+            display: 'none',
+            margin: '0 12px 8px 12px',
+            padding: '6px 8px',
+            borderRadius: T.radiusSmall,
+            border: `1px solid ${T.borderStrong}`,
+            background: 'rgba(46,144,250,0.12)',
+            color: T.text,
+            font: T.fontSmall,
+        }),
+    });
+    panel.appendChild(els.notice);
+
     // ── Scrubber ──
     const scrubberWrap = mkEl('div', {
         style: css({ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }),
@@ -327,8 +348,25 @@ function createDebuggerUI(mp) {
     els.btnPlayPause = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'play' }, ['\u25B6 Play']);
     els.btnStep = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'step-forward' }, ['Step \u25B6']);
     els.btnClear = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'clear-timeline' }, ['Clear']);
+    els.btnExport = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'export-session' }, ['Export']);
+    els.btnImport = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'import-session' }, ['Import']);
+    els.importInput = mkEl('input', {
+        type: 'file',
+        accept: 'application/json,.json',
+        style: css({ display: 'none' }),
+        tabindex: '-1',
+        'aria-hidden': 'true',
+    });
 
-    controls.append(els.btnBack, els.btnPlayPause, els.btnStep, els.btnClear);
+    controls.append(
+        els.btnBack,
+        els.btnPlayPause,
+        els.btnStep,
+        els.btnClear,
+        els.btnExport,
+        els.btnImport,
+        els.importInput
+    );
     panel.appendChild(controls);
 
     mp.appendChild(panel);
@@ -354,9 +392,24 @@ function attachEventHandlers(mp) {
         const intent = btn.getAttribute('data-intent');
         if (!intent) return;
 
+        if (intent === 'export-session') {
+            exportSession();
+            return;
+        }
+
+        if (intent === 'import-session') {
+            els.importInput?.click();
+            return;
+        }
+
         // Play/Pause has its own handler with playback loop logic
         if (intent === 'play' || intent === 'pause') {
             handlePlayPause();
+            return;
+        }
+
+        if (detachedImportedSession) {
+            showDetachedSessionNotice();
             return;
         }
 
@@ -365,8 +418,18 @@ function attachEventHandlers(mp) {
         void invokeRuntimeBridge(intent, -1);
     });
 
+    els.importInput.addEventListener('change', () => {
+        const file = els.importInput.files?.[0] ?? null;
+        void importSession(file);
+    });
+
     // Scrubber input (jump on change — stops active playback)
     els.scrubber.addEventListener('input', () => {
+        if (detachedImportedSession) {
+            showDetachedSessionNotice();
+            return;
+        }
+
         stopPlayback();
         const val = parseInt(els.scrubber.value, 10);
         if (Number.isFinite(val) && val >= 0) {
@@ -376,6 +439,11 @@ function attachEventHandlers(mp) {
 
     // Event list click (jump to entry — stops active playback)
     els.eventList.addEventListener('click', (e) => {
+        if (detachedImportedSession) {
+            showDetachedSessionNotice();
+            return;
+        }
+
         stopPlayback();
         const item = e.target.closest?.('[data-sequence]');
         if (!item) return;
@@ -395,11 +463,8 @@ function attachEventHandlers(mp) {
     document.addEventListener('keydown', (e) => {
         if (!panelExpanded) return;
 
-        // Only intercept keys when focus is inside the debugger mount point.
-        // This prevents stealing Space/Arrow/Home/End from the host application.
-        const mp = document.getElementById(MOUNT_POINT_ID);
         const active = document.activeElement;
-        if (!mp || !mp.contains(active)) return;
+        if (!els.panel || !els.panel.contains(active)) return;
 
         const isOurFilter = active === els.filterInput;
 
@@ -412,18 +477,30 @@ function attachEventHandlers(mp) {
             case 'ArrowLeft':
                 if (isOurFilter) return;
                 e.preventDefault();
+                if (detachedImportedSession) {
+                    showDetachedSessionNotice();
+                    return;
+                }
                 stopPlayback();
                 void invokeRuntimeBridge('step-back', -1);
                 break;
             case 'ArrowRight':
                 if (isOurFilter) return;
                 e.preventDefault();
+                if (detachedImportedSession) {
+                    showDetachedSessionNotice();
+                    return;
+                }
                 stopPlayback();
                 void invokeRuntimeBridge('step-forward', -1);
                 break;
             case 'Home':
                 if (isOurFilter) return;
                 e.preventDefault();
+                if (detachedImportedSession) {
+                    showDetachedSessionNotice();
+                    return;
+                }
                 stopPlayback();
                 if (localTimeline.length > 0) {
                     void invokeRuntimeBridge('jump-to-entry', 0);
@@ -432,6 +509,10 @@ function attachEventHandlers(mp) {
             case 'End':
                 if (isOurFilter) return;
                 e.preventDefault();
+                if (detachedImportedSession) {
+                    showDetachedSessionNotice();
+                    return;
+                }
                 stopPlayback();
                 if (localTimeline.length > 0) {
                     void invokeRuntimeBridge('jump-to-entry', localTimeline.length - 1);
@@ -457,6 +538,11 @@ function attachEventHandlers(mp) {
 
 function handlePlayPause() {
     if (!lastResponse) return;
+    if (detachedImportedSession) {
+        showDetachedSessionNotice();
+        return;
+    }
+
     const isPlaying = lastResponse.status === 'playing';
     if (isPlaying) {
         stopPlayback();
@@ -553,13 +639,17 @@ function updateDisabledStates() {
 
     const r = lastResponse;
     const hasBridge = !!runtimeBridge;
+    const canControlLiveRuntime = hasBridge && !detachedImportedSession;
     const hasTimeline = r && r.timelineSize > 0;
+    const hasMetadata = hasCompatibilityMetadata(getCurrentRuntimeMetadata());
 
-    setDisabled(els.btnBack, !hasBridge || !hasTimeline || (r && r.atStart));
-    setDisabled(els.btnStep, !hasBridge || !hasTimeline || (r && r.atEnd));
-    setDisabled(els.btnPlayPause, !hasBridge || !hasTimeline);
-    setDisabled(els.btnClear, !hasBridge || !hasTimeline);
-    setDisabled(els.scrubber, !hasBridge || !hasTimeline);
+    setDisabled(els.btnBack, !canControlLiveRuntime || !hasTimeline || (r && r.atStart));
+    setDisabled(els.btnStep, !canControlLiveRuntime || !hasTimeline || (r && r.atEnd));
+    setDisabled(els.btnPlayPause, !canControlLiveRuntime || !hasTimeline);
+    setDisabled(els.btnClear, !canControlLiveRuntime || !hasTimeline);
+    setDisabled(els.btnExport, !hasTimeline || !hasMetadata);
+    setDisabled(els.btnImport, !hasMetadata);
+    setDisabled(els.scrubber, !canControlLiveRuntime || !hasTimeline);
 }
 
 function setDisabled(element, disabled) {
@@ -567,6 +657,300 @@ function setDisabled(element, disabled) {
     element.disabled = !!disabled;
     element.style.opacity = disabled ? '0.4' : '1';
     element.style.cursor = disabled ? 'default' : 'pointer';
+}
+
+function getRuntimeMetadataFromConfig() {
+    if (typeof globalThis === 'undefined' || !('__abiesDebugger' in globalThis)) {
+        return { appName: '', appVersion: '' };
+    }
+
+    const cfg = globalThis.__abiesDebugger;
+    if (!cfg || typeof cfg !== 'object') {
+        return { appName: '', appVersion: '' };
+    }
+
+    return {
+        appName: String(cfg.appName ?? cfg.app ?? '').trim(),
+        appVersion: String(cfg.appVersion ?? cfg.version ?? '').trim(),
+    };
+}
+
+function hasCompatibilityMetadata(metadata) {
+    return !!(metadata && metadata.appName && metadata.appVersion);
+}
+
+function syncRuntimeMetadata(response) {
+    const fromResponse = {
+        appName: String(response?.appName ?? '').trim(),
+        appVersion: String(response?.appVersion ?? '').trim(),
+    };
+
+    if (hasCompatibilityMetadata(fromResponse)) {
+        currentRuntimeMetadata = fromResponse;
+        return;
+    }
+
+    const fromConfig = getRuntimeMetadataFromConfig();
+    if (hasCompatibilityMetadata(fromConfig)) {
+        currentRuntimeMetadata = fromConfig;
+    }
+}
+
+function getCurrentRuntimeMetadata() {
+    if (hasCompatibilityMetadata(currentRuntimeMetadata)) {
+        return currentRuntimeMetadata;
+    }
+
+    const fromConfig = getRuntimeMetadataFromConfig();
+    if (hasCompatibilityMetadata(fromConfig)) {
+        currentRuntimeMetadata = fromConfig;
+        return currentRuntimeMetadata;
+    }
+
+    return { appName: '', appVersion: '' };
+}
+
+function showNotice(message, isError) {
+    if (!els.notice) return;
+
+    if (!message) {
+        els.notice.style.display = 'none';
+        els.notice.textContent = '';
+        return;
+    }
+
+    els.notice.style.display = 'block';
+    els.notice.style.background = isError ? 'rgba(240,68,56,0.16)' : 'rgba(46,144,250,0.12)';
+    els.notice.style.borderColor = isError ? 'rgba(240,68,56,0.45)' : T.borderStrong;
+    els.notice.textContent = message;
+}
+
+function buildExportSessionPayload() {
+    // This payload is for browser-side file sharing/import in debugger.js.
+    // It is intentionally separate from the C# bridge DebuggerAdapterSession shape.
+    const runtime = getCurrentRuntimeMetadata();
+    if (!hasCompatibilityMetadata(runtime)) {
+        showNotice('Export unavailable: runtime app/version metadata is missing.', true);
+        return null;
+    }
+
+    if (!localTimeline.length) {
+        showNotice('Export unavailable: no timeline entries to export.', true);
+        return null;
+    }
+
+    return {
+        schemaVersion: SESSION_SCHEMA_VERSION,
+        exportedAtUtc: new Date().toISOString(),
+        runtime,
+        debugger: {
+            status: lastResponse?.status ?? 'paused',
+            cursorPosition: Number.isFinite(lastResponse?.cursorPosition) ? lastResponse.cursorPosition : -1,
+            timelineSize: localTimeline.length,
+            initialModelSnapshotPreview: lastResponse?.initialModelSnapshotPreview ?? '',
+            modelSnapshotPreview: lastResponse?.modelSnapshotPreview ?? '',
+            previousModelSnapshotPreview: lastResponse?.previousModelSnapshotPreview ?? null,
+        },
+        timelineEntries: localTimeline,
+    };
+}
+
+function sanitizeFileToken(value) {
+    return String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'unknown';
+}
+
+function exportSession() {
+    const payload = buildExportSessionPayload();
+    if (!payload) {
+        return;
+    }
+
+    const ts = new Date().toISOString().replace(/[.:]/g, '-');
+    const app = sanitizeFileToken(payload.runtime.appName);
+    const version = sanitizeFileToken(payload.runtime.appVersion);
+    const fileName = `abies-debugger-session-${app}-${version}-${ts}.json`;
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showNotice(`Session exported: ${fileName}`, false);
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+function normalizeImportedSession(payload) {
+    if (!payload || typeof payload !== 'object') {
+        return { error: 'Import failed: expected a JSON object.' };
+    }
+
+    const runtime = payload.runtime;
+    if (!runtime || typeof runtime !== 'object') {
+        return { error: 'Import failed: session runtime metadata is missing.' };
+    }
+
+    const appName = String(runtime.appName ?? '').trim();
+    const appVersion = String(runtime.appVersion ?? '').trim();
+    if (!appName || !appVersion) {
+        return { error: 'Import failed: session runtime metadata must include appName and appVersion.' };
+    }
+
+    const timelineEntries = Array.isArray(payload.timelineEntries) ? payload.timelineEntries : null;
+    if (!timelineEntries) {
+        return { error: 'Import failed: timelineEntries array is missing.' };
+    }
+
+    const debuggerState = payload.debugger && typeof payload.debugger === 'object' ? payload.debugger : {};
+    const cursorPosition = Number.isFinite(debuggerState.cursorPosition)
+        ? debuggerState.cursorPosition
+        : (timelineEntries.length > 0 ? 0 : -1);
+
+    return {
+        runtime: { appName, appVersion },
+        timelineEntries,
+        status: typeof debuggerState.status === 'string' ? debuggerState.status : 'paused',
+        cursorPosition,
+        initialModelSnapshotPreview: typeof debuggerState.initialModelSnapshotPreview === 'string'
+            ? debuggerState.initialModelSnapshotPreview
+            : '',
+        modelSnapshotPreview: typeof debuggerState.modelSnapshotPreview === 'string' ? debuggerState.modelSnapshotPreview : '',
+        previousModelSnapshotPreview: typeof debuggerState.previousModelSnapshotPreview === 'string'
+            ? debuggerState.previousModelSnapshotPreview
+            : null,
+    };
+}
+
+function buildRuntimeImportPayload(session) {
+    return {
+        session: {
+            app: {
+                appName: session.runtime.appName,
+                appVersion: session.runtime.appVersion,
+            },
+            status: session.status,
+            cursorPosition: session.cursorPosition,
+            initialModelSnapshotPreview: session.initialModelSnapshotPreview ?? '',
+            timelineEntries: session.timelineEntries.map(entry => ({
+                sequence: entry.sequence,
+                messageType: entry.messageType,
+                argsPreview: entry.argsPreview,
+                timestamp: entry.timestamp,
+                patchCount: entry.patchCount,
+                modelSnapshotPreview: entry.modelSnapshotPreview ?? '',
+            })),
+        }
+    };
+}
+
+function findTimelineEntryBySequence(sequence) {
+    return localTimeline.find(e => Number(e?.sequence) === Number(sequence)) ?? null;
+}
+
+function applyImportedSession(session) {
+    detachedImportedSession = true;
+    localTimeline = session.timelineEntries;
+
+    const size = localTimeline.length;
+    const boundedCursor = size === 0
+        ? -1
+        : Math.max(0, Math.min(size - 1, Number(session.cursorPosition)));
+
+    const currentEntry = boundedCursor >= 0
+        ? (findTimelineEntryBySequence(boundedCursor) ?? localTimeline[boundedCursor] ?? null)
+        : null;
+
+    lastResponse = {
+        status: session.status,
+        cursorPosition: boundedCursor,
+        timelineSize: size,
+        atStart: boundedCursor <= 0,
+        atEnd: size === 0 || boundedCursor >= (size - 1),
+        currentEntry,
+        modelSnapshotPreview: session.modelSnapshotPreview,
+        previousModelSnapshotPreview: session.previousModelSnapshotPreview,
+        initialModelSnapshotPreview: session.initialModelSnapshotPreview,
+        timelineEntries: localTimeline,
+        appName: session.runtime.appName,
+        appVersion: session.runtime.appVersion,
+    };
+
+    updateUI();
+}
+
+function showDetachedSessionNotice() {
+    if (!detachedImportedSession) {
+        return;
+    }
+
+    showNotice(
+        'Imported session is in read-only view mode. Reconnect to the live runtime to step/play/clear.',
+        false
+    );
+}
+
+async function importSession(file) {
+    try {
+        if (!file) {
+            return;
+        }
+
+        const currentRuntime = getCurrentRuntimeMetadata();
+        if (!hasCompatibilityMetadata(currentRuntime)) {
+            showNotice('Import unavailable: current runtime app/version metadata is missing.', true);
+            return;
+        }
+
+        const raw = await file.text();
+        const payload = JSON.parse(raw);
+        const session = normalizeImportedSession(payload);
+
+        if (session.error) {
+            showNotice(session.error, true);
+            return;
+        }
+
+        if (session.runtime.appName !== currentRuntime.appName || session.runtime.appVersion !== currentRuntime.appVersion) {
+            showNotice(
+                `Import rejected: session ${session.runtime.appName}@${session.runtime.appVersion} does not match runtime ${currentRuntime.appName}@${currentRuntime.appVersion}.`,
+                true
+            );
+            return;
+        }
+
+        stopPlayback();
+
+        if (runtimeBridge) {
+            const bridgePayload = JSON.stringify(buildRuntimeImportPayload(session));
+            const response = await invokeRuntimeBridge('import-session', -1, bridgePayload);
+            if (response?.error || response?.status === 'error') {
+                showNotice(response?.error ?? 'Import failed: runtime rejected the session.', true);
+                return;
+            }
+
+            showNotice(`Session imported: ${session.timelineEntries.length} entries loaded.`, false);
+            return;
+        }
+
+        applyImportedSession(session);
+        showNotice(`Session imported: ${session.timelineEntries.length} entries loaded in read-only view mode.`, false);
+    } catch {
+        showNotice('Import failed: file is not valid debugger session JSON.', true);
+    } finally {
+        if (els.importInput) {
+            els.importInput.value = '';
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
