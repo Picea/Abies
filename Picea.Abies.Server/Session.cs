@@ -265,12 +265,14 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
                 continue;
             }
 
+#if DEBUG
             if (evt.CommandId == _debuggerCommandId)
             {
                 await HandleDebuggerCommand(evt, cancellationToken);
                 eventActivity?.SetStatus(ActivityStatusCode.Ok);
                 continue;
             }
+#endif
 
             // Look up the handler in this session's registry and create a message
             var message = _runtime.Handlers.CreateMessage(evt.CommandId, evt.EventData);
@@ -285,6 +287,7 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
 
+#if DEBUG
     private async Task HandleDebuggerCommand(DomEvent evt, CancellationToken cancellationToken)
     {
         if (!TryParseDebuggerPayload(evt.EventData, out var requestId, out var message))
@@ -391,11 +394,12 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
             return true;
         }
-        catch
+        catch (Exception)
         {
             return false;
         }
     }
+#endif
 
 #if DEBUG
     private sealed record DebuggerResponseEnvelope

@@ -227,7 +227,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     private static string ReadDebuggerScript()
     {
         var repoRoot = FindRepoRoot();
-        var debuggerScriptPath = Path.Combine(repoRoot, "Picea.Abies.Browser", "wwwroot", "debugger.js");
+        var debuggerScriptPath = Path.Join(repoRoot, "Picea.Abies.Browser", "wwwroot", "debugger.js");
 
         if (!File.Exists(debuggerScriptPath))
         {
@@ -240,7 +240,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     private static string ReadBrowserRuntimeSource()
     {
         var repoRoot = FindRepoRoot();
-        var runtimePath = Path.Combine(repoRoot, "Picea.Abies.Browser", "Runtime.cs");
+        var runtimePath = Path.Join(repoRoot, "Picea.Abies.Browser", "Runtime.cs");
 
         if (!File.Exists(runtimePath))
         {
@@ -253,7 +253,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     private static string ReadBrowserInteropSource()
     {
         var repoRoot = FindRepoRoot();
-        var interopPath = Path.Combine(repoRoot, "Picea.Abies.Browser", "Interop.cs");
+        var interopPath = Path.Join(repoRoot, "Picea.Abies.Browser", "Interop.cs");
 
         if (!File.Exists(interopPath))
         {
@@ -266,7 +266,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     private static string ReadServerInteropSource()
     {
         var repoRoot = FindRepoRoot();
-        var serverInteropPath = Path.Combine(repoRoot, "Picea.Abies.Server.Kestrel", "wwwroot", "_abies", "abies-server.js");
+        var serverInteropPath = Path.Join(repoRoot, "Picea.Abies.Server.Kestrel", "wwwroot", "_abies", "abies-server.js");
 
         if (!File.Exists(serverInteropPath))
         {
@@ -282,7 +282,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
 
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Picea.Abies.sln")))
+            if (File.Exists(Path.Join(directory.FullName, "Picea.Abies.sln")))
             {
                 return directory.FullName;
             }

@@ -1,6 +1,3 @@
 {
-    "chatgpt.openOnStartup": true,
-    "chat.tools.terminal.autoApprove": {
-        "timeout": true
-    }
+    "chatgpt.openOnStartup": true
 }

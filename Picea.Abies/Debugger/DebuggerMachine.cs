@@ -128,7 +128,7 @@ public sealed class DebuggerMachine
         }
 
         _lastTimestamp = timestamp;
-    TimelineChanged?.Invoke();
+        TimelineChanged?.Invoke();
     }
 
     /// <summary>
