@@ -191,8 +191,11 @@ public class DebuggerMountPointTests
         debuggerUI.UpdateFromResponse(new DebuggerAdapterResponse
         {
             Status = "playing",
+            AppName = "Picea.Abies.Conduit.Wasm",
+            AppVersion = "1.2.3",
             CursorPosition = 1,
             TimelineSize = 5,
+            InitialModelSnapshotPreview = "{\"state\": 0}",
             ModelSnapshotPreview = "{\"state\": 1}"
         });
 

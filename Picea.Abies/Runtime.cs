@@ -99,8 +99,6 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
     private IDisposable? _hotReloadRegistration;
     private DebuggerMachine? _debuggerMachine;
-    private int _lastPatchCount;
-    private Action? _onDebuggerTimelineChanged;
 #endif
 
     public TModel Model => _core.State;
@@ -127,19 +125,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     {
         _debuggerMachine = new DebuggerMachine(capacity);
         DebuggerRuntimeRegistry.CurrentDebugger = _debuggerMachine;
-
-        // Capture the initial model state (before any messages) so the debugger
-        // can show the "before" state for the first timeline entry.
-        var initialSnapshot = GenerateModelSnapshot(_core.State);
-        _debuggerMachine.CaptureInitialModel(initialSnapshot, _core.State);
     }
-
-    /// <summary>
-    /// Registers a callback that fires after every <see cref="DebuggerMachine.CaptureMessage"/>
-    /// call so the UI layer (browser or server) can push timeline updates to the debugger panel.
-    /// </summary>
-    public void SetDebuggerTimelineChangedCallback(Action callback) =>
-        _onDebuggerTimelineChanged = callback;
 #endif
 
     private ValueTask<Result<Unit, PipelineError>> Observe(TModel state, Message _, Command __)
@@ -202,9 +188,6 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             }
 
             renderActivity?.SetTag("abies.patches", patches.Count);
-#if DEBUG
-            _lastPatchCount = allPatches.Count;
-#endif
         }
 
         renderActivity?.SetStatus(ActivityStatusCode.Ok);
@@ -432,8 +415,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         if (_debuggerMachine != null && dispatchResult.IsOk)
         {
             var modelSnapshot = GenerateModelSnapshot(_core.State);
-            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State, _lastPatchCount);
-            _onDebuggerTimelineChanged?.Invoke();
+            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
         }
 #endif
 

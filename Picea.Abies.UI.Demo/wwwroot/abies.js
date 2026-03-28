@@ -388,6 +388,7 @@ function extractEventData(event) {
     // Keyboard events
     if (event instanceof KeyboardEvent) {
         data.key = event.key;
+        data.repeat = event.repeat;
         data.code = event.code;
         data.altKey = event.altKey;
         data.ctrlKey = event.ctrlKey;
@@ -463,12 +464,16 @@ function registerEventType(eventType) {
         if (!dispatchDomEvent) return;
 
         const attrName = `data-event-${eventType}`;
+        const debugHandlers = window.__ABIES_DEBUG_HANDLERS ?? false;
 
         // Walk up from target to find the handler attribute
         let el = event.target;
         while (el && el !== document) {
             if (el.hasAttribute && el.hasAttribute(attrName)) {
                 const commandId = el.getAttribute(attrName);
+                if (debugHandlers) {
+                    console.log(`[EventDelegation] HIT: ${eventType} on ${el.tagName}, commandId=${commandId}`);
+                }
                 const eventData = extractEventData(event);
 
                 // OTel: trace the event dispatch if instrumentation is active
@@ -504,6 +509,9 @@ function registerEventType(eventType) {
                 return;
             }
             el = el.parentElement;
+        }
+        if (debugHandlers) {
+            console.log(`[EventDelegation] MISS: ${eventType} on ${event.target?.tagName ?? "?"}`);
         }
     }, useCapture);
 }
