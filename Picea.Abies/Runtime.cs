@@ -427,6 +427,44 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     {
         if (snapshot is not TModel typedSnapshot)
         {
+            if (snapshot is System.Text.Json.JsonElement jsonSnapshot)
+            {
+                try
+                {
+                    var deserialized = System.Text.Json.JsonSerializer.Deserialize<TModel>(jsonSnapshot.GetRawText());
+                    if (deserialized is null)
+                    {
+                        return false;
+                    }
+
+                    Render(deserialized);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            if (snapshot is string snapshotJson)
+            {
+                try
+                {
+                    var deserialized = System.Text.Json.JsonSerializer.Deserialize<TModel>(snapshotJson);
+                    if (deserialized is null)
+                    {
+                        return false;
+                    }
+
+                    Render(deserialized);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
             return false;
         }
 
