@@ -78,10 +78,13 @@ public class DebuggerAdapterTests
         var c_Response = JsonSerializer.Serialize(new DebuggerAdapterResponse
         {
             Status = "paused",
+            AppName = "Picea.Abies.Conduit.Wasm",
+            AppVersion = "1.2.3",
             CursorPosition = 5,
             TimelineSize = 10,
+            InitialModelSnapshotPreview = "{\"count\":0}",
             ModelSnapshotPreview = "{\"count\":5,\"items\":[1,2,3]}"
-        }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+        });
 
         // Act
         var response = adapter.DeserializeResponse(c_Response);
@@ -150,6 +153,8 @@ public class DebuggerAdapterTests
     [Arguments("pause")]
     [Arguments("clear-timeline")]
     [Arguments("get-timeline")]
+    [Arguments("export-session")]
+    [Arguments("import-session")]
     public async Task AdapterSerializesAllBridgeMessageTypes_WithNoSideEffects(string messageType)
     {
         // Arrange
@@ -211,6 +216,8 @@ public class DebuggerAdapterTests
         var responseJson = JsonSerializer.Serialize(new DebuggerAdapterResponse
         {
             Status = "paused",
+            AppName = "Picea.Abies.Conduit.Wasm",
+            AppVersion = "1.2.3",
             CursorPosition = 2,
             TimelineSize = 5,
             AtStart = false,
@@ -223,6 +230,7 @@ public class DebuggerAdapterTests
                 Timestamp = 1000L,
                 PatchCount = 3
             },
+            InitialModelSnapshotPreview = "{\"count\":0}",
             ModelSnapshotPreview = "{\"count\":2}",
             PreviousModelSnapshotPreview = "{\"count\":1}",
             TimelineEntries = null
@@ -247,10 +255,13 @@ public class DebuggerAdapterTests
         var responseJson = JsonSerializer.Serialize(new DebuggerAdapterResponse
         {
             Status = "recording",
+            AppName = "Picea.Abies.Conduit.Wasm",
+            AppVersion = "1.2.3",
             CursorPosition = 1,
             TimelineSize = 2,
             AtStart = false,
             AtEnd = true,
+            InitialModelSnapshotPreview = "{\"count\":0}",
             ModelSnapshotPreview = "{\"count\":2}",
             TimelineEntries =
             [

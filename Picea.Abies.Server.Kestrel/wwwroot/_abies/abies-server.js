@@ -143,7 +143,31 @@
     // =========================================================================
     let otelModule = null;
     let debuggerModuleUrl = null;
-    let debuggerModule = null;
+
+    function loadDebuggerModule() {
+        if (!debuggerModuleUrl) {
+            return Promise.resolve(null);
+        }
+
+        return import(/* webpackIgnore: true */ debuggerModuleUrl).catch(() => null);
+    }
+
+    function refreshDebuggerState() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        Promise.resolve()
+            .then(() => loadDebuggerModule())
+            .then(mod => {
+                if (mod && typeof mod.notifyTimelineChanged === "function") {
+                    mod.notifyTimelineChanged();
+                }
+            })
+            .catch(() => {
+                // Best-effort only for debug builds.
+            });
+    }
 
     // =========================================================================
     // Debugger UI startup configuration
@@ -269,13 +293,16 @@
             const moduleUrl = new URL("./debugger.js", scriptTag.src || window.location.href);
             debuggerModuleUrl = moduleUrl.href;
             const mod = await import(/* webpackIgnore: true */ debuggerModuleUrl);
-            debuggerModule = mod || null;
             if (mod && typeof mod.mountDebugger === "function") {
                 mod.mountDebugger();
             }
 
             if (mod && typeof mod.setRuntimeBridge === "function") {
-                mod.setRuntimeBridge((type, entryId) => sendDebuggerCommand(type, entryId));
+                mod.setRuntimeBridge((type, entryId, dataJson) => sendDebuggerCommand(type, entryId, dataJson));
+            }
+
+            if (mod && typeof mod.notifyTimelineChanged === "function") {
+                mod.notifyTimelineChanged();
             }
         } catch {
             // No-op when debugger bundle is missing (Release or non-browser host).
@@ -469,6 +496,7 @@
 
         if (event instanceof KeyboardEvent) {
             data.key = event.key;
+            data.repeat = event.repeat;
             data.code = event.code;
             data.altKey = event.altKey;
             data.ctrlKey = event.ctrlKey;
@@ -780,6 +808,8 @@
 
             applyPatch(type, f1, f2, f3, f4);
         }
+
+        refreshDebuggerState();
     }
 
     // =========================================================================
@@ -823,13 +853,27 @@
         }
     }
 
-    function sendDebuggerCommand(type, entryId) {
+    function sendDebuggerCommand(type, entryId, dataJson) {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
-            return Promise.resolve(JSON.stringify({ status: "unavailable", cursorPosition: -1, timelineSize: 0, modelSnapshotPreview: "" }));
+            return Promise.resolve(JSON.stringify({
+                status: "unavailable",
+                appName: "",
+                appVersion: "",
+                cursorPosition: -1,
+                timelineSize: 0,
+                atStart: true,
+                atEnd: true,
+                modelSnapshotPreview: ""
+            }));
         }
 
         const requestId = `dbg-${++debuggerRequestSeq}`;
-        const eventData = JSON.stringify({ requestId, type, entryId });
+        const eventData = JSON.stringify({
+            requestId,
+            type,
+            entryId,
+            data: dataJson ? JSON.parse(dataJson) : undefined
+        });
 
         return new Promise(resolve => {
             pendingDebuggerResponses.set(requestId, resolve);
@@ -839,7 +883,16 @@
                 const pending = pendingDebuggerResponses.get(requestId);
                 if (pending) {
                     pendingDebuggerResponses.delete(requestId);
-                    pending(JSON.stringify({ status: "error", cursorPosition: -1, timelineSize: 0, modelSnapshotPreview: "" }));
+                    pending(JSON.stringify({
+                        status: "error",
+                        appName: "",
+                        appVersion: "",
+                        cursorPosition: -1,
+                        timelineSize: 0,
+                        atStart: true,
+                        atEnd: true,
+                        modelSnapshotPreview: ""
+                    }));
                 }
             }, 2000);
         });
@@ -854,11 +907,16 @@
 
         document.addEventListener(eventType, function (event) {
             const attrName = "data-event-" + eventType;
+            const debugHandlers = window.__ABIES_DEBUG_HANDLERS ?? false;
 
             let el = event.target;
+            let walkDepth = 0;
             while (el && el !== document) {
                 if (el.hasAttribute && el.hasAttribute(attrName)) {
                     const commandId = el.getAttribute(attrName);
+                    if (debugHandlers) {
+                        console.log("[ServerEventDelegation] HIT: " + eventType + " on " + el.tagName + " (depth=" + walkDepth + "), commandId=" + commandId);
+                    }
                     const eventData = extractEventData(event);
                     const traceContext = createEventTraceContext(commandId, eventType, eventData);
                     sendEvent(commandId, eventType, eventData, traceContext);
@@ -882,7 +940,11 @@
                     }
                     return;
                 }
+                walkDepth++;
                 el = el.parentElement;
+            }
+            if (debugHandlers) {
+                console.log("[ServerEventDelegation] MISS: " + eventType + " on " + (event.target?.tagName ?? "?") + ". Walked " + walkDepth + " levels, never found " + attrName);
             }
         }, useCapture);
     }
@@ -1002,6 +1064,7 @@
             // Connection established — the server will send the initial
             // patch batch (the diff from empty → current view) automatically
             // when the session starts.
+            refreshDebuggerState();
         };
 
         ws.onmessage = function (event) {
@@ -1027,15 +1090,8 @@
                         const resolve = pendingDebuggerResponses.get(msg.requestId);
                         if (resolve) {
                             pendingDebuggerResponses.delete(msg.requestId);
-                            // The data field contains the full DebuggerAdapterResponse object.
-                            // Re-serialize to JSON string — matches the format WASM bridge returns.
-                            resolve(JSON.stringify(msg.data || {}));
-                        }
-                    } else if (msg.type === "debugger-timeline-changed") {
-                        // Server push: timeline has new entries. Tell the debugger
-                        // module to refresh its view via the bridge.
-                        if (debuggerModule && typeof debuggerModule.notifyTimelineChanged === "function") {
-                            debuggerModule.notifyTimelineChanged();
+                            const { type: _type, requestId: _requestId, ...response } = msg;
+                            resolve(JSON.stringify(response));
                         }
                     }
                 } catch (e) {

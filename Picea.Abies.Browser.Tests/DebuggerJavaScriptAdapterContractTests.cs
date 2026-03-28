@@ -43,6 +43,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         }
 
         await Assert.That(script).Contains("keydown");
+        await Assert.That(script).Contains("els.panel.contains(active)");
     }
 
     [Test]
@@ -62,6 +63,7 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         // v2 bridge uses JSON protocol with Promise.resolve wrapping
         await Assert.That(script).Contains("await Promise.resolve(");
         await Assert.That(script).Contains("runtimeBridge(messageType");
+        await Assert.That(script).Contains("dataJson ?? ''");
         await Assert.That(script).Contains("JSON.parse(raw)");
     }
 
@@ -124,12 +126,102 @@ public sealed class DebuggerJavaScriptAdapterContractTests
     }
 
     [Test]
+    public async Task DebuggerJsSessionExport_IncludesRuntimeMetadataInPayload()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("function buildExportSessionPayload()");
+        await Assert.That(script).Contains("schemaVersion: SESSION_SCHEMA_VERSION");
+        await Assert.That(script).Contains("runtime,");
+        await Assert.That(script).Contains("appName");
+        await Assert.That(script).Contains("appVersion");
+        await Assert.That(script).Contains("timelineEntries: localTimeline");
+    }
+
+    [Test]
+    public async Task DebuggerJsSessionImport_HappyPathAppliesImportedSession()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("function importSession(file)");
+        await Assert.That(script).Contains("buildRuntimeImportPayload(session)");
+        await Assert.That(script).Contains("invokeRuntimeBridge('import-session', -1, bridgePayload)");
+        await Assert.That(script).Contains("applyImportedSession(session)");
+        await Assert.That(script).Contains("Session imported:");
+    }
+
+    [Test]
+    public async Task DebuggerJsSessionImport_RejectsAppVersionMismatch()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("session.runtime.appName !== currentRuntime.appName");
+        await Assert.That(script).Contains("session.runtime.appVersion !== currentRuntime.appVersion");
+        await Assert.That(script).Contains("Import rejected: session");
+    }
+
+    [Test]
+    public async Task DebuggerJsSessionImport_FallsBackToReadOnlyViewMode_WhenNoRuntimeBridgeExists()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("detachedImportedSession");
+        await Assert.That(script).Contains("canControlLiveRuntime");
+        await Assert.That(script).Contains("!canControlLiveRuntime");
+        await Assert.That(script).Contains("read-only view mode");
+        await Assert.That(script).Contains("showDetachedSessionNotice");
+        await Assert.That(script).Contains("if (runtimeBridge)");
+    }
+
+    [Test]
+    public async Task DebuggerJsRuntimeMetadata_IsConsumedFromBridgeResponses()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("function syncRuntimeMetadata(response)");
+        await Assert.That(script).Contains("response?.appName");
+        await Assert.That(script).Contains("response?.appVersion");
+    }
+
+    [Test]
+    public async Task DebuggerJsSessionImport_HandlesMalformedJsonGracefully()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("const payload = JSON.parse(raw);");
+        await Assert.That(script).Contains("catch");
+        await Assert.That(script).Contains("Import failed: file is not valid debugger session JSON.");
+        await Assert.That(script).Contains("showNotice");
+    }
+
+    [Test]
     public async Task BrowserRuntime_DebuggerBootstrap_WiresRuntimeBridgeWhenEnabled()
     {
         var runtimeScript = ReadBrowserRuntimeSource();
+        var interopSource = ReadBrowserInteropSource();
 
         await Assert.That(runtimeScript).Contains("Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage);");
+        await Assert.That(runtimeScript).Contains("TimelineChanged += Interop.NotifyTimelineChanged");
         await Assert.That(runtimeScript).Contains("runtime.UseDebugger();");
+        await Assert.That(interopSource).Contains("JSImport(\"notifyTimelineChanged\", \"AbiesDebugger\")");
+        await Assert.That(interopSource).Contains("Func<string, int, string, string>");
+    }
+
+    [Test]
+    public async Task BrowserInterop_DebuggerDispatch_ReturnsJsonProtocolResponses()
+    {
+        var interopSource = ReadBrowserInteropSource();
+        var serverInteropSource = ReadServerInteropSource();
+
+        await Assert.That(interopSource).Contains("DispatchDebuggerMessage");
+        await Assert.That(interopSource).Contains("JsonSerializer.Serialize(response");
+        await Assert.That(interopSource).Contains("DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse");
+        await Assert.That(interopSource.Contains("const char separator = '|'", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(serverInteropSource).Contains("resolve(JSON.stringify(response))");
+        await Assert.That(serverInteropSource).Contains("status: \"unavailable\"");
+        await Assert.That(serverInteropSource).Contains("mod.setRuntimeBridge((type, entryId, dataJson) => sendDebuggerCommand(type, entryId, dataJson))");
+        await Assert.That(serverInteropSource).Contains("refreshDebuggerState()");
+        await Assert.That(serverInteropSource).Contains("mod.notifyTimelineChanged()");
     }
 
     private static string ReadDebuggerScript()
@@ -156,6 +248,32 @@ public sealed class DebuggerJavaScriptAdapterContractTests
         }
 
         return File.ReadAllText(runtimePath);
+    }
+
+    private static string ReadBrowserInteropSource()
+    {
+        var repoRoot = FindRepoRoot();
+        var interopPath = Path.Combine(repoRoot, "Picea.Abies.Browser", "Interop.cs");
+
+        if (!File.Exists(interopPath))
+        {
+            throw new FileNotFoundException("Could not locate browser Interop.cs for debugger bridge contract tests.", interopPath);
+        }
+
+        return File.ReadAllText(interopPath);
+    }
+
+    private static string ReadServerInteropSource()
+    {
+        var repoRoot = FindRepoRoot();
+        var serverInteropPath = Path.Combine(repoRoot, "Picea.Abies.Server.Kestrel", "wwwroot", "_abies", "abies-server.js");
+
+        if (!File.Exists(serverInteropPath))
+        {
+            throw new FileNotFoundException("Could not locate abies-server.js for debugger bridge contract tests.", serverInteropPath);
+        }
+
+        return File.ReadAllText(serverInteropPath);
     }
 
     private static string FindRepoRoot()

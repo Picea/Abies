@@ -30,6 +30,7 @@
 
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 #if DEBUG
 using Picea.Abies.Debugger;
 #endif
@@ -203,15 +204,6 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         if (DebuggerConfiguration.Default.Enabled)
         {
             runtime.UseDebugger();
-
-            // Push timeline-changed notifications to the client whenever
-            // a new message is captured. The JS side calls notifyTimelineChanged()
-            // on the debugger module which fetches the updated timeline via the bridge.
-            if (sendText is not null)
-            {
-                runtime.SetDebuggerTimelineChangedCallback(() =>
-                    _ = sendText("{\"type\":\"debugger-timeline-changed\"}"));
-            }
         }
 #endif
 
@@ -295,19 +287,24 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
     private async Task HandleDebuggerCommand(DomEvent evt, CancellationToken cancellationToken)
     {
-        if (!TryParseDebuggerPayload(evt.EventData, out var requestId, out var commandType, out var entryId))
+        if (!TryParseDebuggerPayload(evt.EventData, out var requestId, out var message))
         {
             if (_sendText is not null)
             {
-                var errorResponse = new DebuggerAdapterResponse
+                await _sendText(JsonSerializer.Serialize(new DebuggerResponseEnvelope
                 {
+                    Type = "debugger-response",
+                    RequestId = "unknown",
                     Status = "error",
+                    AppName = string.Empty,
+                    AppVersion = string.Empty,
                     CursorPosition = -1,
                     TimelineSize = 0,
+                    AtStart = true,
+                    AtEnd = true,
+                    InitialModelSnapshotPreview = string.Empty,
                     ModelSnapshotPreview = string.Empty
-                };
-                var errorJson = JsonSerializer.Serialize(errorResponse, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
-                await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"unknown\",\"data\":{errorJson}}}");
+                }));
             }
 
             return;
@@ -317,13 +314,11 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         var debugger = _runtime.Debugger;
         if (debugger is not null)
         {
-            var message = new DebuggerAdapterMessage { Type = commandType, EntryId = entryId >= 0 ? entryId : null };
             var response = DebuggerRuntimeBridge.Execute(message, debugger);
             _ = _runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
             if (_sendText is not null)
             {
-                var dataJson = JsonSerializer.Serialize(response, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
-                await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"data\":{dataJson}}}");
+                await _sendText(JsonSerializer.Serialize(DebuggerResponseEnvelope.From(requestId, response)));
             }
 
             return;
@@ -332,23 +327,30 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
         if (_sendText is not null)
         {
-            var unavailableResponse = new DebuggerAdapterResponse
+            await _sendText(JsonSerializer.Serialize(new DebuggerResponseEnvelope
             {
+                Type = "debugger-response",
+                RequestId = requestId,
                 Status = "unavailable",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
                 CursorPosition = -1,
                 TimelineSize = 0,
+                AtStart = true,
+                AtEnd = true,
+                InitialModelSnapshotPreview = string.Empty,
                 ModelSnapshotPreview = string.Empty
-            };
-            var unavailableJson = JsonSerializer.Serialize(unavailableResponse, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
-            await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"data\":{unavailableJson}}}");
+            }));
         }
     }
 
-    private static bool TryParseDebuggerPayload(string payload, out string requestId, out string commandType, out int entryId)
+    private static bool TryParseDebuggerPayload(string payload, out string requestId, out DebuggerAdapterMessage message)
     {
         requestId = "unknown";
-        commandType = string.Empty;
-        entryId = -1;
+        message = null!;
+        var commandType = string.Empty;
+        int? entryId = null;
+        object? data = null;
 
         try
         {
@@ -370,13 +372,104 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
                 entryId = parsed;
             }
 
-            return !string.IsNullOrWhiteSpace(commandType);
+            if (root.TryGetProperty("data", out var dataProperty))
+            {
+                data = dataProperty.Clone();
+            }
+
+            if (string.IsNullOrWhiteSpace(commandType))
+            {
+                return false;
+            }
+
+            message = new DebuggerAdapterMessage
+            {
+                Type = commandType,
+                EntryId = entryId,
+                Data = data
+            };
+
+            return true;
         }
         catch
         {
             return false;
         }
     }
+
+#if DEBUG
+    private sealed record DebuggerResponseEnvelope
+    {
+        [JsonPropertyName("type")]
+        public required string Type { get; init; }
+
+        [JsonPropertyName("requestId")]
+        public required string RequestId { get; init; }
+
+        [JsonPropertyName("status")]
+        public required string Status { get; init; }
+
+        [JsonPropertyName("appName")]
+        public required string AppName { get; init; }
+
+        [JsonPropertyName("appVersion")]
+        public required string AppVersion { get; init; }
+
+        [JsonPropertyName("cursorPosition")]
+        public int CursorPosition { get; init; }
+
+        [JsonPropertyName("timelineSize")]
+        public int TimelineSize { get; init; }
+
+        [JsonPropertyName("atStart")]
+        public bool AtStart { get; init; }
+
+        [JsonPropertyName("atEnd")]
+        public bool AtEnd { get; init; }
+
+        [JsonPropertyName("currentEntry")]
+        public DebuggerAdapterTimelineEntry? CurrentEntry { get; init; }
+
+        [JsonPropertyName("initialModelSnapshotPreview")]
+        public required string InitialModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("modelSnapshotPreview")]
+        public required string ModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("previousModelSnapshotPreview")]
+        public string? PreviousModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("timelineEntries")]
+        public IReadOnlyList<DebuggerAdapterTimelineEntry>? TimelineEntries { get; init; }
+
+        [JsonPropertyName("error")]
+        public string? Error { get; init; }
+
+        [JsonPropertyName("session")]
+        public DebuggerAdapterSession? Session { get; init; }
+
+        public static DebuggerResponseEnvelope From(string requestId, DebuggerAdapterResponse response) =>
+            new()
+            {
+                Type = "debugger-response",
+                RequestId = requestId,
+                Status = response.Status,
+                AppName = response.AppName,
+                AppVersion = response.AppVersion,
+                CursorPosition = response.CursorPosition,
+                TimelineSize = response.TimelineSize,
+                AtStart = response.AtStart,
+                AtEnd = response.AtEnd,
+                CurrentEntry = response.CurrentEntry,
+                InitialModelSnapshotPreview = response.InitialModelSnapshotPreview,
+                ModelSnapshotPreview = response.ModelSnapshotPreview,
+                PreviousModelSnapshotPreview = response.PreviousModelSnapshotPreview,
+                TimelineEntries = response.TimelineEntries,
+                Error = response.Error,
+                Session = response.Session
+            };
+    }
+#endif
 
     private static Activity? StartReceiveEventActivity(DomEvent domEvent)
     {
