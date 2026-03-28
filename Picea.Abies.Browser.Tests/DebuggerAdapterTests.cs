@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Picea.Abies.Browser.Debugger;
+using Picea.Abies.Debugger;
 
 namespace Picea.Abies.Browser.Tests;
 
@@ -80,7 +81,7 @@ public class DebuggerAdapterTests
             CursorPosition = 5,
             TimelineSize = 10,
             ModelSnapshotPreview = "{\"count\":5,\"items\":[1,2,3]}"
-        });
+        }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
 
         // Act
         var response = adapter.DeserializeResponse(c_Response);
@@ -148,6 +149,7 @@ public class DebuggerAdapterTests
     [Arguments("play")]
     [Arguments("pause")]
     [Arguments("clear-timeline")]
+    [Arguments("get-timeline")]
     public async Task AdapterSerializesAllBridgeMessageTypes_WithNoSideEffects(string messageType)
     {
         // Arrange
@@ -199,5 +201,77 @@ public class DebuggerAdapterTests
         }
 
         await Assert.That(content).Contains("abies:debugger:message-dispatched");
+    }
+
+    [Test]
+    public async Task AdapterDeserializesResponseWithNewFields_BoundaryAndTimelineEntries()
+    {
+        var adapter = new DebuggerAdapter();
+
+        var responseJson = JsonSerializer.Serialize(new DebuggerAdapterResponse
+        {
+            Status = "paused",
+            CursorPosition = 2,
+            TimelineSize = 5,
+            AtStart = false,
+            AtEnd = false,
+            CurrentEntry = new DebuggerAdapterTimelineEntry
+            {
+                Sequence = 2,
+                MessageType = "Increment",
+                ArgsPreview = "{\"value\":1}",
+                Timestamp = 1000L,
+                PatchCount = 3
+            },
+            ModelSnapshotPreview = "{\"count\":2}",
+            PreviousModelSnapshotPreview = "{\"count\":1}",
+            TimelineEntries = null
+        }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+
+        var response = adapter.DeserializeResponse(responseJson);
+
+        await Assert.That(response.AtStart).IsFalse();
+        await Assert.That(response.AtEnd).IsFalse();
+        await Assert.That(response.CurrentEntry).IsNotNull();
+        await Assert.That(response.CurrentEntry!.Sequence).IsEqualTo(2);
+        await Assert.That(response.CurrentEntry.MessageType).IsEqualTo("Increment");
+        await Assert.That(response.CurrentEntry.PatchCount).IsEqualTo(3);
+        await Assert.That(response.PreviousModelSnapshotPreview).IsEqualTo("{\"count\":1}");
+    }
+
+    [Test]
+    public async Task AdapterDeserializesResponseWithTimelineEntries_WhenPresent()
+    {
+        var adapter = new DebuggerAdapter();
+
+        var responseJson = JsonSerializer.Serialize(new DebuggerAdapterResponse
+        {
+            Status = "recording",
+            CursorPosition = 1,
+            TimelineSize = 2,
+            AtStart = false,
+            AtEnd = true,
+            ModelSnapshotPreview = "{\"count\":2}",
+            TimelineEntries =
+            [
+                new DebuggerAdapterTimelineEntry
+                {
+                    Sequence = 0, MessageType = "First", ArgsPreview = "{}", Timestamp = 100L, PatchCount = 5
+                },
+
+                new DebuggerAdapterTimelineEntry
+                {
+                    Sequence = 1, MessageType = "Second", ArgsPreview = "{}", Timestamp = 200L, PatchCount = 3
+                }
+            ]
+        }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+
+        var response = adapter.DeserializeResponse(responseJson);
+
+        await Assert.That(response.TimelineEntries).IsNotNull();
+        await Assert.That(response.TimelineEntries!.Count).IsEqualTo(2);
+        await Assert.That(response.TimelineEntries[0].MessageType).IsEqualTo("First");
+        await Assert.That(response.TimelineEntries[0].PatchCount).IsEqualTo(5);
+        await Assert.That(response.TimelineEntries[1].MessageType).IsEqualTo("Second");
     }
 }
