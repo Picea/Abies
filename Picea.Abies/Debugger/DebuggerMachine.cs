@@ -326,8 +326,8 @@ public sealed class DebuggerMachine
         _timelineModelSnapshots.Clear();
 
         _initialModelSnapshotPreview = session.InitialModelSnapshotPreview ?? string.Empty;
-        _initialModelSnapshot = null;
-        _currentModelSnapshot = null;
+        _initialModelSnapshot = _initialModelSnapshotPreview;
+        _currentModelSnapshot = _initialModelSnapshot;
         _sideEffectCount = 0;
 
         foreach (var entry in session.TimelineEntries)
@@ -341,7 +341,7 @@ public sealed class DebuggerMachine
                 PatchCount: entry.PatchCount);
 
             _timeline.Add(importedEntry);
-            _timelineModelSnapshots.Add(new ModelSnapshotBox(null));
+            _timelineModelSnapshots.Add(new ModelSnapshotBox(importedEntry.ModelSnapshotPreview));
             _lastTimestamp = Math.Max(_lastTimestamp, entry.Timestamp);
         }
 
@@ -352,10 +352,12 @@ public sealed class DebuggerMachine
         if (_cursorPosition >= 0)
         {
             _currentModelSnapshotPreview = _timeline[_cursorPosition].ModelSnapshotPreview;
+            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition].Snapshot;
         }
         else
         {
             _currentModelSnapshotPreview = _initialModelSnapshotPreview;
+            _currentModelSnapshot = _initialModelSnapshot;
         }
 
         _currentState = session.Status switch

@@ -81,6 +81,48 @@ public sealed class DebuggerRuntimeReplayApplicationTests
     }
 
     [Test]
+    public async Task ImportedSession_CanApplySnapshotToRenderedDocument()
+    {
+        static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
+            ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
+
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
+
+        using var runtime = await Runtime<ReplayCounterProgram, ReplayCounterModel, Unit>.Start(
+            apply: Apply,
+            interpreter: Interpreter,
+            argument: default,
+            titleChanged: null,
+            navigationExecutor: null,
+            subscriptionFaulted: null,
+            initialUrl: null,
+            threadSafe: false,
+            replay: false);
+
+        runtime.UseDebugger();
+
+        await runtime.Dispatch(new IncrementMessage());
+        await runtime.Dispatch(new IncrementMessage());
+
+        var debugger = runtime.Debugger!;
+        var exportedSession = debugger.ExportSession(new Abies.Debugger.DebuggerAppIdentity
+        {
+            AppName = "Picea.Abies.Tests",
+            AppVersion = "1.0.0"
+        });
+
+        debugger.ClearTimeline();
+        debugger.ImportSession(exportedSession);
+        debugger.Jump(0);
+
+        var applied = runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
+
+        await Assert.That(applied).IsTrue();
+        await Assert.That(Render.Html(runtime.CurrentDocument!.Body)).Contains("count:1");
+    }
+
+    [Test]
     public async Task HandlerDispatchPath_CapturesDebuggerSnapshots()
     {
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
