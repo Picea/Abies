@@ -325,6 +325,8 @@ public class WebSocketSessionTests
 
     /// <summary>
     /// Receives a single binary WebSocket frame and parses it as a patch batch.
+    /// Skips over any interleaved text frames (e.g., debugger timeline-changed
+    /// notifications) that may arrive before the binary patch data.
     /// </summary>
     private static async Task<PatchBatch> ReceiveBinaryBatch(
         WebSocket ws, int timeoutMs = 5000)
@@ -332,7 +334,11 @@ public class WebSocketSessionTests
         var buffer = new byte[64 * 1024]; // 64KB — plenty for test patches
         using var cts = new CancellationTokenSource(timeoutMs);
 
-        var result = await ws.ReceiveAsync(buffer, cts.Token);
+        WebSocketReceiveResult result;
+        do
+        {
+            result = await ws.ReceiveAsync(buffer, cts.Token);
+        } while (result.MessageType == WebSocketMessageType.Text);
 
         await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Binary);
         await Assert.That(result.EndOfMessage).IsTrue();

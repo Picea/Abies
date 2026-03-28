@@ -2,594 +2,705 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 /**
- * Abies Time Travel Debugger — Debug-only JavaScript module
+ * Abies Time Travel Debugger — Debug-only JavaScript module (v2)
  *
  * This module is EXCLUDED from Release builds and only loads during Debug.
- * It owns debugger mount injection and adapter wiring at the mount point.
- *
  * The actual replay logic and state machine live in C# (Mealy machine).
- * This module only coordinates mount creation and UI intent -> adapter message dispatch.
+ * This module owns: mount injection, UI rendering, keyboard nav,
+ * bridge invocation, and local timeline cache management.
+ *
+ * JSON Bridge Protocol:
+ *   Request:  runtimeBridge(messageType: string, entryId: number) → JSON string
+ *   Response: { status, cursorPosition, timelineSize, atStart, atEnd,
+ *               currentEntry, modelSnapshotPreview, previousModelSnapshotPreview,
+ *               timelineEntries? }
  */
 
-const MountPointId = 'abies-debugger-timeline';
-const InitializationFlag = 'abiesDebuggerAdapterInitialized';
-const IntentEventName = 'abies:debugger:intent';
-const IntentAttributeName = 'data-abies-debugger-intent';
-const PayloadAttributeName = 'data-abies-debugger-payload';
-const ExpandedAttributeName = 'data-abies-debugger-expanded';
-const ShellPanelAttributeName = 'data-abies-debugger-panel';
-const StatusAttributeName = 'data-abies-debugger-status';
-const JumpInputAttributeName = 'data-abies-debugger-jump-input';
-const LogListAttributeName = 'data-abies-debugger-log';
-const RuntimeSummaryAttributeName = 'data-abies-debugger-runtime-summary';
-const TogglePanelIntentValue = 'toggle-panel';
-const DebuggerEvents = {
-    MessageDispatched: 'abies:debugger:message-dispatched'
+// ═══════════════════════════════════════════════════════════════════
+// Constants
+// ═══════════════════════════════════════════════════════════════════
+
+const MOUNT_POINT_ID = 'abies-debugger-timeline';
+const INIT_FLAG = 'abiesDebuggerAdapterInitialized';
+
+// Abies brand palette (dark theme tokens)
+const T = {
+    bg:         '#0B1220',
+    bgElevated: '#101828',
+    bgSoft:     '#1D2939',
+    text:       '#F2F4F7',
+    textMuted:  'rgba(242,244,247,0.78)',
+    textSubtle: 'rgba(242,244,247,0.54)',
+    border:     'rgba(242,244,247,0.10)',
+    borderStrong: 'rgba(242,244,247,0.24)',
+    accent:     '#89B42B',
+    accentHover:'#B7D56A',
+    accentSoft: 'rgba(137,180,43,0.16)',
+    danger:     '#F04438',
+    info:       '#2E90FA',
+    font:       '12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontSmall:  '11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    radius:     '8px',
+    radiusSmall:'6px',
+    focusRing:  'rgba(137,180,43,0.42)',
 };
 
-let runtimeBridge = null;
+// ═══════════════════════════════════════════════════════════════════
+// Module State
+// ═══════════════════════════════════════════════════════════════════
 
-function parseToggleValue(value) {
+let runtimeBridge = null;
+let localTimeline = [];
+let lastResponse = null;
+let filterText = '';
+let panelExpanded = false;
+
+// DOM element references (set once during panel creation)
+let els = {};
+
+// ═══════════════════════════════════════════════════════════════════
+// Configuration Resolution
+// ═══════════════════════════════════════════════════════════════════
+
+function parseToggle(value) {
     if (typeof value === 'boolean') return value;
     if (value == null) return null;
-
-    const normalized = String(value).trim().toLowerCase();
-    if (normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes' || normalized === 'enabled') {
-        return true;
-    }
-
-    if (normalized === '0' || normalized === 'false' || normalized === 'off' || normalized === 'no' || normalized === 'disabled') {
-        return false;
-    }
-
+    const s = String(value).trim().toLowerCase();
+    if ('1,true,on,yes,enabled'.includes(s)) return true;
+    if ('0,false,off,no,disabled'.includes(s)) return false;
     return null;
 }
 
-function resolveDebuggerEnabled() {
-    // 1) Query-string override
+function resolveEnabled() {
     try {
         const url = new URL(window.location.href);
-        const queryValue =
-            url.searchParams.get('abies-debugger') ??
-            url.searchParams.get('debugger');
-        const parsed = parseToggleValue(queryValue);
-        if (parsed !== null) {
-            return parsed;
-        }
-    } catch {
-        // Ignore URL parsing issues
-    }
+        const q = url.searchParams.get('abies-debugger') ?? url.searchParams.get('debugger');
+        const p = parseToggle(q);
+        if (p !== null) return p;
+    } catch { /* ignore */ }
 
-    // 2) Startup config from runtime bootstrap
     if (typeof globalThis !== 'undefined' && '__abiesDebugger' in globalThis) {
-        const config = globalThis.__abiesDebugger;
-        if (typeof config === 'boolean') {
-            return config;
-        }
-
-        if (config && typeof config === 'object' && 'enabled' in config) {
-            const parsed = parseToggleValue(config.enabled);
-            if (parsed !== null) {
-                return parsed;
-            }
+        const cfg = globalThis.__abiesDebugger;
+        if (typeof cfg === 'boolean') return cfg;
+        if (cfg && typeof cfg === 'object' && 'enabled' in cfg) {
+            const p = parseToggle(cfg.enabled);
+            if (p !== null) return p;
         }
     }
 
-    // 3) Meta tag override
-    const meta =
-        document.querySelector('meta[name="abies-debugger"]') ||
-        document.querySelector('meta[name="debugger"]');
-    if (meta && typeof meta.content === 'string') {
-        const parsed = parseToggleValue(meta.content);
-        if (parsed !== null) {
-            return parsed;
-        }
+    const meta = document.querySelector('meta[name="abies-debugger"]')
+              || document.querySelector('meta[name="debugger"]');
+    if (meta?.content) {
+        const p = parseToggle(meta.content);
+        if (p !== null) return p;
     }
 
-    // Default: enabled
     return true;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Exported API (contract with C# JSImport)
+// ═══════════════════════════════════════════════════════════════════
+
 /**
- * Mounts the debugger host container into the document body.
- * Idempotent: reuses the existing mount point when present.
- *
- * @returns {HTMLElement|null} The debugger mount point, or null when disabled.
+ * Mounts the debugger host container. Idempotent.
+ * @returns {HTMLElement|null}
  */
 export function mountDebugger() {
-    if (!resolveDebuggerEnabled()) {
-        console.debug('[Abies Debugger] Startup disabled via config.');
+    if (!resolveEnabled()) {
+        console.debug('[Abies Debugger] Disabled via config.');
         return null;
     }
 
-    let mountPoint = document.getElementById(MountPointId);
-
-    if (!mountPoint) {
-        mountPoint = document.createElement('div');
-        mountPoint.id = MountPointId;
-        document.body.appendChild(mountPoint);
+    let mp = document.getElementById(MOUNT_POINT_ID);
+    if (!mp) {
+        mp = document.createElement('div');
+        mp.id = MOUNT_POINT_ID;
+        document.body.appendChild(mp);
     }
 
-    initializeDebuggerAdapter();
-    ensureDebuggerShellVisible(mountPoint);
-    return mountPoint;
+    if (mp.dataset[INIT_FLAG] !== '1') {
+        mp.dataset[INIT_FLAG] = '1';
+        createDebuggerUI(mp);
+        attachEventHandlers(mp);
+    }
+
+    return mp;
 }
 
+/**
+ * Wires the .NET runtime bridge callback.
+ * Signature: (messageType: string, entryId: number) => string (JSON)
+ */
 export function setRuntimeBridge(callback) {
     runtimeBridge = typeof callback === 'function' ? callback : null;
-    const mountPoint = document.getElementById(MountPointId);
-    if (mountPoint) {
-        updateBridgeAvailability(mountPoint);
-        appendPanelLogEntry(
-            mountPoint,
-            runtimeBridge ? 'Runtime bridge connected.' : 'Runtime bridge unavailable.'
-        );
+    if (runtimeBridge) {
+        // Fetch initial timeline state
+        void invokeRuntimeBridge('get-timeline', -1);
     }
+    updateDisabledStates();
 }
 
-function ensureDebuggerShellVisible(mountPoint) {
-    if (!mountPoint) {
-        return;
-    }
-
-    const existingShell = mountPoint.querySelector('[data-abies-debugger-shell="1"]');
-    if (existingShell) {
-        ensureShellInteractive(existingShell);
-        ensureDebuggerPanel(mountPoint);
-        return;
-    }
-
-    if (mountPoint.children.length > 0) {
-        return;
-    }
-
-    const shell = document.createElement('button');
-    shell.type = 'button';
-    shell.setAttribute('data-abies-debugger-shell', '1');
-    shell.setAttribute(IntentAttributeName, TogglePanelIntentValue);
-    shell.style.position = 'fixed';
-    shell.style.right = '12px';
-    shell.style.bottom = '12px';
-    shell.style.zIndex = '2147483647';
-    shell.style.background = '#101828';
-    shell.style.color = '#F2F4F7';
-    shell.style.border = '1px solid rgba(242,244,247,0.24)';
-    shell.style.borderRadius = '8px';
-    shell.style.padding = '8px 10px';
-    shell.style.font = '12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-    shell.style.cursor = 'pointer';
-    shell.textContent = 'Abies Debugger';
-    mountPoint.appendChild(shell);
-
-    ensureDebuggerPanel(mountPoint);
+/**
+ * Called from C# (via JSImport) after every message capture so the debugger
+ * panel refreshes automatically when new messages arrive at runtime.
+ */
+export function notifyTimelineChanged() {
+    void invokeRuntimeBridge('get-timeline', -1);
 }
 
-function ensureShellInteractive(shell) {
-    shell.setAttribute(IntentAttributeName, TogglePanelIntentValue);
-    shell.style.cursor = 'pointer';
+// ═══════════════════════════════════════════════════════════════════
+// Bridge Invocation
+// ═══════════════════════════════════════════════════════════════════
 
-    if (shell.tagName !== 'BUTTON') {
-        shell.setAttribute('role', 'button');
-        shell.setAttribute('tabindex', '0');
-    }
-}
-
-function ensureDebuggerPanel(mountPoint) {
-    if (mountPoint.querySelector(`[${ShellPanelAttributeName}="1"]`)) {
-        return;
-    }
-
-    const panel = document.createElement('div');
-    panel.setAttribute(ShellPanelAttributeName, '1');
-    panel.style.position = 'fixed';
-    panel.style.right = '12px';
-    panel.style.bottom = '52px';
-    panel.style.zIndex = '2147483647';
-    panel.style.background = '#101828';
-    panel.style.color = '#F2F4F7';
-    panel.style.border = '1px solid rgba(242,244,247,0.24)';
-    panel.style.borderRadius = '8px';
-    panel.style.padding = '10px 12px';
-    panel.style.width = '320px';
-    panel.style.maxWidth = 'calc(100vw - 24px)';
-    panel.style.font = '12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-    panel.style.display = 'none';
-
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.marginBottom = '8px';
-
-    const title = document.createElement('strong');
-    title.textContent = 'Abies Debugger';
-
-    const status = document.createElement('span');
-    status.setAttribute(StatusAttributeName, '1');
-    status.textContent = 'recording';
-    status.style.fontSize = '11px';
-    status.style.padding = '2px 6px';
-    status.style.borderRadius = '999px';
-    status.style.border = '1px solid rgba(242,244,247,0.24)';
-    status.style.background = 'rgba(137,180,43,0.16)';
-
-    header.appendChild(title);
-    header.appendChild(status);
-
-    const controls = document.createElement('div');
-    controls.style.display = 'grid';
-    controls.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
-    controls.style.gap = '6px';
-    controls.style.marginBottom = '8px';
-
-    const controlSpecs = [
-        ['Play', 'play'],
-        ['Pause', 'pause'],
-        ['Step', 'step-forward'],
-        ['Back', 'step-back'],
-        ['Clear', 'clear-timeline']
-    ];
-
-    for (const [label, intent] of controlSpecs) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = label;
-        button.setAttribute(IntentAttributeName, intent);
-        button.setAttribute(PayloadAttributeName, '{}');
-        button.style.border = '1px solid rgba(242,244,247,0.24)';
-        button.style.background = '#1D2939';
-        button.style.color = '#F2F4F7';
-        button.style.borderRadius = '6px';
-        button.style.padding = '6px 8px';
-        button.style.cursor = 'pointer';
-        controls.appendChild(button);
-    }
-
-    const jumpRow = document.createElement('div');
-    jumpRow.style.display = 'flex';
-    jumpRow.style.gap = '6px';
-    jumpRow.style.marginBottom = '8px';
-
-    const jumpInput = document.createElement('input');
-    jumpInput.type = 'number';
-    jumpInput.min = '0';
-    jumpInput.placeholder = 'Entry #';
-    jumpInput.setAttribute(JumpInputAttributeName, '1');
-    jumpInput.style.flex = '1';
-    jumpInput.style.background = '#1D2939';
-    jumpInput.style.border = '1px solid rgba(242,244,247,0.24)';
-    jumpInput.style.color = '#F2F4F7';
-    jumpInput.style.borderRadius = '6px';
-    jumpInput.style.padding = '6px 8px';
-
-    const jumpButton = document.createElement('button');
-    jumpButton.type = 'button';
-    jumpButton.textContent = 'Jump';
-    jumpButton.setAttribute(IntentAttributeName, 'jump-to-entry');
-    jumpButton.style.border = '1px solid rgba(242,244,247,0.24)';
-    jumpButton.style.background = '#1D2939';
-    jumpButton.style.color = '#F2F4F7';
-    jumpButton.style.borderRadius = '6px';
-    jumpButton.style.padding = '6px 10px';
-    jumpButton.style.cursor = 'pointer';
-
-    jumpRow.appendChild(jumpInput);
-    jumpRow.appendChild(jumpButton);
-
-    const logLabel = document.createElement('div');
-    logLabel.textContent = 'Actions';
-    logLabel.style.color = 'rgba(242,244,247,0.78)';
-    logLabel.style.marginBottom = '4px';
-
-    const runtimeSummary = document.createElement('div');
-    runtimeSummary.setAttribute(RuntimeSummaryAttributeName, '1');
-    runtimeSummary.style.fontSize = '11px';
-    runtimeSummary.style.color = 'rgba(242,244,247,0.78)';
-    runtimeSummary.style.marginBottom = '6px';
-
-    const log = document.createElement('ul');
-    log.setAttribute(LogListAttributeName, '1');
-    log.style.listStyle = 'none';
-    log.style.margin = '0';
-    log.style.padding = '0';
-    log.style.maxHeight = '120px';
-    log.style.overflowY = 'auto';
-
-    panel.appendChild(header);
-    panel.appendChild(controls);
-    panel.appendChild(jumpRow);
-    panel.appendChild(runtimeSummary);
-    panel.appendChild(logLabel);
-    panel.appendChild(log);
-    mountPoint.appendChild(panel);
-
-    updateBridgeAvailability(mountPoint);
-    appendPanelLogEntry(mountPoint, 'Debugger ready.');
-}
-
-function toggleDebuggerPanel(mountPoint) {
-    const isExpanded = mountPoint.getAttribute(ExpandedAttributeName) === '1';
-    const nextExpanded = !isExpanded;
-    mountPoint.setAttribute(ExpandedAttributeName, nextExpanded ? '1' : '0');
-
-    const panel = mountPoint.querySelector(`[${ShellPanelAttributeName}="1"]`);
-    if (panel) {
-        panel.style.display = nextExpanded ? 'block' : 'none';
-    }
-}
-
-function appendPanelLogEntry(mountPoint, message) {
-    const log = mountPoint.querySelector(`[${LogListAttributeName}="1"]`);
-    if (!log) {
-        return;
-    }
-
-    const item = document.createElement('li');
-    item.textContent = message;
-    item.style.padding = '4px 0';
-    item.style.borderTop = '1px solid rgba(242,244,247,0.1)';
-    log.prepend(item);
-
-    while (log.children.length > 8) {
-        log.removeChild(log.lastChild);
-    }
-}
-
-function updateRuntimeSummary(mountPoint, response) {
-    const summary = mountPoint.querySelector(`[${RuntimeSummaryAttributeName}="1"]`);
-    if (!summary) {
-        return;
-    }
-
-    if (!response || typeof response !== 'object') {
-        summary.textContent = runtimeBridge
-            ? 'Runtime connected. Awaiting debugger commands.'
-            : 'Runtime bridge unavailable in this mode.';
-        return;
-    }
-
-    const status = typeof response.status === 'string' ? response.status : 'unknown';
-    const cursor = Number.isFinite(response.cursorPosition) ? response.cursorPosition : '?';
-    const size = Number.isFinite(response.timelineSize) ? response.timelineSize : '?';
-    summary.textContent = `Runtime ${status} | cursor ${cursor} | timeline ${size}`;
-}
-
-function updateBridgeAvailability(mountPoint) {
-    const interactiveControls = mountPoint.querySelectorAll(
-        `[${ShellPanelAttributeName}="1"] button[${IntentAttributeName}]:not([${IntentAttributeName}="${TogglePanelIntentValue}"])`
-    );
-
-    for (const control of interactiveControls) {
-        control.disabled = !runtimeBridge;
-        control.style.opacity = runtimeBridge ? '1' : '0.55';
-    }
-
-    const jumpInput = mountPoint.querySelector(`[${JumpInputAttributeName}="1"]`);
-    if (jumpInput) {
-        jumpInput.disabled = !runtimeBridge;
-        jumpInput.style.opacity = runtimeBridge ? '1' : '0.55';
-    }
-
-    updateRuntimeSummary(mountPoint, null);
-}
-
-function updatePanelStatus(mountPoint, intent) {
-    const status = mountPoint.querySelector(`[${StatusAttributeName}="1"]`);
-    if (!status) {
-        return;
-    }
-
-    const next =
-        intent === 'play' ? 'playing' :
-        intent === 'pause' ? 'paused' :
-        intent === 'clear-timeline' ? 'recording' :
-        intent === 'step-forward' || intent === 'step-back' || intent === 'jump-to-entry' ? 'paused' :
-        status.textContent || 'recording';
-
-    status.textContent = next;
-}
-
-function payloadForIntent(target, mountPoint) {
-    const rawPayload = target.getAttribute(PayloadAttributeName);
-    if (rawPayload) {
-        return parsePayload(rawPayload);
-    }
-
-    const intent = target.getAttribute(IntentAttributeName);
-    if (intent === 'jump-to-entry') {
-        const jumpInput = mountPoint.querySelector(`[${JumpInputAttributeName}="1"]`);
-        const entryId = Number.parseInt(jumpInput?.value ?? '', 10);
-        if (Number.isFinite(entryId) && entryId >= 0) {
-            return { entryId };
-        }
-    }
-
-    return undefined;
-}
-
-function historyIntentFromTarget(target) {
-    const historyItem = target.closest?.('[data-sequence]');
-    if (!historyItem) {
-        return null;
-    }
-
-    const entryId = Number.parseInt(historyItem.getAttribute('data-sequence') ?? '', 10);
-    if (!Number.isFinite(entryId) || entryId < 0) {
-        return null;
-    }
-
-    return {
-        intent: 'jump-to-entry',
-        payload: { entryId }
-    };
-}
-
-function invokeRuntimeBridge(message, mountPoint) {
-    if (!runtimeBridge) {
-        appendPanelLogEntry(mountPoint, 'Runtime bridge unavailable in this mode.');
-        return;
-    }
+async function invokeRuntimeBridge(messageType, entryId) {
+    if (!runtimeBridge) return;
 
     try {
-        const entryId = Number.isFinite(message?.entryId) ? message.entryId : -1;
-        const raw = runtimeBridge(message.type, entryId);
-        const [status = 'unknown', cursorRaw = '?', timelineRaw = '?'] = String(raw ?? '').split('|');
-        const response = {
-            status,
-            cursorPosition: Number.parseInt(cursorRaw, 10),
-            timelineSize: Number.parseInt(timelineRaw, 10)
-        };
+        const raw = await Promise.resolve(
+            runtimeBridge(messageType, Number.isFinite(entryId) ? entryId : -1)
+        );
+        const response = JSON.parse(raw);
+        lastResponse = response;
 
-        const statusTag = mountPoint.querySelector(`[${StatusAttributeName}="1"]`);
-        if (statusTag) {
-            statusTag.textContent = response.status;
+        // Sync local timeline when size changes or full list provided
+        if (response.timelineEntries) {
+            localTimeline = response.timelineEntries;
+        } else if (response.timelineSize !== localTimeline.length) {
+            // Timeline size changed but entries weren't included — fetch full list
+            const syncRaw = await Promise.resolve(runtimeBridge('get-timeline', -1));
+            const syncResponse = JSON.parse(syncRaw);
+            if (syncResponse.timelineEntries) {
+                localTimeline = syncResponse.timelineEntries;
+            }
+            // Merge cursor/status from original response (get-timeline doesn't change state)
+            lastResponse = { ...syncResponse, ...response, timelineEntries: syncResponse.timelineEntries };
         }
 
-        updateRuntimeSummary(mountPoint, response);
-        appendPanelLogEntry(
-            mountPoint,
-            `${message.type} -> ${response.status} (cursor ${Number.isFinite(response.cursorPosition) ? response.cursorPosition : '?'}, timeline ${Number.isFinite(response.timelineSize) ? response.timelineSize : '?'})`
-        );
+        updateUI();
+
+        // Emit event for external consumers / tests
+        document.dispatchEvent(new CustomEvent('abies:debugger:message-dispatched', {
+            detail: { messageType, entryId, response },
+            bubbles: true
+        }));
     } catch (err) {
-        appendPanelLogEntry(mountPoint, `${message.type} -> runtime bridge error`);
-        console.warn('[Abies Debugger] Runtime bridge error.', err);
+        console.warn('[Abies Debugger] Bridge error:', err);
     }
 }
 
-/**
- * Initialize debugger adapter wiring when the module loads.
- */
-export function initializeDebuggerAdapter() {
-    const mountPoint = document.getElementById(MountPointId);
-    if (!mountPoint) {
-        console.debug('[Abies Debugger] Mount point not found. Skipping adapter initialization.');
-        return;
-    }
+// ═══════════════════════════════════════════════════════════════════
+// UI Creation
+// ═══════════════════════════════════════════════════════════════════
 
-    if (mountPoint.dataset[InitializationFlag] === '1') {
-        return;
-    }
+function createDebuggerUI(mp) {
+    // Shell toggle button (always visible)
+    const shell = mkEl('button', {
+        type: 'button',
+        'aria-label': 'Toggle Abies Debugger',
+        'aria-expanded': 'false',
+        style: css({
+            position: 'fixed', right: '12px', bottom: '12px', zIndex: '2147483647',
+            background: T.bgElevated, color: T.text,
+            border: `1px solid ${T.borderStrong}`, borderRadius: T.radius,
+            padding: '8px 10px', font: T.font, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px',
+        }),
+    }, [
+        mkEl('span', { style: css({ width: '8px', height: '8px', borderRadius: '50%', background: T.accent, display: 'inline-block' }) }),
+        document.createTextNode('Abies Debugger'),
+    ]);
+    els.shell = shell;
+    mp.appendChild(shell);
 
-    mountPoint.dataset[InitializationFlag] = '1';
-    bootstrapIntentTransport(mountPoint);
+    // Main panel (hidden by default)
+    const panel = mkEl('div', {
+        role: 'region',
+        'aria-label': 'Abies Time Travel Debugger',
+        style: css({
+            position: 'fixed', right: '12px', bottom: '52px', zIndex: '2147483647',
+            background: T.bgElevated, color: T.text,
+            border: `1px solid ${T.borderStrong}`, borderRadius: T.radius,
+            padding: '0', width: '380px', maxWidth: 'calc(100vw - 24px)',
+            font: T.font, display: 'none',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            overflow: 'hidden',
+        }),
+    });
+    els.panel = panel;
 
-    console.debug('[Abies Debugger] Adapter initialized at mount point:', MountPointId);
-}
-
-/**
- * Attach event listeners that forward UI intent to the runtime bridge event.
- */
-export function bootstrapIntentTransport(mountPoint) {
-    mountPoint.addEventListener(IntentEventName, (event) => {
-        forwardIntentToRuntimeBridge(event?.detail, mountPoint);
+    // ── Header ──
+    const header = mkEl('div', {
+        style: css({
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '10px 12px', borderBottom: `1px solid ${T.border}`,
+        }),
     });
 
-    mountPoint.addEventListener('click', (event) => {
-        const target = event.target instanceof Element
-            ? event.target.closest(`[${IntentAttributeName}]`)
-            : null;
+    els.statusBadge = mkEl('span', {
+        'aria-live': 'polite',
+        style: css({
+            fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
+            border: `1px solid ${T.borderStrong}`, background: T.accentSoft,
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+        }),
+    }, ['recording']);
 
-        const historyIntent = event.target instanceof Element
-            ? historyIntentFromTarget(event.target)
-            : null;
+    els.stepCounter = mkEl('span', {
+        'aria-live': 'polite',
+        style: css({ font: T.fontSmall, color: T.textMuted }),
+    }, ['Step \u2014/\u2014']);
 
-        if (!target && historyIntent) {
-            updatePanelStatus(mountPoint, historyIntent.intent);
-            emitIntent(mountPoint, historyIntent);
-            return;
+    header.append(els.statusBadge, els.stepCounter);
+    panel.appendChild(header);
+
+    // ── Scrubber ──
+    const scrubberWrap = mkEl('div', {
+        style: css({ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }),
+    });
+    els.scrubber = mkEl('input', {
+        type: 'range', min: '0', max: '0', value: '0',
+        'aria-label': 'Timeline position',
+        style: css({ width: '100%', accentColor: T.accent }),
+    });
+    scrubberWrap.appendChild(els.scrubber);
+    panel.appendChild(scrubberWrap);
+
+    // ── Filter + Event List ──
+    const listSection = mkEl('div', {
+        style: css({ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }),
+    });
+
+    els.filterInput = mkEl('input', {
+        type: 'text', placeholder: 'Filter messages\u2026 ( / )',
+        'aria-label': 'Filter timeline messages',
+        style: css({
+            width: '100%', boxSizing: 'border-box',
+            background: T.bgSoft, border: `1px solid ${T.borderStrong}`, color: T.text,
+            borderRadius: T.radiusSmall, padding: '6px 8px', font: T.fontSmall,
+            marginBottom: '6px',
+        }),
+    });
+    listSection.appendChild(els.filterInput);
+
+    els.eventList = mkEl('div', {
+        role: 'listbox',
+        'aria-label': 'Timeline entries',
+        tabindex: '0',
+        style: css({
+            maxHeight: '160px', overflowY: 'auto',
+        }),
+    });
+    listSection.appendChild(els.eventList);
+    panel.appendChild(listSection);
+
+    // ── Details Panel ──
+    const detailsSection = mkEl('div', {
+        style: css({
+            padding: '8px 12px', borderBottom: `1px solid ${T.border}`,
+            maxHeight: '200px', overflowY: 'auto',
+        }),
+    });
+    els.details = mkEl('div', {
+        style: css({ font: T.fontSmall, color: T.textMuted }),
+    }, ['Select an entry to view details.']);
+    detailsSection.appendChild(els.details);
+    panel.appendChild(detailsSection);
+
+    // ── Transport Controls ──
+    const controls = mkEl('div', {
+        style: css({
+            display: 'flex', gap: '6px', padding: '10px 12px', flexWrap: 'wrap',
+        }),
+    });
+
+    const btnCss = css({
+        border: `1px solid ${T.borderStrong}`, background: T.bgSoft, color: T.text,
+        borderRadius: T.radiusSmall, padding: '6px 10px', cursor: 'pointer',
+        font: T.fontSmall, flex: '1', textAlign: 'center', minWidth: '48px',
+    });
+
+    els.btnBack = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'step-back' }, ['\u25C0 Back']);
+    els.btnPlayPause = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'play' }, ['\u25B6 Play']);
+    els.btnStep = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'step-forward' }, ['Step \u25B6']);
+    els.btnClear = mkEl('button', { type: 'button', style: btnCss, 'data-intent': 'clear-timeline' }, ['Clear']);
+
+    controls.append(els.btnBack, els.btnPlayPause, els.btnStep, els.btnClear);
+    panel.appendChild(controls);
+
+    mp.appendChild(panel);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Event Handling
+// ═══════════════════════════════════════════════════════════════════
+
+function attachEventHandlers(mp) {
+    // Shell toggle
+    els.shell.addEventListener('click', () => {
+        panelExpanded = !panelExpanded;
+        els.panel.style.display = panelExpanded ? 'block' : 'none';
+        els.shell.setAttribute('aria-expanded', String(panelExpanded));
+    });
+
+    // Transport control buttons
+    els.panel.addEventListener('click', (e) => {
+        const btn = e.target.closest?.('[data-intent]');
+        if (!btn || btn.disabled) return;
+
+        const intent = btn.getAttribute('data-intent');
+        if (!intent) return;
+
+        void invokeRuntimeBridge(intent, -1);
+    });
+
+    // Scrubber input (jump on change)
+    els.scrubber.addEventListener('input', () => {
+        const val = parseInt(els.scrubber.value, 10);
+        if (Number.isFinite(val) && val >= 0) {
+            void invokeRuntimeBridge('jump-to-entry', val);
         }
+    });
 
-        if (!target) {
-            return;
+    // Event list click (jump to entry)
+    els.eventList.addEventListener('click', (e) => {
+        const item = e.target.closest?.('[data-sequence]');
+        if (!item) return;
+        const seq = parseInt(item.getAttribute('data-sequence'), 10);
+        if (Number.isFinite(seq) && seq >= 0) {
+            void invokeRuntimeBridge('jump-to-entry', seq);
         }
+    });
 
-        const intent = target.getAttribute(IntentAttributeName);
-        if (!intent) {
-            return;
+    // Filter input
+    els.filterInput.addEventListener('input', () => {
+        filterText = els.filterInput.value.trim().toLowerCase();
+        renderEventList();
+    });
+
+    // Keyboard navigation (when panel is expanded)
+    document.addEventListener('keydown', (e) => {
+        if (!panelExpanded) return;
+
+        // Don't intercept when typing in an input (except our filter for non-nav keys)
+        const active = document.activeElement;
+        const isOurFilter = active === els.filterInput;
+        const isExternalInput = active && !isOurFilter &&
+            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+        if (isExternalInput) return;
+
+        switch (e.key) {
+            case ' ':
+                if (isOurFilter) return;
+                e.preventDefault();
+                handlePlayPause();
+                break;
+            case 'ArrowLeft':
+                if (isOurFilter) return;
+                e.preventDefault();
+                void invokeRuntimeBridge('step-back', -1);
+                break;
+            case 'ArrowRight':
+                if (isOurFilter) return;
+                e.preventDefault();
+                void invokeRuntimeBridge('step-forward', -1);
+                break;
+            case 'Home':
+                if (isOurFilter) return;
+                e.preventDefault();
+                if (localTimeline.length > 0) {
+                    void invokeRuntimeBridge('jump-to-entry', 0);
+                }
+                break;
+            case 'End':
+                if (isOurFilter) return;
+                e.preventDefault();
+                if (localTimeline.length > 0) {
+                    void invokeRuntimeBridge('jump-to-entry', localTimeline.length - 1);
+                }
+                break;
+            case '/':
+                if (!isOurFilter) {
+                    e.preventDefault();
+                    els.filterInput.focus();
+                }
+                break;
+            case 'Escape':
+                if (isOurFilter) {
+                    els.filterInput.blur();
+                    filterText = '';
+                    els.filterInput.value = '';
+                    renderEventList();
+                }
+                break;
         }
+    });
+}
 
-        const payload = payloadForIntent(target, mountPoint);
-        if (intent === TogglePanelIntentValue) {
-            event.stopPropagation();
-            toggleDebuggerPanel(mountPoint);
-            return;
-        }
+function handlePlayPause() {
+    if (!lastResponse) return;
+    const isPlaying = lastResponse.status === 'playing';
+    void invokeRuntimeBridge(isPlaying ? 'pause' : 'play', -1);
+}
 
-        updatePanelStatus(mountPoint, intent);
+// ═══════════════════════════════════════════════════════════════════
+// UI Update
+// ═══════════════════════════════════════════════════════════════════
 
-        emitIntent(mountPoint, {
-            intent,
-            payload
+function updateUI() {
+    if (!lastResponse || !els.panel) return;
+
+    const r = lastResponse;
+
+    // Status badge
+    els.statusBadge.textContent = r.status ?? 'unknown';
+    els.statusBadge.style.background =
+        r.status === 'recording' ? T.accentSoft :
+        r.status === 'playing'   ? 'rgba(46,144,250,0.16)' :
+        'rgba(242,244,247,0.08)';
+
+    // Step counter
+    const cursor = Number.isFinite(r.cursorPosition) ? r.cursorPosition : -1;
+    const size = Number.isFinite(r.timelineSize) ? r.timelineSize : 0;
+    els.stepCounter.textContent = size > 0
+        ? `Step ${cursor + 1}/${size}`
+        : 'Step \u2014/\u2014';
+
+    // Scrubber
+    els.scrubber.max = String(Math.max(0, size - 1));
+    els.scrubber.value = String(Math.max(0, cursor));
+    els.scrubber.disabled = size === 0;
+
+    // Play/Pause button label
+    if (r.status === 'playing') {
+        els.btnPlayPause.textContent = '\u23F8 Pause';
+        els.btnPlayPause.setAttribute('data-intent', 'pause');
+    } else {
+        els.btnPlayPause.textContent = '\u25B6 Play';
+        els.btnPlayPause.setAttribute('data-intent', 'play');
+    }
+
+    // Event list + details
+    renderEventList();
+    renderDetails();
+    updateDisabledStates();
+}
+
+function updateDisabledStates() {
+    if (!els.panel) return;
+
+    const r = lastResponse;
+    const hasBridge = !!runtimeBridge;
+    const hasTimeline = r && r.timelineSize > 0;
+
+    setDisabled(els.btnBack, !hasBridge || !hasTimeline || (r && r.atStart));
+    setDisabled(els.btnStep, !hasBridge || !hasTimeline || (r && r.atEnd));
+    setDisabled(els.btnPlayPause, !hasBridge || !hasTimeline);
+    setDisabled(els.btnClear, !hasBridge || !hasTimeline);
+    setDisabled(els.scrubber, !hasBridge || !hasTimeline);
+}
+
+function setDisabled(element, disabled) {
+    if (!element) return;
+    element.disabled = !!disabled;
+    element.style.opacity = disabled ? '0.4' : '1';
+    element.style.cursor = disabled ? 'default' : 'pointer';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Event List Rendering
+// ═══════════════════════════════════════════════════════════════════
+
+function renderEventList() {
+    if (!els.eventList) return;
+
+    const list = els.eventList;
+    list.innerHTML = '';
+
+    const cursor = lastResponse?.cursorPosition ?? -1;
+    const filtered = filterText
+        ? localTimeline.filter(e => e.messageType.toLowerCase().includes(filterText))
+        : localTimeline;
+
+    if (filtered.length === 0) {
+        const empty = mkEl('div', {
+            style: css({ padding: '12px 0', color: T.textSubtle, textAlign: 'center', font: T.fontSmall }),
+        }, [localTimeline.length === 0 ? 'No events recorded yet.' : 'No matching events.']);
+        list.appendChild(empty);
+        return;
+    }
+
+    for (const entry of filtered) {
+        const isSelected = entry.sequence === cursor;
+        const item = mkEl('div', {
+            role: 'option',
+            'aria-selected': String(isSelected),
+            'data-sequence': String(entry.sequence),
+            style: css({
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '4px 8px', cursor: 'pointer', borderRadius: '4px',
+                background: isSelected ? T.accentSoft : 'transparent',
+                borderLeft: isSelected ? `3px solid ${T.accent}` : '3px solid transparent',
+            }),
         });
-    });
-}
 
-/**
- * Emit a normalized debugger intent event from UI controls.
- * This is the single source of truth for intent propagation from click controls.
- */
-export function emitIntent(mountPoint, detail) {
-    mountPoint.dispatchEvent(new CustomEvent(IntentEventName, {
-        detail,
-        bubbles: false,
-        cancelable: false
-    }));
-}
+        const left = mkEl('span', {
+            style: css({ display: 'flex', gap: '6px', alignItems: 'center' }),
+        });
+        const seqLabel = mkEl('span', {
+            style: css({ color: T.textSubtle, minWidth: '28px', textAlign: 'right', font: T.fontSmall }),
+        }, [String(entry.sequence)]);
+        const typeLabel = mkEl('span', {
+            style: css({ color: isSelected ? T.text : T.textMuted, font: T.fontSmall }),
+        }, [entry.messageType]);
+        left.append(seqLabel, typeLabel);
 
-/**
- * Parse optional JSON payload for data-abies-debugger-payload.
- */
-export function parsePayload(rawPayload) {
-    if (!rawPayload) {
-        return undefined;
+        const patchLabel = mkEl('span', {
+            style: css({ color: T.textSubtle, font: T.fontSmall }),
+        }, [`${entry.patchCount}p`]);
+
+        item.append(left, patchLabel);
+        list.appendChild(item);
     }
 
+    // Scroll selected into view
+    const selected = list.querySelector('[aria-selected="true"]');
+    if (selected) {
+        selected.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Details Panel Rendering
+// ═══════════════════════════════════════════════════════════════════
+
+function renderDetails() {
+    if (!els.details || !lastResponse) return;
+
+    const r = lastResponse;
+    const entry = r.currentEntry;
+
+    if (!entry) {
+        els.details.innerHTML = '';
+        els.details.appendChild(
+            mkEl('span', { style: css({ color: T.textSubtle }) }, ['Select an entry to view details.'])
+        );
+        return;
+    }
+
+    els.details.innerHTML = '';
+
+    // Message type + args
+    const typeRow = detailRow('Message', entry.messageType);
+    els.details.appendChild(typeRow);
+
+    if (entry.argsPreview && entry.argsPreview !== '{}') {
+        const argsRow = detailRow('Payload', '');
+        const argsCode = mkEl('pre', {
+            style: css({
+                margin: '2px 0 0 0', padding: '6px 8px', background: T.bg,
+                borderRadius: '4px', font: T.fontSmall, color: T.textMuted,
+                whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: '60px', overflowY: 'auto',
+            }),
+        }, [formatJson(entry.argsPreview)]);
+        argsRow.appendChild(argsCode);
+        els.details.appendChild(argsRow);
+    }
+
+    // Separator
+    els.details.appendChild(mkEl('hr', {
+        style: css({ border: 'none', borderTop: `1px solid ${T.border}`, margin: '6px 0' }),
+    }));
+
+    // Before / After model preview
+    if (r.previousModelSnapshotPreview) {
+        const beforeRow = detailRow('Before', '');
+        beforeRow.appendChild(modelPreviewBlock(r.previousModelSnapshotPreview));
+        els.details.appendChild(beforeRow);
+    }
+
+    if (r.modelSnapshotPreview) {
+        const afterRow = detailRow('After', '');
+        afterRow.appendChild(modelPreviewBlock(r.modelSnapshotPreview));
+        els.details.appendChild(afterRow);
+    }
+
+    // Separator + patch count
+    els.details.appendChild(mkEl('hr', {
+        style: css({ border: 'none', borderTop: `1px solid ${T.border}`, margin: '6px 0' }),
+    }));
+    els.details.appendChild(
+        detailRow('Patches', String(entry.patchCount))
+    );
+}
+
+function detailRow(label, value) {
+    const row = mkEl('div', {
+        style: css({ marginBottom: '4px' }),
+    });
+    const labelEl = mkEl('span', {
+        style: css({ color: T.textSubtle, font: T.fontSmall }),
+    }, [`${label}: `]);
+    const valueEl = mkEl('span', {
+        style: css({ color: T.text, font: T.fontSmall }),
+    }, [value]);
+    row.append(labelEl, valueEl);
+    return row;
+}
+
+function modelPreviewBlock(json) {
+    return mkEl('pre', {
+        style: css({
+            margin: '2px 0 0 0', padding: '6px 8px', background: T.bg,
+            borderRadius: '4px', font: T.fontSmall, color: T.textMuted,
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+            maxHeight: '80px', overflowY: 'auto',
+        }),
+    }, [formatJson(json)]);
+}
+
+function formatJson(str) {
     try {
-        return JSON.parse(rawPayload);
+        const parsed = typeof str === 'string' ? JSON.parse(str) : str;
+        return JSON.stringify(parsed, null, 2);
     } catch {
-        return rawPayload;
+        return str || '';
     }
 }
 
-/**
- * Normalize incoming intent detail and dispatch to runtime bridge event.
- */
-export function forwardIntentToRuntimeBridge(detail, mountPoint) {
-    let message = detail;
+// ═══════════════════════════════════════════════════════════════════
+// DOM Helpers
+// ═══════════════════════════════════════════════════════════════════
 
-    if (!message || typeof message !== 'object') {
-        return;
+function mkEl(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) {
+        for (const [k, v] of Object.entries(attrs)) {
+            if (k === 'style') {
+                e.setAttribute('style', v);
+            } else {
+                e.setAttribute(k, v);
+            }
+        }
     }
-
-    if (typeof message.type !== 'string' && typeof message.intent === 'string') {
-        message = typeof message.payload === 'object' && message.payload !== null
-            ? { ...message.payload, type: message.intent }
-            : { type: message.intent };
+    if (children) {
+        for (const child of children) {
+            e.append(typeof child === 'string' ? document.createTextNode(child) : child);
+        }
     }
-
-    if (typeof message.type !== 'string' || !message.type) {
-        return;
-    }
-
-    const event = new CustomEvent(DebuggerEvents.MessageDispatched, {
-        detail: message,
-        bubbles: true,
-        cancelable: true
-    });
-
-    document.dispatchEvent(event);
-    mountPoint.dispatchEvent(new CustomEvent('abies:debugger:bridge-dispatched', {
-        detail: message,
-        bubbles: true,
-        cancelable: false
-    }));
-
-    invokeRuntimeBridge(message, mountPoint);
+    return e;
 }
 
-// Auto-mount on module load to make debugger-on-default behavior explicit.
-// This remains safe because:
-//  - mountDebugger() is idempotent
-//  - Startup config can disable via query/meta/global settings
-//  - In Release builds this file is absent, so no mount occurs
+function css(obj) {
+    return Object.entries(obj).map(([k, v]) => `${camelToKebab(k)}:${v}`).join(';');
+}
+
+function camelToKebab(s) {
+    return s.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Auto-mount
+// ═══════════════════════════════════════════════════════════════════
+
 mountDebugger();

@@ -203,6 +203,15 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         if (DebuggerConfiguration.Default.Enabled)
         {
             runtime.UseDebugger();
+
+            // Push timeline-changed notifications to the client whenever
+            // a new message is captured. The JS side calls notifyTimelineChanged()
+            // on the debugger module which fetches the updated timeline via the bridge.
+            if (sendText is not null)
+            {
+                runtime.SetDebuggerTimelineChangedCallback(() =>
+                    _ = sendText("{\"type\":\"debugger-timeline-changed\"}"));
+            }
         }
 #endif
 
@@ -290,7 +299,15 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         {
             if (_sendText is not null)
             {
-                await _sendText("{\"type\":\"debugger-response\",\"requestId\":\"unknown\",\"status\":\"error\",\"cursorPosition\":-1,\"timelineSize\":0}");
+                var errorResponse = new DebuggerAdapterResponse
+                {
+                    Status = "error",
+                    CursorPosition = -1,
+                    TimelineSize = 0,
+                    ModelSnapshotPreview = string.Empty
+                };
+                var errorJson = JsonSerializer.Serialize(errorResponse, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+                await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"unknown\",\"data\":{errorJson}}}");
             }
 
             return;
@@ -300,12 +317,13 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         var debugger = _runtime.Debugger;
         if (debugger is not null)
         {
-            var response = ExecuteDebuggerCommand(debugger, commandType, entryId);
+            var message = new DebuggerAdapterMessage { Type = commandType, EntryId = entryId >= 0 ? entryId : null };
+            var response = DebuggerRuntimeBridge.Execute(message, debugger);
             _ = _runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
             if (_sendText is not null)
             {
-                var json = $"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"status\":\"{response.Status}\",\"cursorPosition\":{response.CursorPosition},\"timelineSize\":{response.TimelineSize}}}";
-                await _sendText(json);
+                var dataJson = JsonSerializer.Serialize(response, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+                await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"data\":{dataJson}}}");
             }
 
             return;
@@ -314,8 +332,15 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
         if (_sendText is not null)
         {
-            var unavailable = $"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"status\":\"unavailable\",\"cursorPosition\":-1,\"timelineSize\":0}}";
-            await _sendText(unavailable);
+            var unavailableResponse = new DebuggerAdapterResponse
+            {
+                Status = "unavailable",
+                CursorPosition = -1,
+                TimelineSize = 0,
+                ModelSnapshotPreview = string.Empty
+            };
+            var unavailableJson = JsonSerializer.Serialize(unavailableResponse, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+            await _sendText($"{{\"type\":\"debugger-response\",\"requestId\":\"{requestId}\",\"data\":{unavailableJson}}}");
         }
     }
 
@@ -352,49 +377,6 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             return false;
         }
     }
-
-#if DEBUG
-    private static (string Status, int CursorPosition, int TimelineSize) ExecuteDebuggerCommand(
-        DebuggerMachine debugger,
-        string commandType,
-        int entryId)
-    {
-        switch (commandType)
-        {
-            case "jump-to-entry":
-                if (entryId >= 0)
-                {
-                    debugger.Jump(entryId);
-                }
-                break;
-            case "step-forward":
-                debugger.StepForward();
-                break;
-            case "step-back":
-                debugger.StepBackward();
-                break;
-            case "play":
-                debugger.Play();
-                break;
-            case "pause":
-                debugger.Pause();
-                break;
-            case "clear-timeline":
-                debugger.ClearTimeline();
-                break;
-        }
-
-        var status = debugger.CurrentState switch
-        {
-            DebuggerState.Recording => "recording",
-            DebuggerState.Paused => "paused",
-            DebuggerState.PlayingForward => "playing",
-            _ => "paused"
-        };
-
-        return (status, debugger.CursorPosition, debugger.Timeline.Count);
-    }
-#endif
 
     private static Activity? StartReceiveEventActivity(DomEvent domEvent)
     {

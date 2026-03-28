@@ -87,5 +87,125 @@ public sealed class DebuggerMealyMachineTests
         await Assert.That(debugger.CursorPosition).IsEqualTo(2);
     }
 
+    [Test]
+    public async Task AtStart_IsTrue_WhenTimelineIsEmptyOrCursorAtZero()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        // Empty timeline: AtStart should be true (cursor = -1, <= 0)
+        await Assert.That(debugger.AtStart).IsTrue();
+
+        debugger.CaptureMessage(new TestMessage("first", null), "{}");
+        debugger.Jump(entrySequence: 0);
+
+        await Assert.That(debugger.AtStart).IsTrue();
+    }
+
+    [Test]
+    public async Task AtEnd_IsTrue_WhenCursorAtLastEntry()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        for (var i = 0; i < 5; i++)
+        {
+            debugger.CaptureMessage(new TestMessage($"msg-{i}", null), $"{{\"i\":{i}}}");
+        }
+
+        // In Recording state, cursor tracks the last entry
+        await Assert.That(debugger.AtEnd).IsTrue();
+
+        debugger.Jump(entrySequence: 2);
+        await Assert.That(debugger.AtEnd).IsFalse();
+
+        debugger.Jump(entrySequence: 4);
+        await Assert.That(debugger.AtEnd).IsTrue();
+    }
+
+    [Test]
+    public async Task AtEnd_IsTrue_WhenTimelineIsEmpty()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        await Assert.That(debugger.AtEnd).IsTrue();
+    }
+
+    [Test]
+    public async Task CaptureInitialModel_StoresSnapshotPreviewAndFullSnapshot()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+        var model = new { Count = 0 };
+
+        debugger.CaptureInitialModel("{\"Count\":0}", model);
+
+        await Assert.That(debugger.InitialModelSnapshotPreview).IsEqualTo("{\"Count\":0}");
+        await Assert.That(debugger.InitialModelSnapshot).IsEqualTo(model);
+    }
+
+    [Test]
+    public async Task CaptureInitialModel_ResetsOnClearTimeline()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        debugger.CaptureInitialModel("{\"Count\":0}", new { Count = 0 });
+        debugger.CaptureMessage(new TestMessage("msg", null), "{}");
+
+        debugger.ClearTimeline();
+
+        await Assert.That(debugger.InitialModelSnapshotPreview).IsEmpty();
+        await Assert.That(debugger.InitialModelSnapshot).IsNull();
+    }
+
+    [Test]
+    public async Task GetPreviousModelSnapshotPreview_ReturnsInitialModelForFirstEntry()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        debugger.CaptureInitialModel("{\"Count\":0}");
+        debugger.CaptureMessage(new TestMessage("first", null), "{\"Count\":1}");
+        debugger.CaptureMessage(new TestMessage("second", null), "{\"Count\":2}");
+
+        var previous = debugger.GetPreviousModelSnapshotPreview(0);
+
+        await Assert.That(previous).IsEqualTo("{\"Count\":0}");
+    }
+
+    [Test]
+    public async Task GetPreviousModelSnapshotPreview_ReturnsPreviousEntryForLaterIndices()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        debugger.CaptureInitialModel("{\"Count\":0}");
+        debugger.CaptureMessage(new TestMessage("first", null), "{\"Count\":1}");
+        debugger.CaptureMessage(new TestMessage("second", null), "{\"Count\":2}");
+        debugger.CaptureMessage(new TestMessage("third", null), "{\"Count\":3}");
+
+        await Assert.That(debugger.GetPreviousModelSnapshotPreview(1)).IsEqualTo("{\"Count\":1}");
+        await Assert.That(debugger.GetPreviousModelSnapshotPreview(2)).IsEqualTo("{\"Count\":2}");
+    }
+
+    [Test]
+    public async Task PatchCount_CapturedCorrectlyInTimestampedEntry()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        debugger.CaptureMessage(new TestMessage("no-patches", null), "{}", patchCount: 0);
+        debugger.CaptureMessage(new TestMessage("some-patches", null), "{}", patchCount: 42);
+        debugger.CaptureMessage(new TestMessage("many-patches", null), "{}", patchCount: 1000);
+
+        await Assert.That(debugger.Timeline[0].PatchCount).IsEqualTo(0);
+        await Assert.That(debugger.Timeline[1].PatchCount).IsEqualTo(42);
+        await Assert.That(debugger.Timeline[2].PatchCount).IsEqualTo(1000);
+    }
+
+    [Test]
+    public async Task PatchCount_DefaultsToZero_WhenNotProvided()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        debugger.CaptureMessage(new TestMessage("default-patches", null), "{}");
+
+        await Assert.That(debugger.Timeline[0].PatchCount).IsEqualTo(0);
+    }
+
     private sealed record TestMessage(string Name, object? Payload) : Message;
 }

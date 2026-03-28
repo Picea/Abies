@@ -13,14 +13,16 @@ public enum DebuggerState
 }
 
 /// <summary>
-/// Single timeline entry with sequence, message metadata, timestamp, and model snapshot preview.
+/// Single timeline entry with sequence, message metadata, timestamp, model snapshot preview,
+/// and the number of DOM patches applied for this transition.
 /// </summary>
 public sealed record TimestampedEntry(
     long Sequence,
     string MessageType,
     string ArgsPreview,
     long Timestamp,
-    string ModelSnapshotPreview
+    string ModelSnapshotPreview,
+    int PatchCount
 );
 
 /// <summary>
@@ -29,8 +31,14 @@ public sealed record TimestampedEntry(
 /// </summary>
 public sealed class DebuggerMachine
 {
+    /// <summary>
+    /// Wraps a model snapshot to satisfy the non-nullable class constraint on <see cref="RingBuffer{T}"/>.
+    /// Debug-only — allocation overhead is negligible.
+    /// </summary>
+    private sealed record ModelSnapshotBox(object? Snapshot);
+
     private readonly RingBuffer<TimestampedEntry> _timeline;
-    private readonly RingBuffer<object?> _timelineModelSnapshots;
+    private readonly RingBuffer<ModelSnapshotBox> _timelineModelSnapshots;
     private DebuggerState _currentState;
     private int _cursorPosition;
     private string _currentModelSnapshotPreview;
@@ -38,11 +46,13 @@ public sealed class DebuggerMachine
     private bool _isCapturing;
     private long _lastTimestamp;
     private int _sideEffectCount;
+    private string _initialModelSnapshotPreview;
+    private object? _initialModelSnapshot;
 
     public DebuggerMachine(int capacity = 10000)
     {
         _timeline = new RingBuffer<TimestampedEntry>(capacity);
-        _timelineModelSnapshots = new RingBuffer<object?>(capacity);
+        _timelineModelSnapshots = new RingBuffer<ModelSnapshotBox>(capacity);
         _currentState = DebuggerState.Recording;
         _cursorPosition = -1;
         _currentModelSnapshotPreview = string.Empty;
@@ -50,6 +60,8 @@ public sealed class DebuggerMachine
         _isCapturing = true;
         _lastTimestamp = 0;
         _sideEffectCount = 0;
+        _initialModelSnapshotPreview = string.Empty;
+        _initialModelSnapshot = null;
     }
 
     public DebuggerState CurrentState => _currentState;
@@ -60,9 +72,29 @@ public sealed class DebuggerMachine
     public int SideEffectCount => _sideEffectCount;
 
     /// <summary>
+    /// Preview of the initial model state before any messages were dispatched.
+    /// </summary>
+    public string InitialModelSnapshotPreview => _initialModelSnapshotPreview;
+
+    /// <summary>
+    /// Full initial model snapshot for time-travel replay to the "before first message" state.
+    /// </summary>
+    public object? InitialModelSnapshot => _initialModelSnapshot;
+
+    /// <summary>
+    /// True when the cursor is at position 0 or the timeline is empty.
+    /// </summary>
+    public bool AtStart => _cursorPosition <= 0;
+
+    /// <summary>
+    /// True when the cursor is at the last entry or the timeline is empty.
+    /// </summary>
+    public bool AtEnd => _timeline.Count == 0 || _cursorPosition >= _timeline.Count - 1;
+
+    /// <summary>
     /// Captures a message and transitions from Recording.
     /// </summary>
-    public void CaptureMessage(object message, string modelSnapshotPreview, object? modelSnapshot = null)
+    public void CaptureMessage(object message, string modelSnapshotPreview, object? modelSnapshot = null, int patchCount = 0)
     {
         if (!_isCapturing)
             return;
@@ -78,11 +110,12 @@ public sealed class DebuggerMachine
             MessageType: messageType,
             ArgsPreview: argsJson,
             Timestamp: timestamp,
-            ModelSnapshotPreview: modelSnapshotPreview
+            ModelSnapshotPreview: modelSnapshotPreview,
+            PatchCount: patchCount
         );
 
         _timeline.Add(entry);
-        _timelineModelSnapshots.Add(modelSnapshot);
+        _timelineModelSnapshots.Add(new ModelSnapshotBox(modelSnapshot));
 
         // Update cursor if we're in Recording state
         if (_currentState == DebuggerState.Recording)
@@ -111,7 +144,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[targetCursor];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
-            _currentModelSnapshot = _timelineModelSnapshots[targetCursor];
+            _currentModelSnapshot = _timelineModelSnapshots[targetCursor].Snapshot;
         }
 
         _currentState = DebuggerState.Paused;
@@ -141,7 +174,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[_cursorPosition];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
-            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition];
+            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition].Snapshot;
         }
 
         // Check if we've reached the end after step
@@ -164,7 +197,7 @@ public sealed class DebuggerMachine
         {
             var entry = _timeline[_cursorPosition];
             _currentModelSnapshotPreview = entry.ModelSnapshotPreview;
-            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition];
+            _currentModelSnapshot = _timelineModelSnapshots[_cursorPosition].Snapshot;
         }
     }
 
@@ -196,6 +229,31 @@ public sealed class DebuggerMachine
         _currentModelSnapshot = null;
         _currentState = DebuggerState.Recording;
         _sideEffectCount = 0;
+        _initialModelSnapshotPreview = string.Empty;
+        _initialModelSnapshot = null;
+    }
+
+    /// <summary>
+    /// Captures the initial model state before any messages have been dispatched.
+    /// Called once after the debugger is initialized to establish the "before first message" baseline.
+    /// </summary>
+    public void CaptureInitialModel(string modelSnapshotPreview, object? modelSnapshot = null)
+    {
+        _initialModelSnapshotPreview = modelSnapshotPreview;
+        _initialModelSnapshot = modelSnapshot;
+    }
+
+    /// <summary>
+    /// Gets the model snapshot preview that represents the state <em>before</em> the entry at the given index.
+    /// For index 0, returns the initial model preview. For index N, returns entry[N-1]'s snapshot preview.
+    /// </summary>
+    public string GetPreviousModelSnapshotPreview(int index)
+    {
+        if (index <= 0 || _timeline.Count == 0)
+            return _initialModelSnapshotPreview;
+
+        var previousIndex = Math.Min(index - 1, _timeline.Count - 1);
+        return _timeline[previousIndex].ModelSnapshotPreview;
     }
 
     /// <summary>

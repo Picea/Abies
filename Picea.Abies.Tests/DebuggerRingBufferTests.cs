@@ -16,7 +16,8 @@ public sealed class DebuggerRingBufferTests
                 MessageType: $"Message{i}",
                 ArgsPreview: $"Args{i}",
                 Timestamp: 1000L + i * 100,  // 1000, 1100, 1200, 1300, 1400
-                ModelSnapshotPreview: $"Snapshot{i}"
+                ModelSnapshotPreview: $"Snapshot{i}",
+                PatchCount: 0
             );
             buffer.Add(entry);
         }
@@ -46,7 +47,8 @@ public sealed class DebuggerRingBufferTests
                 MessageType: $"MonoMsg{i}",
                 ArgsPreview: $"Arg{i}",
                 Timestamp: 1000000L + i * 1,  // 1000000, 1000001, ..., 1000099
-                ModelSnapshotPreview: "{}"
+                ModelSnapshotPreview: "{}",
+                PatchCount: 0
             );
             buffer.Add(entry);
         }
@@ -71,7 +73,8 @@ public sealed class DebuggerRingBufferTests
                 MessageType: $"ClearMsg{i}",
                 ArgsPreview: "arg",
                 Timestamp: 2000L + i,
-                ModelSnapshotPreview: "{}"
+                ModelSnapshotPreview: "{}",
+                PatchCount: 0
             );
             buffer.Add(entry);
         }
@@ -88,7 +91,8 @@ public sealed class DebuggerRingBufferTests
             MessageType: "FirstAfterClear",
             ArgsPreview: "arg",
             Timestamp: 3000L,
-            ModelSnapshotPreview: "{}"
+            ModelSnapshotPreview: "{}",
+            PatchCount: 0
         );
         buffer.Add(newEntry);
 
@@ -108,7 +112,8 @@ public sealed class DebuggerRingBufferTests
                 MessageType: $"CapacityMsg{i}",
                 ArgsPreview: "arg",
                 Timestamp: 4000L + i,
-                ModelSnapshotPreview: "{}"
+                ModelSnapshotPreview: "{}",
+                PatchCount: 0
             );
             buffer.Add(entry);
         }

@@ -4,8 +4,7 @@
 #if DEBUG
 
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+using Picea.Abies.Debugger;
 
 namespace Picea.Abies.Browser.Debugger;
 
@@ -15,18 +14,12 @@ namespace Picea.Abies.Browser.Debugger;
 /// CRITICAL: Contains ZERO replay logic. All state machine transitions live in C# (Mealy machine).
 /// 
 /// This adapter is a pure serialization/deserialization bridge between UI and backend.
+/// The protocol DTOs (<see cref="DebuggerAdapterMessage"/>, <see cref="DebuggerAdapterResponse"/>,
+/// <see cref="DebuggerAdapterTimelineEntry"/>) live in the shared <c>Picea.Abies.Debugger</c>
+/// namespace so both Browser and Server can use them.
 /// </summary>
 public sealed class DebuggerAdapter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        AllowTrailingCommas = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        WriteIndented = false
-    };
-
     /// <summary>
     /// Serializes a debugger message (jump, step, play, etc.) to JSON.
     /// Validates message type against the contract.
@@ -52,8 +45,8 @@ public sealed class DebuggerAdapter
             );
         }
 
-        // Serialize to JSON
-        var json = JsonSerializer.Serialize(msg, JsonOptions);
+        // Serialize to JSON using source-generated context (AOT/WASM safe)
+        var json = JsonSerializer.Serialize(msg, DebuggerAdapterJsonContext.Default.DebuggerAdapterMessage);
         return json;
     }
 
@@ -71,18 +64,12 @@ public sealed class DebuggerAdapter
 
         try
         {
-            var normalizedJson = NormalizeResponseJson(json);
-            var response = JsonSerializer.Deserialize<DebuggerAdapterResponse>(normalizedJson, JsonOptions)
+            var response = JsonSerializer.Deserialize(json, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse)
                 ?? throw new InvalidOperationException("Failed to deserialize response.");
 
             if (string.IsNullOrWhiteSpace(response.Status))
             {
                 throw new ArgumentException("Response JSON must contain a non-empty status.", nameof(json));
-            }
-
-            if (response.ModelSnapshotPreview is null)
-            {
-                throw new ArgumentException("Response JSON must contain modelSnapshotPreview.", nameof(json));
             }
 
             return response;
@@ -91,12 +78,6 @@ public sealed class DebuggerAdapter
         {
             throw new ArgumentException($"Invalid response JSON: {ex.Message}", nameof(json), ex);
         }
-    }
-
-    private static string NormalizeResponseJson(string json)
-    {
-        var node = JsonNode.Parse(json);
-        return node?.ToJsonString(JsonOptions) ?? json;
     }
 
     /// <summary>
@@ -112,44 +93,10 @@ public sealed class DebuggerAdapter
             "play" => true,
             "pause" => true,
             "clear-timeline" => true,
+            "get-timeline" => true,
             _ => false
         };
     }
-}
-
-/// <summary>
-/// Serializable message type for debugger requests.
-/// </summary>
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-public record DebuggerAdapterMessage
-{
-    [JsonPropertyName("type")]
-    public required string Type { get; init; }
-
-    [JsonPropertyName("entryId")]
-    public int? EntryId { get; init; }
-
-    [JsonPropertyName("data")]
-    public object? Data { get; init; }
-}
-
-/// <summary>
-/// Serializable response type from C# debugger backend.
-/// </summary>
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-public record DebuggerAdapterResponse
-{
-    [JsonPropertyName("status")]
-    public required string Status { get; init; }
-
-    [JsonPropertyName("cursorPosition")]
-    public int CursorPosition { get; init; }
-
-    [JsonPropertyName("timelineSize")]
-    public int TimelineSize { get; init; }
-
-    [JsonPropertyName("modelSnapshotPreview")]
-    public required string ModelSnapshotPreview { get; init; }
 }
 
 #endif
