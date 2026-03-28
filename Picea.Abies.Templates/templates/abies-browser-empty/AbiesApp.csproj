@@ -22,10 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="AbiesApp.Host/**/*.cs" />
-    <Content Remove="AbiesApp.Host/**" />
-    <EmbeddedResource Remove="AbiesApp.Host/**" />
-    <None Remove="AbiesApp.Host/**" />
+    <Compile Remove="*.Host/**/*.cs" />
+    <Content Remove="*.Host/**" />
+    <EmbeddedResource Remove="*.Host/**" />
+    <None Remove="*.Host/**" />
   </ItemGroup>
 
 </Project>

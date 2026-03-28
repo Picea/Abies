@@ -16,12 +16,12 @@ using Picea.Abies.Counter;
 
 #if DEBUG
 var debugUiOptOut = string.Equals(
-	Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
-	"0",
-	StringComparison.OrdinalIgnoreCase);
+    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+    "0",
+    StringComparison.OrdinalIgnoreCase);
 
 Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
-	new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
 #endif
 
 await Picea.Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();

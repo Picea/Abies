@@ -12,8 +12,6 @@
 // 5. Verify traceparent header propagation in API calls
 // =============================================================================
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
@@ -166,14 +164,14 @@ public sealed class OtelEndToEndTests : IAsyncInitializer, IAsyncDisposable
 
         // ─── Validate OTLP Export ──────────────────────────────────────────────
         // The browser should send an OTLP export after generating spans
-        
+
         if (capturedExport != null)
         {
             Console.WriteLine(
                 $"[OTEL] Validating captured export: {capturedExport.BodyBytes.Length} bytes");
 
             // Content type should be application/x-protobuf or application/json
-            var contentTypeValid = capturedExport.ContentType.Contains("protobuf") || 
+            var contentTypeValid = capturedExport.ContentType.Contains("protobuf") ||
                                    capturedExport.ContentType.Contains("json");
             if (!contentTypeValid)
             {
@@ -222,7 +220,7 @@ public sealed class OtelEndToEndTests : IAsyncInitializer, IAsyncDisposable
 
         // ─── Validate Article State Changed ────────────────────────────────────
         // The favorite should have been toggled. Check via API or UI
-        
+
         // Wait for UI to reflect the change (heart icon color change)
         await _page.WaitForTimeoutAsync(1000);
 
