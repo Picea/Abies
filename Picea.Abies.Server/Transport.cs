@@ -94,11 +94,11 @@ public delegate ValueTask<DomEvent?> ReceiveEvent(CancellationToken cancellation
 /// <see cref="TraceParent"/>.
 /// </param>
 public readonly record struct DomEvent(
-	string CommandId,
-	string EventName,
-	string EventData,
-	string? TraceParent = null,
-	string? TraceState = null);
+    string CommandId,
+    string EventName,
+    string EventData,
+    string? TraceParent = null,
+    string? TraceState = null);
 
 /// <summary>
 /// Sends a text message to the client over the transport.

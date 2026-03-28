@@ -659,13 +659,7 @@ public class WebSocketSessionTests
         {
             lock (_gate)
             {
-                foreach (var activity in _activities)
-                {
-                    if (predicate(activity))
-                        return activity;
-                }
-
-                return null;
+                return _activities.FirstOrDefault(predicate);
             }
         }
 

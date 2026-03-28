@@ -210,9 +210,9 @@ public sealed class OtelEndToEndTests : IAsyncInitializer, IAsyncDisposable
         foreach (var (url, headers) in apiCallsWithHeaders)
         {
             Console.WriteLine($"  API Call: {url}");
-            if (headers.ContainsKey("traceparent"))
+            if (headers.TryGetValue("traceparent", out var traceparent))
             {
-                Console.WriteLine($"    ✓ Has traceparent: {headers["traceparent"]}");
+                Console.WriteLine($"    ✓ Has traceparent: {traceparent}");
             }
             else
             {

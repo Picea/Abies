@@ -274,7 +274,7 @@ public static class OtlpProxyEndpoint
 
             using var forwardRequest = new HttpRequestMessage(HttpMethod.Post, targetUrl);
             memoryStream.Position = 0;
-            using var forwardContent = new ByteArrayContent(memoryStream.ToArray());
+            using var forwardContent = new StreamContent(memoryStream);
             if (!forwardContent.Headers.TryAddWithoutValidation("Content-Type", contentType))
             {
                 forwardContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
@@ -312,7 +312,7 @@ public static class OtlpProxyEndpoint
         catch (Exception ex)
         {
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await context.Response.WriteAsync($"Unexpected proxy error: {ex.GetType().Name}: {ex.Message}");
+            await context.Response.WriteAsync("An unexpected error occurred while forwarding the request.");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             logger?.LogError(ex, "OTLP proxy unexpected failure forwarding {SignalType} to {TargetUrl}", signalType, targetUrl);
         }
