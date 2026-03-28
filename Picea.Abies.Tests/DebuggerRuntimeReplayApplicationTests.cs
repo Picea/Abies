@@ -1,5 +1,5 @@
-using System.Text.Json;
 using System.Reflection;
+using System.Text.Json;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Elements;
@@ -16,7 +16,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
             ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         using var runtime = await Runtime<ReplayCounterProgram, ReplayCounterModel, Unit>.Start(
             apply: Apply,
@@ -47,7 +48,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
             ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         using var runtime = await Runtime<ReplayCounterProgram, ReplayCounterModel, Unit>.Start(
             apply: Apply,
@@ -84,7 +86,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
         static ValueTask<Result<Message[], PipelineError>> Interpreter(Command _) =>
             ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
 
-        static void Apply(IReadOnlyList<Patch> _) { }
+        static void Apply(IReadOnlyList<Patch> _)
+        { }
 
         using var runtime = await Runtime<ReplayCounterProgram, ReplayCounterModel, Unit>.Start(
             apply: Apply,
