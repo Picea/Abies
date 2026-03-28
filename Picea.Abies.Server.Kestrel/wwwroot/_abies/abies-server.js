@@ -143,6 +143,7 @@
     // =========================================================================
     let otelModule = null;
     let debuggerModuleUrl = null;
+    let debuggerModule = null;
 
     // =========================================================================
     // Debugger UI startup configuration
@@ -268,6 +269,7 @@
             const moduleUrl = new URL("./debugger.js", scriptTag.src || window.location.href);
             debuggerModuleUrl = moduleUrl.href;
             const mod = await import(/* webpackIgnore: true */ debuggerModuleUrl);
+            debuggerModule = mod || null;
             if (mod && typeof mod.mountDebugger === "function") {
                 mod.mountDebugger();
             }
@@ -823,7 +825,7 @@
 
     function sendDebuggerCommand(type, entryId) {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
-            return Promise.resolve("unavailable|-1|0");
+            return Promise.resolve(JSON.stringify({ status: "unavailable", cursorPosition: -1, timelineSize: 0, modelSnapshotPreview: "" }));
         }
 
         const requestId = `dbg-${++debuggerRequestSeq}`;
@@ -837,7 +839,7 @@
                 const pending = pendingDebuggerResponses.get(requestId);
                 if (pending) {
                     pendingDebuggerResponses.delete(requestId);
-                    pending("error|-1|0");
+                    pending(JSON.stringify({ status: "error", cursorPosition: -1, timelineSize: 0, modelSnapshotPreview: "" }));
                 }
             }, 2000);
         });
@@ -1025,10 +1027,15 @@
                         const resolve = pendingDebuggerResponses.get(msg.requestId);
                         if (resolve) {
                             pendingDebuggerResponses.delete(msg.requestId);
-                            const status = typeof msg.status === "string" ? msg.status : "unknown";
-                            const cursor = Number.isFinite(msg.cursorPosition) ? msg.cursorPosition : -1;
-                            const size = Number.isFinite(msg.timelineSize) ? msg.timelineSize : 0;
-                            resolve(`${status}|${cursor}|${size}`);
+                            // The data field contains the full DebuggerAdapterResponse object.
+                            // Re-serialize to JSON string — matches the format WASM bridge returns.
+                            resolve(JSON.stringify(msg.data || {}));
+                        }
+                    } else if (msg.type === "debugger-timeline-changed") {
+                        // Server push: timeline has new entries. Tell the debugger
+                        // module to refresh its view via the bridge.
+                        if (debuggerModule && typeof debuggerModule.notifyTimelineChanged === "function") {
+                            debuggerModule.notifyTimelineChanged();
                         }
                     }
                 } catch (e) {

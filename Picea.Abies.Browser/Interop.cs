@@ -180,21 +180,40 @@ public static partial class Interop
         [JSMarshalAs<JSType.Function<JSType.String, JSType.Number, JSType.String>>]
         Func<string, int, string> callback);
 
+    /// <summary>
+    /// Called from C# after each <c>CaptureMessage</c> to push a timeline refresh into the
+    /// debugger UI. The JS side fetches the latest timeline via the existing bridge.
+    /// </summary>
+    [JSImport("notifyTimelineChanged", "AbiesDebugger")]
+    internal static partial void NotifyTimelineChanged();
+
     [JSExport]
     public static string DispatchDebuggerMessage(string messageType, int entryId)
     {
-        const char separator = '|';
-
         if (Debugger is null)
         {
-            return $"unavailable{separator}-1{separator}0";
+            return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+            {
+                Status = "unavailable",
+                CursorPosition = -1,
+                TimelineSize = 0,
+                ModelSnapshotPreview = string.Empty
+            }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
         }
 
         try
         {
             if (string.IsNullOrWhiteSpace(messageType))
             {
-                return $"error{separator}{Debugger.CursorPosition}{separator}{Debugger.Timeline.Count}";
+                return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+                {
+                    Status = "error",
+                    CursorPosition = Debugger.CursorPosition,
+                    TimelineSize = Debugger.Timeline.Count,
+                    AtStart = Debugger.AtStart,
+                    AtEnd = Debugger.AtEnd,
+                    ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
+                }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
             }
 
             var message = new DebuggerAdapterMessage
@@ -210,11 +229,20 @@ public static partial class Interop
                 _ = ApplyDebuggerSnapshot(Debugger.CurrentModelSnapshot);
             }
 
-            return $"{response.Status}{separator}{response.CursorPosition}{separator}{response.TimelineSize}";
+            return System.Text.Json.JsonSerializer.Serialize(response,
+                DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
         }
         catch
         {
-            return $"error{separator}{Debugger.CursorPosition}{separator}{Debugger.Timeline.Count}";
+            return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+            {
+                Status = "error",
+                CursorPosition = Debugger.CursorPosition,
+                TimelineSize = Debugger.Timeline.Count,
+                AtStart = Debugger.AtStart,
+                AtEnd = Debugger.AtEnd,
+                ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
+            }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
         }
     }
 #endif

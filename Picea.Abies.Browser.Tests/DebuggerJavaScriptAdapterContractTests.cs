@@ -1,81 +1,126 @@
 // Copyright (c) 2024 Abies Contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System.Text.RegularExpressions;
-
 namespace Picea.Abies.Browser.Tests;
 
 public sealed class DebuggerJavaScriptAdapterContractTests
 {
     [Test]
-    public async Task DebuggerJsMountAdapter_CreatesOnlyMountPointContainer()
+    public async Task DebuggerJsMountAdapter_CreatesIdempotentMountPoint()
     {
         var script = ReadDebuggerScript();
 
         await Assert.That(script).Contains("export function mountDebugger");
-        await Assert.That(script).Contains("document.createElement('div')");
-        await Assert.That(script).Contains("mountPoint.id = MountPointId");
-        await Assert.That(script).Contains("document.body.appendChild(mountPoint)");
-        await Assert.That(script).Contains("ensureDebuggerShellVisible");
-        await Assert.That(script).Contains("ensureDebuggerPanel");
-        await Assert.That(script).Contains("data-abies-debugger-shell");
-        await Assert.That(script).Contains("data-abies-debugger-panel");
-        await Assert.That(script).Contains("data-abies-debugger-intent");
+        await Assert.That(script).Contains("document.createElement");
+        await Assert.That(script).Contains("MOUNT_POINT_ID");
+        await Assert.That(script).Contains("document.body.appendChild(mp)");
+        await Assert.That(script).Contains("data-intent");
     }
 
     [Test]
-    public async Task DebuggerJsMountAdapter_UsesIntentTransportContract()
+    public async Task DebuggerJsMountAdapter_UsesTransportContract()
     {
         var script = ReadDebuggerScript();
 
         await Assert.That(script).Contains("abies-debugger-timeline");
         await Assert.That(script).Contains("abiesDebuggerAdapterInitialized");
-        await Assert.That(script).Contains("abies:debugger:intent");
         await Assert.That(script).Contains("abies:debugger:message-dispatched");
-        await Assert.That(script).Contains("data-abies-debugger-intent");
-        await Assert.That(script).Contains("data-abies-debugger-payload");
+        await Assert.That(script).Contains("invokeRuntimeBridge");
+        await Assert.That(script).Contains("JSON.parse");
     }
 
     [Test]
-    public async Task DebuggerJsMountAdapter_DoesNotContainDocumentKeyboardShortcutSwitches()
+    public async Task DebuggerJsMountAdapter_IncludesKeyboardNavigation()
     {
         var script = ReadDebuggerScript();
 
-        var disallowedPatterns = new[]
+        // v2 debugger owns keyboard shortcuts within the panel
+        var requiredKeys = new[] { "ArrowRight", "ArrowLeft", "Escape", "Home", "End" };
+
+        foreach (var key in requiredKeys)
         {
-            @"case\s+'ArrowRight'",
-            @"case\s+'ArrowLeft'",
-            @"case\s+'Escape'",
-            @"case\s+'j'",
-            "addEventListener\\(\\s*['\\\"]keydown['\\\"]"
+            await Assert.That(script).Contains(key);
+        }
+
+        await Assert.That(script).Contains("keydown");
+    }
+
+    [Test]
+    public async Task DebuggerJsMountAdapter_ExportsRequiredFunctions()
+    {
+        var script = ReadDebuggerScript();
+
+        await Assert.That(script).Contains("export function mountDebugger");
+        await Assert.That(script).Contains("export function setRuntimeBridge");
+    }
+
+    [Test]
+    public async Task DebuggerJsRuntimeBridge_UsesJsonProtocol()
+    {
+        var script = ReadDebuggerScript();
+
+        // v2 bridge uses JSON protocol with Promise.resolve wrapping
+        await Assert.That(script).Contains("await Promise.resolve(");
+        await Assert.That(script).Contains("runtimeBridge(messageType");
+        await Assert.That(script).Contains("JSON.parse(raw)");
+    }
+
+    [Test]
+    public async Task DebuggerJsMountAdapter_ImplementsTimelineSynchronization()
+    {
+        var script = ReadDebuggerScript();
+
+        // v2 uses lazy timeline sync: fetches get-timeline when size changes
+        await Assert.That(script).Contains("get-timeline");
+        await Assert.That(script).Contains("localTimeline");
+        await Assert.That(script).Contains("timelineEntries");
+        await Assert.That(script).Contains("timelineSize");
+    }
+
+    [Test]
+    public async Task DebuggerJsMountAdapter_RendersAccessibleUI()
+    {
+        var script = ReadDebuggerScript();
+
+        // ARIA attributes for accessibility
+        await Assert.That(script).Contains("aria-live");
+        await Assert.That(script).Contains("aria-label");
+        await Assert.That(script).Contains("aria-selected");
+        await Assert.That(script).Contains("role");
+        await Assert.That(script).Contains("listbox");
+    }
+
+    [Test]
+    public async Task DebuggerJsMountAdapter_DoesNotContainReplayDomainReferences()
+    {
+        var script = ReadDebuggerScript();
+
+        // JS adapter should not embed C# replay/domain internals.
+        var forbiddenTokens = new[]
+        {
+            "DebuggerMachine",
+            "CaptureMessage",
+            "StepForward(",
+            "StepBackward(",
+            "ClearTimeline(",
+            "CurrentDebugger",
+            "GenerateModelSnapshot"
         };
 
-        var found = disallowedPatterns
-            .Where(pattern => Regex.IsMatch(script, pattern, RegexOptions.IgnoreCase))
-            .ToArray();
-
-        await Assert.That(found).IsEmpty();
+        foreach (var token in forbiddenTokens)
+        {
+            await Assert.That(script.Contains(token, StringComparison.Ordinal)).IsFalse();
+        }
     }
 
     [Test]
-    public async Task DebuggerJsMountAdapter_ExportsAdapterHelpersForTests()
+    public async Task DebuggerJsMountAdapter_UsesBoundaryStatesForDisabledControls()
     {
         var script = ReadDebuggerScript();
 
-        await Assert.That(script).Contains("mountDebugger");
-        await Assert.That(script).Contains("initializeDebuggerAdapter");
-        await Assert.That(script).Contains("bootstrapIntentTransport");
-        await Assert.That(script).Contains("forwardIntentToRuntimeBridge");
-        await Assert.That(script).Contains("parsePayload");
-    }
-
-    [Test]
-    public async Task DebuggerJsRuntimeBridge_AwaitsAsyncBridgeResponses()
-    {
-        var script = ReadDebuggerScript();
-
-        await Assert.That(script).Contains("await Promise.resolve(runtimeBridge(message.type, entryId))");
-        await Assert.That(script).Contains("void invokeRuntimeBridge(message, mountPoint)");
+        await Assert.That(script).Contains("atStart");
+        await Assert.That(script).Contains("atEnd");
+        await Assert.That(script).Contains("setDisabled");
     }
 
     [Test]
