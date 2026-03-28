@@ -92,5 +92,5 @@ try {
     }
 } finally {
     await browser.close();
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
 }

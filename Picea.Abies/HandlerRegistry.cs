@@ -43,7 +43,7 @@ public sealed class HandlerRegistry
                     $"[HandlerRegistry] MISS: CommandId={commandId} not found. Available: {string.Join(", ", _handlers.Keys.Take(10))}{(_handlers.Count > 10 ? "..." : "")}");
         }
 #endif
-        
+
         if (!_handlers.TryGetValue(commandId, out var handler))
             return null;
 
