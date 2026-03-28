@@ -54,6 +54,9 @@ let localTimeline = [];
 let lastResponse = null;
 let filterText = '';
 let panelExpanded = false;
+let playbackTimer = null;
+
+const PLAYBACK_INTERVAL_MS = 250;
 
 // DOM element references (set once during panel creation)
 let els = {};
@@ -351,19 +354,29 @@ function attachEventHandlers(mp) {
         const intent = btn.getAttribute('data-intent');
         if (!intent) return;
 
+        // Play/Pause has its own handler with playback loop logic
+        if (intent === 'play' || intent === 'pause') {
+            handlePlayPause();
+            return;
+        }
+
+        // Any other transport action stops an active playback
+        stopPlayback();
         void invokeRuntimeBridge(intent, -1);
     });
 
-    // Scrubber input (jump on change)
+    // Scrubber input (jump on change — stops active playback)
     els.scrubber.addEventListener('input', () => {
+        stopPlayback();
         const val = parseInt(els.scrubber.value, 10);
         if (Number.isFinite(val) && val >= 0) {
             void invokeRuntimeBridge('jump-to-entry', val);
         }
     });
 
-    // Event list click (jump to entry)
+    // Event list click (jump to entry — stops active playback)
     els.eventList.addEventListener('click', (e) => {
+        stopPlayback();
         const item = e.target.closest?.('[data-sequence]');
         if (!item) return;
         const seq = parseInt(item.getAttribute('data-sequence'), 10);
@@ -378,16 +391,17 @@ function attachEventHandlers(mp) {
         renderEventList();
     });
 
-    // Keyboard navigation (when panel is expanded)
+    // Keyboard navigation (only when focus is inside the debugger panel)
     document.addEventListener('keydown', (e) => {
         if (!panelExpanded) return;
 
-        // Don't intercept when typing in an input (except our filter for non-nav keys)
+        // Only intercept keys when focus is inside the debugger mount point.
+        // This prevents stealing Space/Arrow/Home/End from the host application.
+        const mp = document.getElementById(MOUNT_POINT_ID);
         const active = document.activeElement;
+        if (!mp || !mp.contains(active)) return;
+
         const isOurFilter = active === els.filterInput;
-        const isExternalInput = active && !isOurFilter &&
-            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-        if (isExternalInput) return;
 
         switch (e.key) {
             case ' ':
@@ -398,16 +412,19 @@ function attachEventHandlers(mp) {
             case 'ArrowLeft':
                 if (isOurFilter) return;
                 e.preventDefault();
+                stopPlayback();
                 void invokeRuntimeBridge('step-back', -1);
                 break;
             case 'ArrowRight':
                 if (isOurFilter) return;
                 e.preventDefault();
+                stopPlayback();
                 void invokeRuntimeBridge('step-forward', -1);
                 break;
             case 'Home':
                 if (isOurFilter) return;
                 e.preventDefault();
+                stopPlayback();
                 if (localTimeline.length > 0) {
                     void invokeRuntimeBridge('jump-to-entry', 0);
                 }
@@ -415,6 +432,7 @@ function attachEventHandlers(mp) {
             case 'End':
                 if (isOurFilter) return;
                 e.preventDefault();
+                stopPlayback();
                 if (localTimeline.length > 0) {
                     void invokeRuntimeBridge('jump-to-entry', localTimeline.length - 1);
                 }
@@ -440,7 +458,51 @@ function attachEventHandlers(mp) {
 function handlePlayPause() {
     if (!lastResponse) return;
     const isPlaying = lastResponse.status === 'playing';
-    void invokeRuntimeBridge(isPlaying ? 'pause' : 'play', -1);
+    if (isPlaying) {
+        stopPlayback();
+        void invokeRuntimeBridge('pause', -1);
+    } else {
+        // If at end of timeline, rewind to start first (like a media player)
+        const prepare = lastResponse.atEnd && localTimeline.length > 0
+            ? invokeRuntimeBridge('jump-to-entry', 0)
+            : Promise.resolve();
+        void prepare
+            .then(() => invokeRuntimeBridge('play', -1))
+            .then(() => startPlayback());
+    }
+}
+
+/**
+ * Starts a timed auto-step loop that calls step-forward at PLAYBACK_INTERVAL_MS intervals.
+ * Each step updates the UI; the loop stops when the end is reached, the state is no longer
+ * "playing", or stopPlayback() is called explicitly (e.g. by Pause, Jump, Clear).
+ */
+function startPlayback() {
+    stopPlayback();
+    scheduleNextStep();
+}
+
+function scheduleNextStep() {
+    playbackTimer = setTimeout(async () => {
+        playbackTimer = null;
+
+        // Guard: stop if state drifted away from playing
+        if (!lastResponse || lastResponse.status !== 'playing') return;
+
+        await invokeRuntimeBridge('step-forward', -1);
+
+        // After the step, check if we should continue
+        if (lastResponse && lastResponse.status === 'playing' && !lastResponse.atEnd) {
+            scheduleNextStep();
+        }
+    }, PLAYBACK_INTERVAL_MS);
+}
+
+function stopPlayback() {
+    if (playbackTimer !== null) {
+        clearTimeout(playbackTimer);
+        playbackTimer = null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
