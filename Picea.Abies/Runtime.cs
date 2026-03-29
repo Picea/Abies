@@ -425,6 +425,13 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
     public bool TryApplyDebuggerSnapshot(object? snapshot)
     {
+        bool ApplySnapshot(TModel model)
+        {
+            TrySetCoreState(model);
+            Render(model);
+            return true;
+        }
+
         if (snapshot is not TModel typedSnapshot)
         {
             if (snapshot is System.Text.Json.JsonElement jsonSnapshot)
@@ -437,8 +444,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
                         return false;
                     }
 
-                    Render(deserialized);
-                    return true;
+                    return ApplySnapshot(deserialized);
                 }
                 catch
                 {
@@ -456,8 +462,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
                         return false;
                     }
 
-                    Render(deserialized);
-                    return true;
+                    return ApplySnapshot(deserialized);
                 }
                 catch
                 {
@@ -468,8 +473,43 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             return false;
         }
 
-        Render(typedSnapshot);
-        return true;
+        return ApplySnapshot(typedSnapshot);
+    }
+
+    private bool TrySetCoreState(TModel model)
+    {
+        try
+        {
+            var coreType = _core.GetType();
+            var writableState = coreType.GetProperty("State", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (writableState is not null && writableState.CanWrite)
+            {
+                writableState.SetValue(_core, model);
+                return true;
+            }
+
+            var stateBackingField = coreType.GetField("<State>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (stateBackingField is not null)
+            {
+                stateBackingField.SetValue(_core, model);
+                return true;
+            }
+
+            foreach (var field in coreType.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+            {
+                if (field.FieldType == typeof(TModel))
+                {
+                    field.SetValue(_core, model);
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort only: rendering still updates the UI even when state injection is unavailable.
+        }
+
+        return false;
     }
 #endif
 

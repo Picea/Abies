@@ -160,7 +160,7 @@ export function notifyTimelineChanged() {
 // ═══════════════════════════════════════════════════════════════════
 
 async function invokeRuntimeBridge(messageType, entryId, dataJson) {
-    if (!runtimeBridge) return;
+    if (!runtimeBridge) return null;
 
     try {
         detachedImportedSession = false;
@@ -192,8 +192,14 @@ async function invokeRuntimeBridge(messageType, entryId, dataJson) {
             detail: { messageType, entryId, response },
             bubbles: true
         }));
+
+        return lastResponse;
     } catch (err) {
         console.warn('[Abies Debugger] Bridge error:', err);
+        return {
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Unknown bridge error',
+        };
     }
 }
 
