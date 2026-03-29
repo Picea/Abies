@@ -360,12 +360,12 @@ public sealed class DebuggerMachine
             _currentModelSnapshot = _initialModelSnapshot;
         }
 
-        _currentState = session.Status switch
-        {
-            "recording" => DebuggerState.Recording,
-            "playing" => DebuggerState.PlayingForward,
-            _ => DebuggerState.Paused
-        };
+        // Never restore "playing" state — imported sessions always land in Paused.
+        // If we restored "playing", the JS bridge would see status="playing" and treat
+        // the first Play button click as a Pause, leaving the timeline stuck at the end.
+        _currentState = session.Status == "recording"
+            ? DebuggerState.Recording
+            : DebuggerState.Paused;
         _isCapturing = true;
         TimelineChanged?.Invoke();
     }
