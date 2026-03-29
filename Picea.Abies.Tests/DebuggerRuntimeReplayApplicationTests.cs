@@ -119,7 +119,12 @@ public sealed class DebuggerRuntimeReplayApplicationTests
         var applied = runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
 
         await Assert.That(applied).IsTrue();
+        await Assert.That(runtime.Model.Count).IsEqualTo(1);
         await Assert.That(Render.Html(runtime.CurrentDocument!.Body)).Contains("count:1");
+
+        await runtime.Dispatch(new IncrementMessage());
+        await Assert.That(runtime.Model.Count).IsEqualTo(2);
+        await Assert.That(Render.Html(runtime.CurrentDocument!.Body)).Contains("count:2");
     }
 
     [Test]
