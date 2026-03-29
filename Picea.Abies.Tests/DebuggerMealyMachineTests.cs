@@ -207,5 +207,51 @@ public sealed class DebuggerMealyMachineTests
         await Assert.That(debugger.Timeline[0].PatchCount).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task ImportSession_WithPlayingStatus_AlwaysLandsInPaused()
+    {
+        // Regression: if a session was exported while playing, importing it used to restore
+        // the "playing" state. The JS bridge would then see status="playing" and treat the
+        // first Play button click as a Pause, leaving the timeline stuck at the end.
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        var session = new DebuggerAdapterSession
+        {
+            App = new DebuggerAppIdentity { AppName = "Test", AppVersion = "1.0" },
+            Status = "playing",
+            CursorPosition = 1,
+            InitialModelSnapshotPreview = "{}",
+            TimelineEntries = [
+                new DebuggerAdapterTimelineEntry { Sequence = 0, MessageType = "msg", ArgsPreview = "", Timestamp = 1L, PatchCount = 0, ModelSnapshotPreview = "{}" },
+                new DebuggerAdapterTimelineEntry { Sequence = 1, MessageType = "msg", ArgsPreview = "", Timestamp = 2L, PatchCount = 0, ModelSnapshotPreview = "{}" },
+            ]
+        };
+
+        debugger.ImportSession(session);
+
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Paused);
+    }
+
+    [Test]
+    public async Task ImportSession_WithRecordingStatus_LandsInRecording()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        var session = new DebuggerAdapterSession
+        {
+            App = new DebuggerAppIdentity { AppName = "Test", AppVersion = "1.0" },
+            Status = "recording",
+            CursorPosition = 0,
+            InitialModelSnapshotPreview = "{}",
+            TimelineEntries = [
+                new DebuggerAdapterTimelineEntry { Sequence = 0, MessageType = "msg", ArgsPreview = "", Timestamp = 1L, PatchCount = 0, ModelSnapshotPreview = "{}" },
+            ]
+        };
+
+        debugger.ImportSession(session);
+
+        await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Recording);
+    }
+
     private sealed record TestMessage(string Name, object? Payload) : Message;
 }
