@@ -28,6 +28,30 @@ Project-specific learnings from JS/TS work. Read this before every session.
 
 ## Learnings
 
+### 2026-03-29 — Time-travel debugger "next after import" bug
+
+**Files**: `Picea.Abies.Browser/wwwroot/debugger.js` (canonical), `Picea.Abies.Server.Kestrel/wwwroot/_abies/debugger.js` (copy — always keep identical)
+
+#### "Next" button code path
+- Element: `<button data-intent="step-forward">` in the transport controls bar
+- Handler: delegated `click` on `els.panel` → reads `data-intent` attribute
+- Call: `invokeRuntimeBridge('step-forward', -1)` — async, waits for C# response before updating UI
+- No optimistic cursor update; UI only changes after the bridge responds
+
+#### Import flow (with bridge)
+`importSession()` → `invokeRuntimeBridge('import-session', -1, bridgePayload)` → C# loads session → response updates `lastResponse` + calls `updateUI()`. `detachedImportedSession` is always reset to `false` inside `invokeRuntimeBridge`, so the Next button is enabled after bridge-based import (provided `atEnd !== true`).
+
+#### Bug 1 — stale event list after same-size bridge import (fixed)
+`invokeRuntimeBridge` only re-syncs `localTimeline` when `response.timelineSize !== localTimeline.length`. If the imported session has the same number of entries as the pre-import live recording, the event list continues to show the old (wrong) entries even though C# now holds the imported timeline. Fix: in `importSession` bridge path, after a successful import, unconditionally set `localTimeline = session.timelineEntries` and call `updateUI()`.
+
+#### Bug 2 — detached mode blocks all navigation (fixed)
+When no bridge is present, `applyImportedSession()` sets `detachedImportedSession = true`. Every handler (panel click, scrubber, event-list click, keyboard arrows) checked `if (detachedImportedSession)` and called `showDetachedSessionNotice()` instead of acting. `updateDisabledStates()` used `canControlLiveRuntime = hasBridge && !detachedImportedSession` to disable all buttons including Back/Next/Scrubber. Result: user could see the imported entry list but could not navigate it at all — pressing Next showed a notice with no UI change.
+
+Fix: added `navigateDetached(cursor)` — updates `lastResponse` (cursorPosition, atStart, atEnd, currentEntry, model snapshots) from local `localTimeline` and calls `updateUI()`. Updated all handlers to call `navigateDetached` for step/scrubber/entry-click in detached mode. Updated `updateDisabledStates` to treat detached mode as a special branch: Back/Next/Scrubber enabled based on cursor position; Play/Clear remain disabled (no live runtime).
+
+#### Key architecture note
+`invokeRuntimeBridge` always sets `detachedImportedSession = false` at entry — any live bridge call exits detached mode. `applyImportedSession` is only called when no bridge is present. These two paths are mutually exclusive.
+
 - 2026-03-27: Keep runtime startup resilient by treating debugger bootstrap as optional and always wiring `Interop.Handlers` first; this isolates debugger failures from core WASM input handling.
 - 2026-03-27: In WASM startup, wire `Interop.Handlers` before optional debugger bootstrap; if debugger import/mount throws first, UI can render but all input becomes non-interactive because `DispatchDomEvent` has no handler registry.
 - 2026-03-27: Runtime debugger UI startup now defaults to enabled with JS-level opt-out controls in both browser and server startup paths. The resolved setting is unified as `window.__abiesDebugger.enabled` from query/meta/global sources.

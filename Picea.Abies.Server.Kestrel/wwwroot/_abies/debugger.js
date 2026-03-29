@@ -415,7 +415,13 @@ function attachEventHandlers(mp) {
         }
 
         if (detachedImportedSession) {
-            showDetachedSessionNotice();
+            if (intent === 'step-forward') {
+                navigateDetached((lastResponse?.cursorPosition ?? -1) + 1);
+            } else if (intent === 'step-back') {
+                navigateDetached((lastResponse?.cursorPosition ?? 0) - 1);
+            } else {
+                showDetachedSessionNotice();
+            }
             return;
         }
 
@@ -431,32 +437,32 @@ function attachEventHandlers(mp) {
 
     // Scrubber input (jump on change — stops active playback)
     els.scrubber.addEventListener('input', () => {
+        const val = parseInt(els.scrubber.value, 10);
+        if (!Number.isFinite(val) || val < 0) return;
+
         if (detachedImportedSession) {
-            showDetachedSessionNotice();
+            navigateDetached(val);
             return;
         }
 
         stopPlayback();
-        const val = parseInt(els.scrubber.value, 10);
-        if (Number.isFinite(val) && val >= 0) {
-            void invokeRuntimeBridge('jump-to-entry', val);
-        }
+        void invokeRuntimeBridge('jump-to-entry', val);
     });
 
     // Event list click (jump to entry — stops active playback)
     els.eventList.addEventListener('click', (e) => {
+        const item = e.target.closest?.('[data-sequence]');
+        if (!item) return;
+        const seq = parseInt(item.getAttribute('data-sequence'), 10);
+        if (!Number.isFinite(seq) || seq < 0) return;
+
         if (detachedImportedSession) {
-            showDetachedSessionNotice();
+            navigateDetached(seq);
             return;
         }
 
         stopPlayback();
-        const item = e.target.closest?.('[data-sequence]');
-        if (!item) return;
-        const seq = parseInt(item.getAttribute('data-sequence'), 10);
-        if (Number.isFinite(seq) && seq >= 0) {
-            void invokeRuntimeBridge('jump-to-entry', seq);
-        }
+        void invokeRuntimeBridge('jump-to-entry', seq);
     });
 
     // Filter input
@@ -484,7 +490,7 @@ function attachEventHandlers(mp) {
                 if (isOurFilter) return;
                 e.preventDefault();
                 if (detachedImportedSession) {
-                    showDetachedSessionNotice();
+                    navigateDetached((lastResponse?.cursorPosition ?? 0) - 1);
                     return;
                 }
                 stopPlayback();
@@ -494,7 +500,7 @@ function attachEventHandlers(mp) {
                 if (isOurFilter) return;
                 e.preventDefault();
                 if (detachedImportedSession) {
-                    showDetachedSessionNotice();
+                    navigateDetached((lastResponse?.cursorPosition ?? -1) + 1);
                     return;
                 }
                 stopPlayback();
@@ -648,6 +654,19 @@ function updateDisabledStates() {
     const canControlLiveRuntime = hasBridge && !detachedImportedSession;
     const hasTimeline = r && r.timelineSize > 0;
     const hasMetadata = hasCompatibilityMetadata(getCurrentRuntimeMetadata());
+
+    // In detached (imported read-only) mode: allow local cursor navigation but block
+    // playback and clear (which require a live runtime to be meaningful).
+    if (detachedImportedSession) {
+        setDisabled(els.btnBack, !hasTimeline || (r && r.atStart));
+        setDisabled(els.btnStep, !hasTimeline || (r && r.atEnd));
+        setDisabled(els.btnPlayPause, true);
+        setDisabled(els.btnClear, true);
+        setDisabled(els.btnExport, !hasTimeline || !hasMetadata);
+        setDisabled(els.btnImport, !hasMetadata);
+        setDisabled(els.scrubber, !hasTimeline);
+        return;
+    }
 
     setDisabled(els.btnBack, !canControlLiveRuntime || !hasTimeline || (r && r.atStart));
     setDisabled(els.btnStep, !canControlLiveRuntime || !hasTimeline || (r && r.atEnd));
@@ -894,6 +913,29 @@ function applyImportedSession(session) {
     updateUI();
 }
 
+function navigateDetached(cursor) {
+    const size = localTimeline.length;
+    if (size === 0) return;
+
+    const bounded = Math.max(0, Math.min(size - 1, cursor));
+    const entry = findTimelineEntryBySequence(bounded) ?? localTimeline[bounded] ?? null;
+    const prevEntry = bounded > 0
+        ? (findTimelineEntryBySequence(bounded - 1) ?? localTimeline[bounded - 1] ?? null)
+        : null;
+
+    lastResponse = {
+        ...lastResponse,
+        cursorPosition: bounded,
+        timelineSize: size,
+        atStart: bounded <= 0,
+        atEnd: bounded >= size - 1,
+        currentEntry: entry,
+        modelSnapshotPreview: entry?.modelSnapshotPreview ?? '',
+        previousModelSnapshotPreview: prevEntry?.modelSnapshotPreview ?? null,
+    };
+    updateUI();
+}
+
 function showDetachedSessionNotice() {
     if (!detachedImportedSession) {
         return;
@@ -943,6 +985,13 @@ async function importSession(file) {
                 showNotice(response?.error ?? 'Import failed: runtime rejected the session.', true);
                 return;
             }
+
+            // Bug fix: invokeRuntimeBridge only re-syncs localTimeline when timelineSize differs
+            // from the previous length. If the imported session happens to have the same entry
+            // count as the pre-import live recording, the event list would still show stale
+            // pre-import entries. Force-update from the in-memory session to guarantee correctness.
+            localTimeline = session.timelineEntries;
+            updateUI();
 
             showNotice(`Session imported: ${session.timelineEntries.length} entries loaded.`, false);
             return;
