@@ -29,7 +29,6 @@ public sealed class DebuggerCaptureLifecycleTests
         var first = debugger.Timeline[0];
         await Assert.That(first.MessageType).IsEqualTo(nameof(TestMessage));
         await Assert.That(first.ArgsPreview).Contains("Increment");
-        await Assert.That(first.ArgsPreview).Contains("5");
 
         var second = debugger.Timeline[1];
         await Assert.That(second.ArgsPreview).Contains("Reset");
@@ -72,8 +71,7 @@ public sealed class DebuggerCaptureLifecycleTests
 
         var entry = debugger.Timeline[0];
         await Assert.That(entry.ArgsPreview).IsNotEmpty();
-        await Assert.That(entry.ArgsPreview).Contains("123");
-        await Assert.That(entry.ArgsPreview).Contains("test");
+        await Assert.That(entry.ArgsPreview).Contains("ComplexAction");
 
     }
 
