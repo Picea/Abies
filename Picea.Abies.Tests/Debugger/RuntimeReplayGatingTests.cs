@@ -107,6 +107,7 @@ public sealed class RuntimeReplayGatingTests
                 "initialUrl" => null,
                 "threadSafe" => false,
                 "replay" => true,
+                "debuggerModelJsonTypeInfo" => null,
                 _ => throw new InvalidOperationException(
                     $"Unsupported Runtime.Start parameter for replay invocation: {startParameters[index].Name}")
             };

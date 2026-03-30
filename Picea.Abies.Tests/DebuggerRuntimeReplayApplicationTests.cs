@@ -9,7 +9,7 @@ using static Picea.Abies.Html.Events;
 namespace Picea.Abies.Tests;
 
 #if DEBUG
-public sealed class DebuggerRuntimeReplayApplicationTests
+public sealed partial class DebuggerRuntimeReplayApplicationTests
 {
     [Test]
     public async Task Dispatch_CapturesPostTransitionModelSnapshots()
@@ -29,7 +29,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.ReplayCounterModel);
 
         runtime.UseDebugger();
 
@@ -61,7 +62,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.ReplayCounterModel);
 
         runtime.UseDebugger();
 
@@ -99,7 +101,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.ReplayCounterModel);
 
         runtime.UseDebugger();
 
@@ -152,7 +155,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.ReplayCounterModel);
 
         runtime.UseDebugger();
 
@@ -208,7 +212,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.PolyCounterModel);
 
         runtime.UseDebugger();
 
@@ -257,7 +262,8 @@ public sealed class DebuggerRuntimeReplayApplicationTests
             subscriptionFaulted: null,
             initialUrl: null,
             threadSafe: false,
-            replay: false);
+            replay: false,
+            debuggerModelJsonTypeInfo: ReplayTestJsonContext.Default.ReplayCounterModel);
 
         runtime.UseDebugger();
 
@@ -354,6 +360,12 @@ public sealed class DebuggerRuntimeReplayApplicationTests
 
         public static Subscription Subscriptions(PolyCounterModel model) =>
             SubscriptionModule.None;
+    }
+
+    [JsonSerializable(typeof(ReplayCounterModel))]
+    [JsonSerializable(typeof(PolyCounterModel))]
+    private sealed partial class ReplayTestJsonContext : JsonSerializerContext
+    {
     }
 }
 #endif
