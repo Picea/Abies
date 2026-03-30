@@ -903,7 +903,8 @@
         registeredEventTypes.add(eventType);
 
         const useCapture = eventType === "focus" || eventType === "blur"
-            || eventType === "focusin" || eventType === "focusout";
+            || eventType === "focusin" || eventType === "focusout"
+            || eventType === "submit";
 
         document.addEventListener(eventType, function (event) {
             const attrName = "data-event-" + eventType;
@@ -917,10 +918,10 @@
                     if (debugHandlers) {
                         console.log("[ServerEventDelegation] HIT: " + eventType + " on " + el.tagName + " (depth=" + walkDepth + "), commandId=" + commandId);
                     }
-                    const eventData = extractEventData(event);
-                    const traceContext = createEventTraceContext(commandId, eventType, eventData, el);
-                    sendEvent(commandId, eventType, eventData, traceContext);
 
+                    // Block native browser form/anchor defaults before dispatching
+                    // to the server so transport errors cannot trigger full-page
+                    // navigation in interactive server mode.
                     if (eventType === "submit") {
                         event.preventDefault();
                     }
@@ -938,6 +939,10 @@
                             event.preventDefault();
                         }
                     }
+
+                    const eventData = extractEventData(event);
+                    const traceContext = createEventTraceContext(commandId, eventType, eventData, el);
+                    sendEvent(commandId, eventType, eventData, traceContext);
                     return;
                 }
                 walkDepth++;
@@ -1022,11 +1027,13 @@
             case "push":
                 if (msg.url) {
                     history.pushState(null, "", msg.url);
+                    window.dispatchEvent(new PopStateEvent("popstate"));
                 }
                 break;
             case "replace":
                 if (msg.url) {
                     history.replaceState(null, "", msg.url);
+                    window.dispatchEvent(new PopStateEvent("popstate"));
                 }
                 break;
             case "back":
