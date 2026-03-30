@@ -197,6 +197,8 @@ public static class DebuggerRuntimeBridge
         return null;
     }
 
+
+
     private static DebuggerAppIdentity ResolveCurrentAppIdentity()
     {
         var entryAssembly = Assembly.GetEntryAssembly();

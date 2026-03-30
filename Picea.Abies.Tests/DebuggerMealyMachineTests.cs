@@ -253,5 +253,35 @@ public sealed class DebuggerMealyMachineTests
         await Assert.That(debugger.CurrentState).IsEqualTo(DebuggerState.Recording);
     }
 
+    [Test]
+    public async Task Jump_ResolvesImportedSequenceValue_WhenSequenceIsNotZeroBased()
+    {
+        var debugger = new DebuggerMachine(capacity: 1000);
+
+        var session = new DebuggerAdapterSession
+        {
+            App = new DebuggerAppIdentity { AppName = "Test", AppVersion = "1.0" },
+            Status = "paused",
+            CursorPosition = 1002,
+            InitialModelSnapshotPreview = "{\"Count\":0}",
+            TimelineEntries =
+            [
+                new DebuggerAdapterTimelineEntry { Sequence = 1000, MessageType = "msg", ArgsPreview = "{}", Timestamp = 1L, PatchCount = 0, ModelSnapshotPreview = "{\"Count\":1}" },
+                new DebuggerAdapterTimelineEntry { Sequence = 1001, MessageType = "msg", ArgsPreview = "{}", Timestamp = 2L, PatchCount = 0, ModelSnapshotPreview = "{\"Count\":2}" },
+                new DebuggerAdapterTimelineEntry { Sequence = 1002, MessageType = "msg", ArgsPreview = "{}", Timestamp = 3L, PatchCount = 0, ModelSnapshotPreview = "{\"Count\":3}" },
+            ]
+        };
+
+        debugger.ImportSession(session);
+
+        await Assert.That(debugger.CursorPosition).IsEqualTo(2);
+        await Assert.That(debugger.CurrentModelSnapshotPreview).IsEqualTo("{\"Count\":3}");
+
+        debugger.Jump(1000);
+
+        await Assert.That(debugger.CursorPosition).IsEqualTo(0);
+        await Assert.That(debugger.CurrentModelSnapshotPreview).IsEqualTo("{\"Count\":1}");
+    }
+
     private sealed record TestMessage(string Name, object? Payload) : Message;
 }

@@ -139,8 +139,10 @@ public sealed class DebuggerMachine
         if (_timeline.Count == 0)
             return;
 
-        // Clamp to valid range
-        int targetCursor = Math.Max(0, Math.Min(entrySequence, _timeline.Count - 1));
+        // Accept either zero-based index or entry sequence value.
+        // Some clients send sequence values from the event list; imported sessions can
+        // have non-zero-based sequences, so treating the value as index can clamp to end.
+        int targetCursor = ResolveCursor(entrySequence);
 
         _cursorPosition = targetCursor;
         if (targetCursor < _timeline.Count)
@@ -347,7 +349,7 @@ public sealed class DebuggerMachine
 
         _cursorPosition = _timeline.Count == 0
             ? -1
-            : Math.Clamp(session.CursorPosition, 0, _timeline.Count - 1);
+            : ResolveCursor(session.CursorPosition);
 
         if (_cursorPosition >= 0)
         {
@@ -382,6 +384,25 @@ public sealed class DebuggerMachine
             return _lastTimestamp + 1;
         }
         return now;
+    }
+
+    private int ResolveCursor(int entryPointer)
+    {
+        if (_timeline.Count == 0)
+            return -1;
+
+        if (entryPointer >= 0)
+        {
+            for (var i = 0; i < _timeline.Count; i++)
+            {
+                if (_timeline[i].Sequence == entryPointer)
+                {
+                    return i;
+                }
+            }
+        }
+
+        return Math.Clamp(entryPointer, 0, _timeline.Count - 1);
     }
 
     private string SerializeMessageArgs(object? message)
