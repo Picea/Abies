@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Picea.Abies.DOM;
 using Picea.Abies.Html;
 using Picea.Abies.Subscriptions;
+using System.Text.Json.Serialization.Metadata;
 #if DEBUG
 using Picea.Abies.Debugger;
 #endif
@@ -99,6 +100,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
     private IDisposable? _hotReloadRegistration;
     private DebuggerMachine? _debuggerMachine;
+    private readonly JsonTypeInfo<TModel>? _debuggerModelJsonTypeInfo;
 #endif
 
     public TModel Model => _core.State;
@@ -116,9 +118,16 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         Action<string>? titleChanged,
         Action<NavigationCommand>? navigationExecutor,
         Action<SubscriptionFault>? subscriptionFaulted,
-        bool replay) =>
+        bool replay,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
+    {
         (_apply, _titleChanged, _navigationExecutor, _subscriptionFaulted, _handlerRegistry, _replay) =
             (apply, titleChanged, navigationExecutor, subscriptionFaulted, new HandlerRegistry(), replay);
+
+#if DEBUG
+        _debuggerModelJsonTypeInfo = debuggerModelJsonTypeInfo;
+#endif
+    }
 
 #if DEBUG
     public void UseDebugger(int capacity = 10000)
@@ -283,7 +292,8 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         Action<SubscriptionFault>? subscriptionFaulted = null,
         Url? initialUrl = null,
         bool threadSafe = false,
-        bool replay = false)
+        bool replay = false,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.Start");
         activity?.SetTag("abies.program", typeof(TProgram).Name);
@@ -293,7 +303,8 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             titleChanged,
             navigationExecutor,
             subscriptionFaulted,
-            replay);
+            replay,
+            debuggerModelJsonTypeInfo);
 
         runtime._handlerRegistry.Dispatch = runtime.DispatchFromSubscription;
 
@@ -438,7 +449,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             {
                 try
                 {
-                    var deserialized = System.Text.Json.JsonSerializer.Deserialize<TModel>(jsonSnapshot.GetRawText());
+                    var deserialized = DeserializeDebuggerModelSnapshot(jsonSnapshot.GetRawText());
                     if (deserialized is null)
                     {
                         return false;
@@ -456,7 +467,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             {
                 try
                 {
-                    var deserialized = System.Text.Json.JsonSerializer.Deserialize<TModel>(snapshotJson);
+                    var deserialized = DeserializeDebuggerModelSnapshot(snapshotJson);
                     if (deserialized is null)
                     {
                         return false;
@@ -474,6 +485,18 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         }
 
         return ApplySnapshot(typedSnapshot);
+    }
+
+    private TModel? DeserializeDebuggerModelSnapshot(string snapshotJson)
+    {
+        if (_debuggerModelJsonTypeInfo is null)
+        {
+            // Trim-safe behavior: without source-generated metadata we cannot
+            // reliably deserialize arbitrary model graphs in AOT builds.
+            return default;
+        }
+
+        return System.Text.Json.JsonSerializer.Deserialize(snapshotJson, _debuggerModelJsonTypeInfo);
     }
 
     private bool TrySetCoreState(TModel model)
@@ -518,7 +541,14 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     {
         try
         {
-            return System.Text.Json.JsonSerializer.Serialize(model);
+            if (_debuggerModelJsonTypeInfo is not null)
+            {
+                return System.Text.Json.JsonSerializer.Serialize(model, _debuggerModelJsonTypeInfo);
+            }
+
+            // Trim-safe fallback: keep old behavior without invoking reflection-based
+            // serializer paths that can break under AOT trimming.
+            return model?.ToString() ?? "null";
         }
         catch
         {

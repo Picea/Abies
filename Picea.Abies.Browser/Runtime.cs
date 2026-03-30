@@ -55,6 +55,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
+using System.Text.Json.Serialization.Metadata;
 #if DEBUG
 using Picea.Abies.Debugger;
 #endif
@@ -166,10 +167,16 @@ public static class Runtime
     /// Converts commands into feedback messages. When <c>null</c>, a no-op interpreter
     /// is used that returns empty message arrays for all commands.
     /// </param>
+    /// <param name="debuggerModelJsonTypeInfo">
+    /// Optional source-generated JSON metadata for <typeparamref name="TModel"/> used by
+    /// debugger snapshot export/import in Debug builds. Passing this keeps snapshot replay
+    /// trim-safe in WASM AOT scenarios.
+    /// </param>
     /// <returns>A task that never completes (keeps the WASM process alive).</returns>
     public static async Task Run<TProgram, TModel, TArgument>(
         TArgument argument = default!,
-        Interpreter<Command, Message>? interpreter = null)
+        Interpreter<Command, Message>? interpreter = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>
     {
         // Step 1: Load the abies.js module.
@@ -241,7 +248,8 @@ public static class Runtime
             argument: argument,
             titleChanged: Interop.SetTitle,
             navigationExecutor: NavigationExecutor,
-            initialUrl: initialUrl);
+            initialUrl: initialUrl,
+            debuggerModelJsonTypeInfo: debuggerModelJsonTypeInfo);
 
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
         // The [JSExport] DispatchDomEvent method is static, so it needs a static
