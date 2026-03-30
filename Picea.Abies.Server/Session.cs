@@ -31,6 +31,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 #if DEBUG
 using Picea.Abies.Debugger;
 #endif
@@ -79,6 +80,9 @@ public static class Session
     /// <param name="sendText">Delegate to send text messages (e.g., navigation commands) to the client.</param>
     /// <param name="argument">Initialization parameters for the program.</param>
     /// <param name="initialUrl">Optional initial URL for routing.</param>
+    /// <param name="debuggerModelJsonTypeInfo">
+    /// Optional source-generated JSON metadata for model debugger snapshots.
+    /// </param>
     /// <returns>A started session ready to run the event loop.</returns>
     public static Task<Session<TProgram, TModel, TArgument>> Start<TProgram, TModel, TArgument>(
         SendPatches sendPatches,
@@ -86,11 +90,12 @@ public static class Session
         Interpreter<Command, Message> interpreter,
         SendText? sendText = null,
         TArgument argument = default!,
-        Url? initialUrl = null)
+        Url? initialUrl = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>
     {
         return Session<TProgram, TModel, TArgument>.Start(
-            sendPatches, receiveEvent, interpreter, sendText, argument, initialUrl);
+            sendPatches, receiveEvent, interpreter, sendText, argument, initialUrl, debuggerModelJsonTypeInfo);
     }
 }
 
@@ -146,7 +151,8 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         Interpreter<Command, Message> interpreter,
         SendText? sendText = null,
         TArgument argument = default!,
-        Url? initialUrl = null)
+        Url? initialUrl = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.Server.Session.Start");
         activity?.SetTag("abies.program", typeof(TProgram).Name);
@@ -198,7 +204,8 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             argument: argument,
             navigationExecutor: navigationExecutor,
             initialUrl: initialUrl,
-            threadSafe: true);
+            threadSafe: true,
+            debuggerModelJsonTypeInfo: debuggerModelJsonTypeInfo);
 
 #if DEBUG
         if (DebuggerConfiguration.Default.Enabled)

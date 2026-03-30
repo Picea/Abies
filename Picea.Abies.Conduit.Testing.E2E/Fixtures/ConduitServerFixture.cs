@@ -69,7 +69,8 @@ public sealed class ConduitServerFixture : IAsyncInitializer, IAsyncDisposable
             "/{**catch-all}",
             new RenderMode.InteractiveServer(),
             interpreter: ConduitInterpreter.Interpret,
-            argument: new ConduitStartup(_infra.ApiUrl));
+            argument: new ConduitStartup(_infra.ApiUrl),
+            debuggerModelJsonTypeInfo: ConduitDebuggerJsonContext.Default.Model);
 
         await _app.StartAsync();
         BaseUrl = _app.Urls.First();

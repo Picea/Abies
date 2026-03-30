@@ -25,6 +25,7 @@
 // =============================================================================
 
 using System.Diagnostics;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -74,13 +75,17 @@ public static class Endpoints
     /// ignored for static mode. Defaults to a no-op interpreter.
     /// </param>
     /// <param name="argument">Initialization parameters for the program.</param>
+    /// <param name="debuggerModelJsonTypeInfo">
+    /// Optional source-generated JSON metadata for debugger model snapshots.
+    /// </param>
     /// <returns>The endpoint route builder for further chaining.</returns>
     public static IEndpointRouteBuilder MapAbies<TProgram, TModel, TArgument>(
         this IEndpointRouteBuilder endpoints,
         string path,
         RenderMode mode,
         Interpreter<Command, Message>? interpreter = null,
-        TArgument argument = default!)
+        TArgument argument = default!,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>
     {
         var effectiveInterpreter = interpreter ?? NoOpInterpreter;
@@ -93,12 +98,12 @@ public static class Endpoints
         {
             case RenderMode.InteractiveServer server:
                 MapWebSocketEndpoint<TProgram, TModel, TArgument>(
-                    endpoints, server.WebSocketPath, effectiveInterpreter, argument);
+                    endpoints, server.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo);
                 break;
 
             case RenderMode.InteractiveAuto auto:
                 MapWebSocketEndpoint<TProgram, TModel, TArgument>(
-                    endpoints, auto.WebSocketPath, effectiveInterpreter, argument);
+                    endpoints, auto.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo);
                 break;
         }
 
@@ -168,7 +173,8 @@ public static class Endpoints
         IEndpointRouteBuilder endpoints,
         string wsPath,
         Interpreter<Command, Message> interpreter,
-        TArgument argument)
+        TArgument argument,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo)
         where TProgram : Program<TModel, TArgument>
     {
         endpoints.Map(wsPath, async (HttpContext context) =>
@@ -217,7 +223,8 @@ public static class Endpoints
                 interpreter: interpreter,
                 sendText: transport.CreateSendText(),
                 argument: argument,
-                initialUrl: initialUrl);
+                initialUrl: initialUrl,
+                debuggerModelJsonTypeInfo);
 
             // Run the event loop until the client disconnects
             await session.RunEventLoop(context.RequestAborted);
