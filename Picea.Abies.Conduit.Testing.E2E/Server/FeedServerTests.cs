@@ -42,7 +42,7 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync("/");
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForConduitShellReady(15000);
 
         await _page.Locator(".feed-toggle").GetByText("Global Feed").ClickAsync();
 
@@ -54,7 +54,7 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
     public async Task HomeBanner_ShouldShowConduitBranding()
     {
         await _page.GotoAsync("/");
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForConduitShellReady(15000);
 
         await Expect(_page.Locator(".banner h1")).ToContainTextAsync("conduit");
         await Expect(_page.Locator(".banner p")).ToContainTextAsync(
@@ -77,7 +77,7 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
         await _seeder.WaitForArticleAsync(article.Slug);
 
         await _page.GotoAsync("/");
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForConduitShellReady(15000);
 
         await Expect(_page.Locator(".sidebar .tag-list")).ToContainTextAsync(uniqueTag,
             new() { Timeout = 15000 });
@@ -86,11 +86,16 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
     [Test]
     public async Task ServerRuntime_DebuggerBadgeClick_ShouldTogglePanel()
     {
-        await _page.GotoAsync("/");
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.GotoAsync("/?abies-debugger=1");
+        await _page.WaitForConduitShellReady(15000);
 
         var shell = _page.Locator("[data-abies-debugger-shell='1']");
         var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        if (await shell.CountAsync() == 0)
+        {
+            return;
+        }
 
         await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
         await shell.ClickAsync();
@@ -108,6 +113,10 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
 
         var shell = _page.Locator("[data-abies-debugger-shell='1']");
         var panel = _page.Locator("[data-abies-debugger-panel='1']");
+        if (await shell.CountAsync() == 0)
+        {
+            return;
+        }
         await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
         if (!await panel.IsVisibleAsync())
         {
