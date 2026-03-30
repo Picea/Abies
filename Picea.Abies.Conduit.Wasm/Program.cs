@@ -47,7 +47,8 @@ var initialSession = LoadPersistedSession();
 
 await Picea.Abies.Browser.Runtime.Run<ConduitProgram, Model, ConduitStartup>(
     argument: new ConduitStartup(apiUrl, initialSession, initialUrl),
-    interpreter: Interpret);
+    interpreter: Interpret,
+    debuggerModelJsonTypeInfo: ConduitDebuggerJsonContext.Default.Model);
 
 static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
 {

@@ -407,39 +407,27 @@ public sealed class DebuggerMachine
 
     private string SerializeMessageArgs(object? message)
     {
-        try
-        {
-            if (message == null)
-                return "{}";
-
-            // Simple reflection-based serialization of message args and properties
-            var messageType = message.GetType();
-            var properties = messageType.GetProperties();
-
-            if (properties.Length == 0)
-                return "{}";
-
-            var fields = new Dictionary<string, string>();
-            foreach (var prop in properties)
-            {
-                try
-                {
-                    var value = prop.GetValue(message);
-                    var serialized = System.Text.Json.JsonSerializer.Serialize(value);
-                    fields[prop.Name] = serialized;
-                }
-                catch
-                {
-                    fields[prop.Name] = $"<{prop.PropertyType.Name}>";
-                }
-            }
-
-            return System.Text.Json.JsonSerializer.Serialize(fields);
-        }
-        catch
+        if (message is null)
         {
             return "{}";
         }
+
+        var preview = message.ToString();
+        if (string.IsNullOrWhiteSpace(preview))
+        {
+            return "{}";
+        }
+
+        return "{\"preview\":\"" + EscapeJson(preview) + "\"}";
+    }
+
+    private static string EscapeJson(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n");
     }
 }
 
