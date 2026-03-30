@@ -72,7 +72,13 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
         await _page.WaitForSelectorAsync("text='Delete Article'", new() { Timeout = 15000 });
         await _page.GetByText("Delete Article").First.ClickAsync();
 
-        await _page.WaitForURLAsync("**/");
+        await _page.WaitForFunctionAsync(
+            "() => window.location.pathname === '/'",
+            null,
+            new() { Timeout = 30000 });
+        await _page.WaitForSelectorAsync(
+            ".home-page, .feed-toggle, .article-preview",
+            new() { Timeout = 30000 });
         await _seeder.WaitForArticleDeletedAsync(article.Slug);
         await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
             .ToHaveCountAsync(0, new() { Timeout = 10000 });
