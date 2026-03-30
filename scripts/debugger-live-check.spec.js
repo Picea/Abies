@@ -19,7 +19,8 @@ test.beforeAll(async () => {
   server = http.createServer((req, res) => {
     const reqPath = decodeURIComponent((req.url || '/').split('?')[0]);
     const safePath = reqPath === '/' ? '/index.html' : reqPath;
-    const fullPath = path.normalize(path.join(root, safePath));
+    const relativePath = safePath.startsWith('/') ? safePath.slice(1) : safePath;
+    const fullPath = path.normalize(path.join(root, relativePath));
 
     if (!fullPath.startsWith(root) || !fs.existsSync(fullPath) || fs.statSync(fullPath).isDirectory()) {
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });

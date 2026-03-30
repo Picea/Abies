@@ -298,7 +298,7 @@ public static class OtlpProxyEndpoint
         catch (HttpRequestException ex)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
-            await context.Response.WriteAsync($"Failed to forward to collector: {ex.Message}");
+            await context.Response.WriteAsync("Failed to forward to collector.");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             logger?.LogWarning(ex, "OTLP proxy failed to forward {SignalType} to {TargetUrl}", signalType, targetUrl);
         }

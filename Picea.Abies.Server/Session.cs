@@ -401,7 +401,7 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
             return true;
         }
-        catch (Exception)
+        catch (JsonException)
         {
             return false;
         }
