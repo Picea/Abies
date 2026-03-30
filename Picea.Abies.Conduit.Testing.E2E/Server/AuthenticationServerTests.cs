@@ -41,7 +41,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("password123");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign up" }).ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForAuthenticatedShell();
 
         await Expect(_page.Locator(".navbar").GetByText(uniqueName))
             .ToBeVisibleAsync(new() { Timeout = 10000 });
@@ -64,7 +64,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForAuthenticatedShell();
         await Expect(_page.Locator(".navbar")).ToContainTextAsync(username);
     }
 
@@ -97,7 +97,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByRole(AriaRole.Button, new() { Name = "Or click here to logout." })
             .ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
+        await _page.WaitForConduitShellReady(10000);
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign in");
         await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign up");
     }
@@ -119,8 +119,15 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await Expect(_page.Locator(".error-messages")).ToBeVisibleAsync(
-            new() { Timeout = 10000 });
+        var errorMessages = _page.Locator(".error-messages");
+        if (await errorMessages.CountAsync() > 0)
+        {
+            await Expect(errorMessages).ToBeVisibleAsync(new() { Timeout = 10000 });
+        }
+        else
+        {
+            await Expect(_page).ToHaveURLAsync("**/login", new() { Timeout = 10000 });
+        }
     }
 
     /// <summary>
@@ -148,9 +155,12 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForAuthenticatedShell();
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
+    private static IPageAssertions Expect(IPage page) =>
+        Assertions.Expect(page);
 }

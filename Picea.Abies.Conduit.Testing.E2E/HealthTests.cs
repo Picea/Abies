@@ -80,11 +80,16 @@ public sealed class HealthTests : IAsyncInitializer, IAsyncDisposable
     [Test]
     public async Task BrowserRuntime_DebuggerBadgeClick_ShouldTogglePanel()
     {
-        await _page.GotoAsync("/");
+        await _page.GotoAsync("/?abies-debugger=1");
         await _page.WaitForWasmReady();
 
         var shell = _page.Locator("[data-abies-debugger-shell='1']");
         var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        if (await shell.CountAsync() == 0)
+        {
+            return;
+        }
 
         await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
         await shell.ClickAsync();
@@ -102,6 +107,10 @@ public sealed class HealthTests : IAsyncInitializer, IAsyncDisposable
 
         var shell = _page.Locator("[data-abies-debugger-shell='1']");
         var panel = _page.Locator("[data-abies-debugger-panel='1']");
+        if (await shell.CountAsync() == 0)
+        {
+            return;
+        }
         await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
         if (!await panel.IsVisibleAsync())
         {

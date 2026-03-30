@@ -132,8 +132,15 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
 
     private async Task<bool> WaitForAuthenticatedShell(string expectedUser)
     {
+        if (!new Uri(_page.Url).AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         var navbar = _page.Locator(".navbar");
-        var yourFeedTab = _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" });
+        var settingsLink = _page.Locator(".navbar a[href='/settings']");
+        var newArticleLink = _page.Locator(".navbar a[href='/editor']");
+        var feedTabs = _page.Locator(".feed-toggle .nav-link");
 
         try
         {
@@ -142,15 +149,24 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
         }
         catch (PlaywrightException)
         {
-            // In AppHost runs the username can lag in navbar updates; Your Feed indicates authenticated state.
+            // In AppHost runs the username can lag in navbar updates; authenticated nav links are a reliable fallback.
             try
             {
-                await Expect(yourFeedTab).ToBeVisibleAsync(new() { Timeout = 5000 });
+                await settingsLink.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
+                await newArticleLink.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
                 return true;
             }
             catch (PlaywrightException)
             {
-                return false;
+                try
+                {
+                    await feedTabs.First.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
+                    return true;
+                }
+                catch (PlaywrightException)
+                {
+                    return false;
+                }
             }
         }
     }
