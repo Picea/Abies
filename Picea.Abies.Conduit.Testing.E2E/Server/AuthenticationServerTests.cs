@@ -78,7 +78,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
         await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
@@ -98,7 +98,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
             .ClickAsync();
 
         await _page.NavigateInApp("/settings");
-        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
         await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
@@ -119,7 +119,7 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
         await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
