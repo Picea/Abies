@@ -374,11 +374,11 @@
         }
     }
 
-    function createEventTraceContext(commandId, eventName, eventData) {
+    function createEventTraceContext(commandId, eventName, eventData, element) {
         if (!otelModule) return null;
 
         try {
-            return otelModule.traceEvent(commandId, eventName, eventData);
+            return otelModule.traceEvent(commandId, eventName, eventData, element);
         } catch {
             return null;
         }
@@ -918,7 +918,7 @@
                         console.log("[ServerEventDelegation] HIT: " + eventType + " on " + el.tagName + " (depth=" + walkDepth + "), commandId=" + commandId);
                     }
                     const eventData = extractEventData(event);
-                    const traceContext = createEventTraceContext(commandId, eventType, eventData);
+                    const traceContext = createEventTraceContext(commandId, eventType, eventData, el);
                     sendEvent(commandId, eventType, eventData, traceContext);
 
                     if (eventType === "submit") {

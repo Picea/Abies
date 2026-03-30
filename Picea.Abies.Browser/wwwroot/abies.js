@@ -478,7 +478,7 @@ function registerEventType(eventType) {
 
                 // OTel: trace the event dispatch if instrumentation is active
                 if (otelModule) {
-                    otelModule.traceEvent(commandId, eventType, eventData);
+                    otelModule.traceEvent(commandId, eventType, eventData, el);
                 }
 
                 dispatchDomEvent(commandId, eventType, eventData);
