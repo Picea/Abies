@@ -109,7 +109,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First
             .DispatchEventAsync("click");
 
-        await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
+        await Expect(_page.Locator($".card .card-block p:text-is('{comment.Body}')")).ToHaveCountAsync(0,
             new() { Timeout = 10000 });
     }
 
@@ -151,7 +151,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
 
         await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First.DispatchEventAsync("click");
 
-        await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
+        await Expect(_page.Locator($".card .card-block p:text-is('{comment.Body}')")).ToHaveCountAsync(0,
             new() { Timeout = 10000 });
     }
 
