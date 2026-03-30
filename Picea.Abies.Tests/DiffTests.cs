@@ -217,7 +217,7 @@ public class DiffTests
         await Assert.That(update).IsTypeOf<UpdateHandler>();
         var updateHandler = (UpdateHandler)update;
         await Assert.That(updateHandler.OldHandler.CommandId).IsEqualTo("cmd-1");
-        await Assert.That(updateHandler.NewHandler.CommandId).IsEqualTo("cmd-2");
+        await Assert.That(updateHandler.NewHandler.CommandId).IsEqualTo("cmd-1"); // commandId is preserved from old handler to avoid stale-ID race on rapid re-render
     }
 
     [Test]
