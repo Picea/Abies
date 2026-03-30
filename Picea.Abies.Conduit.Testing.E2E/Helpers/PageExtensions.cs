@@ -60,8 +60,18 @@ public static class PageExtensions
     /// <summary>
     /// Waits for authenticated UI state after login.
     /// </summary>
-    public static Task WaitForAuthenticatedShell(this IPage page, int timeoutMs = 20000) =>
-        page.WaitForSelectorAsync(
-            "nav.navbar",
-            new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
+    public static async Task WaitForAuthenticatedShell(this IPage page, int timeoutMs = 20000)
+    {
+        await page.WaitForSelectorAsync(".home-page", new() { Timeout = timeoutMs });
+        await page.WaitForSelectorAsync(".navbar a[href='/settings']", new() { Timeout = timeoutMs });
+    }
+
+    /// <summary>
+    /// Opens the settings page using the authenticated navbar.
+    /// </summary>
+    public static async Task OpenSettingsFromNavbar(this IPage page, int timeoutMs = 10000)
+    {
+        await page.Locator(".navbar a[href='/settings']").ClickAsync();
+        await page.WaitForSelectorAsync(".settings-page", new() { Timeout = timeoutMs });
+    }
 }

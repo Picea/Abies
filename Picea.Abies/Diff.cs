@@ -471,6 +471,11 @@ public static class Operations
 
     private static void DiffAttributes(Element oldElement, Element newElement, List<Patch> patches)
     {
+        static Handler PreserveCommandId(Handler oldHandler, Handler newHandler) =>
+            string.Equals(oldHandler.CommandId, newHandler.CommandId, StringComparison.Ordinal)
+                ? newHandler
+                : newHandler with { CommandId = oldHandler.CommandId };
+
         var oldAttrs = oldElement.Attributes;
         var newAttrs = newElement.Attributes;
 
@@ -555,13 +560,15 @@ public static class Operations
                     {
                         if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
                         {
-                            patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                            var updatedHandler = PreserveCommandId(oldHandler, newHandler);
+                            patches.Add(new UpdateHandler(newElement, oldHandler, updatedHandler));
                         }
                         else if (newAttr is Handler newHandler2)
                         {
                             if (oldAttr is Handler oldHandler2)
                             {
-                                patches.Add(new UpdateHandler(newElement, oldHandler2, newHandler2));
+                                var updatedHandler = PreserveCommandId(oldHandler2, newHandler2);
+                                patches.Add(new UpdateHandler(newElement, oldHandler2, updatedHandler));
                             }
                             else
                             {
@@ -610,7 +617,8 @@ public static class Operations
                     {
                         if (oldAttr is Handler oldHandler && newAttr is Handler newHandler)
                         {
-                            patches.Add(new UpdateHandler(newElement, oldHandler, newHandler));
+                            var updatedHandler = PreserveCommandId(oldHandler, newHandler);
+                            patches.Add(new UpdateHandler(newElement, oldHandler, updatedHandler));
                         }
                         else
                         {
