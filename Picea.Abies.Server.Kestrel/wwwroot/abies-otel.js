@@ -76,7 +76,46 @@ function exportSpan(span) {
     }
 }
 
-export function traceEvent(commandId, eventType, eventData) {
+// =============================================================================
+// Element Label Resolution — extracts a human-readable label from a DOM element
+// =============================================================================
+
+function resolveElementLabel(el) {
+    if (!el) return "";
+
+    const ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) return ariaLabel.trim().substring(0, 80);
+
+    const testId = el.getAttribute("data-testid") || el.getAttribute("data-test-id");
+    if (testId) return testId.trim().substring(0, 80);
+
+    const tag = el.tagName?.toLowerCase() || "";
+
+    if (tag === "button" || tag === "a") {
+        const text = el.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+        if (text) return text;
+    }
+
+    if (tag === "input" || tag === "select" || tag === "textarea") {
+        const placeholder = el.getAttribute("placeholder");
+        if (placeholder) return placeholder.trim().substring(0, 60);
+        const id = el.id;
+        if (id) {
+            try {
+                const label = document.querySelector(`label[for="${id}"]`);
+                const labelText = label?.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+                if (labelText) return labelText;
+            } catch { }
+        }
+        const type = el.getAttribute("type");
+        return type ? `${tag}[${type}]` : tag;
+    }
+
+    if (el.id) return `#${el.id}`;
+    return tag || "unknown";
+}
+
+export function traceEvent(commandId, eventType, eventData, element) {
     if (!tracer) {
         return null;
     }
@@ -91,9 +130,20 @@ export function traceEvent(commandId, eventType, eventData) {
         }
     }
 
-    const span = tracer.startSpan(`UI: ${eventType}`);
+    const elementLabel = resolveElementLabel(element);
+    const spanName = elementLabel ? `UI: ${eventType} [${elementLabel}]` : `UI: ${eventType}`;
+    const span = tracer.startSpan(spanName);
     span.setAttribute("dom.event.type", eventType);
     span.setAttribute("abies.command.id", commandId);
+
+    if (element) {
+        const tag = element.tagName?.toLowerCase();
+        if (tag) span.setAttribute("ui.element.tag", tag);
+        if (elementLabel) span.setAttribute("ui.element.label", elementLabel);
+        const elType = element.getAttribute("type");
+        if (elType) span.setAttribute("ui.element.type", elType);
+        if (element.id) span.setAttribute("ui.element.id", element.id);
+    }
 
     if (eventData) {
         try {
