@@ -92,6 +92,8 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
         await _seeder.FollowUserAsync(readerUser.Token, author);
 
         await LoginViaUi(readerEmail, "password123");
+        await _page.NavigateInApp("/");
+        await _page.WaitForSelectorAsync(".feed-toggle .nav-link", new() { Timeout = 10000 });
         await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" }).ClickAsync();
 
         await Expect(_page.Locator(".feed-toggle .nav-link.active")).ToHaveCountAsync(1, new() { Timeout = 10000 });
@@ -106,8 +108,6 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
 
     private async Task LoginViaUi(string email, string password)
     {
-        var expectedUser = email.Split('@')[0];
-
         for (var attempt = 1; attempt <= 3; attempt++)
         {
             await _page.GotoAsync("/login");
@@ -116,7 +116,16 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
             await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
             await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-            if (await WaitForAuthenticatedShell(expectedUser))
+            try
+            {
+                await _page.WaitForAuthenticatedShell();
+            }
+            catch (TimeoutException)
+            {
+                // Fall through to the explicit settings-page probe below.
+            }
+
+            if (await TryOpenSettingsFromNavbar())
             {
                 return;
             }
@@ -127,47 +136,32 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
             }
         }
 
-        throw new TimeoutException($"Login did not reach authenticated UI for user '{expectedUser}' after 3 attempts.");
+        throw new TimeoutException($"Login did not reach authenticated settings page for '{email}' after 3 attempts.");
     }
 
-    private async Task<bool> WaitForAuthenticatedShell(string expectedUser)
+    private async Task<bool> IsAuthenticatedSettingsPageVisible()
     {
-        if (!new Uri(_page.Url).AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var navbar = _page.Locator(".navbar");
-        var settingsLink = _page.Locator(".navbar a[href='/settings']");
-        var newArticleLink = _page.Locator(".navbar a[href='/editor']");
-        var feedTabs = _page.Locator(".feed-toggle .nav-link");
-
         try
         {
-            await Expect(navbar).ToContainTextAsync(expectedUser, new() { Timeout = 20000 });
+            await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 5000 });
             return true;
         }
         catch (PlaywrightException)
         {
-            // In AppHost runs the username can lag in navbar updates; authenticated nav links are a reliable fallback.
-            try
-            {
-                await settingsLink.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
-                await newArticleLink.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
-                return true;
-            }
-            catch (PlaywrightException)
-            {
-                try
-                {
-                    await feedTabs.First.WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
-                    return true;
-                }
-                catch (PlaywrightException)
-                {
-                    return false;
-                }
-            }
+            return false;
+        }
+    }
+
+    private async Task<bool> TryOpenSettingsFromNavbar()
+    {
+        try
+        {
+            await _page.OpenSettingsFromNavbar(5000);
+            return true;
+        }
+        catch (PlaywrightException)
+        {
+            return false;
         }
     }
 

@@ -35,9 +35,6 @@ public sealed class SettingsServerTests : IAsyncInitializer, IAsyncDisposable
         await _seeder.RegisterUserAsync(username, email, "password123");
         await LoginViaUi(email, "password123");
 
-        await _page.Locator(".navbar").GetByText("Settings").ClickAsync();
-        await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 10000 });
-
         await Expect(_page.GetByPlaceholder("Email")).ToHaveValueAsync(email);
         await Expect(_page.GetByPlaceholder("Your Name")).ToHaveValueAsync(username);
     }
@@ -49,9 +46,6 @@ public sealed class SettingsServerTests : IAsyncInitializer, IAsyncDisposable
         var email = $"{username}@test.com";
         await _seeder.RegisterUserAsync(username, email, "password123");
         await LoginViaUi(email, "password123");
-
-        await _page.Locator(".navbar").GetByText("Settings").ClickAsync();
-        await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 10000 });
 
         const string newBio = "Updated bio from server mode E2E test";
         await _page.GetByPlaceholder("Short bio about you").FillAndWaitForPatch(newBio);
@@ -72,6 +66,7 @@ public sealed class SettingsServerTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
         await _page.WaitForAuthenticatedShell();
+        await _page.OpenSettingsFromNavbar();
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
