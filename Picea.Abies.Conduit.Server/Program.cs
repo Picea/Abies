@@ -53,6 +53,7 @@ app.MapAbies<ConduitProgram, Model, ConduitStartup>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer(),
     interpreter: ConduitInterpreter.Interpret,
-    argument: new ConduitStartup(conduitApiUrl));
+    argument: new ConduitStartup(conduitApiUrl),
+    debuggerModelJsonTypeInfo: ConduitDebuggerJsonContext.Default.Model);
 
 app.Run();

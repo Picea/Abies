@@ -2,6 +2,7 @@
 // Health E2E Tests — App shell and API availability smoke coverage
 // =============================================================================
 
+using System.Text.Json;
 using Microsoft.Playwright;
 using Picea.Abies.Conduit.Testing.E2E.Fixtures;
 using Picea.Abies.Conduit.Testing.E2E.Helpers;
@@ -91,6 +92,54 @@ public sealed class HealthTests : IAsyncInitializer, IAsyncDisposable
 
         await shell.ClickAsync();
         await Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10000 });
+    }
+
+    [Test]
+    public async Task BrowserRuntime_ImportedTimelineReplay_ShouldApplySnapshots()
+    {
+        await _page.GotoAsync("/register?abies-debugger=1");
+        await _page.WaitForWasmReady();
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+        await Expect(shell).ToBeVisibleAsync(new() { Timeout = 15000 });
+        if (!await panel.IsVisibleAsync())
+        {
+            await shell.ClickAsync();
+            await Expect(panel).ToBeVisibleAsync(new() { Timeout = 10000 });
+        }
+
+        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
+        await _page.GetByRole(AriaRole.Link, new() { Name = "Have an account?" }).ClickAsync();
+        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+
+        var exportDownloadTask = _page.WaitForDownloadAsync();
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Export" }).ClickAsync();
+        var exportDownload = await exportDownloadTask;
+
+        var exportedPath = Path.Combine(Path.GetTempPath(), $"abies-replay-wasm-{Guid.NewGuid():N}.json");
+        await exportDownload.SaveAsAsync(exportedPath);
+
+        var exportedJson = await File.ReadAllTextAsync(exportedPath);
+        using var payload = JsonDocument.Parse(exportedJson);
+
+        var timelineEntries = payload.RootElement.GetProperty("timelineEntries");
+        await Assert.That(timelineEntries.GetArrayLength()).IsGreaterThan(0);
+
+        var firstSnapshot = timelineEntries[0].GetProperty("modelSnapshotPreview").GetString() ?? "";
+        await Assert.That(firstSnapshot.StartsWith("{", StringComparison.Ordinal)).IsTrue();
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Clear" }).ClickAsync();
+
+        var chooser = await _page.RunAndWaitForFileChooserAsync(async () =>
+            await _page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync());
+        await chooser.SetFilesAsync(exportedPath);
+
+        await _page.Locator("button:has-text('Back')").ClickAsync();
+        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
+
+        await _page.Locator("button:has-text('Step')").ClickAsync();
+        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
