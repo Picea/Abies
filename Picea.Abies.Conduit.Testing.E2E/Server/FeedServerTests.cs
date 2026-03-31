@@ -150,10 +150,14 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
             await _page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync());
         await chooser.SetFilesAsync(exportedPath);
 
-        await _page.Locator("button:has-text('Back')").ClickAsync();
+        var timelineItems = _page.Locator("[data-sequence]");
+        await Expect(timelineItems.First).ToBeVisibleAsync(new() { Timeout = 15000 });
+        await Expect(timelineItems.Nth(1)).ToBeVisibleAsync(new() { Timeout = 15000 });
+
+        await timelineItems.First.ClickAsync();
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
 
-        await _page.Locator("button:has-text('Step')").ClickAsync();
+        await timelineItems.Nth(1).ClickAsync();
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
     }
 
