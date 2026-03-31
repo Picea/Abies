@@ -211,6 +211,7 @@ function createDebuggerUI(mp) {
     // Shell toggle button (always visible)
     const shell = mkEl('button', {
         type: 'button',
+        'data-abies-debugger-shell': '1',
         'aria-label': 'Toggle Abies Debugger',
         'aria-expanded': 'false',
         style: css({
@@ -230,6 +231,7 @@ function createDebuggerUI(mp) {
     // Main panel (hidden by default)
     const panel = mkEl('div', {
         role: 'region',
+        'data-abies-debugger-panel': '1',
         'aria-label': 'Abies Time Travel Debugger',
         style: css({
             position: 'fixed', right: '12px', bottom: '52px', zIndex: '2147483647',
