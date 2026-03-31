@@ -144,15 +144,45 @@ public sealed class HealthTests : IAsyncInitializer, IAsyncDisposable
             await _page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync());
         await chooser.SetFilesAsync(exportedPath);
 
+        // Import can restore either first or last timeline position depending on adapter behavior.
+        // Wait until at least one replay control becomes enabled, then assert replay behavior.
         var backButton = _page.GetByRole(AriaRole.Button, new() { Name = "Back" });
-        await Expect(backButton).ToBeEnabledAsync(new() { Timeout = 10000 });
-        await backButton.ClickAsync();
-        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
-
         var stepButton = _page.GetByRole(AriaRole.Button, new() { Name = "Step" });
-        await Expect(stepButton).ToBeEnabledAsync(new() { Timeout = 10000 });
-        await stepButton.ClickAsync();
-        await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        var backEnabled = false;
+        var stepEnabled = false;
+        for (var i = 0; i < 60; i++)
+        {
+            backEnabled = await backButton.IsEnabledAsync();
+            stepEnabled = await stepButton.IsEnabledAsync();
+            if (backEnabled || stepEnabled)
+            {
+                break;
+            }
+
+            await Task.Delay(500);
+        }
+
+        await Assert.That(backEnabled || stepEnabled).IsTrue();
+
+        if (backEnabled)
+        {
+            await backButton.ClickAsync();
+            await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
+
+            await Expect(stepButton).ToBeEnabledAsync(new() { Timeout = 10000 });
+            await stepButton.ClickAsync();
+            await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        }
+        else
+        {
+            await Expect(stepButton).ToBeEnabledAsync(new() { Timeout = 10000 });
+            await stepButton.ClickAsync();
+            await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+
+            await Expect(backButton).ToBeEnabledAsync(new() { Timeout = 10000 });
+            await backButton.ClickAsync();
+            await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
+        }
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
