@@ -144,10 +144,14 @@ public sealed class HealthTests : IAsyncInitializer, IAsyncDisposable
             await _page.GetByRole(AriaRole.Button, new() { Name = "Import" }).ClickAsync());
         await chooser.SetFilesAsync(exportedPath);
 
-        await _page.Locator("button:has-text('Back')").ClickAsync();
+        var backButton = _page.GetByRole(AriaRole.Button, new() { Name = "Back" });
+        await Expect(backButton).ToBeEnabledAsync(new() { Timeout = 10000 });
+        await backButton.ClickAsync();
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
 
-        await _page.Locator("button:has-text('Step')").ClickAsync();
+        var stepButton = _page.GetByRole(AriaRole.Button, new() { Name = "Step" });
+        await Expect(stepButton).ToBeEnabledAsync(new() { Timeout = 10000 });
+        await stepButton.ClickAsync();
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
     }
 
