@@ -136,7 +136,7 @@ jobs:
       # ── Counter E2E ───────────────────────────────────────────────
 
       - name: Run Counter E2E tests
-        if: steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
         id: counter-e2e
         continue-on-error: true
         run: |
@@ -164,7 +164,7 @@ jobs:
           exit 1
 
       - name: Analyze Counter E2E results
-        if: always() && steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Counter_Testing_E2E == 'true' && steps.counter-e2e.outcome != 'skipped'
         run: |
           echo "TRX discovery (Counter):"
           find . -name "counter-e2e.trx" -type f | sed 's#^./##' || true
@@ -178,7 +178,7 @@ jobs:
       # ── Templates E2E ─────────────────────────────────────────────
 
       - name: Run Templates E2E tests
-        if: steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
         id: templates-e2e
         continue-on-error: true
         run: |
@@ -206,7 +206,7 @@ jobs:
           exit 1
 
       - name: Analyze Templates E2E results
-        if: always() && steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_Templates_Testing_E2E == 'true' && steps.templates-e2e.outcome != 'skipped'
         run: |
           echo "TRX discovery (Templates):"
           find . -name "templates-e2e.trx" -type f | sed 's#^./##' || true
@@ -220,7 +220,7 @@ jobs:
       # ── UI Demo E2E ───────────────────────────────────────────────
 
       - name: Run UI Demo E2E tests
-        if: steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
         id: uidemo-e2e
         continue-on-error: true
         run: |
@@ -248,7 +248,7 @@ jobs:
           exit 1
 
       - name: Analyze UI Demo E2E results
-        if: always() && steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true'
+        if: always() && steps.check-e2e.outputs.Picea_Abies_UI_Demo_Testing_E2E == 'true' && steps.uidemo-e2e.outcome != 'skipped'
         run: |
           echo "TRX discovery (UI Demo):"
           find . -name "uidemo-e2e.trx" -type f | sed 's#^./##' || true
