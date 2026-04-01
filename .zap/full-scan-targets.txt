@@ -1,0 +1,25 @@
+# Conduit API — authenticated endpoints for nightly ZAP active scan.
+# All paths are relative to the API base URL configured in run-zap-full.sh.
+# One path per line. Lines starting with # are comments.
+#
+# These endpoints require an Authorization: Token <jwt> header.
+# The run-zap-full.sh script registers an ephemeral user and injects
+# the token via the ZAP replacer plugin before scanning.
+
+# --- Authentication ---
+/api/user
+/api/users/login
+
+# --- Profile ---
+/api/profiles/zap-nightly-user
+/api/profiles/zap-nightly-user/follow
+
+# --- Articles (protected surface) ---
+/api/articles
+/api/articles/feed
+/api/articles/zap-nightly-article
+/api/articles/zap-nightly-article/favorite
+/api/articles/zap-nightly-article/comments
+
+# --- Tags ---
+/api/tags
