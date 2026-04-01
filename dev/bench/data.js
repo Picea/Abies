@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775043582309,
+  "lastUpdate": 1775043583390,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13908,6 +13908,42 @@ window.BENCHMARK_DATA = {
             "value": 37.20541954040527,
             "unit": "MB",
             "extra": "mean: 37.2MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "1b415adf5ad4e4520c00409fba0b4362fbe05e51",
+          "message": "fix(debugger): seed initial route replay and stabilize conduit e2e",
+          "timestamp": "2026-04-01T13:29:21+02:00",
+          "tree_id": "343da5b173ca85da8fc86bc64b0ce1e7fa6f128f",
+          "url": "https://github.com/Picea/Abies/commit/1b415adf5ad4e4520c00409fba0b4362fbe05e51"
+        },
+        "date": 1775043583161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.120299339294434,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.1373348236084,
+            "unit": "MB",
+            "extra": "mean: 37.1MB, samples: 1"
           }
         ]
       }
