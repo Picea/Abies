@@ -211,6 +211,7 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         if (DebuggerConfiguration.Default.Enabled)
         {
             runtime.UseDebugger();
+            runtime.SeedDebugger(initialUrl is not null ? new UrlChanged(initialUrl) : null);
         }
 #endif
 
