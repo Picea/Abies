@@ -135,6 +135,27 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         _debuggerMachine = new DebuggerMachine(capacity);
         DebuggerRuntimeRegistry.CurrentDebugger = _debuggerMachine;
     }
+
+    /// <summary>
+    /// Seeds the debugger with the runtime's current state and, optionally, a
+    /// synthetic message that represents the state transition that already occurred
+    /// before the debugger was attached.
+    /// </summary>
+    public void SeedDebugger(Message? message = null)
+    {
+        if (_debuggerMachine is null)
+        {
+            return;
+        }
+
+        var modelSnapshot = GenerateModelSnapshot(_core.State);
+        _debuggerMachine.CaptureInitialModel(modelSnapshot, _core.State);
+
+        if (message is not null)
+        {
+            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
+        }
+    }
 #endif
 
     private ValueTask<Result<Unit, PipelineError>> Observe(TModel state, Message _, Command __)
