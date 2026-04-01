@@ -380,3 +380,68 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **By:** Lead
 **What:** Add browser-executed verification that waits for successful `/_abies/debugger.js`, then asserts `#abies-debugger-timeline[data-abies-debugger-adapter-initialized="1"]` and `window.__abiesDebugger.enabled === true`.
 **Why:** Static asset checks alone do not prove dynamic sibling import path execution in `abies-server.js`.
+
+### 2026-03-27T00:00:00Z: Debugger bridge handoff is explicit in browser runtime bootstrap
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Beast Mode)
+**What:** After runtime debugger initialization in browser runtime bootstrap, assign the runtime debugger instance to interop (`Interop.Debugger = runtime.Debugger`) so debugger bridge dispatch always has a concrete machine instance.
+**Why:** Prevent debug command responses like `unavailable|-1|0` caused by missing runtime-to-interop debugger handoff.
+
+### 2026-03-27T00:00:00Z: Core abies.js remains debugger-free in release contract
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Beast Mode)
+**What:** Keep debugger bootstrap/remount/fallback logic in `debugger.js` only and remove debugger-specific logic from core `abies.js` runtime path.
+**Why:** Enforce the release strip contract that `abies.js` must not retain debugger references.
+
+### 2026-03-27T00:00:00Z: Browser debugger adapter contract tests are transport-focused
+**By:** C# Dev
+**What:** Browser debugger adapter tests validate serialize/deserialize transport behavior instead of removed adapter internals.
+**Why:** Production API no longer exposes prior internal state members.
+
+### 2026-03-27T00:00:00Z: Template browser host resolves AppBundle from existing build output
+**By:** C# Dev
+**What:** Template browser host startup probes both Debug and Release AppBundle locations and uses the first existing path.
+**Why:** Avoid startup failures when generated templates are built in one configuration and launched in another.
+
+### 2026-03-27T00:00:00Z: Template restore isolates NuGet cache per generated app
+**By:** C# Dev
+**What:** Generated template `nuget.config` sets `globalPackagesFolder` to local `.nuget/packages`.
+**Why:** Prevent stale global package cache shadowing locally packed debug artifacts.
+
+### 2026-03-27T00:00:00Z: Browser package ships debugger.js in debug package artifacts
+**By:** C# Dev
+**What:** `Picea.Abies.Browser` packaging includes `wwwroot/debugger.js`, and targets copy it conditionally for debug flows while remaining release-safe.
+**Why:** Browser runtime debug bootstrap imports `../debugger.js`; missing artifact prevents debugger shell mount in generated template apps.
+
+### 2026-03-27T00:00:00Z: WASM debug bootstrap wires runtime bridge before mount
+**By:** JS Dev
+**What:** Browser startup calls `Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage)` after `runtime.UseDebugger()` and before mount.
+**Why:** Debugger UI can mount without functional commands if the bridge callback is not wired.
+
+### 2026-03-27T00:00:00Z: Debugger adapter bridge invocation is async-safe
+**By:** JS Dev
+**What:** Browser and server debugger adapters await bridge callback via `Promise.resolve(runtimeBridge(...))` before parsing response.
+**Why:** Prevent `[object Promise]` timeline/status artifacts when callback returns a Promise.
+
+### 2026-03-27T00:00:00Z: Browser debugger module resolution tries sibling then root fallback
+**By:** JS Dev
+**What:** Debug bootstrap module loader first tries `./debugger.js`, then `/debugger.js`, and caches the successful URL.
+**Why:** Host/static-web-asset path differences can break debugger module loading in debug builds.
+
+### 2026-03-29T00:00:00Z: App polymorphic DU roots must declare JsonPolymorphic metadata
+**By:** C# Dev
+**What:** Abstract application-layer DU roots participating in debugger snapshot serialization must use `[JsonPolymorphic]` with explicit `[JsonDerivedType]` registrations for all concrete variants.
+**Why:** Imported timeline replay relies on JSON round-trip; missing type discriminators causes abstract type deserialization failures and no-op snapshot application.
+
+### 2026-03-29T00:00:00Z: Step-forward path already applies debugger snapshot and render
+**By:** C# Dev
+**What:** No runtime C# fix required for `step-forward`; bridge execution already flows through `TryApplyDebuggerSnapshot` and render path in browser and server runtime.
+**Why:** Investigation confirmed unconditional snapshot apply after debugger bridge execute for supported message types.
+
+### 2026-04-01T00:00:00Z: CI Runtime Policy — staged fast/full/nightly lanes
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Performance Engineer)
+**What:** Adopt staged CI lanes: fast PR feedback lane, full push/main confidence lane, and nightly deep validation. Keep js-framework-benchmark as the authoritative performance gate with a 5% regression threshold.
+**Why:** Improve PR feedback time and runner efficiency without reducing production confidence signal.
+
+### 2026-04-01T00:00:00Z: Security PR gating matrix realignment for speed and coverage
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Security Expert)
+**What:** Keep exploit-critical security gates on PR (secrets, SCA high/critical, one mandatory SAST gate, relevant Trivy high/critical), move heavy DAST/template scans to push-main and nightly with path-filtered PR exceptions, and remove duplicate SCA gate overlap.
+**Why:** Preserve pre-merge security blocking while reducing PR latency and maintaining defense-in-depth through scheduled full scans.
