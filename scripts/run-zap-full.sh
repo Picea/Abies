@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# run-zap-full.sh — Nightly full active ZAP scan against the Conduit API.
+# run-zap-full.sh — Nightly full active ZAP scan against Conduit frontend + API.
 #
-# Runs two sequential passes:
-#   1. Unauthenticated pass: active-scan public endpoints (tags, articles read, profiles).
-#   2. Authenticated pass: active-scan protected endpoints with JWT injected.
+# Runs three sequential passes:
+#   0. Frontend pass (PRIMARY): active-scan the WASM host (HTML, headers, JS surface).
+#   1. Unauthenticated API pass: active-scan public API endpoints.
+#   2. Authenticated API pass: active-scan protected endpoints with JWT injected.
 #
 # Uses zap-full-scan.py (active scanner) rather than zap-baseline.py (passive only).
 # Does NOT use -I (ignore errors flag) — nightly scan must hard-fail on HIGH findings.
 #
-# Usage: bash scripts/run-zap-full.sh [api-base-url]
-#   Defaults to http://127.0.0.1:5179
+# Usage: bash scripts/run-zap-full.sh [api-base-url] [frontend-url]
+#   Defaults: api=http://127.0.0.1:5179  frontend=http://127.0.0.1:5200
 
 set -euo pipefail
 
 API_BASE="${1:-http://127.0.0.1:5179}"
+FRONTEND_URL="${2:-http://127.0.0.1:5200}"
 ZAP_IMAGE="ghcr.io/zaproxy/zaproxy:stable"
 REPORT_DIR="${GITHUB_WORKSPACE:-$(pwd)}/zap-nightly-reports"
 POLICY_FILE=".zap/full-scan-policy.conf"
@@ -26,7 +28,8 @@ EPHEMERAL_PASS="ZapN!ghtlyP@ss$(date +%s)"
 mkdir -p "$REPORT_DIR"
 
 echo "================================================================"
-echo "Conduit API — ZAP Full Active Scan"
+echo "Conduit — ZAP Full Active Scan (frontend primary)"
+echo "Frontend  : $FRONTEND_URL"
 echo "API base  : $API_BASE"
 echo "Reports   : $REPORT_DIR"
 echo "Spider    : ${SPIDER_MINUTES} min"
@@ -66,11 +69,33 @@ check_high() {
 }
 
 # ------------------------------------------------------------------ #
-#  Phase 1 — Unauthenticated active scan (public surface)             #
+#  Phase 0 — Frontend active scan (PRIMARY)                           #
+#  Scans the WASM host for security headers, XSS, clickjacking, CSP.  #
 # ------------------------------------------------------------------ #
 
 echo ""
-echo "---- Phase 1: Unauthenticated full scan -----------------------"
+echo "---- Phase 0: Frontend full scan (PRIMARY) --------------------"
+
+docker_zap zap-full-scan.py \
+  -t "$FRONTEND_URL" \
+  -m "$SPIDER_MINUTES" \
+  -c "/zap/wrk/${POLICY_FILE}" \
+  -J "zap-nightly-reports/phase0-frontend.json" \
+  -r "zap-nightly-reports/phase0-frontend.html" \
+  -w "zap-nightly-reports/phase0-frontend.md" \
+  -x "zap-nightly-reports/phase0-frontend.xml" \
+  -d \
+  || true
+
+check_high "$REPORT_DIR/phase0-frontend.json" "frontend"
+PHASE0_STATUS=$?
+
+# ------------------------------------------------------------------ #
+#  Phase 1 — Unauthenticated active scan (public API surface)         #
+# ------------------------------------------------------------------ #
+
+echo ""
+echo "---- Phase 1: Unauthenticated API full scan -------------------"
 
 docker_zap zap-full-scan.py \
   -t "${API_BASE}/api/tags" \
@@ -195,11 +220,12 @@ fi
 echo ""
 echo "================================================================"
 echo "Reports: $REPORT_DIR"
-echo "  phase1-unauth.*    : unauthenticated active scan"
-echo "  phase2-auth__*.*   : authenticated active scan per endpoint"
+echo "  phase0-frontend.*  : frontend (WASM host) active scan  [PRIMARY]"
+echo "  phase1-unauth.*    : unauthenticated API active scan"
+echo "  phase2-auth__*.*   : authenticated API active scan per endpoint"
 echo "================================================================"
 
-if [ "${PHASE1_STATUS:-0}" -ne 0 ] || [ "${PHASE2_STATUS:-0}" -ne 0 ]; then
+if [ "${PHASE0_STATUS:-0}" -ne 0 ] || [ "${PHASE1_STATUS:-0}" -ne 0 ] || [ "${PHASE2_STATUS:-0}" -ne 0 ]; then
   echo "❌ ZAP Full Scan FAILED (see HIGH-risk findings above)."
   exit 1
 fi

@@ -72,6 +72,16 @@ jobs:
       - name: Build API
         run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore
 
+      - name: Restore Frontend (WASM host)
+        run: dotnet restore Picea.Abies.Conduit.Wasm.Host/Picea.Abies.Conduit.Wasm.Host.csproj
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Build Frontend (publishes WASM bundle)
+        # The PublishWasmProject MSBuild target runs 'dotnet publish' on the WASM
+        # library as part of this build, producing the AppBundle served at runtime.
+        run: dotnet build Picea.Abies.Conduit.Wasm.Host/Picea.Abies.Conduit.Wasm.Host.csproj --no-restore
+
       - name: Start API
         env:
           ASPNETCORE_ENVIRONMENT: Development
@@ -95,9 +105,31 @@ jobs:
           tail -n 200 /tmp/conduit-api-nightly.log || true
           exit 1
 
+      - name: Start Frontend (WASM host)
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConduitApiUrl: "http://127.0.0.1:5179"
+        run: |
+          dotnet run --project Picea.Abies.Conduit.Wasm.Host --no-build --urls http://127.0.0.1:5200 \
+            > /tmp/conduit-wasm-nightly.log 2>&1 &
+          echo $! > /tmp/conduit-wasm-nightly.pid
+
+      - name: Wait for Frontend readiness
+        run: |
+          for _ in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:5200/ >/dev/null 2>&1; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend failed to become ready"
+          tail -n 200 /tmp/conduit-wasm-nightly.log || true
+          exit 1
+
       - name: Run ZAP full active scan
         id: zap_full
-        run: bash scripts/run-zap-full.sh http://127.0.0.1:5179
+        run: bash scripts/run-zap-full.sh http://127.0.0.1:5179 http://127.0.0.1:5200
 
       - name: Upload scan reports
         if: always()
@@ -107,15 +139,16 @@ jobs:
           path: |
             zap-nightly-reports/**
             /tmp/conduit-api-nightly.log
+            /tmp/conduit-wasm-nightly.log
           retention-days: 30
 
-      - name: Stop API
+      - name: Stop servers
         if: always()
         run: |
-          pid=$(cat /tmp/conduit-api-nightly.pid 2>/dev/null || true)
-          if [ -n "${pid:-}" ]; then
-            kill "$pid" || true
-          fi
+          for pidfile in /tmp/conduit-api-nightly.pid /tmp/conduit-wasm-nightly.pid; do
+            pid=$(cat "$pidfile" 2>/dev/null || true)
+            if [ -n "${pid:-}" ]; then kill "$pid" || true; fi
+          done
 
       - name: Open GitHub issue on scan failure
         if: failure()
