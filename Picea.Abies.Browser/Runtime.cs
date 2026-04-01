@@ -267,6 +267,7 @@ public static class Runtime
             {
                 await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
                 runtime.UseDebugger();
+                runtime.SeedDebugger(initialUrl is not null ? new UrlChanged(initialUrl) : null);
                 Interop.Debugger = runtime.Debugger;
                 Interop.ApplyDebuggerSnapshot = runtime.TryApplyDebuggerSnapshot;
                 if (runtime.Debugger is not null)

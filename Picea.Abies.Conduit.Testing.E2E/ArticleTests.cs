@@ -73,9 +73,11 @@ public sealed class ArticleTests : IAsyncInitializer, IAsyncDisposable
         await LoginViaUi(email, "password123");
 
         await _page.NavigateInApp($"/article/{article.Slug}");
-        await _page.WaitForSelectorAsync(".banner h1", new() { Timeout = 15000 });
+        await Expect(_page).ToHaveURLAsync(new Regex($"/article/{Regex.Escape(article.Slug)}$"), new() { Timeout = 15000 });
+        await Expect(_page.Locator(".article-page")).ToBeVisibleAsync(new() { Timeout = 15000 });
+        await Expect(_page.Locator(".banner h1")).ToContainTextAsync(article.Title, new() { Timeout = 15000 });
 
-        await _page.Locator(".article-actions button.btn-outline-danger, .article-meta button.btn-outline-danger").First.ClickAsync();
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Delete Article" }).First.ClickAsync();
 
         await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
         await _seeder.WaitForArticleDeletedAsync(article.Slug);

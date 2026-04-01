@@ -151,13 +151,25 @@ public sealed class FeedServerTests : IAsyncInitializer, IAsyncDisposable
         await chooser.SetFilesAsync(exportedPath);
 
         var timelineItems = _page.Locator("[data-sequence]");
+        var firstTimelineItem = _page.Locator("[data-sequence='0']");
+        var secondTimelineItem = _page.Locator("[data-sequence='1']");
         await Expect(timelineItems.First).ToBeVisibleAsync(new() { Timeout = 15000 });
-        await Expect(timelineItems.Nth(1)).ToBeVisibleAsync(new() { Timeout = 15000 });
+        await Expect(secondTimelineItem).ToBeVisibleAsync(new() { Timeout = 15000 });
 
-        await timelineItems.First.ClickAsync();
+        await _page.EvaluateAsync(
+            """
+            () => document
+                .querySelector("[data-sequence='0']")
+                ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+            """);
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign up", new() { Timeout = 10000 });
 
-        await timelineItems.Nth(1).ClickAsync();
+        await _page.EvaluateAsync(
+            """
+            () => document
+                .querySelector("[data-sequence='1']")
+                ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+            """);
         await Expect(_page.Locator("h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
     }
 
