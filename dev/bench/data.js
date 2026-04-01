@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774513070682,
+  "lastUpdate": 1775043582309,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12928,6 +12928,84 @@ window.BENCHMARK_DATA = {
             "value": 60.8,
             "unit": "ms",
             "extra": "mean: 60.5ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "1b415adf5ad4e4520c00409fba0b4362fbe05e51",
+          "message": "fix(debugger): seed initial route replay and stabilize conduit e2e",
+          "timestamp": "2026-04-01T13:29:21+02:00",
+          "tree_id": "343da5b173ca85da8fc86bc64b0ce1e7fa6f128f",
+          "url": "https://github.com/Picea/Abies/commit/1b415adf5ad4e4520c00409fba0b4362fbe05e51"
+        },
+        "date": 1775043582048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 340.3,
+            "unit": "ms",
+            "extra": "mean: 342.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 351.1,
+            "unit": "ms",
+            "extra": "mean: 351.2ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 211.8,
+            "unit": "ms",
+            "extra": "mean: 213.5ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 28.1,
+            "unit": "ms",
+            "extra": "mean: 27.9ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 73.8,
+            "unit": "ms",
+            "extra": "mean: 74.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 49.3,
+            "unit": "ms",
+            "extra": "mean: 49.2ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3310.4,
+            "unit": "ms",
+            "extra": "mean: 3311.1ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 384.7,
+            "unit": "ms",
+            "extra": "mean: 383.3ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 57.5,
+            "unit": "ms",
+            "extra": "mean: 57.8ms, samples: 15"
           }
         ]
       }
