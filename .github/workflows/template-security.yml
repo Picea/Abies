@@ -3,8 +3,26 @@ name: Template Security Scan
 on:
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'Picea.Abies.Templates/**'
+      - 'Picea.Abies/**'
+      - 'Picea.Abies.Browser/**'
+      - 'Picea.Abies.Server/**'
+      - 'Picea.Abies.Server.Kestrel/**'
+      - '.semgrep/rules/template-security.yml'
+      - 'trivy.yaml'
+      - '.github/workflows/template-security.yml'
   push:
     branches: [ "main" ]
+    paths:
+      - 'Picea.Abies.Templates/**'
+      - 'Picea.Abies/**'
+      - 'Picea.Abies.Browser/**'
+      - 'Picea.Abies.Server/**'
+      - 'Picea.Abies.Server.Kestrel/**'
+      - '.semgrep/rules/template-security.yml'
+      - 'trivy.yaml'
+      - '.github/workflows/template-security.yml'
 
 jobs:
   template-security:
