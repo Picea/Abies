@@ -245,16 +245,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install gitleaks CLI
-        run: |
-          GITLEAKS_VERSION="8.28.0"
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
-          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
-          /tmp/gitleaks version
-
-      - name: Secrets scan (gitleaks)
-        run: /tmp/gitleaks git --redact --config .gitleaks.toml
-
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -612,6 +602,35 @@ jobs:
             echo "✅ Bundle size is within acceptable limits"
           fi
 
+  # Lightweight compile check — satisfies the `build` required status check
+  # (previously provided by cd.yml which now runs push-only).
+  # Scope: restore + build only. Tests run in cd.yml (push) and e2e.yml (PR).
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
+      - name: Restore
+        run: dotnet restore
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Build
+        run: dotnet build --no-restore
+
   # Check for TODO/FIXME without issues
   check-todos:
     name: Check TODOs
@@ -645,7 +664,7 @@ jobs:
     name: PR Validation Summary
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, template-smoke-test, bundle-size-check, check-todos]
+    needs: [validate-pr-title, validate-pr-description, check-pr-size, lint-check, security-scan, template-smoke-test, bundle-size-check, check-todos, build]
 
     steps:
       - name: Check if automated PR

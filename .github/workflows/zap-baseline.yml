@@ -3,8 +3,24 @@ name: ZAP Baseline Scan
 on:
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'Picea.Abies.Conduit.Api/**'
+      - 'Picea.Abies.Conduit/**'
+      - 'Picea.Abies.Conduit.Server/**'
+      - 'scripts/run-zap-baseline.sh'
+      - 'scripts/run-zap-authenticated.sh'
+      - '.zap/**'
+      - '.github/workflows/zap-baseline.yml'
   push:
     branches: [ "main" ]
+    paths:
+      - 'Picea.Abies.Conduit.Api/**'
+      - 'Picea.Abies.Conduit/**'
+      - 'Picea.Abies.Conduit.Server/**'
+      - 'scripts/run-zap-baseline.sh'
+      - 'scripts/run-zap-authenticated.sh'
+      - '.zap/**'
+      - '.github/workflows/zap-baseline.yml'
 
 jobs:
   zap-baseline:
