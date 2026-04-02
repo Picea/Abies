@@ -55,7 +55,7 @@ Project-specific security learnings, tool evaluations, vulnerability patterns, a
 ## Learnings
 
 ### 2026-04-01 - PR Security Gating Audit (CI workflows)
-- Mandatory PR checks already present: gitleaks secrets scan in both `secrets-scan.yml` and `pr-validation.yml` security-scan job; SCA high/critical gate in `pr-validation.yml`; Trivy high/critical gate in `trivy.yml`; CodeQL on PR in `codeql.yml`.
+- Mandatory PR checks already present: gitleaks secrets scan via `secrets-scan.yml` (single source of truth); SCA high/critical gate in `pr-validation.yml`; Trivy high/critical gate in `trivy.yml`; CodeQL on PR in `codeql.yml`.
 - Duplicate PR SCA exists in `pr-validation.yml` and `cd.yml`; keep PR gate in `pr-validation.yml` as source of truth and remove PR-triggered SCA from `cd.yml` to reduce PR latency without lowering merge protection.
 - Heavy security jobs currently running on every PR: `zap-baseline.yml` (starts services + API + baseline + authenticated profile) and `template-security.yml` (packs templates, scaffolds, restores/builds, Semgrep, Trivy). These are better suited to push/main + nightly and path-filtered PR runs.
 - Non-negotiables that should stay PR-blocking: secrets detection, dependency vulnerability gate (HIGH/CRITICAL), and at least one code-level SAST signal (CodeQL or Semgrep) to catch injection/authz patterns before merge.
