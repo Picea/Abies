@@ -171,6 +171,14 @@ jobs:
         with:
           global-json-file: global.json
 
+      # Aspire.AppHost.SDK ships RuntimeIdentifier.Tool targeting net8.0.
+      # GitHub-hosted runners pre-install .NET 8; act containers only have
+      # the SDK from global.json. Installing the runtime here keeps both in sync.
+      - name: Setup .NET 8 runtime (required by Aspire SDK tool)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
 
