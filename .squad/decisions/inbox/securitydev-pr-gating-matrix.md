@@ -20,7 +20,7 @@
 - Maintains defense-in-depth by requiring full scheduled scans as compensating controls.
 
 #### Practical repo changes implied
-- Keep `pr-validation.yml` `security-scan` as PR authority for gitleaks + SCA HIGH/CRITICAL.
+- Keep `secrets-scan.yml` as PR authority for gitleaks and keep `pr-validation.yml` `security-scan` as PR authority for SCA HIGH/CRITICAL.
 - Remove/disable duplicate PR vulnerability gate in `cd.yml` or limit CD workflow to push main.
 - Add `paths` filters to `zap-baseline.yml` and `template-security.yml` so PR runs only for security-relevant file changes.
 - Keep nightly schedule for ZAP/template scans and retain main push runs.

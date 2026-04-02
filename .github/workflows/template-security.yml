@@ -23,6 +23,9 @@ on:
       - '.semgrep/rules/template-security.yml'
       - 'trivy.yaml'
       - '.github/workflows/template-security.yml'
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
 
 jobs:
   template-security:
