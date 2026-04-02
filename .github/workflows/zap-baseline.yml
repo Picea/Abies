@@ -21,6 +21,9 @@ on:
       - 'scripts/run-zap-authenticated.sh'
       - '.zap/**'
       - '.github/workflows/zap-baseline.yml'
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   zap-baseline:
