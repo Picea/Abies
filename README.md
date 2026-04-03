@@ -143,41 +143,49 @@ public static Subscription Subscriptions(Model model) =>
 
 ## Performance: Abies Browser vs Blazor WASM
 
-Abies outperforms Blazor WASM across every duration benchmark. Measured with [js-framework-benchmark](https://github.com/krausest/js-framework-benchmark) on the same machine, same session.
+Measured with [js-framework-benchmark](https://github.com/krausest/js-framework-benchmark) on the same machine, same session.
 
 ### Duration Benchmarks (lower is better)
+
+Latest same-session validation (2026-04-02, AC power, local main baseline):
+
+- Full 9-benchmark duration suite rerun against Blazor WASM (same machine/session)
+- Geometric mean (total medians): 0.62x for Abies vs 1.62x for Blazor
+- Duration, startup/size, and memory tables below reflect the fresh 2026-04-03 run
+
+Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigations/render-stringbuilder-pool-cap-validation-2026-04-02.md)
 
 <!-- BENCHMARK:DURATION:START -->
 | Benchmark | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
-| Create 1,000 rows | **51.7 ms** | 84.9 ms | **−39%** |
-| Replace 1,000 rows | **60.2 ms** | 99.5 ms | **−39%** |
-| Update every 10th row ×16 | **67.1 ms** | 94.5 ms | **−29%** |
-| Select row | **13.8 ms** | 82.5 ms | **−83%** |
-| Swap rows | **33.8 ms** | 94.6 ms | **−64%** |
-| Remove row | **20.7 ms** | 40.2 ms | **−49%** |
-| Create 10,000 rows | **550.0 ms** | 766.1 ms | **−28%** |
-| Append 1,000 rows | **76.2 ms** | 102.9 ms | **−26%** |
-| Clear 1,000 rows ×8 | **18.3 ms** | 36.5 ms | **−50%** |
-| **Geometric mean** | **1.00×** | **1.98×** | |
+| Create 1,000 rows | 119.5 ms | **89.5 ms** | +34% |
+| Replace 1,000 rows | 124.5 ms | **106.7 ms** | +17% |
+| Update every 10th row ×16 | **80.4 ms** | 93.6 ms | **−14%** |
+| Select row | **13.3 ms** | 80.3 ms | **−83%** |
+| Swap rows | **30.9 ms** | 93.5 ms | **−67%** |
+| Remove row | **19.9 ms** | 93.9 ms | **−79%** |
+| Create 10,000 rows | 1183.5 ms | **805.3 ms** | +47% |
+| Append 1,000 rows | 133.0 ms | **113.0 ms** | +18% |
+| Clear 1,000 rows ×8 | **18.9 ms** | 40.0 ms | **−53%** |
+| **Geometric mean** | **0.62×** | 1.62× | **−38%** |
 <!-- BENCHMARK:DURATION:END -->
 
 ### Startup & Size (lower is better)
 
 | Metric | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
-| First paint | **57.7 ms** | 78.0 ms | **−26%** |
-| Bundle (compressed) | **1,139 KB** | 1,377 KB | **−17%** |
-| Bundle (uncompressed) | **3,729 KB** | 4,208 KB | **−11%** |
+| First paint | **71.1 ms** | 79.4 ms | **−10%** |
+| Bundle (compressed) | **116 KB** | 1,078 KB | **−89%** |
+| Bundle (uncompressed) | **454 KB** | 3,400 KB | **−87%** |
 
 ### Memory (lower is better)
 
 <!-- BENCHMARK:MEMORY:START -->
 | Metric | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
-| Ready memory | **34.4 MB** | 41.1 MB | **−16%** |
-| Run memory | **36.2 MB** | 52.7 MB | **−31%** |
-| Clear memory | 58.6 MB | **49.4 MB** | +19% |
+| Ready memory | **35.1 MB** | 41.1 MB | **−15%** |
+| Run memory | **37.2 MB** | 52.6 MB | **−29%** |
+| Clear memory | 59.3 MB | **49.4 MB** | +20% |
 <!-- BENCHMARK:MEMORY:END -->
 
 > **Note:** Clear memory is higher in Abies due to lazy GC in the WASM runtime. All other metrics show Abies ahead.

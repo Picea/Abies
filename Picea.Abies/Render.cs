@@ -41,7 +41,7 @@ public static class Render
     private const string TextMarkerEndSuffix = ":end";
 
     private static readonly ConcurrentStack<StringBuilder> _stringBuilderPool = new();
-    private const int MaxPooledStringBuilderCapacity = 8192;
+    private const int MaxPooledStringBuilderCapacity = 4 * 1024 * 1024; // 4 MB - covers largest real-world renders
 
     private static readonly SearchValues<char> HtmlSpecialChars =
         SearchValues.Create("&<>\"'");
