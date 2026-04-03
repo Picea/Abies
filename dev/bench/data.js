@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775203850944,
+  "lastUpdate": 1775203852127,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14136,6 +14136,42 @@ window.BENCHMARK_DATA = {
             "value": 37.16585350036621,
             "unit": "MB",
             "extra": "mean: 37.2MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "dd610f1f9f480097860e153797b647b42c41c50d",
+          "message": "fix: address PR review feedback and failing checks",
+          "timestamp": "2026-04-03T10:00:01+02:00",
+          "tree_id": "3afc37cc6b029ec3066464d26d54d4abe607f9f4",
+          "url": "https://github.com/Picea/Abies/commit/dd610f1f9f480097860e153797b647b42c41c50d"
+        },
+        "date": 1775203851762,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.121886253356934,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.145708084106445,
+            "unit": "MB",
+            "extra": "mean: 37.1MB, samples: 1"
           }
         ]
       }
