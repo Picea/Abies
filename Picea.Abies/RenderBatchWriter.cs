@@ -43,6 +43,8 @@ internal sealed class RenderBatchWriter
 
     public ReadOnlyMemory<byte> Write(IReadOnlyList<Patch> patches)
     {
+        var canonicalizedPatches = PatchCanonicalizer.Canonicalize(patches);
+
         _buffer.Clear();
         _stringTable.Clear();
         _strings.Clear();
@@ -50,7 +52,7 @@ internal sealed class RenderBatchWriter
         WriteInt32ToBuffer(0);
         WriteInt32ToBuffer(0);
 
-        foreach (var patch in patches)
+        foreach (var patch in canonicalizedPatches)
         {
             WritePatch(patch);
         }
@@ -64,7 +66,7 @@ internal sealed class RenderBatchWriter
             memory, out var segment);
         var headerSpan = segment.Array.AsSpan(segment.Offset, HeaderSize);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(
-            headerSpan[..4], patches.Count);
+            headerSpan[..4], canonicalizedPatches.Count);
         System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(
             headerSpan[4..8], stringTableOffset);
 
