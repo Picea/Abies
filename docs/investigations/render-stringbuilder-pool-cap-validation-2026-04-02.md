@@ -6,6 +6,7 @@ Validated a Render pipeline optimization in `Picea.Abies/Render.cs`:
 
 - Keep thread-safe pool: `ConcurrentStack<StringBuilder>`
 - Increase pool retention cap: `MaxPooledStringBuilderCapacity` from `8192` to `4 * 1024 * 1024`
+- Bound pool size: `MaxPooledStringBuilderCount = 8`
 
 Goal: reduce large-render StringBuilder growth churn while keeping server-side thread safety.
 
@@ -70,7 +71,7 @@ Interpretation:
 
 ## Conclusions
 
-1. The optimization is safe for both WASM and server rendering because thread-safe pooling is preserved.
+1. The optimization preserves thread-safe pooling and now also bounds retained builders to avoid unbounded memory growth under concurrent large renders.
 2. The cap increase provides measurable allocation and CPU wins in Render microbenchmarks.
 3. Full-suite E2E impact is mixed: geometric mean is +1.24% slower vs main, but still within the project's 5% threshold.
 

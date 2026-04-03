@@ -91,14 +91,12 @@ public class RenderingBenchmarks
         var adjectives = new[] { "pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant" };
         var colours = new[] { "red", "yellow", "blue", "green", "pink", "brown", "purple", "orange", "white", "black" };
         var nouns = new[] { "table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard" };
-
-        var random = new Random(42);
         var rows = new Node[1000];
 
         for (int i = 0; i < 1000; i++)
         {
             int rowId = i + 1;
-            var label = $"{adjectives[random.Next(adjectives.Length)]} {colours[random.Next(colours.Length)]} {nouns[random.Next(nouns.Length)]}";
+            var label = BuildDeterministicBenchmarkLabel(i, adjectives, colours, nouns);
             rows[i] = tr([class_("")], [
                 td([class_("col-md-1")], [text(rowId.ToString())]),
                 td([class_("col-md-4")], [
@@ -121,14 +119,12 @@ public class RenderingBenchmarks
         var adjectives = new[] { "pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant" };
         var colours = new[] { "red", "yellow", "blue", "green", "pink", "brown", "purple", "orange", "white", "black" };
         var nouns = new[] { "table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard" };
-
-        var random = new Random(42);
         var rows = new Node[1000];
 
         for (int i = 0; i < 1000; i++)
         {
             int rowId = i + 1;
-            var label = $"{adjectives[random.Next(adjectives.Length)]} {colours[random.Next(colours.Length)]} {nouns[random.Next(nouns.Length)]}";
+            var label = BuildDeterministicBenchmarkLabel(i, adjectives, colours, nouns);
             rows[i] = tr([class_("")], [
                 td([class_("col-md-1")], [text(rowId.ToString())]),
                 td([class_("col-md-4")], [
@@ -144,6 +140,19 @@ public class RenderingBenchmarks
         }
 
         _benchmark1kTableNoHandlers = tbody([id("tbody-no-handlers")], rows);
+    }
+
+    private static string BuildDeterministicBenchmarkLabel(
+        int i,
+        string[] adjectives,
+        string[] colours,
+        string[] nouns)
+    {
+        // Keeps fixture data stable without relying on System.Random.
+        var adjective = adjectives[(i * 17 + 3) % adjectives.Length];
+        var colour = colours[(i * 29 + 5) % colours.Length];
+        var noun = nouns[(i * 43 + 7) % nouns.Length];
+        return $"{adjective} {colour} {noun}";
     }
 
     private void SetupSimpleElement()
