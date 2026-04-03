@@ -175,8 +175,10 @@ Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigat
 | Metric | Abies 2.0 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | First paint | **71.1 ms** | 79.4 ms | **−10%** |
-| Bundle (compressed) | **116 KB** | 1,078 KB | **−89%** |
-| Bundle (uncompressed) | **454 KB** | 3,400 KB | **−87%** |
+| Framework bundle artifact (compressed, js-framework-benchmark `40_sizes`) | **116 KB** | 1,078 KB | **−89%** |
+| Framework bundle artifact (uncompressed, js-framework-benchmark `40_sizes`) | **454 KB** | 3,400 KB | **−87%** |
+
+> **Note:** These size rows come from js-framework-benchmark's `40_sizes` artifact metric. They are not equivalent to full .NET publish output size reported in [docs/benchmarks.md](./docs/benchmarks.md).
 
 ### Memory (lower is better)
 
