@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775126060132,
+  "lastUpdate": 1775203850944,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13084,6 +13084,84 @@ window.BENCHMARK_DATA = {
             "value": 58.6,
             "unit": "ms",
             "extra": "mean: 58.0ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "dd610f1f9f480097860e153797b647b42c41c50d",
+          "message": "fix: address PR review feedback and failing checks",
+          "timestamp": "2026-04-03T10:00:01+02:00",
+          "tree_id": "3afc37cc6b029ec3066464d26d54d4abe607f9f4",
+          "url": "https://github.com/Picea/Abies/commit/dd610f1f9f480097860e153797b647b42c41c50d"
+        },
+        "date": 1775203850652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 346.5,
+            "unit": "ms",
+            "extra": "mean: 352.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 371.5,
+            "unit": "ms",
+            "extra": "mean: 369.2ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 224.7,
+            "unit": "ms",
+            "extra": "mean: 226.1ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 31.9,
+            "unit": "ms",
+            "extra": "mean: 31.7ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 87.1,
+            "unit": "ms",
+            "extra": "mean: 87.7ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 57.9,
+            "unit": "ms",
+            "extra": "mean: 57.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3373.1,
+            "unit": "ms",
+            "extra": "mean: 3372.1ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 386,
+            "unit": "ms",
+            "extra": "mean: 386.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 56.1,
+            "unit": "ms",
+            "extra": "mean: 57.1ms, samples: 15"
           }
         ]
       }
