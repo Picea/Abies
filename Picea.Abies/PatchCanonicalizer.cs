@@ -9,6 +9,11 @@ internal static class PatchCanonicalizer
             return patches;
         }
 
+        if (!HasPotentialCoalescing(patches))
+        {
+            return patches;
+        }
+
         var lastMutationIndexByKey = new Dictionary<string, int>(patches.Count);
         var suppressed = new bool[patches.Count];
         var suppressedAny = false;
@@ -45,6 +50,38 @@ internal static class PatchCanonicalizer
 
         return canonicalized;
     }
+
+    private static bool HasPotentialCoalescing(IReadOnlyList<Patch> patches)
+    {
+        var coalescibleCount = 0;
+
+        for (int i = 0; i < patches.Count; i++)
+        {
+            if (!IsCoalescibleType(patches[i]))
+            {
+                continue;
+            }
+
+            coalescibleCount++;
+            if (coalescibleCount >= 2)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsCoalescibleType(Patch patch) =>
+        patch is AddAttribute
+            or UpdateAttribute
+            or RemoveAttribute
+            or AddHandler
+            or UpdateHandler
+            or RemoveHandler
+            or AddHeadElement
+            or UpdateHeadElement
+            or RemoveHeadElement;
 
     private static bool TryGetCoalescingKey(Patch patch, out string key)
     {

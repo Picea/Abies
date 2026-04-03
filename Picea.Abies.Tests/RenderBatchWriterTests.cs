@@ -106,6 +106,25 @@ public class RenderBatchWriterTests
         await Assert.That(parsed.Entries[0].Field2).Contains("content=\"new\"");
     }
 
+    [Test]
+    public async Task Write_NonCoalesciblePatches_ArePreserved()
+    {
+        var writer = new RenderBatchWriter();
+        var parent = new Element("e1", "div", []);
+        var text = new Text("t1", "hello");
+
+        var batch = writer.Write([
+            new AddText(parent, text),
+            new RemoveText(parent, text)
+        ]);
+
+        var parsed = ParseBatch(batch.Span);
+
+        await Assert.That(parsed.PatchCount).IsEqualTo(2);
+        await Assert.That(parsed.Entries[0].Type).IsEqualTo((int)BinaryPatchType.AddText);
+        await Assert.That(parsed.Entries[1].Type).IsEqualTo((int)BinaryPatchType.RemoveText);
+    }
+
     private static ParsedBatch ParseBatch(ReadOnlySpan<byte> data)
     {
         var patchCount = BinaryPrimitives.ReadInt32LittleEndian(data[..4]);
