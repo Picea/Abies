@@ -64,6 +64,12 @@ public class RenderingBenchmarks
     // Form with many inputs
     private Node _complexForm = null!;
 
+    // Pre-built 1000-row js-framework-benchmark table (HTML generation only)
+    private Node _benchmark1kTable = null!;
+
+    // Same 1k-row table shape but without onclick handlers
+    private Node _benchmark1kTableNoHandlers = null!;
+
     [GlobalSetup]
     public void Setup()
     {
@@ -76,6 +82,68 @@ public class RenderingBenchmarks
         SetupDeeplyNested();
         SetupWideTree();
         SetupComplexForm();
+        SetupBenchmark1kTable();
+        SetupBenchmark1kTableNoHandlers();
+    }
+
+    private void SetupBenchmark1kTable()
+    {
+        var adjectives = new[] { "pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant" };
+        var colours = new[] { "red", "yellow", "blue", "green", "pink", "brown", "purple", "orange", "white", "black" };
+        var nouns = new[] { "table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard" };
+
+        var random = new Random(42);
+        var rows = new Node[1000];
+
+        for (int i = 0; i < 1000; i++)
+        {
+            int rowId = i + 1;
+            var label = $"{adjectives[random.Next(adjectives.Length)]} {colours[random.Next(colours.Length)]} {nouns[random.Next(nouns.Length)]}";
+            rows[i] = tr([class_("")], [
+                td([class_("col-md-1")], [text(rowId.ToString())]),
+                td([class_("col-md-4")], [
+                    a([class_("lbl"), onclick(_testMessage)], [text(label)])
+                ]),
+                td([class_("col-md-1")], [
+                    a([onclick(_testMessage)], [
+                        span([class_("glyphicon glyphicon-remove"), ariaHidden("true")], [])
+                    ])
+                ]),
+                td([class_("col-md-6")], [])
+            ]);
+        }
+
+        _benchmark1kTable = tbody([id("tbody")], rows);
+    }
+
+    private void SetupBenchmark1kTableNoHandlers()
+    {
+        var adjectives = new[] { "pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant" };
+        var colours = new[] { "red", "yellow", "blue", "green", "pink", "brown", "purple", "orange", "white", "black" };
+        var nouns = new[] { "table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard" };
+
+        var random = new Random(42);
+        var rows = new Node[1000];
+
+        for (int i = 0; i < 1000; i++)
+        {
+            int rowId = i + 1;
+            var label = $"{adjectives[random.Next(adjectives.Length)]} {colours[random.Next(colours.Length)]} {nouns[random.Next(nouns.Length)]}";
+            rows[i] = tr([class_("")], [
+                td([class_("col-md-1")], [text(rowId.ToString())]),
+                td([class_("col-md-4")], [
+                    a([class_("lbl")], [text(label)])
+                ]),
+                td([class_("col-md-1")], [
+                    a([], [
+                        span([class_("glyphicon glyphicon-remove"), ariaHidden("true")], [])
+                    ])
+                ]),
+                td([class_("col-md-6")], [])
+            ]);
+        }
+
+        _benchmark1kTableNoHandlers = tbody([id("tbody-no-handlers")], rows);
     }
 
     private void SetupSimpleElement()
@@ -469,5 +537,27 @@ public class RenderingBenchmarks
     public string RenderComplexForm()
     {
         return Render.Html(_complexForm);
+    }
+
+    /// <summary>
+    /// Pre-built 1000-row js-framework-benchmark table (pure HTML generation).
+    /// VDOM is pre-constructed in GlobalSetup — measures only Render.Html cost.
+    /// Each row has 2 onclick event handlers matching the real benchmark app shape.
+    /// Comparable to the "01_run1k" js-framework-benchmark scenario.
+    /// </summary>
+    [Benchmark]
+    public string Render1kBenchmarkRows()
+    {
+        return Render.Html(_benchmark1kTable);
+    }
+
+    /// <summary>
+    /// Pre-built 1000-row table without onclick handlers.
+    /// Isolates the cost of handler attribute emission from base row HTML rendering.
+    /// </summary>
+    [Benchmark]
+    public string Render1kBenchmarkRowsNoHandlers()
+    {
+        return Render.Html(_benchmark1kTableNoHandlers);
     }
 }
