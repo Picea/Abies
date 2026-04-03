@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using Picea.Abies.DOM;
+using Attribute = Picea.Abies.DOM.Attribute;
 
 namespace Picea.Abies.Tests;
 
@@ -40,6 +41,69 @@ public class RenderBatchWriterTests
         await Assert.That(parsed.Entries[0].Field2).IsEqualTo("t2");
         await Assert.That(parsed.Entries[0].Field3).IsNull();
         await Assert.That(parsed.Entries[0].Field4).IsNull();
+    }
+
+    [Test]
+    public async Task Write_AttributeChurn_OnlySerializesLastMutation()
+    {
+        var writer = new RenderBatchWriter();
+        var element = new Element("e1", "div", []);
+        var attr = new Attribute("a1", "class", "old");
+
+        var batch = writer.Write([
+            new AddAttribute(element, attr),
+            new UpdateAttribute(element, attr, "new")
+        ]);
+
+        var parsed = ParseBatch(batch.Span);
+
+        await Assert.That(parsed.PatchCount).IsEqualTo(1);
+        await Assert.That(parsed.Entries[0].Type).IsEqualTo((int)BinaryPatchType.UpdateAttribute);
+        await Assert.That(parsed.Entries[0].Field1).IsEqualTo("e1");
+        await Assert.That(parsed.Entries[0].Field2).IsEqualTo("class");
+        await Assert.That(parsed.Entries[0].Field3).IsEqualTo("new");
+    }
+
+    [Test]
+    public async Task Write_HandlerChurn_OnlySerializesLastMutation()
+    {
+        var writer = new RenderBatchWriter();
+        var element = new Element("e1", "button", []);
+        var oldHandler = new Handler("click", "cmd-1", null, "h1");
+        var newHandler = new Handler("click", "cmd-2", null, "h1");
+
+        var batch = writer.Write([
+            new AddHandler(element, oldHandler),
+            new UpdateHandler(element, oldHandler, newHandler)
+        ]);
+
+        var parsed = ParseBatch(batch.Span);
+
+        await Assert.That(parsed.PatchCount).IsEqualTo(1);
+        await Assert.That(parsed.Entries[0].Type).IsEqualTo((int)BinaryPatchType.UpdateHandler);
+        await Assert.That(parsed.Entries[0].Field1).IsEqualTo("e1");
+        await Assert.That(parsed.Entries[0].Field2).IsEqualTo("data-event-click");
+        await Assert.That(parsed.Entries[0].Field3).IsEqualTo("cmd-2");
+    }
+
+    [Test]
+    public async Task Write_HeadChurn_OnlySerializesLastMutation()
+    {
+        var writer = new RenderBatchWriter();
+        var first = Head.meta("description", "old");
+        var second = Head.meta("description", "new");
+
+        var batch = writer.Write([
+            new AddHeadElement(first),
+            new UpdateHeadElement(second)
+        ]);
+
+        var parsed = ParseBatch(batch.Span);
+
+        await Assert.That(parsed.PatchCount).IsEqualTo(1);
+        await Assert.That(parsed.Entries[0].Type).IsEqualTo((int)BinaryPatchType.UpdateHeadElement);
+        await Assert.That(parsed.Entries[0].Field1).IsEqualTo("meta:description");
+        await Assert.That(parsed.Entries[0].Field2).Contains("content=\"new\"");
     }
 
     private static ParsedBatch ParseBatch(ReadOnlySpan<byte> data)
