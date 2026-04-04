@@ -15,6 +15,7 @@
 using Microsoft.Playwright;
 using Picea.Abies.Templates.Testing.E2E.Fixtures;
 using Picea.Abies.Templates.Testing.E2E.Helpers;
+using Picea.Abies.Templates.Testing.E2E.Infrastructure;
 
 namespace Picea.Abies.Templates.Testing.E2E;
 
@@ -121,6 +122,18 @@ public class BrowserTemplateTests : IAsyncDisposable
 
         await shell.ClickAsync();
         await Assertions.Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
+    [Test]
+    public async Task ReleasePublish_Succeeds()
+    {
+        var (exitCode, stdOut, stdErr) = await DotNetCli.RunAsync(
+            "publish -c Release",
+            workingDirectory: Fixture.ProjectDir,
+            timeoutSeconds: 600);
+
+        await Assert.That(exitCode).IsEqualTo(0);
+        await Assert.That($"STDOUT:\n{stdOut}\nSTDERR:\n{stdErr}").DoesNotContain("error CA2252");
     }
 
     // ─── Interactivity Tests ──────────────────────────────────────────
