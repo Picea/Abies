@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775303096135,
+  "lastUpdate": 1775303097184,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14250,6 +14250,42 @@ window.BENCHMARK_DATA = {
             "value": 37.145708084106445,
             "unit": "MB",
             "extra": "mean: 37.1MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "bf57b613ed1cb98c41d90f019c6f94ffb75b6c67",
+          "message": "fix: Clean up legacy managed text end markers",
+          "timestamp": "2026-04-04T13:34:33+02:00",
+          "tree_id": "3ed1a49bc51606f8f3b6a11d8efe0f927c2023b7",
+          "url": "https://github.com/Picea/Abies/commit/bf57b613ed1cb98c41d90f019c6f94ffb75b6c67"
+        },
+        "date": 1775303096928,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.125112533569336,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98897743225098,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
           }
         ]
       }
