@@ -432,6 +432,17 @@
         anchor.marker.remove();
     }
 
+    function removeLegacyEndMarkerAfterAnchor(anchor, id) {
+        const legacyEndValue = `${TEXT_MARKER_PREFIX}${id}:end`;
+        const candidate = anchor.text
+            ? anchor.text.nextSibling
+            : anchor.marker.nextSibling;
+
+        if (candidate && candidate.nodeType === Node.COMMENT_NODE && candidate.data === legacyEndValue) {
+            candidate.remove();
+        }
+    }
+
     function removeManagedTextRange(range) {
         let current = range.start;
         while (current) {
@@ -684,6 +695,8 @@
                 if (parent) {
                     const anchor = findManagedTextAnchor(parent, f2);
                     if (anchor) {
+                        removeLegacyEndMarkerAfterAnchor(anchor, f2);
+
                         if (anchor.text) {
                             anchor.text.textContent = f3;
                         } else {
@@ -729,6 +742,7 @@
                 if (parent) {
                     const anchor = findManagedTextAnchor(parent, f2);
                     if (anchor) {
+                        removeLegacyEndMarkerAfterAnchor(anchor, f2);
                         removeManagedTextAnchor(anchor);
                         break;
                     }
