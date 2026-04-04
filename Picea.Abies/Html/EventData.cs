@@ -9,10 +9,10 @@ public record InputEventData(
 /// <summary>Data for keyboard events.</summary>
 public record KeyEventData(
     [property: JsonPropertyName("key")] string Key,
-    [property: JsonPropertyName("repeat")] bool Repeat,
     [property: JsonPropertyName("altKey")] bool AltKey,
     [property: JsonPropertyName("ctrlKey")] bool CtrlKey,
-    [property: JsonPropertyName("shiftKey")] bool ShiftKey);
+    [property: JsonPropertyName("shiftKey")] bool ShiftKey,
+    [property: JsonPropertyName("repeat")] bool Repeat = false);
 
 /// <summary>Data for pointer or mouse events.</summary>
 public record PointerEventData(

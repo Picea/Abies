@@ -46,11 +46,12 @@
 //     int32 patchCount
 //     int32 stringTableOffset
 //
-//   Patches (16 bytes each):
+//   Patches (20 bytes each):
 //     int32 type (BinaryPatchType enum)
 //     int32 field1 (string table index, -1 = null)
 //     int32 field2 (string table index, -1 = null)
 //     int32 field3 (string table index, -1 = null)
+//     int32 field4 (string table index, -1 = null)
 //
 //   String Table:
 //     Sequence of LEB128-prefixed UTF-8 strings
@@ -118,23 +119,46 @@ const OP_APPEND_CHILDREN_HTML = 23;
 
 // =============================================================================
 // Event types to register for delegation
+// Must match all helpers exposed in Picea.Abies/Html/Events.cs
 // =============================================================================
 const COMMON_EVENT_TYPES = [
-    "click", "dblclick", "input", "change", "submit",
+    // Mouse events
+    "click", "dblclick", "mousedown", "mouseup", "mousemove",
+    "mouseenter", "mouseleave", "mouseover", "mouseout", "wheel", "contextmenu",
+    // Keyboard events
     "keydown", "keyup", "keypress",
+    // Input / Form events
+    "input", "change", "submit", "reset", "invalid", "select",
+    // Focus events
     "focus", "blur", "focusin", "focusout",
-    "mousedown", "mouseup", "mousemove",
-    "mouseenter", "mouseleave", "mouseover", "mouseout",
-    "wheel", "scroll",
-    "touchstart", "touchmove", "touchend",
-    "pointerdown", "pointerup", "pointermove",
-    "contextmenu",
-    "drag", "dragstart", "dragend", "dragover",
-    "drop", "dragenter", "dragleave",
+    // Pointer events
+    "pointerdown", "pointerup", "pointermove", "pointercancel",
+    "pointerover", "pointerout", "pointerenter", "pointerleave",
+    "gotpointercapture", "lostpointercapture",
+    // Touch events
+    "touchstart", "touchend", "touchmove", "touchcancel",
+    // Drag events
+    "drag", "dragstart", "dragend", "dragenter", "dragleave", "dragover", "drop",
+    // Scroll & Resize
+    "scroll", "resize",
+    // Clipboard events
     "copy", "cut", "paste",
-    "animationstart", "animationend", "transitionend",
-    "load", "error", "resize",
-    "select", "reset", "toggle"
+    // Animation events
+    "animationstart", "animationend", "animationiteration", "animationcancel",
+    // Transition events
+    "transitionstart", "transitionend", "transitionrun", "transitioncancel",
+    // Media events
+    "play", "pause", "ended", "timeupdate", "volumechange",
+    "seeking", "seeked", "ratechange", "durationchange",
+    "canplay", "canplaythrough", "waiting", "playing",
+    "stalled", "suspend", "emptied", "loadeddata", "loadedmetadata",
+    "loadstart", "progress", "abort",
+    // Load & Error events
+    "load", "error", "unload", "beforeunload",
+    // Toggle & Misc events
+    "toggle", "close", "cancel", "fullscreenchange", "fullscreenerror",
+    // Composition events (for IME / CJK input)
+    "compositionstart", "compositionupdate", "compositionend"
 ];
 
 // =============================================================================
@@ -229,6 +253,8 @@ async function initializeOtel() {
 // See: HTML Living Standard §13.2.6.1 (foster parenting algorithm)
 // =============================================================================
 const _fragmentTemplate = document.createElement("template");
+const TEXT_MARKER_PREFIX = "abies-text:";
+const TEXT_MARKER_SUFFIX = ":start";
 
 /**
  * Parses an HTML string into a DOM element.
@@ -239,6 +265,93 @@ const _fragmentTemplate = document.createElement("template");
 function parseHtmlFragment(html) {
     _fragmentTemplate.innerHTML = html;
     return _fragmentTemplate.content.firstElementChild;
+}
+
+function textMarkerValue(id) {
+    return `${TEXT_MARKER_PREFIX}${id}${TEXT_MARKER_SUFFIX}`;
+}
+
+function createManagedTextFragment(id, value) {
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(document.createComment(textMarkerValue(id)));
+    fragment.appendChild(document.createTextNode(value));
+    return fragment;
+}
+
+function findManagedTextAnchor(parent, id) {
+    const markerValue = textMarkerValue(id);
+
+    for (const child of parent.childNodes) {
+        if (child.nodeType !== Node.COMMENT_NODE || child.data !== markerValue) {
+            continue;
+        }
+
+        const textNode = child.nextSibling && child.nextSibling.nodeType === Node.TEXT_NODE
+            ? child.nextSibling
+            : null;
+        return { marker: child, text: textNode };
+    }
+
+    return null;
+}
+
+function removeManagedTextAnchor(anchor) {
+    if (anchor.text) {
+        anchor.text.remove();
+    }
+
+    anchor.marker.remove();
+}
+
+function removeLegacyEndMarkerAfterAnchor(anchor, id) {
+    const legacyEndValue = `${TEXT_MARKER_PREFIX}${id}:end`;
+    const candidate = anchor.text
+        ? anchor.text.nextSibling
+        : anchor.marker.nextSibling;
+
+    if (candidate && candidate.nodeType === Node.COMMENT_NODE && candidate.data === legacyEndValue) {
+        candidate.remove();
+    }
+}
+
+function removeManagedTextRange(range) {
+    let current = range.start;
+    while (current) {
+        const next = current.nextSibling;
+        current.remove();
+        if (current === range.end) {
+            break;
+        }
+
+        current = next;
+    }
+}
+
+function findManagedTextRangeLegacy(parent, id) {
+    const startValue = textMarkerValue(id);
+    const endValue = `${TEXT_MARKER_PREFIX}${id}:end`;
+
+    for (const child of parent.childNodes) {
+        if (child.nodeType !== Node.COMMENT_NODE || child.data !== startValue) {
+            continue;
+        }
+
+        let current = child.nextSibling;
+        let textNode = null;
+        while (current) {
+            if (current.nodeType === Node.COMMENT_NODE && current.data === endValue) {
+                return { start: child, text: textNode, end: current };
+            }
+
+            if (!textNode && current.nodeType === Node.TEXT_NODE) {
+                textNode = current;
+            }
+
+            current = current.nextSibling;
+        }
+    }
+
+    return null;
 }
 
 // =============================================================================
@@ -309,6 +422,7 @@ function extractEventData(event) {
     // Keyboard events
     if (event instanceof KeyboardEvent) {
         data.key = event.key;
+        data.repeat = event.repeat;
         data.code = event.code;
         data.altKey = event.altKey;
         data.ctrlKey = event.ctrlKey;
@@ -384,17 +498,21 @@ function registerEventType(eventType) {
         if (!dispatchDomEvent) return;
 
         const attrName = `data-event-${eventType}`;
+        const debugHandlers = window.__ABIES_DEBUG_HANDLERS ?? false;
 
         // Walk up from target to find the handler attribute
         let el = event.target;
         while (el && el !== document) {
             if (el.hasAttribute && el.hasAttribute(attrName)) {
                 const commandId = el.getAttribute(attrName);
+                if (debugHandlers) {
+                    console.log(`[EventDelegation] HIT: ${eventType} on ${el.tagName}, commandId=${commandId}`);
+                }
                 const eventData = extractEventData(event);
 
                 // OTel: trace the event dispatch if instrumentation is active
                 if (otelModule) {
-                    otelModule.traceEvent(commandId, eventType, eventData);
+                    otelModule.traceEvent(commandId, eventType, eventData, el);
                 }
 
                 dispatchDomEvent(commandId, eventType, eventData);
@@ -426,6 +544,9 @@ function registerEventType(eventType) {
             }
             el = el.parentElement;
         }
+        if (debugHandlers) {
+            console.log(`[EventDelegation] MISS: ${eventType} on ${event.target?.tagName ?? "?"}`);
+        }
     }, useCapture);
 }
 
@@ -439,8 +560,9 @@ function registerEventType(eventType) {
  * @param {string|null} f1 - Field 1 (string from string table, or null).
  * @param {string|null} f2 - Field 2.
  * @param {string|null} f3 - Field 3.
+ * @param {string|null} f4 - Field 4.
  */
-function applyPatch(type, f1, f2, f3) {
+function applyPatch(type, f1, f2, f3, f4) {
     switch (type) {
         // =====================================================================
         // Tree Mutations
@@ -607,13 +729,40 @@ function applyPatch(type, f1, f2, f3) {
         // =====================================================================
 
         case OP_UPDATE_TEXT: {
-            // f1 = parentId, f2 = newText, f3 = newId (unused in DOM)
+            // f1 = parentId, f2 = oldTextId, f3 = newText, f4 = newTextId
             const parent = document.getElementById(f1);
             if (parent) {
-                // Find the text node child and update it
+                const anchor = findManagedTextAnchor(parent, f2);
+                if (anchor) {
+                    removeLegacyEndMarkerAfterAnchor(anchor, f2);
+
+                    if (anchor.text) {
+                        anchor.text.textContent = f3;
+                    } else {
+                        parent.insertBefore(document.createTextNode(f3), anchor.marker.nextSibling);
+                    }
+
+                    anchor.marker.data = textMarkerValue(f4);
+                    break;
+                }
+
+                const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                if (legacyRange) {
+                    if (legacyRange.text) {
+                        legacyRange.text.textContent = f3;
+                    } else {
+                        parent.insertBefore(document.createTextNode(f3), legacyRange.end);
+                    }
+
+                    legacyRange.start.data = textMarkerValue(f4);
+                    legacyRange.end.remove();
+                    break;
+                }
+
+                // Backward compatibility for pre-marker DOM.
                 for (const child of parent.childNodes) {
                     if (child.nodeType === Node.TEXT_NODE) {
-                        child.textContent = f2;
+                        child.textContent = f3;
                         break;
                     }
                 }
@@ -622,18 +771,32 @@ function applyPatch(type, f1, f2, f3) {
         }
 
         case OP_ADD_TEXT: {
-            // f1 = parentId, f2 = text content, f3 = textId (unused in DOM)
+            // f1 = parentId, f2 = text content, f3 = textId
             const parent = document.getElementById(f1);
             if (parent) {
-                parent.appendChild(document.createTextNode(f2));
+                parent.appendChild(createManagedTextFragment(f3, f2));
             }
             break;
         }
 
         case OP_REMOVE_TEXT: {
-            // f1 = parentId, f2 = textId (unused — remove first text node)
+            // f1 = parentId, f2 = textId
             const parent = document.getElementById(f1);
             if (parent) {
+                const anchor = findManagedTextAnchor(parent, f2);
+                if (anchor) {
+                    removeLegacyEndMarkerAfterAnchor(anchor, f2);
+                    removeManagedTextAnchor(anchor);
+                    break;
+                }
+
+                const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                if (legacyRange) {
+                    removeManagedTextRange(legacyRange);
+                    break;
+                }
+
+                // Backward compatibility for pre-marker DOM.
                 for (const child of parent.childNodes) {
                     if (child.nodeType === Node.TEXT_NODE) {
                         child.remove();
@@ -788,7 +951,7 @@ export function applyBinaryBatch(batchData) {
 
     // Apply each patch
     const headerSize = 8;
-    const entrySize = 16;
+    const entrySize = 20;
 
     for (let i = 0; i < patchCount; i++) {
         const offset = headerSize + (i * entrySize);
@@ -796,12 +959,14 @@ export function applyBinaryBatch(batchData) {
         const f1Idx = view.getInt32(offset + 4, true);
         const f2Idx = view.getInt32(offset + 8, true);
         const f3Idx = view.getInt32(offset + 12, true);
+        const f4Idx = view.getInt32(offset + 16, true);
 
         const f1 = f1Idx >= 0 ? strings[f1Idx] : null;
         const f2 = f2Idx >= 0 ? strings[f2Idx] : null;
         const f3 = f3Idx >= 0 ? strings[f3Idx] : null;
+        const f4 = f4Idx >= 0 ? strings[f4Idx] : null;
 
-        applyPatch(type, f1, f2, f3);
+        applyPatch(type, f1, f2, f3, f4);
     }
 
     // Signal that WASM has taken over rendering after the first batch.

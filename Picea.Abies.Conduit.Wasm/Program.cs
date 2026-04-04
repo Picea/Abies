@@ -24,6 +24,16 @@ using Picea;
 using Picea.Abies;
 using Picea.Abies.Conduit.App;
 
+#if DEBUG
+var debugUiOptOut = string.Equals(
+    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+    "0",
+    StringComparison.OrdinalIgnoreCase);
+
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+#endif
+
 // Import the Abies JS module early so we can read the browser origin.
 // The subsequent import inside Runtime.Run is a cached no-op.
 await Picea.Abies.Browser.Runtime.ImportModule();
@@ -37,7 +47,8 @@ var initialSession = LoadPersistedSession();
 
 await Picea.Abies.Browser.Runtime.Run<ConduitProgram, Model, ConduitStartup>(
     argument: new ConduitStartup(apiUrl, initialSession, initialUrl),
-    interpreter: Interpret);
+    interpreter: Interpret,
+    debuggerModelJsonTypeInfo: ConduitDebuggerJsonContext.Default.Model);
 
 static ValueTask<Result<Message[], PipelineError>> Interpret(Command command)
 {

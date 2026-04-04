@@ -49,12 +49,18 @@ public static class ApiErrors
     public static IResult Unauthorized(string message = "Unauthorized.") =>
         Results.Json(new ErrorResponse(new ErrorBody([message])), statusCode: 401);
 
+    /// <summary>Creates a 503 Service Unavailable response with the Conduit error format.</summary>
+    public static IResult ServiceUnavailable(string message) =>
+        Results.Json(new ErrorResponse(new ErrorBody([message])), statusCode: 503);
+
     /// <summary>
     /// Maps a <see cref="UserError"/> to the appropriate HTTP error response.
     /// </summary>
     public static IResult FromUserError(UserError error) => error switch
     {
         UserError.Validation v => Validation(v.Message),
+        UserError.DuplicateEmail => Validation("Email is already registered."),
+        UserError.DuplicateUsername => Validation("Username is already taken."),
         UserError.AlreadyRegistered => Validation("Email is already registered."),
         UserError.NotRegistered => NotFound("User not found."),
         UserError.AlreadyFollowing => Validation("Already following this user."),
@@ -69,6 +75,7 @@ public static class ApiErrors
     public static IResult FromArticleError(ArticleError error) => error switch
     {
         ArticleError.Validation v => Validation(v.Message),
+        ArticleError.DuplicateSlug => Validation("Article with this title (slug) already exists."),
         ArticleError.AlreadyPublished => Validation("Article with this slug already exists."),
         ArticleError.NotPublished => NotFound("Article not found."),
         ArticleError.AlreadyDeleted => NotFound("Article not found."),

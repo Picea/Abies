@@ -44,6 +44,25 @@ public class BrowserTemplateTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => GC.SuppressFinalize(this);
 
+    private static ILocator CounterValueLocator(IPage page) =>
+        page.Locator(".count, .counter-value");
+
+    private static async Task ClickFirstAvailableButton(IPage page, params string[] buttonNames)
+    {
+        foreach (var buttonName in buttonNames)
+        {
+            var button = page.GetByRole(AriaRole.Button, new() { Name = buttonName });
+            if (await button.CountAsync() > 0)
+            {
+                await button.First.ClickAsync();
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not find any button with names: {string.Join(", ", buttonNames)}");
+    }
+
     // ─── Static Rendering Tests ───────────────────────────────────────
 
     [Test]
@@ -70,7 +89,7 @@ public class BrowserTemplateTests : IAsyncDisposable
     {
         await _page.GotoAsync("/");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("0", new() { Timeout = 30_000 });
     }
 
@@ -87,6 +106,23 @@ public class BrowserTemplateTests : IAsyncDisposable
         await Assert.That(content.Length).IsGreaterThan(0);
     }
 
+    [Test]
+    public async Task InitialLoad_DebuggerBadgeClick_TogglesDebuggerPanel()
+    {
+        await _page.GotoAsync("/");
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        await Assertions.Expect(shell).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
     // ─── Interactivity Tests ──────────────────────────────────────────
 
     [Test]
@@ -95,9 +131,9 @@ public class BrowserTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForWasmInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "+" }).ClickAsync();
+        await ClickFirstAvailableButton(_page, "+", "Increase");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("1", new() { Timeout = 5_000 });
     }
 
@@ -107,9 +143,32 @@ public class BrowserTemplateTests : IAsyncDisposable
         await _page.GotoAsync("/");
         await InteractivityHelpers.WaitForWasmInteractivity(_page);
 
-        await _page.GetByRole(AriaRole.Button, new() { Name = "\u2212" }).ClickAsync();
+        await ClickFirstAvailableButton(_page, "-", "Decrease");
 
-        await Assertions.Expect(_page.Locator(".count"))
+        await Assertions.Expect(CounterValueLocator(_page))
             .ToHaveTextAsync("-1", new() { Timeout = 5_000 });
+    }
+
+    [Test]
+    public async Task DebuggerStepBackAndForward_ReplaysVisibleCounterState()
+    {
+        await _page.GotoAsync("/");
+        await InteractivityHelpers.WaitForWasmInteractivity(_page);
+
+        await ClickFirstAvailableButton(_page, "+", "Increase");
+        await ClickFirstAvailableButton(_page, "+", "Increase");
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
+
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        await shell.ClickAsync();
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Back" }).ClickAsync();
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("1", new() { Timeout = 5_000 });
+
+        await _page.GetByRole(AriaRole.Button, new() { Name = "Step" }).ClickAsync();
+        await Assertions.Expect(CounterValueLocator(_page))
+            .ToHaveTextAsync("2", new() { Timeout = 5_000 });
     }
 }

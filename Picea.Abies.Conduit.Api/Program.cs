@@ -140,6 +140,8 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton(sp =>
     QueryStore.CreateGetTags(sp.GetRequiredService<NpgsqlDataSource>()));
 
+builder.Services.AddSingleton<RequestIdempotencyStore>();
+
 // ─── Build ─────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

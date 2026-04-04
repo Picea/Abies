@@ -21,6 +21,25 @@
     <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" Pack="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <UpToDateCheckInput Include="..\Picea.Abies.Browser\wwwroot\debugger.js" />
+    <Watch Include="..\Picea.Abies.Browser\wwwroot\debugger.js" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <EmbeddedResource Remove="wwwroot\_abies\debugger.js" />
+    <Content Remove="wwwroot\_abies\debugger.js" />
+    <None Remove="wwwroot\_abies\debugger.js" />
+  </ItemGroup>
+
+  <Target Name="SyncServerDebuggerJs" BeforeTargets="Build;ComputeFilesToPublish"
+          Condition="'$(Configuration)' == 'Debug'"
+          Inputs="..\Picea.Abies.Browser\wwwroot\debugger.js"
+          Outputs="wwwroot\_abies\debugger.js">
+    <Copy SourceFiles="..\Picea.Abies.Browser\wwwroot\debugger.js"
+          DestinationFiles="wwwroot\_abies\debugger.js" />
+  </Target>
+
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>Picea.Abies.Server.Kestrel</PackageId>

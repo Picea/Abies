@@ -83,9 +83,13 @@ Every review covers these eight dimensions systematically:
 - Public APIs documented.
 - README, ADR, and architecture docs updated to reflect changes.
 - TODOs/FIXMEs tracked as issues rather than left inline.
+- **Missing doc updates on user-facing changes are 🔴 Must Fix.** If a changeset adds/modifies an API endpoint, changes configuration, alters user-facing behavior, or adds a feature — and no documentation was updated or created — it blocks merge. Docs ship with code, not after.
 
 ### 10. Boy Scout Rule
 - Every file touched must be left better than it was found. If obvious improvements exist in modified files (poor names, stale comments, missing types, code smells, unclear error messages) and they were ignored, flag as ⚠️ Should Fix.
+
+### 11. Definition of Done
+- Verify the changeset satisfies the Definition of Done checklist (see `.squad/decisions.md`). Key gates: tests pass, docs updated, threat model current, traces visible, no undocumented deviations, commit messages follow Conventional Commits, branch follows naming convention. Incomplete items are 🔴 Must Fix.
 
 ---
 

@@ -30,6 +30,8 @@ public static class ServiceDefaultsExtensions
                 .ConfigureResource(r => r.AddService(builder.Environment.ApplicationName))
                 .WithTracing(t => t
                     .AddSource("Picea.Abies")
+                    .AddSource("Picea.Abies.Conduit.Api")
+                    .AddSource("Picea.Abies.Conduit.ReadStore.PostgreSQL")
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddOtlpExporter())

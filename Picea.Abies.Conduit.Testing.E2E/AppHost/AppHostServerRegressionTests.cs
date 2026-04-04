@@ -72,7 +72,13 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
         await _page.WaitForSelectorAsync("text='Delete Article'", new() { Timeout = 15000 });
         await _page.GetByText("Delete Article").First.ClickAsync();
 
-        await _page.WaitForURLAsync("**/");
+        await _page.WaitForFunctionAsync(
+            "() => window.location.pathname === '/'",
+            null,
+            new() { Timeout = 30000 });
+        await _page.WaitForSelectorAsync(
+            ".home-page, .feed-toggle, .article-preview",
+            new() { Timeout = 30000 });
         await _seeder.WaitForArticleDeletedAsync(article.Slug);
         await Expect(_page.Locator(".article-preview").Filter(new() { HasText = article.Title }))
             .ToHaveCountAsync(0, new() { Timeout = 10000 });
@@ -92,6 +98,8 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
         await _seeder.FollowUserAsync(readerUser.Token, author);
 
         await LoginViaUi(readerEmail, "password123");
+        await _page.NavigateInApp("/");
+        await _page.WaitForSelectorAsync(".feed-toggle .nav-link", new() { Timeout = 10000 });
         await _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" }).ClickAsync();
 
         await Expect(_page.Locator(".feed-toggle .nav-link.active")).ToHaveCountAsync(1, new() { Timeout = 10000 });
@@ -106,8 +114,6 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
 
     private async Task LoginViaUi(string email, string password)
     {
-        var expectedUser = email.Split('@')[0];
-
         for (var attempt = 1; attempt <= 3; attempt++)
         {
             await _page.GotoAsync("/login");
@@ -116,7 +122,16 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
             await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
             await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-            if (await WaitForAuthenticatedShell(expectedUser))
+            try
+            {
+                await _page.WaitForAuthenticatedShell();
+            }
+            catch (TimeoutException)
+            {
+                // Fall through to the explicit settings-page probe below.
+            }
+
+            if (await TryOpenSettingsFromNavbar())
             {
                 return;
             }
@@ -127,31 +142,32 @@ public sealed class AppHostServerRegressionTests : IAsyncInitializer, IAsyncDisp
             }
         }
 
-        throw new TimeoutException($"Login did not reach authenticated UI for user '{expectedUser}' after 3 attempts.");
+        throw new TimeoutException($"Login did not reach authenticated settings page for '{email}' after 3 attempts.");
     }
 
-    private async Task<bool> WaitForAuthenticatedShell(string expectedUser)
+    private async Task<bool> IsAuthenticatedSettingsPageVisible()
     {
-        var navbar = _page.Locator(".navbar");
-        var yourFeedTab = _page.Locator(".feed-toggle .nav-link").Filter(new() { HasText = "Your Feed" });
-
         try
         {
-            await Expect(navbar).ToContainTextAsync(expectedUser, new() { Timeout = 20000 });
+            await _page.WaitForSelectorAsync(".settings-page", new() { Timeout = 5000 });
             return true;
         }
         catch (PlaywrightException)
         {
-            // In AppHost runs the username can lag in navbar updates; Your Feed indicates authenticated state.
-            try
-            {
-                await Expect(yourFeedTab).ToBeVisibleAsync(new() { Timeout = 5000 });
-                return true;
-            }
-            catch (PlaywrightException)
-            {
-                return false;
-            }
+            return false;
+        }
+    }
+
+    private async Task<bool> TryOpenSettingsFromNavbar()
+    {
+        try
+        {
+            await _page.OpenSettingsFromNavbar(5000);
+            return true;
+        }
+        catch (PlaywrightException)
+        {
+            return false;
         }
     }
 

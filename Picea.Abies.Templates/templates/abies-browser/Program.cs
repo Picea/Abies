@@ -6,6 +6,16 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
+#if DEBUG
+var debugUiOptOut = string.Equals(
+    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+    "0",
+    StringComparison.OrdinalIgnoreCase);
+
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+#endif
+
 // Start the Abies runtime with the Counter program
 await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 
@@ -23,6 +33,11 @@ public record Increment : Message;
 /// Message to decrement the counter.
 /// </summary>
 public record Decrement : Message;
+
+/// <summary>
+/// Message to reset the counter to zero.
+/// </summary>
+public record Reset : Message;
 
 /// <summary>
 /// Counter application implementing the MVU pattern.
@@ -43,6 +58,7 @@ public class Counter : Program<Model, Unit>
         {
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
+            Reset => (model with { Count = 0 }, Commands.None),
             _ => (model, Commands.None)
         };
 
@@ -71,19 +87,23 @@ public class Counter : Program<Model, Unit>
                 // Main content
                 main([class_("content")],
                 [
-                    h1([], [text("Counter")]),
+                    h1([], [text("Abies Counter")]),
                     p([class_("subtitle")], [text("Model-View-Update in action")]),
 
                     div([class_("counter")],
                     [
                         button(
-                            [type("button"), onclick(new Decrement()), class_("btn")],
-                            [text("\u2212")]
+                            [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
+                            [text("-")]
                         ),
-                        span([class_("count")], [text(model.Count.ToString())]),
+                        span([class_("counter-value")], [text(model.Count.ToString())]),
                         button(
-                            [type("button"), onclick(new Increment()), class_("btn")],
+                            [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
                             [text("+")]
+                        ),
+                        button(
+                            [type("button"), onclick(new Reset()), class_("btn")],
+                            [text("Reset")]
                         )
                     ]),
 

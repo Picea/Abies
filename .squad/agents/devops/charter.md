@@ -149,6 +149,9 @@ Every template ships with:
 - "Works on my machine" — if it doesn't work in CI, the pipeline needs fixing, not bypassing.
 - CI pipeline changes that aren't tested locally first.
 - Templates shipping without CI/CD scaffolding.
+- Commit messages not following Conventional Commits format.
+- Branch names not following `<type>/<issue-number>-<short-slug>` convention.
+- Direct commits to `main` — locally or remotely.
 
 ### When You Defer
 

@@ -45,6 +45,16 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     private static readonly SemaphoreSlim _templateLock = new(1, 1);
 
+    /// <summary>
+    /// Guards the one-time shared-project warmup that pre-compiles
+    /// <c>Picea.Abies</c>, <c>Picea.Abies.Browser</c>, and their dependents.
+    /// After the warmup the shared DLLs are up-to-date and MSBuild will skip
+    /// re-compilation in every subsequent concurrent template build, which
+    /// prevents CS2012 file-lock errors.
+    /// </summary>
+    private static readonly SemaphoreSlim _warmupLock = new(1, 1);
+    private static volatile bool _sharedProjectsWarmed;
+
     private readonly string _tempDir;
     private readonly string _projectDir;
     private readonly string _projectName;
@@ -57,6 +67,24 @@ public sealed partial class TemplateProject : IAsyncDisposable
 
     /// <summary>Absolute path to the scaffolded project directory.</summary>
     public string ProjectDir => _projectDir;
+
+    /// <summary>
+    /// Publishes the scaffolded project in Release mode.
+    /// </summary>
+    public async Task PublishRelease(CancellationToken ct = default)
+    {
+        // Debugger runtime asset is copied for Debug test runs when using
+        // ProjectReference-based scaffolds. Remove it before Release publish to
+        // preserve the release-strip contract.
+        var releaseDebugAssetPath = Path.Join(_projectDir, "wwwroot", "debugger.js");
+        if (File.Exists(releaseDebugAssetPath))
+            File.Delete(releaseDebugAssetPath);
+
+        await RunDotnetAsync(
+            $"publish \"{_projectDir}\" -c Release",
+            _projectDir,
+            ct);
+    }
 
     private TemplateProject(string tempDir, string projectDir, string projectName, string templateShortName)
     {
@@ -111,6 +139,11 @@ public sealed partial class TemplateProject : IAsyncDisposable
             }
 
             PatchCsproj(projectDir, projectName);
+
+            // Ensure shared repo projects are compiled before any template build
+            // starts.  Once warm, concurrent builds find the DLLs up-to-date and
+            // MSBuild skips re-compilation, eliminating CS2012 file-lock races.
+            await EnsureSharedProjectsWarmedAsync(ct);
 
             await RunDotnetAsync($"build \"{projectDir}\" -c Debug", tempDir, ct);
 
@@ -329,7 +362,8 @@ public sealed partial class TemplateProject : IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// For WebAssembly projects that reference <c>Picea.Abies.Browser</c>, this also
-    /// copies static assets (<c>abies.js</c>, <c>abies-otel.js</c>) into the project's
+    /// copies static assets (<c>abies.js</c>, <c>abies-otel.js</c>, <c>debugger.js</c>)
+    /// into the project's
     /// <c>wwwroot/</c> directory. This is necessary because <c>Picea.Abies.Browser</c>
     /// uses the plain <c>Microsoft.NET.Sdk</c> — its <c>wwwroot/</c> files are not
     /// automatically served as static web assets by the WebAssembly SDK dev server
@@ -364,7 +398,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
     }
 
     /// <summary>
-    /// Copies <c>abies.js</c> and <c>abies-otel.js</c> from the
+    /// Copies <c>abies.js</c>, <c>abies-otel.js</c>, and <c>debugger.js</c> from the
     /// <c>Picea.Abies.Browser/wwwroot/</c> source directory into the scaffolded
     /// project's <c>wwwroot/</c> so that the <c>WasmAppHost</c> dev server can
     /// serve them at the root path (matching the template's <c>index.html</c> refs).
@@ -375,7 +409,7 @@ public sealed partial class TemplateProject : IAsyncDisposable
         var targetWwwroot = Path.Join(projectDir, "wwwroot");
         Directory.CreateDirectory(targetWwwroot);
 
-        foreach (var fileName in new[] { "abies.js", "abies-otel.js" })
+        foreach (var fileName in new[] { "abies.js", "abies-otel.js", "debugger.js" })
         {
             var source = Path.Join(browserWwwroot, fileName);
             if (File.Exists(source))
@@ -392,6 +426,43 @@ public sealed partial class TemplateProject : IAsyncDisposable
         var csprojPath = Path.Join(_projectDir, $"{_projectName}.csproj");
         var content = File.ReadAllText(csprojPath);
         return content.Contains("Sdk.WebAssembly", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Pre-builds all shared repo projects referenced by the templates.
+    /// Only the first concurrent caller actually builds; all subsequent callers
+    /// return immediately once the flag is set.
+    /// </summary>
+    /// <remarks>
+    /// Template projects reference shared repo projects via
+    /// <c>ProjectReference</c> (after <see cref="PatchCsproj"/>). When many
+    /// template builds run in parallel, each tries to compile
+    /// <c>Picea.Abies.dll</c> (and its transitive dependencies). Because .NET
+    /// locks output files while writing, the second build hits CS2012 and fails.
+    /// Pre-building the shared projects once ensures MSBuild marks them
+    /// up-to-date before any template build starts, so subsequent builds skip
+    /// re-compilation entirely and never touch the locked files.
+    /// </remarks>
+    private static async Task EnsureSharedProjectsWarmedAsync(CancellationToken ct)
+    {
+        if (_sharedProjectsWarmed)
+            return;
+
+        await _warmupLock.WaitAsync(ct);
+        try
+        {
+            if (_sharedProjectsWarmed)
+                return;
+
+            foreach (var projectPath in _packageToProjectMap.Values.Distinct())
+                await RunDotnetAsync($"build \"{projectPath}\" -c Debug", _repoRoot, ct);
+
+            _sharedProjectsWarmed = true;
+        }
+        finally
+        {
+            _warmupLock.Release();
+        }
     }
 
     private static int GetRandomPort()

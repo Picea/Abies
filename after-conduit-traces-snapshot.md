@@ -1,0 +1,2219 @@
+- generic [ref=e2]:
+  - generic "Aspire" [ref=e4]:
+    - link "Aspire" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic:
+        - generic:
+          - generic:
+            - img
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - link "Picea.Abies.Conduit" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - generic:
+          - generic: Picea.Abies.Conduit
+      - generic "Aspire repo" [ref=e10]:
+        - link "Aspire repo" [ref=e11] [cursor=pointer]:
+          - /url: https://aka.ms/dotnet/aspire/repo
+          - generic:
+            - generic:
+              - img
+      - generic "Help" [ref=e12] [cursor=pointer]:
+        - button "Help" [ref=e13]:
+          - generic:
+            - generic:
+              - img
+      - generic "MCP Server" [ref=e14] [cursor=pointer]:
+        - button "MCP Server" [ref=e15]:
+          - generic:
+            - generic:
+              - img
+      - generic "Settings" [ref=e16] [cursor=pointer]:
+        - button "Settings" [ref=e17]:
+          - generic:
+            - generic:
+              - img
+  - navigation [ref=e18]:
+    - generic "Resources" [ref=e19]:
+      - link "Resources" [ref=e21] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e22]:
+          - img [ref=e23]
+          - generic [ref=e25]: Resources
+    - generic "Console" [ref=e26]:
+      - link "Console" [ref=e28] [cursor=pointer]:
+        - /url: /consolelogs
+        - generic [ref=e29]:
+          - img [ref=e30]
+          - generic [ref=e32]: Console
+    - generic "Structured" [ref=e33]:
+      - link "Structured" [ref=e35] [cursor=pointer]:
+        - /url: /structuredlogs
+        - generic [ref=e36]:
+          - img [ref=e37]
+          - generic [ref=e39]: Structured
+    - generic "Traces" [ref=e40]:
+      - link "Traces" [ref=e42] [cursor=pointer]:
+        - /url: /traces
+        - generic [ref=e43]:
+          - img [ref=e44]
+          - generic [ref=e46]: Traces
+    - generic "Metrics" [ref=e47]:
+      - link "Metrics" [ref=e49] [cursor=pointer]:
+        - /url: /metrics
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - generic [ref=e53]: Metrics
+  - generic [ref=e55]:
+    - generic [ref=e56]:
+      - img [ref=e58]
+      - generic [ref=e60]:
+        - generic [ref=e61]: Endpoint is unsecured
+        - text: Untrusted apps can send telemetry to the dashboard. Untrusted apps can access sensitive information about the running services.
+        - generic "Link" [ref=e62]:
+          - link "More information" [ref=e63] [cursor=pointer]:
+            - /url: https://aka.ms/aspire/api-endpoint-unsecured
+            - generic:
+              - generic: More information
+      - img [ref=e65] [cursor=pointer]
+    - generic [ref=e67]:
+      - img [ref=e69]
+      - generic [ref=e71]:
+        - generic [ref=e72]: Update now
+        - text: Aspire 13.2.0 is available.
+        - generic "Link" [ref=e73]:
+          - link "Upgrade instructions" [ref=e74] [cursor=pointer]:
+            - /url: https://aka.ms/dotnet/aspire/update-latest
+            - generic:
+              - generic: Upgrade instructions
+      - generic [ref=e75]:
+        - generic "Alert action" [ref=e76] [cursor=pointer]:
+          - button "Alert action" [ref=e77]:
+            - generic:
+              - generic: Ignore
+        - img [ref=e78] [cursor=pointer]
+  - generic [ref=e83]:
+    - banner "Page toolbar" [ref=e84]:
+      - heading "Traces" [level=1] [ref=e85]
+      - toolbar [ref=e86]:
+        - generic [ref=e87]:
+          - generic:
+            - generic [ref=e88]: Resource
+            - combobox "Resource" [ref=e89]:
+              - generic [ref=e91] [cursor=pointer]:
+                - generic [ref=e92]: (All)
+                - img [ref=e95]
+            - generic "Pause incoming data" [ref=e97] [cursor=pointer]:
+              - button "Pause incoming data" [ref=e98]:
+                - generic:
+                  - generic:
+                    - img
+            - generic "Remove data" [ref=e99] [cursor=pointer]:
+              - button "Remove data" [ref=e100]:
+                - generic:
+                  - generic:
+                    - img
+                - generic:
+                  - generic:
+                    - img
+          - generic [ref=e101]:
+            - generic:
+              - generic "Name filter" [ref=e102]:
+                - generic [ref=e103]:
+                  - img [ref=e106]
+                  - generic [ref=e108]:
+                    - searchbox [ref=e109]
+                    - button [ref=e111]:
+                      - img [ref=e113]
+              - generic [ref=e115] [cursor=pointer]: Type
+              - combobox "Select span type" [ref=e116]:
+                - generic [ref=e118] [cursor=pointer]:
+                  - generic [ref=e119]: (All)
+                  - img [ref=e122]
+                - generic: (All)
+                - generic: HTTP
+                - generic: Database
+                - generic: Messaging
+                - generic: RPC
+                - generic: Gen AI
+                - generic: Cloud
+                - generic: (Other)
+              - generic [ref=e124]: No filters
+              - generic "Add filter" [ref=e125] [cursor=pointer]:
+                - button "Add filter" [ref=e126]:
+                  - generic:
+                    - generic:
+                      - img
+    - main [ref=e127]:
+      - table [ref=e129]:
+        - rowgroup [ref=e130]:
+          - row "Timestamp Name Spans Duration Actions" [ref=e131]:
+            - columnheader "Timestamp" [ref=e132]:
+              - generic "Timestamp" [ref=e134] [cursor=pointer]:
+                - button "Timestamp" [ref=e135]:
+                  - generic:
+                    - generic:
+                      - generic "Timestamp"
+            - columnheader "Name" [ref=e138]:
+              - generic "Name" [ref=e140] [cursor=pointer]:
+                - button "Name" [ref=e141]:
+                  - generic:
+                    - generic:
+                      - generic "Name"
+            - columnheader "Spans" [ref=e144]:
+              - generic "Spans" [ref=e146] [cursor=pointer]:
+                - button "Spans" [ref=e147]:
+                  - generic:
+                    - generic:
+                      - generic "Spans"
+            - columnheader "Duration" [ref=e150]:
+              - generic "Duration" [ref=e152] [cursor=pointer]:
+                - button "Duration" [ref=e153]:
+                  - generic:
+                    - generic:
+                      - generic "Duration"
+            - columnheader "Actions" [ref=e156]:
+              - generic "Actions" [ref=e158] [cursor=pointer]:
+                - button "Actions" [ref=e159]:
+                  - generic:
+                    - generic:
+                      - generic "Actions"
+        - rowgroup [ref=e162]:
+          - 'row "3/27/2026 8:23:33.593087 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: d012305d71ca6bdcf58f4240947921bb Picea.Abies.Conduit.Api (2) 439 0.44s Actions" [ref=e163]':
+            - gridcell "3/27/2026 8:23:33.593087 AM" [ref=e164]: 8:23:33.593 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: d012305d71ca6bdcf58f4240947921bb" [ref=e165]':
+              - generic [ref=e166]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: d012305
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e167]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e170]': Picea.Abies.Conduit.Api (2)
+            - gridcell "439 0.44s" [ref=e171]:
+              - generic [ref=e172]:
+                - progressbar "Duration" [ref=e173]:
+                  - img [ref=e174]
+                - generic [ref=e177]: 0.44s
+            - gridcell "Actions" [ref=e178]:
+              - generic "Actions" [ref=e180] [cursor=pointer]:
+                - button "Actions" [ref=e181]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:23:34.077003 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 2ba4bac18f51850ba786e157b8363f5b Picea.Abies.Conduit.Api (2) 4 4.52ms Actions" [ref=e182]':
+            - gridcell "3/27/2026 8:23:34.077003 AM" [ref=e183]: 8:23:34.077 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 2ba4bac18f51850ba786e157b8363f5b" [ref=e184]':
+              - generic [ref=e185]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 2ba4bac
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e186]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e189]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.52ms" [ref=e190]:
+              - generic [ref=e191]:
+                - progressbar "Duration" [ref=e192]:
+                  - img [ref=e193]
+                - generic [ref=e196]: 4.52ms
+            - gridcell "Actions" [ref=e197]:
+              - generic "Actions" [ref=e199] [cursor=pointer]:
+                - button "Actions" [ref=e200]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:23:34.093116 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 3bb1a8aeb715c6e5daaf4121fc47c7b8 Picea.Abies.Conduit.Api (2) 4 4.83ms Actions" [ref=e201]':
+            - gridcell "3/27/2026 8:23:34.093116 AM" [ref=e202]: 8:23:34.093 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 3bb1a8aeb715c6e5daaf4121fc47c7b8" [ref=e203]':
+              - generic [ref=e204]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 3bb1a8a
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e205]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e208]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.83ms" [ref=e209]:
+              - generic [ref=e210]:
+                - progressbar "Duration" [ref=e211]:
+                  - img [ref=e212]
+                - generic [ref=e215]: 4.83ms
+            - gridcell "Actions" [ref=e216]:
+              - generic "Actions" [ref=e218] [cursor=pointer]:
+                - button "Actions" [ref=e219]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:23:34.100834 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1da926b674dee10071bb0201b966c5ee Picea.Abies.Conduit.Api (2) 1 1.41ms Actions" [ref=e220]':
+            - gridcell "3/27/2026 8:23:34.100834 AM" [ref=e221]: 8:23:34.100 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1da926b674dee10071bb0201b966c5ee" [ref=e222]':
+              - generic [ref=e223]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 1da926b
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e224]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e227]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.41ms" [ref=e228]:
+              - generic [ref=e229]:
+                - progressbar "Duration" [ref=e230]:
+                  - img [ref=e231]
+                - generic [ref=e234]: 1.41ms
+            - gridcell "Actions" [ref=e235]:
+              - generic "Actions" [ref=e237] [cursor=pointer]:
+                - button "Actions" [ref=e238]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:00.669048 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 1bbc5aa0d3a89458ac9f93e12bb7bc67 Picea.Abies.Conduit.Api (2) 2 2.65ms Actions" [ref=e239]':
+            - gridcell "3/27/2026 8:24:00.669048 AM" [ref=e240]: 8:24:00.669 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 1bbc5aa0d3a89458ac9f93e12bb7bc67" [ref=e241]':
+              - generic [ref=e242]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 1bbc5aa
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e243]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e246]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.65ms" [ref=e247]:
+              - generic [ref=e248]:
+                - progressbar "Duration" [ref=e249]:
+                  - img [ref=e250]
+                - generic [ref=e253]: 2.65ms
+            - gridcell "Actions" [ref=e254]:
+              - generic "Actions" [ref=e256] [cursor=pointer]:
+                - button "Actions" [ref=e257]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:00.709907 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 06730bc855641a455c3775e612c5c41b Picea.Abies.Conduit.Api (2) 1 1.22ms Actions" [ref=e258]':
+            - gridcell "3/27/2026 8:24:00.709907 AM" [ref=e259]: 8:24:00.709 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 06730bc855641a455c3775e612c5c41b" [ref=e260]':
+              - generic [ref=e261]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 06730bc
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e262]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e265]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.22ms" [ref=e266]:
+              - generic [ref=e267]:
+                - progressbar "Duration" [ref=e268]:
+                  - img [ref=e269]
+                - generic [ref=e272]: 1.22ms
+            - gridcell "Actions" [ref=e273]:
+              - generic "Actions" [ref=e275] [cursor=pointer]:
+                - button "Actions" [ref=e276]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:00.722536 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a003a428d2c551f0cb648570fac16675 Picea.Abies.Conduit.Api (2) 2 2.14ms Actions" [ref=e277]':
+            - gridcell "3/27/2026 8:24:00.722536 AM" [ref=e278]: 8:24:00.722 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a003a428d2c551f0cb648570fac16675" [ref=e279]':
+              - generic [ref=e280]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: a003a42
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e281]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e284]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.14ms" [ref=e285]:
+              - generic [ref=e286]:
+                - progressbar "Duration" [ref=e287]:
+                  - img [ref=e288]
+                - generic [ref=e291]: 2.14ms
+            - gridcell "Actions" [ref=e292]:
+              - generic "Actions" [ref=e294] [cursor=pointer]:
+                - button "Actions" [ref=e295]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:00.728109 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 12c02b04ac598c94024c8cacc18db478 Picea.Abies.Conduit.Api (2) 1 1.17ms Actions" [ref=e296]':
+            - gridcell "3/27/2026 8:24:00.728109 AM" [ref=e297]: 8:24:00.728 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 12c02b04ac598c94024c8cacc18db478" [ref=e298]':
+              - generic [ref=e299]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 12c02b0
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e300]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e303]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.17ms" [ref=e304]:
+              - generic [ref=e305]:
+                - progressbar "Duration" [ref=e306]:
+                  - img [ref=e307]
+                - generic [ref=e310]: 1.17ms
+            - gridcell "Actions" [ref=e311]:
+              - generic "Actions" [ref=e313] [cursor=pointer]:
+                - button "Actions" [ref=e314]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:02.78137 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 7444ae0a103bab426b6fece4b034fb0c Picea.Abies.Conduit.Api (2) 2 2.54ms Actions" [ref=e315]':
+            - gridcell "3/27/2026 8:24:02.78137 AM" [ref=e316]: 8:24:02.781 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 7444ae0a103bab426b6fece4b034fb0c" [ref=e317]':
+              - generic [ref=e318]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 7444ae0
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e319]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e322]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.54ms" [ref=e323]:
+              - generic [ref=e324]:
+                - progressbar "Duration" [ref=e325]:
+                  - img [ref=e326]
+                - generic [ref=e329]: 2.54ms
+            - gridcell "Actions" [ref=e330]:
+              - generic "Actions" [ref=e332] [cursor=pointer]:
+                - button "Actions" [ref=e333]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:02.787224 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3ed452fd67fcad97fe92f6f8b91cd705 Picea.Abies.Conduit.Api (2) 1 1.31ms Actions" [ref=e334]':
+            - gridcell "3/27/2026 8:24:02.787224 AM" [ref=e335]: 8:24:02.787 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3ed452fd67fcad97fe92f6f8b91cd705" [ref=e336]':
+              - generic [ref=e337]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 3ed452f
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e338]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e341]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.31ms" [ref=e342]:
+              - generic [ref=e343]:
+                - progressbar "Duration" [ref=e344]:
+                  - img [ref=e345]
+                - generic [ref=e348]: 1.31ms
+            - gridcell "Actions" [ref=e349]:
+              - generic "Actions" [ref=e351] [cursor=pointer]:
+                - button "Actions" [ref=e352]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:16.938253 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: f0ab5a45f0622dd2af3d64535f73aa54 Picea.Abies.Conduit.Api (2) 3 3.68ms Actions" [ref=e353]':
+            - gridcell "3/27/2026 8:24:16.938253 AM" [ref=e354]: 8:24:16.938 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: f0ab5a45f0622dd2af3d64535f73aa54" [ref=e355]':
+              - generic [ref=e356]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: f0ab5a4
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e357]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e360]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.68ms" [ref=e361]:
+              - generic [ref=e362]:
+                - progressbar "Duration" [ref=e363]:
+                  - img [ref=e364]
+                - generic [ref=e367]: 3.68ms
+            - gridcell "Actions" [ref=e368]:
+              - generic "Actions" [ref=e370] [cursor=pointer]:
+                - button "Actions" [ref=e371]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:16.973398 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 6e32e38fe5ff84bf4ac39c49a1af97a9 Picea.Abies.Conduit.Api (2) 1 1.54ms Actions" [ref=e372]':
+            - gridcell "3/27/2026 8:24:16.973398 AM" [ref=e373]: 8:24:16.973 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 6e32e38fe5ff84bf4ac39c49a1af97a9" [ref=e374]':
+              - generic [ref=e375]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 6e32e38
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e376]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e379]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.54ms" [ref=e380]:
+              - generic [ref=e381]:
+                - progressbar "Duration" [ref=e382]:
+                  - img [ref=e383]
+                - generic [ref=e386]: 1.54ms
+            - gridcell "Actions" [ref=e387]:
+              - generic "Actions" [ref=e389] [cursor=pointer]:
+                - button "Actions" [ref=e390]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:16.985008 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 99d9484cb889aa89c04acd3916e17073 Picea.Abies.Conduit.Api (2) 4 4.23ms Actions" [ref=e391]':
+            - gridcell "3/27/2026 8:24:16.985008 AM" [ref=e392]: 8:24:16.985 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 99d9484cb889aa89c04acd3916e17073" [ref=e393]':
+              - generic [ref=e394]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 99d9484
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e395]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e398]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.23ms" [ref=e399]:
+              - generic [ref=e400]:
+                - progressbar "Duration" [ref=e401]:
+                  - img [ref=e402]
+                - generic [ref=e405]: 4.23ms
+            - gridcell "Actions" [ref=e406]:
+              - generic "Actions" [ref=e408] [cursor=pointer]:
+                - button "Actions" [ref=e409]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:16.992075 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 522f744c5bf36fe91450454ab6febd41 Picea.Abies.Conduit.Api (2) 1 1.27ms Actions" [ref=e410]':
+            - gridcell "3/27/2026 8:24:16.992075 AM" [ref=e411]: 8:24:16.992 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 522f744c5bf36fe91450454ab6febd41" [ref=e412]':
+              - generic [ref=e413]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 522f744
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e414]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e417]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.27ms" [ref=e418]:
+              - generic [ref=e419]:
+                - progressbar "Duration" [ref=e420]:
+                  - img [ref=e421]
+                - generic [ref=e424]: 1.27ms
+            - gridcell "Actions" [ref=e425]:
+              - generic "Actions" [ref=e427] [cursor=pointer]:
+                - button "Actions" [ref=e428]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:40.183646 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: e3694cf13fcec26347c8af6f21ed0895 Picea.Abies.Conduit.Api (2) 4 4.01ms Actions" [ref=e429]':
+            - gridcell "3/27/2026 8:24:40.183646 AM" [ref=e430]: 8:24:40.183 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: e3694cf13fcec26347c8af6f21ed0895" [ref=e431]':
+              - generic [ref=e432]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: e3694cf
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e433]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e436]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.01ms" [ref=e437]:
+              - generic [ref=e438]:
+                - progressbar "Duration" [ref=e439]:
+                  - img [ref=e440]
+                - generic [ref=e443]: 4.01ms
+            - gridcell "Actions" [ref=e444]:
+              - generic "Actions" [ref=e446] [cursor=pointer]:
+                - button "Actions" [ref=e447]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:40.221045 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 571661797ff3a57fa2b9ced25e8b5be7 Picea.Abies.Conduit.Api (2) 2 2.19ms Actions" [ref=e448]':
+            - gridcell "3/27/2026 8:24:40.221045 AM" [ref=e449]: 8:24:40.221 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 571661797ff3a57fa2b9ced25e8b5be7" [ref=e450]':
+              - generic [ref=e451]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: "5716617"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e452]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e455]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.19ms" [ref=e456]:
+              - generic [ref=e457]:
+                - progressbar "Duration" [ref=e458]:
+                  - img [ref=e459]
+                - generic [ref=e462]: 2.19ms
+            - gridcell "Actions" [ref=e463]:
+              - generic "Actions" [ref=e465] [cursor=pointer]:
+                - button "Actions" [ref=e466]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:40.233427 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 9791ead8f9d0add0bac5f904fe3b5246 Picea.Abies.Conduit.Api (2) 3 3.34ms Actions" [ref=e467]':
+            - gridcell "3/27/2026 8:24:40.233427 AM" [ref=e468]: 8:24:40.233 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 9791ead8f9d0add0bac5f904fe3b5246" [ref=e469]':
+              - generic [ref=e470]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 9791ead
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e471]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e474]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.34ms" [ref=e475]:
+              - generic [ref=e476]:
+                - progressbar "Duration" [ref=e477]:
+                  - img [ref=e478]
+                - generic [ref=e481]: 3.34ms
+            - gridcell "Actions" [ref=e482]:
+              - generic "Actions" [ref=e484] [cursor=pointer]:
+                - button "Actions" [ref=e485]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:40.239985 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: cb2db0fb542587fe7c1f9f0811efdd3e Picea.Abies.Conduit.Api (2) 1 1.27ms Actions" [ref=e486]':
+            - gridcell "3/27/2026 8:24:40.239985 AM" [ref=e487]: 8:24:40.239 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: cb2db0fb542587fe7c1f9f0811efdd3e" [ref=e488]':
+              - generic [ref=e489]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: cb2db0f
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e490]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e493]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.27ms" [ref=e494]:
+              - generic [ref=e495]:
+                - progressbar "Duration" [ref=e496]:
+                  - img [ref=e497]
+                - generic [ref=e500]: 1.27ms
+            - gridcell "Actions" [ref=e501]:
+              - generic "Actions" [ref=e503] [cursor=pointer]:
+                - button "Actions" [ref=e504]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:55.838191 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 73463e779ba7ac169d49c9f93ad65d55 Picea.Abies.Conduit.Api (2) 3 3.95ms Actions" [ref=e505]':
+            - gridcell "3/27/2026 8:24:55.838191 AM" [ref=e506]: 8:24:55.838 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 73463e779ba7ac169d49c9f93ad65d55" [ref=e507]':
+              - generic [ref=e508]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: "73463e7"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e509]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e512]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.95ms" [ref=e513]:
+              - generic [ref=e514]:
+                - progressbar "Duration" [ref=e515]:
+                  - img [ref=e516]
+                - generic [ref=e519]: 3.95ms
+            - gridcell "Actions" [ref=e520]:
+              - generic "Actions" [ref=e522] [cursor=pointer]:
+                - button "Actions" [ref=e523]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:55.874312 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3d8c5a027495b917dff3aebb39e79a4c Picea.Abies.Conduit.Api (2) 1 1.88ms Actions" [ref=e524]':
+            - gridcell "3/27/2026 8:24:55.874312 AM" [ref=e525]: 8:24:55.874 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3d8c5a027495b917dff3aebb39e79a4c" [ref=e526]':
+              - generic [ref=e527]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 3d8c5a0
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e528]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e531]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.88ms" [ref=e532]:
+              - generic [ref=e533]:
+                - progressbar "Duration" [ref=e534]:
+                  - img [ref=e535]
+                - generic [ref=e538]: 1.88ms
+            - gridcell "Actions" [ref=e539]:
+              - generic "Actions" [ref=e541] [cursor=pointer]:
+                - button "Actions" [ref=e542]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:55.885471 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 4e4161421e6931e06d5e4938fe2d371d Picea.Abies.Conduit.Api (2) 3 3.81ms Actions" [ref=e543]':
+            - gridcell "3/27/2026 8:24:55.885471 AM" [ref=e544]: 8:24:55.885 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 4e4161421e6931e06d5e4938fe2d371d" [ref=e545]':
+              - generic [ref=e546]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: "4e41614"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e547]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e550]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.81ms" [ref=e551]:
+              - generic [ref=e552]:
+                - progressbar "Duration" [ref=e553]:
+                  - img [ref=e554]
+                - generic [ref=e557]: 3.81ms
+            - gridcell "Actions" [ref=e558]:
+              - generic "Actions" [ref=e560] [cursor=pointer]:
+                - button "Actions" [ref=e561]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:24:55.892127 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a761330eaf5491d3e25e39fe433e3d9a Picea.Abies.Conduit.Api (2) 2 2.29ms Actions" [ref=e562]':
+            - gridcell "3/27/2026 8:24:55.892127 AM" [ref=e563]: 8:24:55.892 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a761330eaf5491d3e25e39fe433e3d9a" [ref=e564]':
+              - generic [ref=e565]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: a761330
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e566]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e569]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.29ms" [ref=e570]:
+              - generic [ref=e571]:
+                - progressbar "Duration" [ref=e572]:
+                  - img [ref=e573]
+                - generic [ref=e576]: 2.29ms
+            - gridcell "Actions" [ref=e577]:
+              - generic "Actions" [ref=e579] [cursor=pointer]:
+                - button "Actions" [ref=e580]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:13.021307 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: af85f301671496b9a655e17579485a31 Picea.Abies.Conduit.Api (2) 5 5.57ms Actions" [ref=e581]':
+            - gridcell "3/27/2026 8:25:13.021307 AM" [ref=e582]: 8:25:13.021 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: af85f301671496b9a655e17579485a31" [ref=e583]':
+              - generic [ref=e584]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: af85f30
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e585]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e588]': Picea.Abies.Conduit.Api (2)
+            - gridcell "5 5.57ms" [ref=e589]:
+              - generic [ref=e590]:
+                - progressbar "Duration" [ref=e591]:
+                  - img [ref=e592]
+                - generic [ref=e595]: 5.57ms
+            - gridcell "Actions" [ref=e596]:
+              - generic "Actions" [ref=e598] [cursor=pointer]:
+                - button "Actions" [ref=e599]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:13.057959 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 14510267163a82d979c6397df8cc29e6 Picea.Abies.Conduit.Api (2) 2 2.49ms Actions" [ref=e600]':
+            - gridcell "3/27/2026 8:25:13.057959 AM" [ref=e601]: 8:25:13.057 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 14510267163a82d979c6397df8cc29e6" [ref=e602]':
+              - generic [ref=e603]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: "1451026"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e604]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e607]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.49ms" [ref=e608]:
+              - generic [ref=e609]:
+                - progressbar "Duration" [ref=e610]:
+                  - img [ref=e611]
+                - generic [ref=e614]: 2.49ms
+            - gridcell "Actions" [ref=e615]:
+              - generic "Actions" [ref=e617] [cursor=pointer]:
+                - button "Actions" [ref=e618]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:13.070465 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 86b07c7c9863dea772bf6b5083961fae Picea.Abies.Conduit.Api (2) 3 3.86ms Actions" [ref=e619]':
+            - gridcell "3/27/2026 8:25:13.070465 AM" [ref=e620]: 8:25:13.070 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 86b07c7c9863dea772bf6b5083961fae" [ref=e621]':
+              - generic [ref=e622]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 86b07c7
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e623]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e626]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.86ms" [ref=e627]:
+              - generic [ref=e628]:
+                - progressbar "Duration" [ref=e629]:
+                  - img [ref=e630]
+                - generic [ref=e633]: 3.86ms
+            - gridcell "Actions" [ref=e634]:
+              - generic "Actions" [ref=e636] [cursor=pointer]:
+                - button "Actions" [ref=e637]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:13.086785 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 12dadbda71b9e79a9db1b3bdfa41274e Picea.Abies.Conduit.Api (2) 1 1.57ms Actions" [ref=e638]':
+            - gridcell "3/27/2026 8:25:13.086785 AM" [ref=e639]: 8:25:13.086 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 12dadbda71b9e79a9db1b3bdfa41274e" [ref=e640]':
+              - generic [ref=e641]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 12dadbd
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e642]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e645]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.57ms" [ref=e646]:
+              - generic [ref=e647]:
+                - progressbar "Duration" [ref=e648]:
+                  - img [ref=e649]
+                - generic [ref=e652]: 1.57ms
+            - gridcell "Actions" [ref=e653]:
+              - generic "Actions" [ref=e655] [cursor=pointer]:
+                - button "Actions" [ref=e656]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:39.580994 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: aa51ec42cbba2155820621fd12759f82 Picea.Abies.Conduit.Api (2) 15 15.95ms Actions" [ref=e657]':
+            - gridcell "3/27/2026 8:25:39.580994 AM" [ref=e658]: 8:25:39.580 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: aa51ec42cbba2155820621fd12759f82" [ref=e659]':
+              - generic [ref=e660]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: aa51ec4
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e661]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e664]': Picea.Abies.Conduit.Api (2)
+            - gridcell "15 15.95ms" [ref=e665]:
+              - generic [ref=e666]:
+                - progressbar "Duration" [ref=e667]:
+                  - img [ref=e668]
+                - generic [ref=e671]: 15.95ms
+            - gridcell "Actions" [ref=e672]:
+              - generic "Actions" [ref=e674] [cursor=pointer]:
+                - button "Actions" [ref=e675]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:39.624276 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3835c03dfdf217bf5ae42cce3134e7f9 Picea.Abies.Conduit.Api (2) 1 1.36ms Actions" [ref=e676]':
+            - gridcell "3/27/2026 8:25:39.624276 AM" [ref=e677]: 8:25:39.624 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3835c03dfdf217bf5ae42cce3134e7f9" [ref=e678]':
+              - generic [ref=e679]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 3835c03
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e680]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e683]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.36ms" [ref=e684]:
+              - generic [ref=e685]:
+                - progressbar "Duration" [ref=e686]:
+                  - img [ref=e687]
+                - generic [ref=e690]: 1.36ms
+            - gridcell "Actions" [ref=e691]:
+              - generic "Actions" [ref=e693] [cursor=pointer]:
+                - button "Actions" [ref=e694]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:39.634729 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 61b9d4aef3520b4bc40ebb2ed9292cdc Picea.Abies.Conduit.Api (2) 2 2.63ms Actions" [ref=e695]':
+            - gridcell "3/27/2026 8:25:39.634729 AM" [ref=e696]: 8:25:39.634 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 61b9d4aef3520b4bc40ebb2ed9292cdc" [ref=e697]':
+              - generic [ref=e698]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 61b9d4a
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e699]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e702]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.63ms" [ref=e703]:
+              - generic [ref=e704]:
+                - progressbar "Duration" [ref=e705]:
+                  - img [ref=e706]
+                - generic [ref=e709]: 2.63ms
+            - gridcell "Actions" [ref=e710]:
+              - generic "Actions" [ref=e712] [cursor=pointer]:
+                - button "Actions" [ref=e713]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:39.639813 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a0441c5106888495b49d7f93edb6ce6b Picea.Abies.Conduit.Api (2) 0 0.87ms Actions" [ref=e714]':
+            - gridcell "3/27/2026 8:25:39.639813 AM" [ref=e715]: 8:25:39.639 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a0441c5106888495b49d7f93edb6ce6b" [ref=e716]':
+              - generic [ref=e717]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: a0441c5
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e718]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e721]': Picea.Abies.Conduit.Api (2)
+            - gridcell "0 0.87ms" [ref=e722]:
+              - generic [ref=e723]:
+                - progressbar "Duration" [ref=e724]:
+                  - img [ref=e725]
+                - generic [ref=e728]: 0.87ms
+            - gridcell "Actions" [ref=e729]:
+              - generic "Actions" [ref=e731] [cursor=pointer]:
+                - button "Actions" [ref=e732]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:55.654401 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6031304e55207a0654eaf42a8480122f Picea.Abies.Conduit.Api (2) 6 6.01ms Actions" [ref=e733]':
+            - gridcell "3/27/2026 8:25:55.654401 AM" [ref=e734]: 8:25:55.654 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6031304e55207a0654eaf42a8480122f" [ref=e735]':
+              - generic [ref=e736]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: "6031304"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e737]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e740]': Picea.Abies.Conduit.Api (2)
+            - gridcell "6 6.01ms" [ref=e741]:
+              - generic [ref=e742]:
+                - progressbar "Duration" [ref=e743]:
+                  - img [ref=e744]
+                - generic [ref=e747]: 6.01ms
+            - gridcell "Actions" [ref=e748]:
+              - generic "Actions" [ref=e750] [cursor=pointer]:
+                - button "Actions" [ref=e751]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:55.695947 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: fa7e11b14ad28d0aba655205256b702f Picea.Abies.Conduit.Api (2) 1 1.76ms Actions" [ref=e752]':
+            - gridcell "3/27/2026 8:25:55.695947 AM" [ref=e753]: 8:25:55.695 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: fa7e11b14ad28d0aba655205256b702f" [ref=e754]':
+              - generic [ref=e755]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: fa7e11b
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e756]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e759]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.76ms" [ref=e760]:
+              - generic [ref=e761]:
+                - progressbar "Duration" [ref=e762]:
+                  - img [ref=e763]
+                - generic [ref=e766]: 1.76ms
+            - gridcell "Actions" [ref=e767]:
+              - generic "Actions" [ref=e769] [cursor=pointer]:
+                - button "Actions" [ref=e770]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:55.710175 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a46dbac9d77731c7b06ef2b563ef5871 Picea.Abies.Conduit.Api (2) 4 4.67ms Actions" [ref=e771]':
+            - gridcell "3/27/2026 8:25:55.710175 AM" [ref=e772]: 8:25:55.710 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a46dbac9d77731c7b06ef2b563ef5871" [ref=e773]':
+              - generic [ref=e774]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: a46dbac
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e775]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e778]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.67ms" [ref=e779]:
+              - generic [ref=e780]:
+                - progressbar "Duration" [ref=e781]:
+                  - img [ref=e782]
+                - generic [ref=e785]: 4.67ms
+            - gridcell "Actions" [ref=e786]:
+              - generic "Actions" [ref=e788] [cursor=pointer]:
+                - button "Actions" [ref=e789]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:25:55.718886 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: f933f1ab3195358555c1642d81a74692 Picea.Abies.Conduit.Api (2) 1 1.89ms Actions" [ref=e790]':
+            - gridcell "3/27/2026 8:25:55.718886 AM" [ref=e791]: 8:25:55.718 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: f933f1ab3195358555c1642d81a74692" [ref=e792]':
+              - generic [ref=e793]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: f933f1a
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e794]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e797]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.89ms" [ref=e798]:
+              - generic [ref=e799]:
+                - progressbar "Duration" [ref=e800]:
+                  - img [ref=e801]
+                - generic [ref=e804]: 1.89ms
+            - gridcell "Actions" [ref=e805]:
+              - generic "Actions" [ref=e807] [cursor=pointer]:
+                - button "Actions" [ref=e808]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:14.804099 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: ba3dfe56e7a129d94437eb4b4c139568 Picea.Abies.Conduit.Api (2) 3 3.45ms Actions" [ref=e809]':
+            - gridcell "3/27/2026 8:26:14.804099 AM" [ref=e810]: 8:26:14.804 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: ba3dfe56e7a129d94437eb4b4c139568" [ref=e811]':
+              - generic [ref=e812]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: ba3dfe5
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e813]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e816]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.45ms" [ref=e817]:
+              - generic [ref=e818]:
+                - progressbar "Duration" [ref=e819]:
+                  - img [ref=e820]
+                - generic [ref=e823]: 3.45ms
+            - gridcell "Actions" [ref=e824]:
+              - generic "Actions" [ref=e826] [cursor=pointer]:
+                - button "Actions" [ref=e827]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:14.839649 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: f4944f80a031219cae5a835b981d5d9d Picea.Abies.Conduit.Api (2) 2 2.82ms Actions" [ref=e828]':
+            - gridcell "3/27/2026 8:26:14.839649 AM" [ref=e829]: 8:26:14.839 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: f4944f80a031219cae5a835b981d5d9d" [ref=e830]':
+              - generic [ref=e831]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: f4944f8
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e832]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e835]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.82ms" [ref=e836]:
+              - generic [ref=e837]:
+                - progressbar "Duration" [ref=e838]:
+                  - img [ref=e839]
+                - generic [ref=e842]: 2.82ms
+            - gridcell "Actions" [ref=e843]:
+              - generic "Actions" [ref=e845] [cursor=pointer]:
+                - button "Actions" [ref=e846]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:14.852712 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: f39e785357f6978829ebdaff6a358146 Picea.Abies.Conduit.Api (2) 4 4.35ms Actions" [ref=e847]':
+            - gridcell "3/27/2026 8:26:14.852712 AM" [ref=e848]: 8:26:14.852 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: f39e785357f6978829ebdaff6a358146" [ref=e849]':
+              - generic [ref=e850]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: f39e785
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e851]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e854]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.35ms" [ref=e855]:
+              - generic [ref=e856]:
+                - progressbar "Duration" [ref=e857]:
+                  - img [ref=e858]
+                - generic [ref=e861]: 4.35ms
+            - gridcell "Actions" [ref=e862]:
+              - generic "Actions" [ref=e864] [cursor=pointer]:
+                - button "Actions" [ref=e865]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:14.85994 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: ed8576e172e48a7f86f5a93e7da55c72 Picea.Abies.Conduit.Api (2) 1 1.98ms Actions" [ref=e866]':
+            - gridcell "3/27/2026 8:26:14.85994 AM" [ref=e867]: 8:26:14.859 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: ed8576e172e48a7f86f5a93e7da55c72" [ref=e868]':
+              - generic [ref=e869]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: ed8576e
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e870]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e873]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.98ms" [ref=e874]:
+              - generic [ref=e875]:
+                - progressbar "Duration" [ref=e876]:
+                  - img [ref=e877]
+                - generic [ref=e880]: 1.98ms
+            - gridcell "Actions" [ref=e881]:
+              - generic "Actions" [ref=e883] [cursor=pointer]:
+                - button "Actions" [ref=e884]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:38.466598 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 4a70eb7d26dc7f8a4de3cad28668a04d Picea.Abies.Conduit.Api (2) 2 2.07ms Actions" [ref=e885]':
+            - gridcell "3/27/2026 8:26:38.466598 AM" [ref=e886]: 8:26:38.466 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 4a70eb7d26dc7f8a4de3cad28668a04d" [ref=e887]':
+              - generic [ref=e888]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 4a70eb7
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e889]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e892]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.07ms" [ref=e893]:
+              - generic [ref=e894]:
+                - progressbar "Duration" [ref=e895]:
+                  - img [ref=e896]
+                - generic [ref=e899]: 2.07ms
+            - gridcell "Actions" [ref=e900]:
+              - generic "Actions" [ref=e902] [cursor=pointer]:
+                - button "Actions" [ref=e903]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:38.500925 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3ce0a23090730eebd67c3dc9d493ff9a Picea.Abies.Conduit.Api (2) 1 1.22ms Actions" [ref=e904]':
+            - gridcell "3/27/2026 8:26:38.500925 AM" [ref=e905]: 8:26:38.500 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3ce0a23090730eebd67c3dc9d493ff9a" [ref=e906]':
+              - generic [ref=e907]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 3ce0a23
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e908]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e911]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.22ms" [ref=e912]:
+              - generic [ref=e913]:
+                - progressbar "Duration" [ref=e914]:
+                  - img [ref=e915]
+                - generic [ref=e918]: 1.22ms
+            - gridcell "Actions" [ref=e919]:
+              - generic "Actions" [ref=e921] [cursor=pointer]:
+                - button "Actions" [ref=e922]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:38.511884 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 58ee10f230d80f49436aed9c25c3357a Picea.Abies.Conduit.Api (2) 2 2.06ms Actions" [ref=e923]':
+            - gridcell "3/27/2026 8:26:38.511884 AM" [ref=e924]: 8:26:38.511 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 58ee10f230d80f49436aed9c25c3357a" [ref=e925]':
+              - generic [ref=e926]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 58ee10f
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e927]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e930]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.06ms" [ref=e931]:
+              - generic [ref=e932]:
+                - progressbar "Duration" [ref=e933]:
+                  - img [ref=e934]
+                - generic [ref=e937]: 2.06ms
+            - gridcell "Actions" [ref=e938]:
+              - generic "Actions" [ref=e940] [cursor=pointer]:
+                - button "Actions" [ref=e941]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:26:38.516638 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 157f997169d5c0a3f0fe930280eb5aa6 Picea.Abies.Conduit.Api (2) 0 0.84ms Actions" [ref=e942]':
+            - gridcell "3/27/2026 8:26:38.516638 AM" [ref=e943]: 8:26:38.516 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 157f997169d5c0a3f0fe930280eb5aa6" [ref=e944]':
+              - generic [ref=e945]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 157f997
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e946]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e949]': Picea.Abies.Conduit.Api (2)
+            - gridcell "0 0.84ms" [ref=e950]:
+              - generic [ref=e951]:
+                - progressbar "Duration" [ref=e952]:
+                  - img [ref=e953]
+                - generic [ref=e956]: 0.84ms
+            - gridcell "Actions" [ref=e957]:
+              - generic "Actions" [ref=e959] [cursor=pointer]:
+                - button "Actions" [ref=e960]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:24.424997 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 903949fa767cf077ec3266c384968de0 Picea.Abies.Conduit.Api (2) 4 4.4ms Actions" [ref=e961]':
+            - gridcell "3/27/2026 8:27:24.424997 AM" [ref=e962]: 8:27:24.424 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 903949fa767cf077ec3266c384968de0" [ref=e963]':
+              - generic [ref=e964]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 903949f
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e965]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e968]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.4ms" [ref=e969]:
+              - generic [ref=e970]:
+                - progressbar "Duration" [ref=e971]:
+                  - img [ref=e972]
+                - generic [ref=e975]: 4.4ms
+            - gridcell "Actions" [ref=e976]:
+              - generic "Actions" [ref=e978] [cursor=pointer]:
+                - button "Actions" [ref=e979]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:24.460289 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 458f5b559f4ceba8d190c1b7a2a6b3fa Picea.Abies.Conduit.Api (2) 1 1.67ms Actions" [ref=e980]':
+            - gridcell "3/27/2026 8:27:24.460289 AM" [ref=e981]: 8:27:24.460 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 458f5b559f4ceba8d190c1b7a2a6b3fa" [ref=e982]':
+              - generic [ref=e983]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 458f5b5
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e984]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e987]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.67ms" [ref=e988]:
+              - generic [ref=e989]:
+                - progressbar "Duration" [ref=e990]:
+                  - img [ref=e991]
+                - generic [ref=e994]: 1.67ms
+            - gridcell "Actions" [ref=e995]:
+              - generic "Actions" [ref=e997] [cursor=pointer]:
+                - button "Actions" [ref=e998]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:24.471838 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a0a892d6fa63443fec20c0eb77474913 Picea.Abies.Conduit.Api (2) 3 3.7ms Actions" [ref=e999]':
+            - gridcell "3/27/2026 8:27:24.471838 AM" [ref=e1000]: 8:27:24.471 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: a0a892d6fa63443fec20c0eb77474913" [ref=e1001]':
+              - generic [ref=e1002]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: a0a892d
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1003]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1006]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.7ms" [ref=e1007]:
+              - generic [ref=e1008]:
+                - progressbar "Duration" [ref=e1009]:
+                  - img [ref=e1010]
+                - generic [ref=e1013]: 3.7ms
+            - gridcell "Actions" [ref=e1014]:
+              - generic "Actions" [ref=e1016] [cursor=pointer]:
+                - button "Actions" [ref=e1017]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:24.478417 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 02406c058544de12436c4ded8e931b99 Picea.Abies.Conduit.Api (2) 1 1.27ms Actions" [ref=e1018]':
+            - gridcell "3/27/2026 8:27:24.478417 AM" [ref=e1019]: 8:27:24.478 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 02406c058544de12436c4ded8e931b99" [ref=e1020]':
+              - generic [ref=e1021]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 02406c0
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1022]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1025]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.27ms" [ref=e1026]:
+              - generic [ref=e1027]:
+                - progressbar "Duration" [ref=e1028]:
+                  - img [ref=e1029]
+                - generic [ref=e1032]: 1.27ms
+            - gridcell "Actions" [ref=e1033]:
+              - generic "Actions" [ref=e1035] [cursor=pointer]:
+                - button "Actions" [ref=e1036]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:44.220792 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 15a9f5a6030a3d2f53263ae865d6d6b2 Picea.Abies.Conduit.Api (2) 6 6.94ms Actions" [ref=e1037]':
+            - gridcell "3/27/2026 8:27:44.220792 AM" [ref=e1038]: 8:27:44.220 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 15a9f5a6030a3d2f53263ae865d6d6b2" [ref=e1039]':
+              - generic [ref=e1040]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 15a9f5a
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1041]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1044]': Picea.Abies.Conduit.Api (2)
+            - gridcell "6 6.94ms" [ref=e1045]:
+              - generic [ref=e1046]:
+                - progressbar "Duration" [ref=e1047]:
+                  - img [ref=e1048]
+                - generic [ref=e1051]: 6.94ms
+            - gridcell "Actions" [ref=e1052]:
+              - generic "Actions" [ref=e1054] [cursor=pointer]:
+                - button "Actions" [ref=e1055]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:44.257358 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 5837ee31523c1235e52b89f6f5c3d723 Picea.Abies.Conduit.Api (2) 3 3.7ms Actions" [ref=e1056]':
+            - gridcell "3/27/2026 8:27:44.257358 AM" [ref=e1057]: 8:27:44.257 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 5837ee31523c1235e52b89f6f5c3d723" [ref=e1058]':
+              - generic [ref=e1059]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 5837ee3
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1060]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1063]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.7ms" [ref=e1064]:
+              - generic [ref=e1065]:
+                - progressbar "Duration" [ref=e1066]:
+                  - img [ref=e1067]
+                - generic [ref=e1070]: 3.7ms
+            - gridcell "Actions" [ref=e1071]:
+              - generic "Actions" [ref=e1073] [cursor=pointer]:
+                - button "Actions" [ref=e1074]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:44.277674 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6c63400fef61d5720eab6cf0a539d17a Picea.Abies.Conduit.Api (2) 3 3.19ms Actions" [ref=e1075]':
+            - gridcell "3/27/2026 8:27:44.277674 AM" [ref=e1076]: 8:27:44.277 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6c63400fef61d5720eab6cf0a539d17a" [ref=e1077]':
+              - generic [ref=e1078]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 6c63400
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1079]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1082]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.19ms" [ref=e1083]:
+              - generic [ref=e1084]:
+                - progressbar "Duration" [ref=e1085]:
+                  - img [ref=e1086]
+                - generic [ref=e1089]: 3.19ms
+            - gridcell "Actions" [ref=e1090]:
+              - generic "Actions" [ref=e1092] [cursor=pointer]:
+                - button "Actions" [ref=e1093]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:27:44.284143 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: aef53804e985a21229a1819712ea5192 Picea.Abies.Conduit.Api (2) 1 1.31ms Actions" [ref=e1094]':
+            - gridcell "3/27/2026 8:27:44.284143 AM" [ref=e1095]: 8:27:44.284 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: aef53804e985a21229a1819712ea5192" [ref=e1096]':
+              - generic [ref=e1097]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: aef5380
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1098]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1101]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.31ms" [ref=e1102]:
+              - generic [ref=e1103]:
+                - progressbar "Duration" [ref=e1104]:
+                  - img [ref=e1105]
+                - generic [ref=e1108]: 1.31ms
+            - gridcell "Actions" [ref=e1109]:
+              - generic "Actions" [ref=e1111] [cursor=pointer]:
+                - button "Actions" [ref=e1112]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:36.676875 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: e97da115d0cc043364cd4f7df42f16f8 Picea.Abies.Conduit.Api (2) 4 4.15ms Actions" [ref=e1113]':
+            - gridcell "3/27/2026 8:28:36.676875 AM" [ref=e1114]: 8:28:36.676 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: e97da115d0cc043364cd4f7df42f16f8" [ref=e1115]':
+              - generic [ref=e1116]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: e97da11
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1117]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1120]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.15ms" [ref=e1121]:
+              - generic [ref=e1122]:
+                - progressbar "Duration" [ref=e1123]:
+                  - img [ref=e1124]
+                - generic [ref=e1127]: 4.15ms
+            - gridcell "Actions" [ref=e1128]:
+              - generic "Actions" [ref=e1130] [cursor=pointer]:
+                - button "Actions" [ref=e1131]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:36.711091 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 82b79472891011a8662269552d67a0a4 Picea.Abies.Conduit.Api (2) 2 2.73ms Actions" [ref=e1132]':
+            - gridcell "3/27/2026 8:28:36.711091 AM" [ref=e1133]: 8:28:36.711 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 82b79472891011a8662269552d67a0a4" [ref=e1134]':
+              - generic [ref=e1135]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 82b7947
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1136]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1139]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.73ms" [ref=e1140]:
+              - generic [ref=e1141]:
+                - progressbar "Duration" [ref=e1142]:
+                  - img [ref=e1143]
+                - generic [ref=e1146]: 2.73ms
+            - gridcell "Actions" [ref=e1147]:
+              - generic "Actions" [ref=e1149] [cursor=pointer]:
+                - button "Actions" [ref=e1150]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:36.726851 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 5321f8d5a284739f69869aee5f2af9ef Picea.Abies.Conduit.Api (2) 4 4.05ms Actions" [ref=e1151]':
+            - gridcell "3/27/2026 8:28:36.726851 AM" [ref=e1152]: 8:28:36.726 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 5321f8d5a284739f69869aee5f2af9ef" [ref=e1153]':
+              - generic [ref=e1154]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 5321f8d
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1155]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1158]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.05ms" [ref=e1159]:
+              - generic [ref=e1160]:
+                - progressbar "Duration" [ref=e1161]:
+                  - img [ref=e1162]
+                - generic [ref=e1165]: 4.05ms
+            - gridcell "Actions" [ref=e1166]:
+              - generic "Actions" [ref=e1168] [cursor=pointer]:
+                - button "Actions" [ref=e1169]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:36.736546 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1cbf67e99caaf1f9d94d175a43b490a7 Picea.Abies.Conduit.Api (2) 1 1.17ms Actions" [ref=e1170]':
+            - gridcell "3/27/2026 8:28:36.736546 AM" [ref=e1171]: 8:28:36.736 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1cbf67e99caaf1f9d94d175a43b490a7" [ref=e1172]':
+              - generic [ref=e1173]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 1cbf67e
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1174]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1177]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.17ms" [ref=e1178]:
+              - generic [ref=e1179]:
+                - progressbar "Duration" [ref=e1180]:
+                  - img [ref=e1181]
+                - generic [ref=e1184]: 1.17ms
+            - gridcell "Actions" [ref=e1185]:
+              - generic "Actions" [ref=e1187] [cursor=pointer]:
+                - button "Actions" [ref=e1188]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:46.60298 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 486d95834c09fa421b6832db777e9bcd Picea.Abies.Conduit.Api (2) 2 2.98ms Actions" [ref=e1189]':
+            - gridcell "3/27/2026 8:28:46.60298 AM" [ref=e1190]: 8:28:46.602 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 486d95834c09fa421b6832db777e9bcd" [ref=e1191]':
+              - generic [ref=e1192]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 486d958
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1193]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1196]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.98ms" [ref=e1197]:
+              - generic [ref=e1198]:
+                - progressbar "Duration" [ref=e1199]:
+                  - img [ref=e1200]
+                - generic [ref=e1203]: 2.98ms
+            - gridcell "Actions" [ref=e1204]:
+              - generic "Actions" [ref=e1206] [cursor=pointer]:
+                - button "Actions" [ref=e1207]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:46.642181 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1bae8913972abaaf59bbdf74ee01f3fb Picea.Abies.Conduit.Api (2) 4 4.04ms Actions" [ref=e1208]':
+            - gridcell "3/27/2026 8:28:46.642181 AM" [ref=e1209]: 8:28:46.642 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1bae8913972abaaf59bbdf74ee01f3fb" [ref=e1210]':
+              - generic [ref=e1211]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 1bae891
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1212]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1215]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.04ms" [ref=e1216]:
+              - generic [ref=e1217]:
+                - progressbar "Duration" [ref=e1218]:
+                  - img [ref=e1219]
+                - generic [ref=e1222]: 4.04ms
+            - gridcell "Actions" [ref=e1223]:
+              - generic "Actions" [ref=e1225] [cursor=pointer]:
+                - button "Actions" [ref=e1226]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:46.661341 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 0a544886f266f605e8f510125c96662b Picea.Abies.Conduit.Api (2) 6 6.17ms Actions" [ref=e1227]':
+            - gridcell "3/27/2026 8:28:46.661341 AM" [ref=e1228]: 8:28:46.661 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 0a544886f266f605e8f510125c96662b" [ref=e1229]':
+              - generic [ref=e1230]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 0a54488
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1231]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1234]': Picea.Abies.Conduit.Api (2)
+            - gridcell "6 6.17ms" [ref=e1235]:
+              - generic [ref=e1236]:
+                - progressbar "Duration" [ref=e1237]:
+                  - img [ref=e1238]
+                - generic [ref=e1241]: 6.17ms
+            - gridcell "Actions" [ref=e1242]:
+              - generic "Actions" [ref=e1244] [cursor=pointer]:
+                - button "Actions" [ref=e1245]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:28:46.674717 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 0925315cd605be99e5eb44a5b00820b1 Picea.Abies.Conduit.Api (2) 2 2.16ms Actions" [ref=e1246]':
+            - gridcell "3/27/2026 8:28:46.674717 AM" [ref=e1247]: 8:28:46.674 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 0925315cd605be99e5eb44a5b00820b1" [ref=e1248]':
+              - generic [ref=e1249]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: "0925315"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1250]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1253]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.16ms" [ref=e1254]:
+              - generic [ref=e1255]:
+                - progressbar "Duration" [ref=e1256]:
+                  - img [ref=e1257]
+                - generic [ref=e1260]: 2.16ms
+            - gridcell "Actions" [ref=e1261]:
+              - generic "Actions" [ref=e1263] [cursor=pointer]:
+                - button "Actions" [ref=e1264]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:07.665189 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 90ed472e23f62d07e62422b0fbf65f5a Picea.Abies.Conduit.Api (2) 3 3.38ms Actions" [ref=e1265]':
+            - gridcell "3/27/2026 8:29:07.665189 AM" [ref=e1266]: 8:29:07.665 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 90ed472e23f62d07e62422b0fbf65f5a" [ref=e1267]':
+              - generic [ref=e1268]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 90ed472
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1269]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1272]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.38ms" [ref=e1273]:
+              - generic [ref=e1274]:
+                - progressbar "Duration" [ref=e1275]:
+                  - img [ref=e1276]
+                - generic [ref=e1279]: 3.38ms
+            - gridcell "Actions" [ref=e1280]:
+              - generic "Actions" [ref=e1282] [cursor=pointer]:
+                - button "Actions" [ref=e1283]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:07.699384 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 44d1a95199aaff2ec3941f9f5ef3b3b7 Picea.Abies.Conduit.Api (2) 1 1.75ms Actions" [ref=e1284]':
+            - gridcell "3/27/2026 8:29:07.699384 AM" [ref=e1285]: 8:29:07.699 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 44d1a95199aaff2ec3941f9f5ef3b3b7" [ref=e1286]':
+              - generic [ref=e1287]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 44d1a95
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1288]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1291]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.75ms" [ref=e1292]:
+              - generic [ref=e1293]:
+                - progressbar "Duration" [ref=e1294]:
+                  - img [ref=e1295]
+                - generic [ref=e1298]: 1.75ms
+            - gridcell "Actions" [ref=e1299]:
+              - generic "Actions" [ref=e1301] [cursor=pointer]:
+                - button "Actions" [ref=e1302]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:07.713409 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: ad68bd3cfc1ee055f807123b25648160 Picea.Abies.Conduit.Api (2) 6 6.13ms Actions" [ref=e1303]':
+            - gridcell "3/27/2026 8:29:07.713409 AM" [ref=e1304]: 8:29:07.713 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: ad68bd3cfc1ee055f807123b25648160" [ref=e1305]':
+              - generic [ref=e1306]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: ad68bd3
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1307]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1310]': Picea.Abies.Conduit.Api (2)
+            - gridcell "6 6.13ms" [ref=e1311]:
+              - generic [ref=e1312]:
+                - progressbar "Duration" [ref=e1313]:
+                  - img [ref=e1314]
+                - generic [ref=e1317]: 6.13ms
+            - gridcell "Actions" [ref=e1318]:
+              - generic "Actions" [ref=e1320] [cursor=pointer]:
+                - button "Actions" [ref=e1321]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:07.728551 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: e734b5db62b6d06dafe60d1c6ccf0a60 Picea.Abies.Conduit.Api (2) 1 1.69ms Actions" [ref=e1322]':
+            - gridcell "3/27/2026 8:29:07.728551 AM" [ref=e1323]: 8:29:07.728 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: e734b5db62b6d06dafe60d1c6ccf0a60" [ref=e1324]':
+              - generic [ref=e1325]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: e734b5d
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1326]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1329]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.69ms" [ref=e1330]:
+              - generic [ref=e1331]:
+                - progressbar "Duration" [ref=e1332]:
+                  - img [ref=e1333]
+                - generic [ref=e1336]: 1.69ms
+            - gridcell "Actions" [ref=e1337]:
+              - generic "Actions" [ref=e1339] [cursor=pointer]:
+                - button "Actions" [ref=e1340]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:28.388319 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 284608409ab5e6d6797a8888604a65f3 Picea.Abies.Conduit.Api (2) 3 3.6ms Actions" [ref=e1341]':
+            - gridcell "3/27/2026 8:29:28.388319 AM" [ref=e1342]: 8:29:28.388 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 284608409ab5e6d6797a8888604a65f3" [ref=e1343]':
+              - generic [ref=e1344]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: "2846084"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1345]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1348]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.6ms" [ref=e1349]:
+              - generic [ref=e1350]:
+                - progressbar "Duration" [ref=e1351]:
+                  - img [ref=e1352]
+                - generic [ref=e1355]: 3.6ms
+            - gridcell "Actions" [ref=e1356]:
+              - generic "Actions" [ref=e1358] [cursor=pointer]:
+                - button "Actions" [ref=e1359]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:28.423862 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1a9fdb8211d6f44665b377176e00af9e Picea.Abies.Conduit.Api (2) 1 1.54ms Actions" [ref=e1360]':
+            - gridcell "3/27/2026 8:29:28.423862 AM" [ref=e1361]: 8:29:28.423 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1a9fdb8211d6f44665b377176e00af9e" [ref=e1362]':
+              - generic [ref=e1363]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 1a9fdb8
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1364]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1367]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.54ms" [ref=e1368]:
+              - generic [ref=e1369]:
+                - progressbar "Duration" [ref=e1370]:
+                  - img [ref=e1371]
+                - generic [ref=e1374]: 1.54ms
+            - gridcell "Actions" [ref=e1375]:
+              - generic "Actions" [ref=e1377] [cursor=pointer]:
+                - button "Actions" [ref=e1378]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:28.438353 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c6f4640210d7195bf70026a8d78fce82 Picea.Abies.Conduit.Api (2) 5 5.79ms Actions" [ref=e1379]':
+            - gridcell "3/27/2026 8:29:28.438353 AM" [ref=e1380]: 8:29:28.438 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c6f4640210d7195bf70026a8d78fce82" [ref=e1381]':
+              - generic [ref=e1382]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: c6f4640
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1383]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1386]': Picea.Abies.Conduit.Api (2)
+            - gridcell "5 5.79ms" [ref=e1387]:
+              - generic [ref=e1388]:
+                - progressbar "Duration" [ref=e1389]:
+                  - img [ref=e1390]
+                - generic [ref=e1393]: 5.79ms
+            - gridcell "Actions" [ref=e1394]:
+              - generic "Actions" [ref=e1396] [cursor=pointer]:
+                - button "Actions" [ref=e1397]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:28.455159 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 0e90d615b4f136adaae381cbf4d6987e Picea.Abies.Conduit.Api (2) 1 1.61ms Actions" [ref=e1398]':
+            - gridcell "3/27/2026 8:29:28.455159 AM" [ref=e1399]: 8:29:28.455 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 0e90d615b4f136adaae381cbf4d6987e" [ref=e1400]':
+              - generic [ref=e1401]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 0e90d61
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1402]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1405]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.61ms" [ref=e1406]:
+              - generic [ref=e1407]:
+                - progressbar "Duration" [ref=e1408]:
+                  - img [ref=e1409]
+                - generic [ref=e1412]: 1.61ms
+            - gridcell "Actions" [ref=e1413]:
+              - generic "Actions" [ref=e1415] [cursor=pointer]:
+                - button "Actions" [ref=e1416]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:46.589351 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 0a7e704528cd7eb95eff057802d53825 Picea.Abies.Conduit.Api (2) 3 3.77ms Actions" [ref=e1417]':
+            - gridcell "3/27/2026 8:29:46.589351 AM" [ref=e1418]: 8:29:46.589 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 0a7e704528cd7eb95eff057802d53825" [ref=e1419]':
+              - generic [ref=e1420]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 0a7e704
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1421]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1424]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.77ms" [ref=e1425]:
+              - generic [ref=e1426]:
+                - progressbar "Duration" [ref=e1427]:
+                  - img [ref=e1428]
+                - generic [ref=e1431]: 3.77ms
+            - gridcell "Actions" [ref=e1432]:
+              - generic "Actions" [ref=e1434] [cursor=pointer]:
+                - button "Actions" [ref=e1435]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:46.624458 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: d35f8db18352a4696dc4559ab0904f1f Picea.Abies.Conduit.Api (2) 1 1.43ms Actions" [ref=e1436]':
+            - gridcell "3/27/2026 8:29:46.624458 AM" [ref=e1437]: 8:29:46.624 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: d35f8db18352a4696dc4559ab0904f1f" [ref=e1438]':
+              - generic [ref=e1439]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: d35f8db
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1440]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1443]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.43ms" [ref=e1444]:
+              - generic [ref=e1445]:
+                - progressbar "Duration" [ref=e1446]:
+                  - img [ref=e1447]
+                - generic [ref=e1450]: 1.43ms
+            - gridcell "Actions" [ref=e1451]:
+              - generic "Actions" [ref=e1453] [cursor=pointer]:
+                - button "Actions" [ref=e1454]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:46.63815 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c90c4990eac33b7ca78037debfd242cd Picea.Abies.Conduit.Api (2) 5 5.84ms Actions" [ref=e1455]':
+            - gridcell "3/27/2026 8:29:46.63815 AM" [ref=e1456]: 8:29:46.638 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c90c4990eac33b7ca78037debfd242cd" [ref=e1457]':
+              - generic [ref=e1458]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: c90c499
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1459]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1462]': Picea.Abies.Conduit.Api (2)
+            - gridcell "5 5.84ms" [ref=e1463]:
+              - generic [ref=e1464]:
+                - progressbar "Duration" [ref=e1465]:
+                  - img [ref=e1466]
+                - generic [ref=e1469]: 5.84ms
+            - gridcell "Actions" [ref=e1470]:
+              - generic "Actions" [ref=e1472] [cursor=pointer]:
+                - button "Actions" [ref=e1473]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:29:46.657035 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 4db4e4318f048a99702fdd33efe15584 Picea.Abies.Conduit.Api (2) 1 1.13ms Actions" [ref=e1474]':
+            - gridcell "3/27/2026 8:29:46.657035 AM" [ref=e1475]: 8:29:46.657 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 4db4e4318f048a99702fdd33efe15584" [ref=e1476]':
+              - generic [ref=e1477]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 4db4e43
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1478]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1481]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.13ms" [ref=e1482]:
+              - generic [ref=e1483]:
+                - progressbar "Duration" [ref=e1484]:
+                  - img [ref=e1485]
+                - generic [ref=e1488]: 1.13ms
+            - gridcell "Actions" [ref=e1489]:
+              - generic "Actions" [ref=e1491] [cursor=pointer]:
+                - button "Actions" [ref=e1492]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:01.364483 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 007cc4578dd917db73f436d50c49c2d8 Picea.Abies.Conduit.Api (2) 3 3.55ms Actions" [ref=e1493]':
+            - gridcell "3/27/2026 8:30:01.364483 AM" [ref=e1494]: 8:30:01.364 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 007cc4578dd917db73f436d50c49c2d8" [ref=e1495]':
+              - generic [ref=e1496]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 007cc45
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1497]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1500]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.55ms" [ref=e1501]:
+              - generic [ref=e1502]:
+                - progressbar "Duration" [ref=e1503]:
+                  - img [ref=e1504]
+                - generic [ref=e1507]: 3.55ms
+            - gridcell "Actions" [ref=e1508]:
+              - generic "Actions" [ref=e1510] [cursor=pointer]:
+                - button "Actions" [ref=e1511]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:01.400374 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: e1f5926b3796e9a87c858981afff7059 Picea.Abies.Conduit.Api (2) 1 1.73ms Actions" [ref=e1512]':
+            - gridcell "3/27/2026 8:30:01.400374 AM" [ref=e1513]: 8:30:01.400 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: e1f5926b3796e9a87c858981afff7059" [ref=e1514]':
+              - generic [ref=e1515]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: e1f5926
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1516]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1519]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.73ms" [ref=e1520]:
+              - generic [ref=e1521]:
+                - progressbar "Duration" [ref=e1522]:
+                  - img [ref=e1523]
+                - generic [ref=e1526]: 1.73ms
+            - gridcell "Actions" [ref=e1527]:
+              - generic "Actions" [ref=e1529] [cursor=pointer]:
+                - button "Actions" [ref=e1530]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:01.413909 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: dc388314adf627cfdbac2a1f04c4bb8a Picea.Abies.Conduit.Api (2) 6 6.05ms Actions" [ref=e1531]':
+            - gridcell "3/27/2026 8:30:01.413909 AM" [ref=e1532]: 8:30:01.413 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: dc388314adf627cfdbac2a1f04c4bb8a" [ref=e1533]':
+              - generic [ref=e1534]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: dc38831
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1535]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1538]': Picea.Abies.Conduit.Api (2)
+            - gridcell "6 6.05ms" [ref=e1539]:
+              - generic [ref=e1540]:
+                - progressbar "Duration" [ref=e1541]:
+                  - img [ref=e1542]
+                - generic [ref=e1545]: 6.05ms
+            - gridcell "Actions" [ref=e1546]:
+              - generic "Actions" [ref=e1548] [cursor=pointer]:
+                - button "Actions" [ref=e1549]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:01.432447 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3a4b62b29ee43f92b41b7291ace52fb1 Picea.Abies.Conduit.Api (2) 1 1.66ms Actions" [ref=e1550]':
+            - gridcell "3/27/2026 8:30:01.432447 AM" [ref=e1551]: 8:30:01.432 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 3a4b62b29ee43f92b41b7291ace52fb1" [ref=e1552]':
+              - generic [ref=e1553]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 3a4b62b
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1554]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1557]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.66ms" [ref=e1558]:
+              - generic [ref=e1559]:
+                - progressbar "Duration" [ref=e1560]:
+                  - img [ref=e1561]
+                - generic [ref=e1564]: 1.66ms
+            - gridcell "Actions" [ref=e1565]:
+              - generic "Actions" [ref=e1567] [cursor=pointer]:
+                - button "Actions" [ref=e1568]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:02.972 AM Name: unknown_service: UI: click Trace Id: 8eff9ff58a2d00bbdc80925cebfa32a4 unknown_service (1) 0 0.2ms Actions" [ref=e1569]':
+            - gridcell "3/27/2026 8:30:02.972 AM" [ref=e1570]: 8:30:02.972 AM
+            - 'gridcell "Name: unknown_service: UI: click Trace Id: 8eff9ff58a2d00bbdc80925cebfa32a4" [ref=e1571]':
+              - generic [ref=e1572]: "unknown_service: UI: click"
+              - text: 8eff9ff
+            - gridcell "unknown_service (1)" [ref=e1573]:
+              - 'generic "unknown_service spans Total: 1" [ref=e1576]': unknown_service (1)
+            - gridcell "0 0.2ms" [ref=e1577]:
+              - generic [ref=e1578]:
+                - progressbar "Duration" [ref=e1579]:
+                  - img [ref=e1580]
+                - generic [ref=e1583]: 0.2ms
+            - gridcell "Actions" [ref=e1584]:
+              - generic "Actions" [ref=e1586] [cursor=pointer]:
+                - button "Actions" [ref=e1587]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:17.128213 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 96ea827ceb6457626051ec2383acf7f5 Picea.Abies.Conduit.Api (2) 3 3.69ms Actions" [ref=e1588]':
+            - gridcell "3/27/2026 8:30:17.128213 AM" [ref=e1589]: 8:30:17.128 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 96ea827ceb6457626051ec2383acf7f5" [ref=e1590]':
+              - generic [ref=e1591]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 96ea827
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1592]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1595]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.69ms" [ref=e1596]:
+              - generic [ref=e1597]:
+                - progressbar "Duration" [ref=e1598]:
+                  - img [ref=e1599]
+                - generic [ref=e1602]: 3.69ms
+            - gridcell "Actions" [ref=e1603]:
+              - generic "Actions" [ref=e1605] [cursor=pointer]:
+                - button "Actions" [ref=e1606]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:17.163033 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 8781381011f5fce17b11fb562c2fe529 Picea.Abies.Conduit.Api (2) 2 2.48ms Actions" [ref=e1607]':
+            - gridcell "3/27/2026 8:30:17.163033 AM" [ref=e1608]: 8:30:17.163 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 8781381011f5fce17b11fb562c2fe529" [ref=e1609]':
+              - generic [ref=e1610]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: "8781381"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1611]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1614]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.48ms" [ref=e1615]:
+              - generic [ref=e1616]:
+                - progressbar "Duration" [ref=e1617]:
+                  - img [ref=e1618]
+                - generic [ref=e1621]: 2.48ms
+            - gridcell "Actions" [ref=e1622]:
+              - generic "Actions" [ref=e1624] [cursor=pointer]:
+                - button "Actions" [ref=e1625]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:17.179666 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: d72b4e6d7249c4d0817c2a92e3182d8f Picea.Abies.Conduit.Api (2) 7 7.34ms Actions" [ref=e1626]':
+            - gridcell "3/27/2026 8:30:17.179666 AM" [ref=e1627]: 8:30:17.179 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: d72b4e6d7249c4d0817c2a92e3182d8f" [ref=e1628]':
+              - generic [ref=e1629]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: d72b4e6
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1630]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1633]': Picea.Abies.Conduit.Api (2)
+            - gridcell "7 7.34ms" [ref=e1634]:
+              - generic [ref=e1635]:
+                - progressbar "Duration" [ref=e1636]:
+                  - img [ref=e1637]
+                - generic [ref=e1640]: 7.34ms
+            - gridcell "Actions" [ref=e1641]:
+              - generic "Actions" [ref=e1643] [cursor=pointer]:
+                - button "Actions" [ref=e1644]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:30:17.20185 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 657a288fa6ef31b29d63134cb5cfc6db Picea.Abies.Conduit.Api (2) 1 1.39ms Actions" [ref=e1645]':
+            - gridcell "3/27/2026 8:30:17.20185 AM" [ref=e1646]: 8:30:17.201 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 657a288fa6ef31b29d63134cb5cfc6db" [ref=e1647]':
+              - generic [ref=e1648]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 657a288
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1649]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1652]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.39ms" [ref=e1653]:
+              - generic [ref=e1654]:
+                - progressbar "Duration" [ref=e1655]:
+                  - img [ref=e1656]
+                - generic [ref=e1659]: 1.39ms
+            - gridcell "Actions" [ref=e1660]:
+              - generic "Actions" [ref=e1662] [cursor=pointer]:
+                - button "Actions" [ref=e1663]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:05.199304 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 7c8a2f1949570dda978ffc624d845519 Picea.Abies.Conduit.Api (2) 14 14.41ms Actions" [ref=e1664]':
+            - gridcell "3/27/2026 8:32:05.199304 AM" [ref=e1665]: 8:32:05.199 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 7c8a2f1949570dda978ffc624d845519" [ref=e1666]':
+              - generic [ref=e1667]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 7c8a2f1
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1668]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1671]': Picea.Abies.Conduit.Api (2)
+            - gridcell "14 14.41ms" [ref=e1672]:
+              - generic [ref=e1673]:
+                - progressbar "Duration" [ref=e1674]:
+                  - img [ref=e1675]
+                - generic [ref=e1678]: 14.41ms
+            - gridcell "Actions" [ref=e1679]:
+              - generic "Actions" [ref=e1681] [cursor=pointer]:
+                - button "Actions" [ref=e1682]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:05.245118 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: caf6652622dca0bd0cf01d0da16f54ba Picea.Abies.Conduit.Api (2) 1 1.44ms Actions" [ref=e1683]':
+            - gridcell "3/27/2026 8:32:05.245118 AM" [ref=e1684]: 8:32:05.245 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: caf6652622dca0bd0cf01d0da16f54ba" [ref=e1685]':
+              - generic [ref=e1686]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: caf6652
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1687]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1690]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.44ms" [ref=e1691]:
+              - generic [ref=e1692]:
+                - progressbar "Duration" [ref=e1693]:
+                  - img [ref=e1694]
+                - generic [ref=e1697]: 1.44ms
+            - gridcell "Actions" [ref=e1698]:
+              - generic "Actions" [ref=e1700] [cursor=pointer]:
+                - button "Actions" [ref=e1701]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:05.257426 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 236ce728084186882adcc1c8fd3c6e36 Picea.Abies.Conduit.Api (2) 5 5.05ms Actions" [ref=e1702]':
+            - gridcell "3/27/2026 8:32:05.257426 AM" [ref=e1703]: 8:32:05.257 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 236ce728084186882adcc1c8fd3c6e36" [ref=e1704]':
+              - generic [ref=e1705]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 236ce72
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1706]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1709]': Picea.Abies.Conduit.Api (2)
+            - gridcell "5 5.05ms" [ref=e1710]:
+              - generic [ref=e1711]:
+                - progressbar "Duration" [ref=e1712]:
+                  - img [ref=e1713]
+                - generic [ref=e1716]: 5.05ms
+            - gridcell "Actions" [ref=e1717]:
+              - generic "Actions" [ref=e1719] [cursor=pointer]:
+                - button "Actions" [ref=e1720]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:05.268783 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a350526b4a07f6937f7f31b9870dd8f5 Picea.Abies.Conduit.Api (2) 1 1.61ms Actions" [ref=e1721]':
+            - gridcell "3/27/2026 8:32:05.268783 AM" [ref=e1722]: 8:32:05.268 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: a350526b4a07f6937f7f31b9870dd8f5" [ref=e1723]':
+              - generic [ref=e1724]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: a350526
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1725]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1728]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.61ms" [ref=e1729]:
+              - generic [ref=e1730]:
+                - progressbar "Duration" [ref=e1731]:
+                  - img [ref=e1732]
+                - generic [ref=e1735]: 1.61ms
+            - gridcell "Actions" [ref=e1736]:
+              - generic "Actions" [ref=e1738] [cursor=pointer]:
+                - button "Actions" [ref=e1739]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:45.231701 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: fff5ad6988974c29412821b8b06e0c7a Picea.Abies.Conduit.Api (2) 3 3.01ms Actions" [ref=e1740]':
+            - gridcell "3/27/2026 8:32:45.231701 AM" [ref=e1741]: 8:32:45.231 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: fff5ad6988974c29412821b8b06e0c7a" [ref=e1742]':
+              - generic [ref=e1743]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: fff5ad6
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1744]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1747]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.01ms" [ref=e1748]:
+              - generic [ref=e1749]:
+                - progressbar "Duration" [ref=e1750]:
+                  - img [ref=e1751]
+                - generic [ref=e1754]: 3.01ms
+            - gridcell "Actions" [ref=e1755]:
+              - generic "Actions" [ref=e1757] [cursor=pointer]:
+                - button "Actions" [ref=e1758]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:45.264215 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: aa1e5d1b89c52f2f0a22f4a0c26149c8 Picea.Abies.Conduit.Api (2) 1 1.61ms Actions" [ref=e1759]':
+            - gridcell "3/27/2026 8:32:45.264215 AM" [ref=e1760]: 8:32:45.264 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: aa1e5d1b89c52f2f0a22f4a0c26149c8" [ref=e1761]':
+              - generic [ref=e1762]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: aa1e5d1
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1763]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1766]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.61ms" [ref=e1767]:
+              - generic [ref=e1768]:
+                - progressbar "Duration" [ref=e1769]:
+                  - img [ref=e1770]
+                - generic [ref=e1773]: 1.61ms
+            - gridcell "Actions" [ref=e1774]:
+              - generic "Actions" [ref=e1776] [cursor=pointer]:
+                - button "Actions" [ref=e1777]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:45.277778 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c47455834d8e2449ac388d4df833780c Picea.Abies.Conduit.Api (2) 3 3.23ms Actions" [ref=e1778]':
+            - gridcell "3/27/2026 8:32:45.277778 AM" [ref=e1779]: 8:32:45.277 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c47455834d8e2449ac388d4df833780c" [ref=e1780]':
+              - generic [ref=e1781]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: c474558
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1782]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1785]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.23ms" [ref=e1786]:
+              - generic [ref=e1787]:
+                - progressbar "Duration" [ref=e1788]:
+                  - img [ref=e1789]
+                - generic [ref=e1792]: 3.23ms
+            - gridcell "Actions" [ref=e1793]:
+              - generic "Actions" [ref=e1795] [cursor=pointer]:
+                - button "Actions" [ref=e1796]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:32:45.289775 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 2cd75c4c7ad45ec60f38fbfb363f7564 Picea.Abies.Conduit.Api (2) 0 0.77ms Actions" [ref=e1797]':
+            - gridcell "3/27/2026 8:32:45.289775 AM" [ref=e1798]: 8:32:45.289 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 2cd75c4c7ad45ec60f38fbfb363f7564" [ref=e1799]':
+              - generic [ref=e1800]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 2cd75c4
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1801]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1804]': Picea.Abies.Conduit.Api (2)
+            - gridcell "0 0.77ms" [ref=e1805]:
+              - generic [ref=e1806]:
+                - progressbar "Duration" [ref=e1807]:
+                  - img [ref=e1808]
+                - generic [ref=e1811]: 0.77ms
+            - gridcell "Actions" [ref=e1812]:
+              - generic "Actions" [ref=e1814] [cursor=pointer]:
+                - button "Actions" [ref=e1815]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:01.402977 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: b0246be82ca44c930fb62ee75987ff21 Picea.Abies.Conduit.Api (2) 3 3.33ms Actions" [ref=e1816]':
+            - gridcell "3/27/2026 8:33:01.402977 AM" [ref=e1817]: 8:33:01.402 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: b0246be82ca44c930fb62ee75987ff21" [ref=e1818]':
+              - generic [ref=e1819]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: b0246be
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1820]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1823]': Picea.Abies.Conduit.Api (2)
+            - gridcell "3 3.33ms" [ref=e1824]:
+              - generic [ref=e1825]:
+                - progressbar "Duration" [ref=e1826]:
+                  - img [ref=e1827]
+                - generic [ref=e1830]: 3.33ms
+            - gridcell "Actions" [ref=e1831]:
+              - generic "Actions" [ref=e1833] [cursor=pointer]:
+                - button "Actions" [ref=e1834]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:01.437119 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1c6234eaa17bcd005955a6a6de3a4a7e Picea.Abies.Conduit.Api (2) 1 1.27ms Actions" [ref=e1835]':
+            - gridcell "3/27/2026 8:33:01.437119 AM" [ref=e1836]: 8:33:01.437 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 1c6234eaa17bcd005955a6a6de3a4a7e" [ref=e1837]':
+              - generic [ref=e1838]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 1c6234e
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1839]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1842]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.27ms" [ref=e1843]:
+              - generic [ref=e1844]:
+                - progressbar "Duration" [ref=e1845]:
+                  - img [ref=e1846]
+                - generic [ref=e1849]: 1.27ms
+            - gridcell "Actions" [ref=e1850]:
+              - generic "Actions" [ref=e1852] [cursor=pointer]:
+                - button "Actions" [ref=e1853]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:01.455009 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 05fc830e7ec0c4c3624fb5630267a18b Picea.Abies.Conduit.Api (2) 2 2.71ms Actions" [ref=e1854]':
+            - gridcell "3/27/2026 8:33:01.455009 AM" [ref=e1855]: 8:33:01.455 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 05fc830e7ec0c4c3624fb5630267a18b" [ref=e1856]':
+              - generic [ref=e1857]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 05fc830
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1858]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1861]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.71ms" [ref=e1862]:
+              - generic [ref=e1863]:
+                - progressbar "Duration" [ref=e1864]:
+                  - img [ref=e1865]
+                - generic [ref=e1868]: 2.71ms
+            - gridcell "Actions" [ref=e1869]:
+              - generic "Actions" [ref=e1871] [cursor=pointer]:
+                - button "Actions" [ref=e1872]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:01.47081 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 671aee893a6d046eb15093442297a81e Picea.Abies.Conduit.Api (2) 1 1.03ms Actions" [ref=e1873]':
+            - gridcell "3/27/2026 8:33:01.47081 AM" [ref=e1874]: 8:33:01.470 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 671aee893a6d046eb15093442297a81e" [ref=e1875]':
+              - generic [ref=e1876]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: 671aee8
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1877]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1880]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.03ms" [ref=e1881]:
+              - generic [ref=e1882]:
+                - progressbar "Duration" [ref=e1883]:
+                  - img [ref=e1884]
+                - generic [ref=e1887]: 1.03ms
+            - gridcell "Actions" [ref=e1888]:
+              - generic "Actions" [ref=e1890] [cursor=pointer]:
+                - button "Actions" [ref=e1891]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:03.528 AM Name: unknown_service: UI: click Trace Id: b652b62ed69fb6f42b6edfb94b6472a3 unknown_service (1) 0 0.2ms Actions" [ref=e1892]':
+            - gridcell "3/27/2026 8:33:03.528 AM" [ref=e1893]: 8:33:03.528 AM
+            - 'gridcell "Name: unknown_service: UI: click Trace Id: b652b62ed69fb6f42b6edfb94b6472a3" [ref=e1894]':
+              - generic [ref=e1895]: "unknown_service: UI: click"
+              - text: b652b62
+            - gridcell "unknown_service (1)" [ref=e1896]:
+              - 'generic "unknown_service spans Total: 1" [ref=e1899]': unknown_service (1)
+            - gridcell "0 0.2ms" [ref=e1900]:
+              - generic [ref=e1901]:
+                - progressbar "Duration" [ref=e1902]:
+                  - img [ref=e1903]
+                - generic [ref=e1906]: 0.2ms
+            - gridcell "Actions" [ref=e1907]:
+              - generic "Actions" [ref=e1909] [cursor=pointer]:
+                - button "Actions" [ref=e1910]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:06.564 AM Name: unknown_service: UI: click Trace Id: 0dd5bb3a8c1ae2d7fd502655739d28ea unknown_service (1) 5 5.5ms Actions" [ref=e1911]':
+            - gridcell "3/27/2026 8:33:06.564 AM" [ref=e1912]: 8:33:06.564 AM
+            - 'gridcell "Name: unknown_service: UI: click Trace Id: 0dd5bb3a8c1ae2d7fd502655739d28ea" [ref=e1913]':
+              - generic [ref=e1914]: "unknown_service: UI: click"
+              - text: 0dd5bb3
+            - gridcell "unknown_service (1)" [ref=e1915]:
+              - 'generic "unknown_service spans Total: 1" [ref=e1918]': unknown_service (1)
+            - gridcell "5 5.5ms" [ref=e1919]:
+              - generic [ref=e1920]:
+                - progressbar "Duration" [ref=e1921]:
+                  - img [ref=e1922]
+                - generic [ref=e1925]: 5.5ms
+            - gridcell "Actions" [ref=e1926]:
+              - generic "Actions" [ref=e1928] [cursor=pointer]:
+                - button "Actions" [ref=e1929]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:06.568 AM Name: unknown_service: HTTP GET Trace Id: adb77e445256f55b78cb41bedb05d7e0 unknown_service (1) Picea.Abies.Conduit.Api (2) 9 9.8ms Actions" [ref=e1930]':
+            - gridcell "3/27/2026 8:33:06.568 AM" [ref=e1931]: 8:33:06.568 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: adb77e445256f55b78cb41bedb05d7e0" [ref=e1932]':
+              - generic [ref=e1933]: "unknown_service: HTTP GET"
+              - text: adb77e4
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e1934]:
+              - generic [ref=e1935]:
+                - 'generic "unknown_service spans Total: 1" [ref=e1937]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1939]': Picea.Abies.Conduit.Api (2)
+            - gridcell "9 9.8ms" [ref=e1940]:
+              - generic [ref=e1941]:
+                - progressbar "Duration" [ref=e1942]:
+                  - img [ref=e1943]
+                - generic [ref=e1946]: 9.8ms
+            - gridcell "Actions" [ref=e1947]:
+              - generic "Actions" [ref=e1949] [cursor=pointer]:
+                - button "Actions" [ref=e1950]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:06.581 AM Name: unknown_service: HTTP GET Trace Id: ecfcc167c21c998879da0fc7e2eab430 unknown_service (1) Picea.Abies.Conduit.Api (2) 31 31.7ms Actions" [ref=e1951]':
+            - gridcell "3/27/2026 8:33:06.581 AM" [ref=e1952]: 8:33:06.581 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: ecfcc167c21c998879da0fc7e2eab430" [ref=e1953]':
+              - generic [ref=e1954]: "unknown_service: HTTP GET"
+              - text: ecfcc16
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e1955]:
+              - generic [ref=e1956]:
+                - 'generic "unknown_service spans Total: 1" [ref=e1958]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1960]': Picea.Abies.Conduit.Api (2)
+            - gridcell "31 31.7ms" [ref=e1961]:
+              - generic [ref=e1962]:
+                - progressbar "Duration" [ref=e1963]:
+                  - img [ref=e1964]
+                - generic [ref=e1967]: 31.7ms
+            - gridcell "Actions" [ref=e1968]:
+              - generic "Actions" [ref=e1970] [cursor=pointer]:
+                - button "Actions" [ref=e1971]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:06.615 AM Name: unknown_service: HTTP GET Trace Id: f75d068b0e7455a6440fac1878be7769 unknown_service (1) Picea.Abies.Conduit.Api (2) 5 5.1ms Actions" [ref=e1972]':
+            - gridcell "3/27/2026 8:33:06.615 AM" [ref=e1973]: 8:33:06.615 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: f75d068b0e7455a6440fac1878be7769" [ref=e1974]':
+              - generic [ref=e1975]: "unknown_service: HTTP GET"
+              - text: f75d068
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e1976]:
+              - generic [ref=e1977]:
+                - 'generic "unknown_service spans Total: 1" [ref=e1979]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e1981]': Picea.Abies.Conduit.Api (2)
+            - gridcell "5 5.1ms" [ref=e1982]:
+              - generic [ref=e1983]:
+                - progressbar "Duration" [ref=e1984]:
+                  - img [ref=e1985]
+                - generic [ref=e1988]: 5.1ms
+            - gridcell "Actions" [ref=e1989]:
+              - generic "Actions" [ref=e1991] [cursor=pointer]:
+                - button "Actions" [ref=e1992]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:18.376411 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6452a827284aa9db99644a9b1fdc8054 Picea.Abies.Conduit.Api (2) 4 4.18ms Actions" [ref=e1993]':
+            - gridcell "3/27/2026 8:33:18.376411 AM" [ref=e1994]: 8:33:18.376 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 6452a827284aa9db99644a9b1fdc8054" [ref=e1995]':
+              - generic [ref=e1996]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 6452a82
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e1997]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2000]': Picea.Abies.Conduit.Api (2)
+            - gridcell "4 4.18ms" [ref=e2001]:
+              - generic [ref=e2002]:
+                - progressbar "Duration" [ref=e2003]:
+                  - img [ref=e2004]
+                - generic [ref=e2007]: 4.18ms
+            - gridcell "Actions" [ref=e2008]:
+              - generic "Actions" [ref=e2010] [cursor=pointer]:
+                - button "Actions" [ref=e2011]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:18.409864 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: b8931a9635a30bd1cd425cbfedec30a4 Picea.Abies.Conduit.Api (2) 1 1.88ms Actions" [ref=e2012]':
+            - gridcell "3/27/2026 8:33:18.409864 AM" [ref=e2013]: 8:33:18.409 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: b8931a9635a30bd1cd425cbfedec30a4" [ref=e2014]':
+              - generic [ref=e2015]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: b8931a9
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2016]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2019]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.88ms" [ref=e2020]:
+              - generic [ref=e2021]:
+                - progressbar "Duration" [ref=e2022]:
+                  - img [ref=e2023]
+                - generic [ref=e2026]: 1.88ms
+            - gridcell "Actions" [ref=e2027]:
+              - generic "Actions" [ref=e2029] [cursor=pointer]:
+                - button "Actions" [ref=e2030]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:18.42949 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c8571eb10c78a9b77ad812cce3821437 Picea.Abies.Conduit.Api (2) 2 2.94ms Actions" [ref=e2031]':
+            - gridcell "3/27/2026 8:33:18.42949 AM" [ref=e2032]: 8:33:18.429 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: c8571eb10c78a9b77ad812cce3821437" [ref=e2033]':
+              - generic [ref=e2034]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: c8571eb
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2035]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2038]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.94ms" [ref=e2039]:
+              - generic [ref=e2040]:
+                - progressbar "Duration" [ref=e2041]:
+                  - img [ref=e2042]
+                - generic [ref=e2045]: 2.94ms
+            - gridcell "Actions" [ref=e2046]:
+              - generic "Actions" [ref=e2048] [cursor=pointer]:
+                - button "Actions" [ref=e2049]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:18.438501 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: b5960be1ee91bc1e3f7b44e8edcc8eba Picea.Abies.Conduit.Api (2) 1 1.04ms Actions" [ref=e2050]':
+            - gridcell "3/27/2026 8:33:18.438501 AM" [ref=e2051]: 8:33:18.438 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: b5960be1ee91bc1e3f7b44e8edcc8eba" [ref=e2052]':
+              - generic [ref=e2053]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: b5960be
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2054]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2057]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.04ms" [ref=e2058]:
+              - generic [ref=e2059]:
+                - progressbar "Duration" [ref=e2060]:
+                  - img [ref=e2061]
+                - generic [ref=e2064]: 1.04ms
+            - gridcell "Actions" [ref=e2065]:
+              - generic "Actions" [ref=e2067] [cursor=pointer]:
+                - button "Actions" [ref=e2068]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:21.167 AM Name: unknown_service: UI: click Trace Id: ceac108d6ccca0cbc3129ff43f5dcb33 unknown_service (1) 8 8ms Actions" [ref=e2069]':
+            - gridcell "3/27/2026 8:33:21.167 AM" [ref=e2070]: 8:33:21.167 AM
+            - 'gridcell "Name: unknown_service: UI: click Trace Id: ceac108d6ccca0cbc3129ff43f5dcb33" [ref=e2071]':
+              - generic [ref=e2072]: "unknown_service: UI: click"
+              - text: ceac108
+            - gridcell "unknown_service (1)" [ref=e2073]:
+              - 'generic "unknown_service spans Total: 1" [ref=e2076]': unknown_service (1)
+            - gridcell "8 8ms" [ref=e2077]:
+              - generic [ref=e2078]:
+                - progressbar "Duration" [ref=e2079]:
+                  - img [ref=e2080]
+                - generic [ref=e2083]: 8ms
+            - gridcell "Actions" [ref=e2084]:
+              - generic "Actions" [ref=e2086] [cursor=pointer]:
+                - button "Actions" [ref=e2087]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:21.172 AM Name: unknown_service: HTTP GET Trace Id: aecccf0b25cafa78c3fbb3c917014503 unknown_service (1) Picea.Abies.Conduit.Api (2) 13 13.5ms Actions" [ref=e2088]':
+            - gridcell "3/27/2026 8:33:21.172 AM" [ref=e2089]: 8:33:21.172 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: aecccf0b25cafa78c3fbb3c917014503" [ref=e2090]':
+              - generic [ref=e2091]: "unknown_service: HTTP GET"
+              - text: aecccf0
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2092]:
+              - generic [ref=e2093]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2095]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2097]': Picea.Abies.Conduit.Api (2)
+            - gridcell "13 13.5ms" [ref=e2098]:
+              - generic [ref=e2099]:
+                - progressbar "Duration" [ref=e2100]:
+                  - img [ref=e2101]
+                - generic [ref=e2104]: 13.5ms
+            - gridcell "Actions" [ref=e2105]:
+              - generic "Actions" [ref=e2107] [cursor=pointer]:
+                - button "Actions" [ref=e2108]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:21.19 AM Name: unknown_service: HTTP GET Trace Id: 5a6f20dfaab6878b12cc365e5d104dc8 unknown_service (1) Picea.Abies.Conduit.Api (2) 13 13.1ms Actions" [ref=e2109]':
+            - gridcell "3/27/2026 8:33:21.19 AM" [ref=e2110]: 8:33:21.190 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: 5a6f20dfaab6878b12cc365e5d104dc8" [ref=e2111]':
+              - generic [ref=e2112]: "unknown_service: HTTP GET"
+              - text: 5a6f20d
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2113]:
+              - generic [ref=e2114]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2116]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2118]': Picea.Abies.Conduit.Api (2)
+            - gridcell "13 13.1ms" [ref=e2119]:
+              - generic [ref=e2120]:
+                - progressbar "Duration" [ref=e2121]:
+                  - img [ref=e2122]
+                - generic [ref=e2125]: 13.1ms
+            - gridcell "Actions" [ref=e2126]:
+              - generic "Actions" [ref=e2128] [cursor=pointer]:
+                - button "Actions" [ref=e2129]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:33:21.205 AM Name: unknown_service: HTTP GET Trace Id: a7a2c3580b94d6ff4623b52ce293f3b0 unknown_service (1) Picea.Abies.Conduit.Api (2) 7 7.3ms Actions" [ref=e2130]':
+            - gridcell "3/27/2026 8:33:21.205 AM" [ref=e2131]: 8:33:21.205 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: a7a2c3580b94d6ff4623b52ce293f3b0" [ref=e2132]':
+              - generic [ref=e2133]: "unknown_service: HTTP GET"
+              - text: a7a2c35
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2134]:
+              - generic [ref=e2135]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2137]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2139]': Picea.Abies.Conduit.Api (2)
+            - gridcell "7 7.3ms" [ref=e2140]:
+              - generic [ref=e2141]:
+                - progressbar "Duration" [ref=e2142]:
+                  - img [ref=e2143]
+                - generic [ref=e2146]: 7.3ms
+            - gridcell "Actions" [ref=e2147]:
+              - generic "Actions" [ref=e2149] [cursor=pointer]:
+                - button "Actions" [ref=e2150]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:06.20184 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 587f1280d73e446690d125c5d1d5f99c Picea.Abies.Conduit.Api (2) 17 17.75ms Actions" [ref=e2151]':
+            - gridcell "3/27/2026 8:49:06.20184 AM" [ref=e2152]: 8:49:06.201 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 587f1280d73e446690d125c5d1d5f99c" [ref=e2153]':
+              - generic [ref=e2154]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: 587f128
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2155]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2158]': Picea.Abies.Conduit.Api (2)
+            - gridcell "17 17.75ms" [ref=e2159]:
+              - generic [ref=e2160]:
+                - progressbar "Duration" [ref=e2161]:
+                  - img [ref=e2162]
+                - generic [ref=e2165]: 17.75ms
+            - gridcell "Actions" [ref=e2166]:
+              - generic "Actions" [ref=e2168] [cursor=pointer]:
+                - button "Actions" [ref=e2169]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:06.256284 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 409664218ae8b92f890d94b9cea2ad29 Picea.Abies.Conduit.Api (2) 2 2.31ms Actions" [ref=e2170]':
+            - gridcell "3/27/2026 8:49:06.256284 AM" [ref=e2171]: 8:49:06.256 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: 409664218ae8b92f890d94b9cea2ad29" [ref=e2172]':
+              - generic [ref=e2173]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: "4096642"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2174]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2177]': Picea.Abies.Conduit.Api (2)
+            - gridcell "2 2.31ms" [ref=e2178]:
+              - generic [ref=e2179]:
+                - progressbar "Duration" [ref=e2180]:
+                  - img [ref=e2181]
+                - generic [ref=e2184]: 2.31ms
+            - gridcell "Actions" [ref=e2185]:
+              - generic "Actions" [ref=e2187] [cursor=pointer]:
+                - button "Actions" [ref=e2188]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:06.275438 AM Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 1e12156ce49b1df61e410e20b18c46f9 Picea.Abies.Conduit.Api (2) 7 7.56ms Actions" [ref=e2189]':
+            - gridcell "3/27/2026 8:49:06.275438 AM" [ref=e2190]: 8:49:06.275 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/articles/ Trace Id: 1e12156ce49b1df61e410e20b18c46f9" [ref=e2191]':
+              - generic [ref=e2192]: "Picea.Abies.Conduit.Api: GET /api/articles/"
+              - text: "1e12156"
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2193]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2196]': Picea.Abies.Conduit.Api (2)
+            - gridcell "7 7.56ms" [ref=e2197]:
+              - generic [ref=e2198]:
+                - progressbar "Duration" [ref=e2199]:
+                  - img [ref=e2200]
+                - generic [ref=e2203]: 7.56ms
+            - gridcell "Actions" [ref=e2204]:
+              - generic "Actions" [ref=e2206] [cursor=pointer]:
+                - button "Actions" [ref=e2207]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:06.295604 AM Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: bd09112a018a407782fc084109a9e237 Picea.Abies.Conduit.Api (2) 1 1.7ms Actions" [ref=e2208]':
+            - gridcell "3/27/2026 8:49:06.295604 AM" [ref=e2209]: 8:49:06.295 AM
+            - 'gridcell "Name: Picea.Abies.Conduit.Api: GET /api/tags/ Trace Id: bd09112a018a407782fc084109a9e237" [ref=e2210]':
+              - generic [ref=e2211]: "Picea.Abies.Conduit.Api: GET /api/tags/"
+              - text: bd09112
+            - gridcell "Picea.Abies.Conduit.Api (2)" [ref=e2212]:
+              - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2215]': Picea.Abies.Conduit.Api (2)
+            - gridcell "1 1.7ms" [ref=e2216]:
+              - generic [ref=e2217]:
+                - progressbar "Duration" [ref=e2218]:
+                  - img [ref=e2219]
+                - generic [ref=e2222]: 1.7ms
+            - gridcell "Actions" [ref=e2223]:
+              - generic "Actions" [ref=e2225] [cursor=pointer]:
+                - button "Actions" [ref=e2226]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:23.551 AM Name: unknown_service: UI: click Trace Id: 5cadf802193c41187fe9e664dd5219cf unknown_service (1) 6 6.1ms Actions" [ref=e2227]':
+            - gridcell "3/27/2026 8:49:23.551 AM" [ref=e2228]: 8:49:23.551 AM
+            - 'gridcell "Name: unknown_service: UI: click Trace Id: 5cadf802193c41187fe9e664dd5219cf" [ref=e2229]':
+              - generic [ref=e2230]: "unknown_service: UI: click"
+              - text: 5cadf80
+            - gridcell "unknown_service (1)" [ref=e2231]:
+              - 'generic "unknown_service spans Total: 1" [ref=e2234]': unknown_service (1)
+            - gridcell "6 6.1ms" [ref=e2235]:
+              - generic [ref=e2236]:
+                - progressbar "Duration" [ref=e2237]:
+                  - img [ref=e2238]
+                - generic [ref=e2241]: 6.1ms
+            - gridcell "Actions" [ref=e2242]:
+              - generic "Actions" [ref=e2244] [cursor=pointer]:
+                - button "Actions" [ref=e2245]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:23.554 AM Name: unknown_service: HTTP GET Trace Id: f1b25439b13cf464a63a694b48b5481a unknown_service (1) Picea.Abies.Conduit.Api (2) 9 9.6ms Actions" [ref=e2246]':
+            - gridcell "3/27/2026 8:49:23.554 AM" [ref=e2247]: 8:49:23.554 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: f1b25439b13cf464a63a694b48b5481a" [ref=e2248]':
+              - generic [ref=e2249]: "unknown_service: HTTP GET"
+              - text: f1b2543
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2250]:
+              - generic [ref=e2251]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2253]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2255]': Picea.Abies.Conduit.Api (2)
+            - gridcell "9 9.6ms" [ref=e2256]:
+              - generic [ref=e2257]:
+                - progressbar "Duration" [ref=e2258]:
+                  - img [ref=e2259]
+                - generic [ref=e2262]: 9.6ms
+            - gridcell "Actions" [ref=e2263]:
+              - generic "Actions" [ref=e2265] [cursor=pointer]:
+                - button "Actions" [ref=e2266]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:23.567 AM Name: unknown_service: HTTP GET Trace Id: 13fc40c3ab4359297aa190cd43c0ba86 unknown_service (1) Picea.Abies.Conduit.Api (2) 22 22.2ms Actions" [ref=e2267]':
+            - gridcell "3/27/2026 8:49:23.567 AM" [ref=e2268]: 8:49:23.567 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: 13fc40c3ab4359297aa190cd43c0ba86" [ref=e2269]':
+              - generic [ref=e2270]: "unknown_service: HTTP GET"
+              - text: 13fc40c
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2271]:
+              - generic [ref=e2272]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2274]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2276]': Picea.Abies.Conduit.Api (2)
+            - gridcell "22 22.2ms" [ref=e2277]:
+              - generic [ref=e2278]:
+                - progressbar "Duration" [ref=e2279]:
+                  - img [ref=e2280]
+                - generic [ref=e2283]: 22.2ms
+            - gridcell "Actions" [ref=e2284]:
+              - generic "Actions" [ref=e2286] [cursor=pointer]:
+                - button "Actions" [ref=e2287]:
+                  - generic:
+                    - generic:
+                      - img
+          - 'row "3/27/2026 8:49:23.591 AM Name: unknown_service: HTTP GET Trace Id: 2da5f673f715b3e6d0496829c61c5713 unknown_service (1) Picea.Abies.Conduit.Api (2) 7 7.4ms Actions" [ref=e2288]':
+            - gridcell "3/27/2026 8:49:23.591 AM" [ref=e2289]: 8:49:23.591 AM
+            - 'gridcell "Name: unknown_service: HTTP GET Trace Id: 2da5f673f715b3e6d0496829c61c5713" [ref=e2290]':
+              - generic [ref=e2291]: "unknown_service: HTTP GET"
+              - text: 2da5f67
+            - gridcell "unknown_service (1) Picea.Abies.Conduit.Api (2)" [ref=e2292]:
+              - generic [ref=e2293]:
+                - 'generic "unknown_service spans Total: 1" [ref=e2295]': unknown_service (1)
+                - 'generic "Picea.Abies.Conduit.Api spans Total: 2" [ref=e2297]': Picea.Abies.Conduit.Api (2)
+            - gridcell "7 7.4ms" [ref=e2298]:
+              - generic [ref=e2299]:
+                - progressbar "Duration" [ref=e2300]:
+                  - img [ref=e2301]
+                - generic [ref=e2304]: 7.4ms
+            - gridcell "Actions" [ref=e2305]:
+              - generic "Actions" [ref=e2307] [cursor=pointer]:
+                - button "Actions" [ref=e2308]:
+                  - generic:
+                    - generic:
+                      - img
+    - contentinfo [ref=e2309]:
+      - generic [ref=e2311]:
+        - text: Showing
+        - strong [ref=e2312]: 112 traces

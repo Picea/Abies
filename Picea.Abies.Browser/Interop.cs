@@ -24,11 +24,12 @@
 //       PatchCount:       int32 (4 bytes)
 //       StringTableOffset: int32 (4 bytes)
 //
-//     Patch Entries (16 bytes each):
+//     Patch Entries (20 bytes each):
 //       Type:  int32 (4 bytes) — BinaryPatchType enum value
 //       Field1: int32 (4 bytes) — string table index (-1 = null)
 //       Field2: int32 (4 bytes) — string table index (-1 = null)
 //       Field3: int32 (4 bytes) — string table index (-1 = null)
+//       Field4: int32 (4 bytes) — string table index (-1 = null)
 //
 //     String Table:
 //       LEB128 length prefix + UTF-8 bytes for each string
@@ -51,6 +52,9 @@
 // =============================================================================
 
 using System.Runtime.InteropServices.JavaScript;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Browser;
 
@@ -150,6 +154,113 @@ public static partial class Interop
     /// </summary>
     [JSImport("setupNavigation", "Abies")]
     internal static partial void SetupNavigation();
+
+#if DEBUG
+    internal static DebuggerMachine? Debugger { get; set; }
+    internal static Func<object?, bool>? ApplyDebuggerSnapshot { get; set; }
+
+    /// <summary>
+    /// Mounts the debugger UI by injecting a mount point div into the document.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called automatically in Debug builds during Runtime.Run(). In Release builds,
+    /// this method is compiled out and never called.
+    /// </para>
+    /// <para>
+    /// The debugger mount point is idempotent — calling multiple times has no effect.
+    /// </para>
+    /// </remarks>
+    [JSImport("mountDebugger", "AbiesDebugger")]
+    internal static partial void MountDebugger();
+
+    [JSImport("setRuntimeBridge", "AbiesDebugger")]
+    internal static partial void SetRuntimeBridge(
+        [JSMarshalAs<JSType.Function<JSType.String, JSType.Number, JSType.String, JSType.String>>]
+        Func<string, int, string, string> callback);
+
+    /// <summary>
+    /// Called from C# after each debugger timeline mutation so the browser UI can refresh.
+    /// </summary>
+    [JSImport("notifyTimelineChanged", "AbiesDebugger")]
+    internal static partial void NotifyTimelineChanged();
+
+    [JSExport]
+    public static string DispatchDebuggerMessage(string messageType, int entryId, string dataJson)
+    {
+        if (Debugger is null)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+            {
+                Status = "unavailable",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
+                CursorPosition = -1,
+                TimelineSize = 0,
+                InitialModelSnapshotPreview = string.Empty,
+                ModelSnapshotPreview = string.Empty
+            }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(messageType))
+            {
+                return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+                {
+                    Status = "error",
+                    AppName = string.Empty,
+                    AppVersion = string.Empty,
+                    CursorPosition = Debugger.CursorPosition,
+                    TimelineSize = Debugger.Timeline.Count,
+                    AtStart = Debugger.AtStart,
+                    AtEnd = Debugger.AtEnd,
+                    InitialModelSnapshotPreview = Debugger.InitialModelSnapshotPreview,
+                    ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
+                }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+            }
+
+            object? data = null;
+            if (!string.IsNullOrWhiteSpace(dataJson))
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(dataJson);
+                data = document.RootElement.Clone();
+            }
+
+            var message = new DebuggerAdapterMessage
+            {
+                Type = messageType,
+                EntryId = entryId >= 0 ? entryId : null,
+                Data = data
+            };
+
+            var response = DebuggerRuntimeBridge.Execute(message, Debugger);
+
+            if (ApplyDebuggerSnapshot is not null)
+            {
+                _ = ApplyDebuggerSnapshot(Debugger.CurrentModelSnapshot);
+            }
+
+            return System.Text.Json.JsonSerializer.Serialize(response,
+                DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+        }
+        catch
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new DebuggerAdapterResponse
+            {
+                Status = "error",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
+                CursorPosition = Debugger.CursorPosition,
+                TimelineSize = Debugger.Timeline.Count,
+                AtStart = Debugger.AtStart,
+                AtEnd = Debugger.AtEnd,
+                InitialModelSnapshotPreview = Debugger.InitialModelSnapshotPreview,
+                ModelSnapshotPreview = Debugger.CurrentModelSnapshotPreview
+            }, DebuggerAdapterJsonContext.Default.DebuggerAdapterResponse);
+        }
+    }
+#endif
 
     /// <summary>
     /// Gets the current browser URL (window.location.href).

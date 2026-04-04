@@ -56,6 +56,9 @@ var wasmAppBundlePath = Path.GetFullPath(Path.Combine(
 app.UseStaticFiles();
 app.UseAbiesWasmFiles(wasmAppBundlePath);
 
+// OTEL: Proxy browser traces to server's OTLP endpoint
+app.MapOtlpProxy();
+
 // Map the Counter app in InteractiveWasm mode — serves initial HTML, no WebSocket.
 app.MapAbies<CounterProgram, CounterModel, Unit>(
     "/{**catch-all}",

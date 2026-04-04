@@ -86,12 +86,24 @@ public sealed class ArticleRunner()
 /// </remarks>
 public sealed class AggregateStore
 {
+    private const int RecentArticleCacheLimit = 512;
+
     private readonly EventStore<UserEvent> _userEventStore;
     private readonly EventStore<ArticleEvent> _articleEventStore;
     private readonly NpgsqlDataSource? _dataSource;
 
     private readonly ConcurrentDictionary<string, AggregateRunner<User, UserState, UserCommand, UserEvent, UserEffect, UserError, Unit>> _userRunners = new();
     private readonly ConcurrentDictionary<string, AggregateRunner<Article, ArticleState, ArticleCommand, ArticleEvent, ArticleEffect, ArticleError, Unit>> _articleRunners = new();
+    private readonly ConcurrentDictionary<string, byte> _registeredEmails = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _registeredUsernames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _registeredArticleSlugs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _uniquenessLocks = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly ConcurrentDictionary<string, ArticleState> _recentArticlesBySlug = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<Guid, string> _recentArticleSlugById = new();
+    private readonly ConcurrentDictionary<string, long> _recentArticleSlugVersions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentQueue<(string Slug, long Version)> _recentArticleSlugQueue = new();
+    private long _recentArticleVersionCounter;
 
     /// <summary>Creates a new aggregate store.</summary>
     /// <param name="userEventStore">The KurrentDB-backed event store for User events.</param>
@@ -156,15 +168,110 @@ public sealed class AggregateStore
     }
 
     /// <summary>
+    /// Handles user registration with an atomic in-process uniqueness gate.
+    /// </summary>
+    public async ValueTask<Result<UserState, UserError>> HandleUniqueUserRegistration(
+        Guid userId,
+        UserCommand.Register command,
+        string email,
+        string username,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeUniquenessKey(email);
+        var normalizedUsername = NormalizeUniquenessKey(username);
+
+        await using var guard = await AcquireUniquenessLocks(
+            [$"user:email:{normalizedEmail}", $"user:username:{normalizedUsername}"],
+            cancellationToken).ConfigureAwait(false);
+
+        if (_registeredEmails.ContainsKey(normalizedEmail))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateEmail());
+
+        if (_registeredUsernames.ContainsKey(normalizedUsername))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateUsername());
+
+        var result = await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+        if (result.IsOk)
+        {
+            _registeredEmails.TryAdd(normalizedEmail, 0);
+            _registeredUsernames.TryAdd(normalizedUsername, 0);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Gets the current state of a User aggregate (loading from store if needed).
     /// </summary>
     public async ValueTask<UserState> GetUserState(
-        Guid userId,
+           Guid userId,
         CancellationToken cancellationToken = default)
     {
         var streamId = UserStreamId(userId);
         var runner = await GetOrLoadUserRunner(streamId, cancellationToken).ConfigureAwait(false);
         return runner.State;
+    }
+
+    /// <summary>
+    /// Handles a profile update command with an atomic in-process uniqueness gate.
+    /// Only checks/reserves email and username that are actually changing (i.e., differ
+    /// from the current state). This prevents false conflicts when a user keeps their
+    /// existing email or username.
+    /// </summary>
+    public async ValueTask<Result<UserState, UserError>> HandleUniqueUserUpdate(
+        Guid userId,
+        UserCommand.UpdateProfile command,
+        string? newEmail,
+        string? newUsername,
+        CancellationToken cancellationToken = default)
+    {
+        // If neither email nor username is being changed, skip uniqueness gate entirely
+        if (newEmail is null && newUsername is null)
+            return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        // Get current user state to determine which values are actually changing
+        var currentState = await GetUserState(userId, cancellationToken).ConfigureAwait(false);
+
+        // Only enforce uniqueness on values that differ from the current ones
+        var emailChanging = newEmail is not null &&
+            NormalizeUniquenessKey(newEmail) != NormalizeUniquenessKey(currentState.Email.Value);
+        var usernameChanging = newUsername is not null &&
+            NormalizeUniquenessKey(newUsername) != NormalizeUniquenessKey(currentState.Username.Value);
+
+        if (!emailChanging && !usernameChanging)
+            return await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        var lockKeys = new List<string>();
+        if (emailChanging)
+            lockKeys.Add($"user:email:{NormalizeUniquenessKey(newEmail!)}");
+        if (usernameChanging)
+            lockKeys.Add($"user:username:{NormalizeUniquenessKey(newUsername!)}");
+
+        await using var guard = await AcquireUniquenessLocks(lockKeys, cancellationToken).ConfigureAwait(false);
+
+        if (emailChanging && _registeredEmails.ContainsKey(NormalizeUniquenessKey(newEmail!)))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateEmail());
+
+        if (usernameChanging && _registeredUsernames.ContainsKey(NormalizeUniquenessKey(newUsername!)))
+            return Result<UserState, UserError>.Err(new UserError.DuplicateUsername());
+
+        var result = await HandleUserCommand(userId, command, cancellationToken).ConfigureAwait(false);
+
+        if (result.IsOk)
+        {
+            if (emailChanging)
+            {
+                _registeredEmails.TryRemove(NormalizeUniquenessKey(currentState.Email.Value), out _);
+                _registeredEmails.TryAdd(NormalizeUniquenessKey(newEmail!), 0);
+            }
+            if (usernameChanging)
+            {
+                _registeredUsernames.TryRemove(NormalizeUniquenessKey(currentState.Username.Value), out _);
+                _registeredUsernames.TryAdd(NormalizeUniquenessKey(newUsername!), 0);
+            }
+        }
+
+        return result;
     }
 
     private async ValueTask<AggregateRunner<User, UserState, UserCommand, UserEvent, UserEffect, UserError, Unit>> GetOrLoadUserRunner(
@@ -232,7 +339,34 @@ public sealed class AggregateStore
         {
             await ProjectArticleEvents(streamId, articleId, versionBefore, runner, cancellationToken)
                 .ConfigureAwait(false);
+
+            UpdateRecentArticleCache(articleId, result.Value);
         }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Handles article creation with an atomic in-process uniqueness gate for slug.
+    /// </summary>
+    public async ValueTask<Result<ArticleState, ArticleError>> HandleUniqueArticleCreation(
+        Guid articleId,
+        ArticleCommand.CreateArticle command,
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedSlug = NormalizeUniquenessKey(slug);
+
+        await using var guard = await AcquireUniquenessLocks(
+            [$"article:slug:{normalizedSlug}"],
+            cancellationToken).ConfigureAwait(false);
+
+        if (_registeredArticleSlugs.ContainsKey(normalizedSlug))
+            return Result<ArticleState, ArticleError>.Err(new ArticleError.DuplicateSlug());
+
+        var result = await HandleArticleCommand(articleId, command, cancellationToken).ConfigureAwait(false);
+        if (result.IsOk)
+            _registeredArticleSlugs.TryAdd(normalizedSlug, 0);
 
         return result;
     }
@@ -280,6 +414,122 @@ public sealed class AggregateStore
         {
             await ArticleProjection.Apply(_dataSource, articleId, storedEvent.Event, cancellationToken)
                 .ConfigureAwait(false);
+        }
+    }
+
+    // ─── Shadow Data Support ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets all events from the event store for a given stream ID.
+    /// Used for shadow data reconstruction when read model has projection lag.
+    /// </summary>
+    public async ValueTask<IReadOnlyList<UserEvent>> GetUserEvents(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var streamId = UserStreamId(userId);
+        var events = await _userEventStore.LoadAsync(streamId, 0, cancellationToken)
+            .ConfigureAwait(false);
+        return events.Select(e => e.Event).ToList();
+    }
+
+    /// <summary>
+    /// Gets all events from the event store for a given stream ID.
+    /// Used for shadow data reconstruction when read model has projection lag.
+    /// </summary>
+    public async ValueTask<IReadOnlyList<ArticleEvent>> GetArticleEvents(
+        Guid articleId,
+        CancellationToken cancellationToken = default)
+    {
+        var streamId = ArticleStreamId(articleId);
+        var events = await _articleEventStore.LoadAsync(streamId, 0, cancellationToken)
+            .ConfigureAwait(false);
+        return events.Select(e => e.Event).ToList();
+    }
+
+    /// <summary>
+    /// Attempts to resolve a recently written article from in-memory write-side state.
+    /// </summary>
+    public bool TryGetRecentArticleBySlug(string slug, out ArticleState state) =>
+        _recentArticlesBySlug.TryGetValue(slug, out state!);
+
+    private static string NormalizeUniquenessKey(string value) =>
+        value.Trim().ToLowerInvariant();
+
+    private async ValueTask<UniquenessLockGuard> AcquireUniquenessLocks(
+        IReadOnlyList<string> keys,
+        CancellationToken cancellationToken)
+    {
+        var orderedKeys = keys
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var locks = new SemaphoreSlim[orderedKeys.Length];
+        for (var i = 0; i < orderedKeys.Length; i++)
+        {
+            var semaphore = _uniquenessLocks.GetOrAdd(orderedKeys[i], _ => new SemaphoreSlim(1, 1));
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            locks[i] = semaphore;
+        }
+
+        return new UniquenessLockGuard(locks);
+    }
+
+    private void UpdateRecentArticleCache(Guid articleId, ArticleState state)
+    {
+        if (state is { Published: true, Deleted: false })
+        {
+            var newSlug = state.Slug.Value;
+
+            if (_recentArticleSlugById.TryGetValue(articleId, out var oldSlug)
+                && !string.Equals(oldSlug, newSlug, StringComparison.OrdinalIgnoreCase))
+            {
+                _recentArticlesBySlug.TryRemove(oldSlug, out _);
+                _registeredArticleSlugs.TryRemove(NormalizeUniquenessKey(oldSlug), out _);
+            }
+
+            _recentArticleSlugById[articleId] = newSlug;
+            _recentArticlesBySlug[newSlug] = state;
+            var newVersion = Interlocked.Increment(ref _recentArticleVersionCounter);
+            _recentArticleSlugVersions[newSlug] = newVersion;
+
+            _recentArticleSlugQueue.Enqueue((newSlug, newVersion));
+            while (_recentArticleSlugQueue.Count > RecentArticleCacheLimit
+                   && _recentArticleSlugQueue.TryDequeue(out var evict))
+            {
+                if (_recentArticleSlugVersions.TryGetValue(evict.Slug, out var currentVersion)
+                    && currentVersion == evict.Version)
+                {
+                    _recentArticlesBySlug.TryRemove(evict.Slug, out _);
+                    _recentArticleSlugVersions.TryRemove(evict.Slug, out _);
+                }
+            }
+
+            _registeredArticleSlugs.TryAdd(NormalizeUniquenessKey(newSlug), 0);
+            return;
+        }
+
+        if (_recentArticleSlugById.TryRemove(articleId, out var removedSlug))
+        {
+            _recentArticlesBySlug.TryRemove(removedSlug, out _);
+            _recentArticleSlugVersions.TryRemove(removedSlug, out _);
+            _registeredArticleSlugs.TryRemove(NormalizeUniquenessKey(removedSlug), out _);
+        }
+    }
+
+    private readonly struct UniquenessLockGuard : IAsyncDisposable
+    {
+        private readonly SemaphoreSlim[] _locks;
+
+        public UniquenessLockGuard(SemaphoreSlim[] locks) => _locks = locks;
+
+        public ValueTask DisposeAsync()
+        {
+            for (var i = _locks.Length - 1; i >= 0; i--)
+                _locks[i].Release();
+
+            return ValueTask.CompletedTask;
         }
     }
 }

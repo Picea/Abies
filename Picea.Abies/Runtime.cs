@@ -1,6 +1,11 @@
 using System.Diagnostics;
 using Picea.Abies.DOM;
+using Picea.Abies.Html;
 using Picea.Abies.Subscriptions;
+using System.Text.Json.Serialization.Metadata;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies;
 
@@ -85,12 +90,17 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private readonly Apply _apply;
     private readonly Action<string>? _titleChanged;
     private readonly Action<NavigationCommand>? _navigationExecutor;
+    private readonly Action<SubscriptionFault>? _subscriptionFaulted;
     private readonly HandlerRegistry _handlerRegistry;
+    private readonly bool _replay;
+    private readonly string _viewCacheScope = $"runtime:{Guid.CreateVersion7()}";
     private readonly Lock _renderGate = new();
     private Document? _currentDocument;
     private SubscriptionState _subscriptionState = SubscriptionState.Empty;
 #if DEBUG
     private IDisposable? _hotReloadRegistration;
+    private DebuggerMachine? _debuggerMachine;
+    private readonly JsonTypeInfo<TModel>? _debuggerModelJsonTypeInfo;
 #endif
 
     public TModel Model => _core.State;
@@ -99,9 +109,54 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
     public HandlerRegistry Handlers => _handlerRegistry;
 
-    private Runtime(Apply apply, Action<string>? titleChanged, Action<NavigationCommand>? navigationExecutor) =>
-        (_apply, _titleChanged, _navigationExecutor, _handlerRegistry) =
-            (apply, titleChanged, navigationExecutor, new HandlerRegistry());
+#if DEBUG
+    public DebuggerMachine? Debugger => _debuggerMachine;
+#endif
+
+    private Runtime(
+        Apply apply,
+        Action<string>? titleChanged,
+        Action<NavigationCommand>? navigationExecutor,
+        Action<SubscriptionFault>? subscriptionFaulted,
+        bool replay,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
+    {
+        (_apply, _titleChanged, _navigationExecutor, _subscriptionFaulted, _handlerRegistry, _replay) =
+            (apply, titleChanged, navigationExecutor, subscriptionFaulted, new HandlerRegistry(), replay);
+
+#if DEBUG
+        _debuggerModelJsonTypeInfo = debuggerModelJsonTypeInfo;
+#endif
+    }
+
+#if DEBUG
+    public void UseDebugger(int capacity = 10000)
+    {
+        _debuggerMachine = new DebuggerMachine(capacity);
+        DebuggerRuntimeRegistry.CurrentDebugger = _debuggerMachine;
+    }
+
+    /// <summary>
+    /// Seeds the debugger with the runtime's current state and, optionally, a
+    /// synthetic message that represents the state transition that already occurred
+    /// before the debugger was attached.
+    /// </summary>
+    public void SeedDebugger(Message? message = null)
+    {
+        if (_debuggerMachine is null)
+        {
+            return;
+        }
+
+        var modelSnapshot = GenerateModelSnapshot(_core.State);
+        _debuggerMachine.CaptureInitialModel(modelSnapshot, _core.State);
+
+        if (message is not null)
+        {
+            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
+        }
+    }
+#endif
 
     private ValueTask<Result<Unit, PipelineError>> Observe(TModel state, Message _, Command __)
     {
@@ -116,7 +171,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
         lock (_renderGate)
         {
-            var newDocument = TProgram.View(state);
+            Document newDocument;
+            using (Elements.EnterViewCacheScope(_viewCacheScope))
+            {
+                newDocument = TProgram.View(state);
+            }
 
             var patches = Operations.Diff(_currentDocument?.Body, newDocument.Body);
 
@@ -127,13 +186,11 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             List<Patch>? mergedPatches = null;
             if (headPatches.Count > 0)
             {
-                mergedPatches = new List<Patch>(patches.Count + headPatches.Count);
-                mergedPatches.AddRange(patches);
-                mergedPatches.AddRange(headPatches);
+                mergedPatches = [.. patches, .. headPatches];
             }
 
             var allPatches = mergedPatches is not null
-                ? (IReadOnlyList<Patch>)mergedPatches
+                ? mergedPatches
                 : patches;
 
             UpdateHandlerRegistry(allPatches);
@@ -150,9 +207,15 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
             _currentDocument = newDocument;
 
-            var desiredSubscriptions = TProgram.Subscriptions(state);
-            _subscriptionState = SubscriptionManager.Update(
-                _subscriptionState, desiredSubscriptions, DispatchFromSubscription);
+            if (!_replay)
+            {
+                var desiredSubscriptions = TProgram.Subscriptions(state);
+                _subscriptionState = SubscriptionManager.Update(
+                    _subscriptionState,
+                    desiredSubscriptions,
+                    DispatchFromSubscription,
+                    ObserveSubscriptionFault);
+            }
 
             renderActivity?.SetTag("abies.patches", patches.Count);
         }
@@ -221,7 +284,25 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     }
 
     private void DispatchFromSubscription(Message message) =>
-        _ = _core.Dispatch(message);
+        _ = _replay
+            ? default
+            : Dispatch(message);
+
+    private void ObserveSubscriptionFault(SubscriptionFault fault)
+    {
+        using var activity = _activitySource.StartActivity("Picea.Abies.SubscriptionFault");
+        activity?.SetTag("subscription.key", fault.Key.Value);
+        activity?.SetStatus(ActivityStatusCode.Error, fault.Exception.Message);
+
+        try
+        {
+            _subscriptionFaulted?.Invoke(fault);
+        }
+        catch (Exception)
+        {
+            // Fault observation must not interfere with runtime execution.
+        }
+    }
 
     public static async Task<Runtime<TProgram, TModel, TArgument>> Start(
         Apply apply,
@@ -229,19 +310,32 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         TArgument argument = default!,
         Action<string>? titleChanged = null,
         Action<NavigationCommand>? navigationExecutor = null,
+        Action<SubscriptionFault>? subscriptionFaulted = null,
         Url? initialUrl = null,
-        bool threadSafe = false)
+        bool threadSafe = false,
+        bool replay = false,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.Start");
         activity?.SetTag("abies.program", typeof(TProgram).Name);
 
-        var runtime = new Runtime<TProgram, TModel, TArgument>(apply, titleChanged, navigationExecutor);
+        var runtime = new Runtime<TProgram, TModel, TArgument>(
+            apply,
+            titleChanged,
+            navigationExecutor,
+            subscriptionFaulted,
+            replay,
+            debuggerModelJsonTypeInfo);
 
         runtime._handlerRegistry.Dispatch = runtime.DispatchFromSubscription;
 
         var (model, initialCommand) = TProgram.Initialize(argument);
 
-        var document = TProgram.View(model);
+        Document document;
+        using (Elements.EnterViewCacheScope(runtime._viewCacheScope))
+        {
+            document = TProgram.View(model);
+        }
         var bodyPatches = Operations.Diff(null, document.Body);
         var headPatches = HeadDiff.Diff([], document.Head);
 
@@ -270,13 +364,19 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         titleChanged?.Invoke(document.Title);
 
         Interpreter<Command, Message> wrappedInterpreter = command =>
-            InterpretCommand(command, interpreter, runtime._navigationExecutor);
+            InterpretCommand(command, interpreter, runtime._navigationExecutor, replay);
 
         static async ValueTask<Result<Message[], PipelineError>> InterpretCommand(
             Command command,
             Interpreter<Command, Message> interpreter,
-            Action<NavigationCommand>? navigationExecutor)
+            Action<NavigationCommand>? navigationExecutor,
+            bool replay)
         {
+            if (replay)
+            {
+                return Result<Message[], PipelineError>.Ok([]);
+            }
+
             switch (command)
             {
                 case Command.None:
@@ -287,7 +387,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
                     var allMessages = new List<Message>();
                     foreach (var sub in batch.Commands)
                     {
-                        var result = await InterpretCommand(sub, interpreter, navigationExecutor);
+                        var result = await InterpretCommand(sub, interpreter, navigationExecutor, replay);
                         if (result.IsErr)
                             return result;
                         if (result.Value.Length > 0)
@@ -315,11 +415,16 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             HotReloadRuntimeRegistry.Register(typeof(TProgram).Assembly, runtime);
 #endif
 
-        var initialSubscriptions = TProgram.Subscriptions(model);
-        runtime._subscriptionState = SubscriptionManager.Start(
-            initialSubscriptions, runtime.DispatchFromSubscription);
+        if (!replay)
+        {
+            var initialSubscriptions = TProgram.Subscriptions(model);
+            runtime._subscriptionState = SubscriptionManager.Start(
+                initialSubscriptions,
+                runtime.DispatchFromSubscription,
+                runtime.ObserveSubscriptionFault);
 
-        await runtime._core.InterpretEffect(initialCommand);
+            await runtime._core.InterpretEffect(initialCommand);
+        }
 
         if (initialUrl is not null)
         {
@@ -331,9 +436,154 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         return runtime;
     }
 
-    public ValueTask<Result<Unit, PipelineError>> Dispatch(
-        Message message, CancellationToken cancellationToken = default) =>
-        _core.Dispatch(message, cancellationToken);
+    public async ValueTask<Result<Unit, PipelineError>> Dispatch(
+        Message message, CancellationToken cancellationToken = default)
+    {
+        var dispatchResult = await _core.Dispatch(message, cancellationToken);
+
+#if DEBUG
+        // Capture debugger snapshots after transition so timeline entries represent
+        // user-visible post-message state.
+        if (_debuggerMachine != null && dispatchResult.IsOk)
+        {
+            var modelSnapshot = GenerateModelSnapshot(_core.State);
+            _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
+        }
+#endif
+
+        return dispatchResult;
+    }
+
+#if DEBUG
+    public bool TryApplyDebuggerSnapshot(object? snapshot)
+    {
+        bool ApplySnapshot(TModel model)
+        {
+            TrySetCoreState(model);
+            Render(model);
+            return true;
+        }
+
+        if (snapshot is not TModel typedSnapshot)
+        {
+            if (snapshot is System.Text.Json.JsonElement jsonSnapshot)
+            {
+                try
+                {
+                    var deserialized = DeserializeDebuggerModelSnapshot(jsonSnapshot.GetRawText());
+                    if (deserialized is null)
+                    {
+                        return false;
+                    }
+
+                    return ApplySnapshot(deserialized);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            if (snapshot is string snapshotJson)
+            {
+                try
+                {
+                    var deserialized = DeserializeDebuggerModelSnapshot(snapshotJson);
+                    if (deserialized is null)
+                    {
+                        return false;
+                    }
+
+                    return ApplySnapshot(deserialized);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        return ApplySnapshot(typedSnapshot);
+    }
+
+    private TModel? DeserializeDebuggerModelSnapshot(string snapshotJson)
+    {
+        if (_debuggerModelJsonTypeInfo is null)
+        {
+            // Trim-safe behavior: without source-generated metadata we cannot
+            // reliably deserialize arbitrary model graphs in AOT builds.
+            return default;
+        }
+
+        return System.Text.Json.JsonSerializer.Deserialize(snapshotJson, _debuggerModelJsonTypeInfo);
+    }
+
+    private bool TrySetCoreState(TModel model)
+    {
+        try
+        {
+            var coreType = _core.GetType();
+            var writableState = coreType.GetProperty("State", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (writableState is not null && writableState.CanWrite)
+            {
+                writableState.SetValue(_core, model);
+                return true;
+            }
+
+            var stateBackingField = coreType.GetField("<State>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (stateBackingField is not null)
+            {
+                stateBackingField.SetValue(_core, model);
+                return true;
+            }
+
+            foreach (var field in coreType.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+            {
+                if (field.FieldType == typeof(TModel))
+                {
+                    field.SetValue(_core, model);
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort only: rendering still updates the UI even when state injection is unavailable.
+        }
+
+        return false;
+    }
+#endif
+
+#if DEBUG
+    private string GenerateModelSnapshot(TModel model)
+    {
+        try
+        {
+            if (_debuggerModelJsonTypeInfo is not null)
+            {
+                return System.Text.Json.JsonSerializer.Serialize(model, _debuggerModelJsonTypeInfo);
+            }
+
+            // Trim-safe fallback: keep old behavior without invoking reflection-based
+            // serializer paths that can break under AOT trimming.
+            return model?.ToString() ?? "null";
+        }
+        catch
+        {
+            try
+            {
+                return model?.ToString() ?? "null";
+            }
+            catch
+            {
+                return "{}";
+            }
+        }
+    }
+#endif
 
     public void Dispose()
     {
@@ -342,9 +592,16 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
         _hotReloadRegistration?.Dispose();
         _hotReloadRegistration = null;
+        if (ReferenceEquals(DebuggerRuntimeRegistry.CurrentDebugger, _debuggerMachine))
+        {
+            DebuggerRuntimeRegistry.CurrentDebugger = null;
+        }
+
+        _debuggerMachine = null;
 #endif
 
         SubscriptionManager.Stop(_subscriptionState);
+        Elements.RemoveViewCacheScope(_viewCacheScope);
         _handlerRegistry.Dispatch = null;
         _handlerRegistry.Clear();
         _core.Dispose();

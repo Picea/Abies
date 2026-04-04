@@ -55,6 +55,10 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
+using System.Text.Json.Serialization.Metadata;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Browser;
 
@@ -163,10 +167,16 @@ public static class Runtime
     /// Converts commands into feedback messages. When <c>null</c>, a no-op interpreter
     /// is used that returns empty message arrays for all commands.
     /// </param>
+    /// <param name="debuggerModelJsonTypeInfo">
+    /// Optional source-generated JSON metadata for <typeparamref name="TModel"/> used by
+    /// debugger snapshot export/import in Debug builds. Passing this keeps snapshot replay
+    /// trim-safe in WASM AOT scenarios.
+    /// </param>
     /// <returns>A task that never completes (keeps the WASM process alive).</returns>
     public static async Task Run<TProgram, TModel, TArgument>(
         TArgument argument = default!,
-        Interpreter<Command, Message>? interpreter = null)
+        Interpreter<Command, Message>? interpreter = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>
     {
         // Step 1: Load the abies.js module.
@@ -238,13 +248,41 @@ public static class Runtime
             argument: argument,
             titleChanged: Interop.SetTitle,
             navigationExecutor: NavigationExecutor,
-            initialUrl: initialUrl);
+            initialUrl: initialUrl,
+            debuggerModelJsonTypeInfo: debuggerModelJsonTypeInfo);
 
         // Step 9: Wire the runtime's handler registry to the browser interop layer.
         // The [JSExport] DispatchDomEvent method is static, so it needs a static
         // reference to the runtime's handler registry. Safe because WASM is
-        // single-threaded — one runtime, one registry per browser tab.
+        // single-threaded - one runtime, one registry per browser tab.
+        //
+        // This wiring must happen before any optional debugger bootstrap so that
+        // the UI stays interactive even if debugger startup fails.
         Interop.Handlers = runtime.Handlers;
+
+#if DEBUG
+        if (DebuggerConfiguration.Default.Enabled)
+        {
+            try
+            {
+                await JSHost.ImportAsync("AbiesDebugger", "../debugger.js");
+                runtime.UseDebugger();
+                runtime.SeedDebugger(initialUrl is not null ? new UrlChanged(initialUrl) : null);
+                Interop.Debugger = runtime.Debugger;
+                Interop.ApplyDebuggerSnapshot = runtime.TryApplyDebuggerSnapshot;
+                if (runtime.Debugger is not null)
+                {
+                    runtime.Debugger.TimelineChanged += Interop.NotifyTimelineChanged;
+                }
+                Interop.SetRuntimeBridge(Interop.DispatchDebuggerMessage);
+                Interop.MountDebugger();
+            }
+            catch
+            {
+                // Debugger bootstrap is optional and must never block normal app input.
+            }
+        }
+#endif
 
         // Step 10: Keep the WASM process alive indefinitely.
         // Main must not return or the .NET runtime is torn down.

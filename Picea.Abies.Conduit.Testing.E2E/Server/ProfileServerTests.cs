@@ -80,7 +80,7 @@ public sealed class ProfileServerTests : IAsyncInitializer, IAsyncDisposable
         await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForAuthenticatedShell();
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>

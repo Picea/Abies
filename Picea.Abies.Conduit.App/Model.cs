@@ -6,6 +6,8 @@
 // Sub-models hold page-specific state (form fields, loaded data, etc.).
 // =============================================================================
 
+using System.Text.Json.Serialization;
+
 namespace Picea.Abies.Conduit.App;
 
 // ─── Top-Level Model ──────────────────────────────────────────────────────────
@@ -36,6 +38,23 @@ public sealed record Session(
 
 // ─── Page Discriminated Union ─────────────────────────────────────────────────
 
+/// <summary>
+/// Discriminated union of all application pages.
+/// Annotated with <see cref="JsonPolymorphicAttribute"/> so
+/// that debugger model snapshots round-trip through JSON correctly during session import/export.
+/// Without these attributes, <c>JsonSerializer.Deserialize&lt;Model&gt;</c> would throw when
+/// trying to instantiate the abstract <c>Page</c> base type, causing <c>TryApplyDebuggerSnapshot</c>
+/// to silently return <c>false</c> and leave the UI unchanged on step-forward after session import.
+/// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$page")]
+[JsonDerivedType(typeof(Home), "Home")]
+[JsonDerivedType(typeof(Login), "Login")]
+[JsonDerivedType(typeof(Register), "Register")]
+[JsonDerivedType(typeof(Article), "Article")]
+[JsonDerivedType(typeof(Settings), "Settings")]
+[JsonDerivedType(typeof(Editor), "Editor")]
+[JsonDerivedType(typeof(Profile), "Profile")]
+[JsonDerivedType(typeof(NotFound), "NotFound")]
 public abstract record Page
 {
     private Page() { }

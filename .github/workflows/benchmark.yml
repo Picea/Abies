@@ -12,11 +12,13 @@ on:
       - 'scripts/merge-benchmark-results.py'
       - 'scripts/compare-benchmarks.py'
       - 'scripts/compare-benchmark.py'
+      - 'scripts/convert-e2e-results.py'
+      - 'scripts/run-benchmarks.sh'
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
-    # No path filter for PRs - let the job-level conditions decide
-    # E2E runs on perf PRs, micro runs on Picea.Abies/** changes
+    # Keep PR trigger broad to preserve required-check availability:
+    # `Benchmark (js-framework-benchmark)` must always report a status on PRs.
   workflow_dispatch:
     inputs:
       run_e2e_benchmark:

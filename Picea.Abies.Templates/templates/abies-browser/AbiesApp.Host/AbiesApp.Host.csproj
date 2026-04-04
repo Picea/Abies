@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
+    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.*-*" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <WasmProjectPath>..\AbiesApp.csproj</WasmProjectPath>
+    <WasmAppBundlePath>..\bin\$(Configuration)\net10.0\browser-wasm\AppBundle</WasmAppBundlePath>
+  </PropertyGroup>
+
+  <Target Name="PublishWasmProject" BeforeTargets="Build"
+          Inputs="$(WasmProjectPath)"
+          Outputs="$(WasmAppBundlePath)\_framework\dotnet.js">
+    <Exec Command="dotnet publish &quot;$(WasmProjectPath)&quot; -c $(Configuration)"
+          ConsoleToMSBuild="true" />
+  </Target>
+
+</Project>

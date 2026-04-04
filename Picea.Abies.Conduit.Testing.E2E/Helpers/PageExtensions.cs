@@ -48,4 +48,30 @@ public static class PageExtensions
                 new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
         }
     }
+
+    /// <summary>
+    /// Waits until one of the known Conduit route shells is attached.
+    /// </summary>
+    public static Task WaitForConduitShellReady(this IPage page, int timeoutMs = 30000) =>
+        page.WaitForSelectorAsync(
+            ".home-page, .auth-page, .article-page, .editor-page, .settings-page, .profile-page",
+            new() { State = WaitForSelectorState.Attached, Timeout = timeoutMs });
+
+    /// <summary>
+    /// Waits for authenticated UI state after login.
+    /// </summary>
+    public static async Task WaitForAuthenticatedShell(this IPage page, int timeoutMs = 20000)
+    {
+        await page.WaitForSelectorAsync(".home-page", new() { Timeout = timeoutMs });
+        await page.WaitForSelectorAsync(".navbar a[href='/settings']", new() { Timeout = timeoutMs });
+    }
+
+    /// <summary>
+    /// Opens the settings page using the authenticated navbar.
+    /// </summary>
+    public static async Task OpenSettingsFromNavbar(this IPage page, int timeoutMs = 10000)
+    {
+        await page.Locator(".navbar a[href='/settings']").ClickAsync();
+        await page.WaitForSelectorAsync(".settings-page", new() { Timeout = timeoutMs });
+    }
 }

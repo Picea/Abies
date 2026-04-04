@@ -13,7 +13,10 @@
 //
 // Event protocol (Client → Server):
 //   WebSocket text frames containing JSON:
-//     { "commandId": "...", "eventName": "...", "eventData": "..." }
+//     { "commandId": "...", "eventName": "...", "eventData": "...",
+//       "traceparent": "...", "tracestate": "..." }
+//   The trace fields are optional and preserve backward compatibility with
+//   existing clients that only send the original three fields.
 //
 // The transport is stateless — it adapts a single WebSocket connection.
 // One WebSocketTransport per Session per client connection.
@@ -49,8 +52,12 @@ namespace Picea.Abies.Server.Kestrel;
 public sealed class WebSocketTransport : IDisposable
 {
     private static readonly ActivitySource _activitySource = new("Picea.Abies.Server.Kestrel.WebSocketTransport");
+    private const int ReceiveChunkSize = 4096;
+    private const int MaxInboundMessageSizeBytes = 256 * 1024;
 
     private readonly WebSocket _webSocket;
+    private readonly object _sendQueueLock = new();
+    private Task _lastSendTask = Task.CompletedTask;
     private bool _disposed;
 
     /// <summary>
@@ -86,14 +93,7 @@ public sealed class WebSocketTransport : IDisposable
         using var activity = _activitySource.StartActivity("Picea.Abies.WebSocket.SendPatches");
         activity?.SetTag("abies.patchBatch.size", patchBatch.Length);
 
-        if (_webSocket.State is not WebSocketState.Open)
-            return;
-
-        await _webSocket.SendAsync(
-            patchBatch,
-            WebSocketMessageType.Binary,
-            endOfMessage: true,
-            CancellationToken.None);
+        await EnqueueSendAsync(patchBatch, WebSocketMessageType.Binary);
 
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
@@ -107,15 +107,8 @@ public sealed class WebSocketTransport : IDisposable
         using var activity = _activitySource.StartActivity("Picea.Abies.WebSocket.SendText");
         activity?.SetTag("abies.text.length", text.Length);
 
-        if (_webSocket.State is not WebSocketState.Open)
-            return;
-
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
-        await _webSocket.SendAsync(
-            bytes.AsMemory(),
-            WebSocketMessageType.Text,
-            endOfMessage: true,
-            CancellationToken.None);
+        await EnqueueSendAsync(bytes.AsMemory(), WebSocketMessageType.Text);
 
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
@@ -128,32 +121,65 @@ public sealed class WebSocketTransport : IDisposable
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.WebSocket.ReceiveEvent");
 
-        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+        var chunkBuffer = ArrayPool<byte>.Shared.Rent(ReceiveChunkSize);
+        var messageBuffer = ArrayPool<byte>.Shared.Rent(ReceiveChunkSize);
+        var messageLength = 0;
         try
         {
-            var result = await _webSocket.ReceiveAsync(
-                buffer.AsMemory(),
-                cancellationToken);
-
-            // Client sent close frame
-            if (result.MessageType is WebSocketMessageType.Close)
+            while (true)
             {
-                activity?.SetTag("abies.event", "close");
-                await _webSocket.CloseOutputAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    "Session ended",
-                    CancellationToken.None);
-                return null;
+                var result = await _webSocket.ReceiveAsync(
+                    chunkBuffer.AsMemory(),
+                    cancellationToken);
+
+                // Client sent close frame
+                if (result.MessageType is WebSocketMessageType.Close)
+                {
+                    activity?.SetTag("abies.event", "close");
+                    await _webSocket.CloseOutputAsync(
+                        WebSocketCloseStatus.NormalClosure,
+                        "Session ended",
+                        CancellationToken.None);
+                    return null;
+                }
+
+                // We expect text frames with JSON event data
+                if (result.MessageType is not WebSocketMessageType.Text)
+                {
+                    activity?.SetTag("abies.event", "unexpected_binary");
+                    return null;
+                }
+
+                var requiredLength = messageLength + result.Count;
+                if (requiredLength > MaxInboundMessageSizeBytes)
+                {
+                    activity?.SetStatus(ActivityStatusCode.Error, "Inbound message exceeds maximum size");
+                    await _webSocket.CloseOutputAsync(
+                        WebSocketCloseStatus.MessageTooBig,
+                        "Inbound message too large",
+                        CancellationToken.None);
+                    return null;
+                }
+
+                if (requiredLength > messageBuffer.Length)
+                {
+                    var newBuffer = ArrayPool<byte>.Shared.Rent(Math.Min(MaxInboundMessageSizeBytes, Math.Max(requiredLength, messageBuffer.Length * 2)));
+                    Buffer.BlockCopy(messageBuffer, 0, newBuffer, 0, messageLength);
+                    ArrayPool<byte>.Shared.Return(messageBuffer);
+                    messageBuffer = newBuffer;
+                }
+
+                if (result.Count > 0)
+                {
+                    Buffer.BlockCopy(chunkBuffer, 0, messageBuffer, messageLength, result.Count);
+                    messageLength += result.Count;
+                }
+
+                if (result.EndOfMessage)
+                    break;
             }
 
-            // We expect text frames with JSON event data
-            if (result.MessageType is not WebSocketMessageType.Text)
-            {
-                activity?.SetTag("abies.event", "unexpected_binary");
-                return null;
-            }
-
-            var json = buffer.AsSpan(0, result.Count);
+            var json = messageBuffer.AsSpan(0, messageLength);
             var domEvent = JsonSerializer.Deserialize<DomEventDto>(json);
 
             if (domEvent is null)
@@ -161,12 +187,18 @@ public sealed class WebSocketTransport : IDisposable
 
             activity?.SetTag("abies.event.commandId", domEvent.CommandId);
             activity?.SetTag("abies.event.name", domEvent.EventName);
+            if (!string.IsNullOrWhiteSpace(domEvent.TraceParent))
+                activity?.SetTag("abies.event.traceparent", domEvent.TraceParent);
+            if (!string.IsNullOrWhiteSpace(domEvent.TraceState))
+                activity?.SetTag("abies.event.tracestate", domEvent.TraceState);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
             return new DomEvent(
                 domEvent.CommandId ?? string.Empty,
                 domEvent.EventName ?? string.Empty,
-                domEvent.EventData ?? string.Empty);
+                domEvent.EventData ?? string.Empty,
+                domEvent.TraceParent,
+                domEvent.TraceState);
         }
         catch (WebSocketException) when (cancellationToken.IsCancellationRequested)
         {
@@ -185,8 +217,43 @@ public sealed class WebSocketTransport : IDisposable
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPool<byte>.Shared.Return(chunkBuffer);
+            ArrayPool<byte>.Shared.Return(messageBuffer);
         }
+    }
+
+    private ValueTask EnqueueSendAsync(ReadOnlyMemory<byte> payload, WebSocketMessageType messageType)
+    {
+        Task sendTask;
+
+        lock (_sendQueueLock)
+        {
+            sendTask = SendQueuedAsync(_lastSendTask, payload, messageType);
+            _lastSendTask = sendTask;
+        }
+
+        return new ValueTask(sendTask);
+    }
+
+    private async Task SendQueuedAsync(Task previousSend, ReadOnlyMemory<byte> payload, WebSocketMessageType messageType)
+    {
+        try
+        {
+            await previousSend.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Previous send failure must not block later queued sends.
+        }
+
+        if (_webSocket.State is not WebSocketState.Open)
+            return;
+
+        await _webSocket.SendAsync(
+            payload,
+            messageType,
+            endOfMessage: true,
+            CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -221,5 +288,7 @@ public sealed class WebSocketTransport : IDisposable
     private sealed record DomEventDto(
         [property: JsonPropertyName("commandId")] string? CommandId,
         [property: JsonPropertyName("eventName")] string? EventName,
-        [property: JsonPropertyName("eventData")] string? EventData);
+        [property: JsonPropertyName("eventData")] string? EventData,
+        [property: JsonPropertyName("traceparent")] string? TraceParent,
+        [property: JsonPropertyName("tracestate")] string? TraceState);
 }

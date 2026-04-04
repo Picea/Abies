@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
   </PropertyGroup>
 
   <!-- NuGet package metadata -->
@@ -29,7 +30,14 @@
   <ItemGroup>
     <None Include="wwwroot/abies.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
     <None Include="wwwroot/abies-otel.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
+    <None Include="wwwroot/debugger.js" Pack="true" PackagePath="contentFiles/any/any/wwwroot" />
     <None Include="build/Picea.Abies.Browser.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
+  <!-- Exclude debugger.js from Release builds -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Remove="wwwroot/debugger.js" />
+    <None Remove="wwwroot/debugger.js" />
   </ItemGroup>
 
 </Project>

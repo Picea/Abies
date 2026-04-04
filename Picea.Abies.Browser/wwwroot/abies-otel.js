@@ -31,14 +31,18 @@
 // CDN URLs for OpenTelemetry Web SDK
 // =============================================================================
 const CDN_BASE = "https://cdn.jsdelivr.net/npm";
-const OTEL_API_URL = `${CDN_BASE}/@opentelemetry/api@1/build/esm/index.js`;
-const OTEL_SDK_URL = `${CDN_BASE}/@opentelemetry/sdk-trace-web@1/build/esm/index.js`;
-const OTEL_EXPORTER_URL = `${CDN_BASE}/@opentelemetry/exporter-trace-otlp-http@0/build/esm/index.js`;
+// Use jsDelivr's +esm transform so nested imports are browser-resolvable
+// (no bare specifiers or extensionless subpath imports).
+const OTEL_API_URL = `${CDN_BASE}/@opentelemetry/api@1.9.0/+esm`;
+const OTEL_SDK_URL = `${CDN_BASE}/@opentelemetry/sdk-trace-web@1.30.1/+esm`;
+const OTEL_EXPORTER_URL = `${CDN_BASE}/@opentelemetry/exporter-trace-otlp-proto@0.57.2/+esm`;
+const OTEL_RESOURCES_URL = `${CDN_BASE}/@opentelemetry/resources@1.30.1/+esm`;
 
 // =============================================================================
 // State
 // =============================================================================
 let tracer = null;
+let traceExporter = null;
 let verbosity = "user";
 let initialized = false;
 
@@ -72,11 +76,35 @@ function generateTraceparent(ctx) {
     return `00-${ctx.traceId}-${ctx.spanId}-${flags}`;
 }
 
+function resolveServiceName(defaultName) {
+    try {
+        const meta =
+            document.querySelector('meta[name="otel-service-name"]') ||
+            document.querySelector('meta[name="abies-otel-service-name"]');
+        const configuredName = meta?.content?.trim();
+        return configuredName || defaultName;
+    } catch {
+        return defaultName;
+    }
+}
+
 // =============================================================================
 // Fetch Wrapper — injects traceparent for browser→server correlation
 // =============================================================================
 
 let originalFetch = null;
+
+function exportSpan(span) {
+    if (!traceExporter || !span) return;
+
+    try {
+        traceExporter.export([span], () => {
+            // Ignore exporter callback results; transport failures surface via console.
+        });
+    } catch {
+        // Swallow exporter errors to avoid breaking the app.
+    }
+}
 
 function installFetchWrapper() {
     if (originalFetch) return; // already installed
@@ -87,6 +115,15 @@ function installFetchWrapper() {
 
         const url = typeof input === "string" ? input : input?.url || "";
         const method = init?.method || "GET";
+
+        try {
+            const resolved = new URL(url, location.href);
+            if (resolved.origin === location.origin && resolved.pathname === "/otlp/v1/traces") {
+                return originalFetch.call(this, input, init);
+            }
+        } catch {
+            // Invalid URL — let the underlying fetch handle it.
+        }
 
         return tracer.startActiveSpan(`HTTP ${method}`, (span) => {
             span.setAttribute("http.method", method);
@@ -118,11 +155,13 @@ function installFetchWrapper() {
                         message: response.ok ? "" : `HTTP ${response.status}`,
                     });
                     span.end();
+                    exportSpan(span);
                     return response;
                 })
                 .catch((err) => {
                     span.setStatus({ code: 2, message: err.message });
                     span.end();
+                    exportSpan(span);
                     throw err;
                 });
         });
@@ -133,6 +172,66 @@ function installFetchWrapper() {
 // Event Instrumentation — creates spans for DOM events
 // =============================================================================
 
+// =============================================================================
+// Element Label Resolution — extracts a human-readable label from a DOM element
+// =============================================================================
+
+/**
+ * Resolves a human-readable label for a DOM element.
+ * Priority: aria-label > data-testid > text content (buttons/anchors) >
+ *           placeholder (inputs) > id > tag[type] fallback.
+ *
+ * @param {Element} el - The DOM element that triggered the event.
+ * @returns {string} A short, human-readable label.
+ */
+function resolveElementLabel(el) {
+    if (!el) return "";
+
+    // 1. Explicit accessibility label
+    const ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) return ariaLabel.trim().substring(0, 80);
+
+    // 2. Test id
+    const testId = el.getAttribute("data-testid") || el.getAttribute("data-test-id");
+    if (testId) return testId.trim().substring(0, 80);
+
+    const tag = el.tagName?.toLowerCase() || "";
+
+    // 3. Button / anchor — use visible text content
+    if (tag === "button" || tag === "a") {
+        const text = el.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+        if (text) return text;
+    }
+
+    // 4. Input / select / textarea — use placeholder or associated label
+    if (tag === "input" || tag === "select" || tag === "textarea") {
+        const placeholder = el.getAttribute("placeholder");
+        if (placeholder) return placeholder.trim().substring(0, 60);
+
+        // Look for an associated <label> element via id
+        const id = el.id;
+        if (id) {
+            try {
+                const label = document.querySelector(`label[for="${id}"]`);
+                const labelText = label?.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+                if (labelText) return labelText;
+            } catch {
+                // Ignore selector errors
+            }
+        }
+
+        // Fall back to type attribute
+        const type = el.getAttribute("type");
+        return type ? `${tag}[${type}]` : tag;
+    }
+
+    // 5. Element id
+    if (el.id) return `#${el.id}`;
+
+    // 6. Tag fallback
+    return tag || "unknown";
+}
+
 /**
  * Creates a span for a dispatched DOM event.
  * Called by abies.js's event delegation when OTel is active.
@@ -140,9 +239,10 @@ function installFetchWrapper() {
  * @param {string} commandId - The Abies command ID.
  * @param {string} eventType - The DOM event type (e.g., "click").
  * @param {object} eventData - Parsed event data.
+ * @param {Element} [element] - The DOM element that triggered the event.
  * @returns {{ span: object, traceparent: string }|null}
  */
-export function traceEvent(commandId, eventType, eventData) {
+export function traceEvent(commandId, eventType, eventData, element) {
     if (!tracer) return null;
 
     // In "user" mode, only trace interactive events
@@ -154,9 +254,23 @@ export function traceEvent(commandId, eventType, eventData) {
         if (!interactiveEvents.includes(eventType)) return null;
     }
 
-    const span = tracer.startSpan(`UI: ${eventType}`);
+    const elementLabel = resolveElementLabel(element);
+    const spanName = elementLabel
+        ? `UI: ${eventType} [${elementLabel}]`
+        : `UI: ${eventType}`;
+
+    const span = tracer.startSpan(spanName);
     span.setAttribute("dom.event.type", eventType);
     span.setAttribute("abies.command.id", commandId);
+
+    if (element) {
+        const tag = element.tagName?.toLowerCase();
+        if (tag) span.setAttribute("ui.element.tag", tag);
+        if (elementLabel) span.setAttribute("ui.element.label", elementLabel);
+        const elType = element.getAttribute("type");
+        if (elType) span.setAttribute("ui.element.type", elType);
+        if (element.id) span.setAttribute("ui.element.id", element.id);
+    }
 
     if (eventData) {
         try {
@@ -171,7 +285,10 @@ export function traceEvent(commandId, eventType, eventData) {
 
     // Auto-end after a short delay (the span represents the event dispatch,
     // not the full update cycle — that's measured server-side)
-    setTimeout(() => span.end(), 0);
+    setTimeout(() => {
+        span.end();
+        exportSpan(span);
+    }, 0);
 
     return {
         span,
@@ -189,47 +306,7 @@ export function traceBatch(patchCount) {
     const span = tracer.startSpan("DOM: applyBatch");
     span.setAttribute("dom.patch_count", patchCount);
     span.end();
-}
-
-// =============================================================================
-// Immediate Span Processor
-// =============================================================================
-// A simple span processor that exports each span immediately when it ends.
-// This avoids relying on sdk.BatchSpanProcessor or sdk.Resource, which may
-// not be re-exported by @opentelemetry/sdk-trace-web from the CDN build.
-// =============================================================================
-
-class ImmediateSpanProcessor {
-    /**
-     * @param {import('@opentelemetry/sdk-trace-base').SpanExporter | any} exporterInstance
-     */
-    constructor(exporterInstance) {
-        this._exporter = exporterInstance;
-    }
-
-    // Called when a span is started; no-op.
-    onStart(_span, _parentContext) {
-        // no-op
-    }
-
-    // Called when a span ends; export it immediately.
-    onEnd(span) {
-        try {
-            this._exporter.export([span], () => {
-                // ignore export result; failures are logged by the exporter
-            });
-        } catch {
-            // Swallow exporter errors to avoid breaking the app.
-        }
-    }
-
-    shutdown() {
-        return Promise.resolve();
-    }
-
-    forceFlush() {
-        return Promise.resolve();
-    }
+    exportSpan(span);
 }
 
 // =============================================================================
@@ -250,26 +327,32 @@ export async function initialize(level = "user") {
 
     try {
         // Dynamic import from CDN
-        const [api, sdk, exporter] = await Promise.all([
+        const [api, sdk, exporter, resources] = await Promise.all([
             import(/* webpackIgnore: true */ OTEL_API_URL),
             import(/* webpackIgnore: true */ OTEL_SDK_URL),
             import(/* webpackIgnore: true */ OTEL_EXPORTER_URL),
+            import(/* webpackIgnore: true */ OTEL_RESOURCES_URL),
         ]);
 
         // Determine the OTLP endpoint (same origin, proxy path)
         const otlpEndpoint = `${window.location.origin}/otlp/v1/traces`;
 
         // Configure the OTLP HTTP exporter
-        const traceExporter = new exporter.OTLPTraceExporter({
+        traceExporter = new exporter.OTLPTraceExporter({
             url: otlpEndpoint,
         });
 
-        // Create the tracer provider and attach the immediate span processor.
-        // We use ImmediateSpanProcessor instead of sdk.BatchSpanProcessor
-        // because BatchSpanProcessor and Resource may not be re-exported
-        // by the CDN build of @opentelemetry/sdk-trace-web.
-        const provider = new sdk.WebTracerProvider();
-        provider.addSpanProcessor(new ImmediateSpanProcessor(traceExporter));
+        // The browser host currently accepts protobuf OTLP, and the CDN ESM
+        // path does not flush spans reliably via SimpleSpanProcessor in live
+        // Conduit validation. We export each ended span explicitly instead.
+        const resourceAttributes = {
+            "service.name": resolveServiceName("abies.browser.ui"),
+            "service.namespace": "abies",
+        };
+        const resource = typeof resources.resourceFromAttributes === "function"
+            ? resources.resourceFromAttributes(resourceAttributes)
+            : new resources.Resource(resourceAttributes);
+        const provider = new sdk.WebTracerProvider({ resource });
         provider.register();
 
         // Get a tracer
@@ -286,6 +369,7 @@ export async function initialize(level = "user") {
         // CDN failed — use no-op shim, app continues without tracing
         console.warn("[abies-otel] Failed to load OTel SDK from CDN. Tracing disabled.", err);
         tracer = noopTracer;
+        traceExporter = null;
         return false;
     }
 }

@@ -17,18 +17,20 @@
 //     int32 patchCount
 //     int32 stringTableOffset
 //
-//   Patches (16 bytes each):
+//   Patches (20 bytes each):
 //     int32 type (BinaryPatchType enum)
 //     int32 field1 (string table index, -1 = null)
 //     int32 field2 (string table index, -1 = null)
 //     int32 field3 (string table index, -1 = null)
+//     int32 field4 (string table index, -1 = null)
 //
 //   String Table:
 //     Sequence of LEB128-prefixed UTF-8 strings
 //
 // Event Protocol (Client → Server):
 //   JSON text frames:
-//     { "commandId": "...", "eventName": "...", "eventData": "..." }
+//     { "commandId": "...", "eventName": "...", "eventData": "...",
+//       "traceparent": "..."?, "tracestate": "..."? }
 //
 // Navigation Protocol:
 //   URL changes are sent as events with a reserved commandId:
@@ -85,26 +87,50 @@
     // Reserved command ID for URL change events
     // =========================================================================
     const URL_CHANGED_COMMAND_ID = "__url_changed__";
+    const DEBUGGER_COMMAND_ID = "__debugger_command__";
 
     // =========================================================================
     // Event types to register for delegation
+    // Must match all helpers exposed in Picea.Abies/Html/Events.cs
     // =========================================================================
     const COMMON_EVENT_TYPES = [
-        "click", "dblclick", "input", "change", "submit",
+        // Mouse events
+        "click", "dblclick", "mousedown", "mouseup", "mousemove",
+        "mouseenter", "mouseleave", "mouseover", "mouseout", "wheel", "contextmenu",
+        // Keyboard events
         "keydown", "keyup", "keypress",
+        // Input / Form events
+        "input", "change", "submit", "reset", "invalid", "select",
+        // Focus events
         "focus", "blur", "focusin", "focusout",
-        "mousedown", "mouseup", "mousemove",
-        "mouseenter", "mouseleave", "mouseover", "mouseout",
-        "wheel", "scroll",
-        "touchstart", "touchmove", "touchend",
-        "pointerdown", "pointerup", "pointermove",
-        "contextmenu",
-        "drag", "dragstart", "dragend", "dragover",
-        "drop", "dragenter", "dragleave",
+        // Pointer events
+        "pointerdown", "pointerup", "pointermove", "pointercancel",
+        "pointerover", "pointerout", "pointerenter", "pointerleave",
+        "gotpointercapture", "lostpointercapture",
+        // Touch events
+        "touchstart", "touchend", "touchmove", "touchcancel",
+        // Drag events
+        "drag", "dragstart", "dragend", "dragenter", "dragleave", "dragover", "drop",
+        // Scroll & Resize
+        "scroll", "resize",
+        // Clipboard events
         "copy", "cut", "paste",
-        "animationstart", "animationend", "transitionend",
-        "load", "error", "resize",
-        "select", "reset", "toggle"
+        // Animation events
+        "animationstart", "animationend", "animationiteration", "animationcancel",
+        // Transition events
+        "transitionstart", "transitionend", "transitionrun", "transitioncancel",
+        // Media events
+        "play", "pause", "ended", "timeupdate", "volumechange",
+        "seeking", "seeked", "ratechange", "durationchange",
+        "canplay", "canplaythrough", "waiting", "playing",
+        "stalled", "suspend", "emptied", "loadeddata", "loadedmetadata",
+        "loadstart", "progress", "abort",
+        // Load & Error events
+        "load", "error", "unload", "beforeunload",
+        // Toggle & Misc events
+        "toggle", "close", "cancel", "fullscreenchange", "fullscreenerror",
+        // Composition events (for IME / CJK input)
+        "compositionstart", "compositionupdate", "compositionend"
     ];
 
     // =========================================================================
@@ -113,13 +139,348 @@
     const utf8Decoder = new TextDecoder("utf-8");
 
     // =========================================================================
+    // OpenTelemetry — optional event trace context propagation
+    // =========================================================================
+    let otelModule = null;
+    let debuggerModuleUrl = null;
+
+    function loadDebuggerModule() {
+        if (!debuggerModuleUrl) {
+            return Promise.resolve(null);
+        }
+
+        return import(/* webpackIgnore: true */ debuggerModuleUrl).catch(() => null);
+    }
+
+    function refreshDebuggerState() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        Promise.resolve()
+            .then(() => loadDebuggerModule())
+            .then(mod => {
+                if (mod && typeof mod.notifyTimelineChanged === "function") {
+                    mod.notifyTimelineChanged();
+                }
+            })
+            .catch(() => {
+                // Best-effort only for debug builds.
+            });
+    }
+
+    // =========================================================================
+    // Debugger UI startup configuration
+    // =========================================================================
+    // Default behavior: enabled in startup flow. Opt-out options:
+    //   - URL query: ?abies-debugger=off|false|0
+    //   - Global: window.__abiesDebugger = { enabled: false } or false
+    //   - Meta: <meta name="abies-debugger" content="off">
+    // Unknown values are ignored and fall back to enabled.
+
+    function parseToggleValue(value) {
+        if (typeof value === "boolean") return value;
+        if (value == null) return null;
+
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes" || normalized === "enabled") {
+            return true;
+        }
+
+        if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no" || normalized === "disabled") {
+            return false;
+        }
+
+        return null;
+    }
+
+    function resolveDebuggerEnabled() {
+        try {
+            const url = new URL(window.location.href);
+            const queryValue =
+                url.searchParams.get("abies-debugger") ??
+                url.searchParams.get("debugger");
+            const parsed = parseToggleValue(queryValue);
+            if (parsed !== null) {
+                return parsed;
+            }
+        } catch {
+            // Ignore URL parsing issues
+        }
+
+        if (typeof globalThis !== "undefined" && "__abiesDebugger" in globalThis) {
+            const config = globalThis.__abiesDebugger;
+            if (typeof config === "boolean") {
+                return config;
+            }
+
+            if (config && typeof config === "object" && "enabled" in config) {
+                const parsed = parseToggleValue(config.enabled);
+                if (parsed !== null) {
+                    return parsed;
+                }
+            }
+        }
+
+        const meta =
+            document.querySelector('meta[name="abies-debugger"]') ||
+            document.querySelector('meta[name="debugger"]');
+        if (meta && typeof meta.content === "string") {
+            const parsed = parseToggleValue(meta.content);
+            if (parsed !== null) {
+                return parsed;
+            }
+        }
+
+        return true;
+    }
+
+    function initializeDebuggerDefaults() {
+        const enabled = resolveDebuggerEnabled();
+
+        const existing = globalThis.__abiesDebugger;
+        if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+            existing.enabled = enabled;
+        } else {
+            globalThis.__abiesDebugger = { enabled };
+        }
+
+        return enabled;
+    }
+
+    function ensureDebuggerSurfaceVisible() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        const mountPoint = document.getElementById("abies-debugger-timeline");
+        if (!mountPoint || mountPoint.children.length > 0) {
+            return;
+        }
+
+        if (mountPoint.querySelector('[data-abies-debugger-shell="1"]')) {
+            return;
+        }
+
+        const shell = document.createElement("button");
+        shell.type = "button";
+        shell.setAttribute("data-abies-debugger-shell", "1");
+        shell.setAttribute("data-abies-debugger-intent", "toggle-panel");
+        shell.style.position = "fixed";
+        shell.style.right = "12px";
+        shell.style.bottom = "12px";
+        shell.style.zIndex = "2147483647";
+        shell.style.background = "#101828";
+        shell.style.color = "#F2F4F7";
+        shell.style.border = "1px solid rgba(242,244,247,0.24)";
+        shell.style.borderRadius = "8px";
+        shell.style.padding = "8px 10px";
+        shell.style.font = "12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        shell.style.cursor = "pointer";
+        shell.textContent = "Abies Debugger";
+        mountPoint.appendChild(shell);
+    }
+
+    async function initializeDebugger(scriptTag) {
+        if (!initializeDebuggerDefaults()) {
+            return;
+        }
+
+        try {
+            // Keep this best-effort: debugger.js is debug-only and absent in Release.
+            // Resolve it as a sibling to abies-server.js so the server package owns
+            // both assets under the same guaranteed /_abies/ static path.
+            const moduleUrl = new URL("./debugger.js", scriptTag.src || window.location.href);
+            debuggerModuleUrl = moduleUrl.href;
+            const mod = await import(/* webpackIgnore: true */ debuggerModuleUrl);
+            if (mod && typeof mod.mountDebugger === "function") {
+                mod.mountDebugger();
+            }
+
+            if (mod && typeof mod.setRuntimeBridge === "function") {
+                mod.setRuntimeBridge((type, entryId, dataJson) => sendDebuggerCommand(type, entryId, dataJson));
+            }
+
+            if (mod && typeof mod.notifyTimelineChanged === "function") {
+                mod.notifyTimelineChanged();
+            }
+        } catch {
+            // No-op when debugger bundle is missing (Release or non-browser host).
+        }
+    }
+
+    function remountDebuggerAfterRootPatch() {
+        if (!resolveDebuggerEnabled()) {
+            return;
+        }
+
+        const moduleUrl = debuggerModuleUrl ?? new URL("/_abies/debugger.js", window.location.href).href;
+
+        Promise.resolve()
+            .then(() => import(/* webpackIgnore: true */ moduleUrl))
+            .then(mod => {
+                if (mod && typeof mod.mountDebugger === "function") {
+                    mod.mountDebugger();
+                }
+            })
+            .catch(() => {
+                // Keep this best-effort: debugger.js is absent in Release builds.
+            })
+            .finally(() => {
+                ensureDebuggerSurfaceVisible();
+            });
+    }
+
+    function resolveOtelVerbosity() {
+        try {
+            const url = new URL(window.location.href);
+            const urlVerbosity = url.searchParams.get("otel-verbosity");
+            if (typeof urlVerbosity === "string" && urlVerbosity.length > 0) {
+                return urlVerbosity;
+            }
+        } catch {
+            // Ignore URL parsing issues
+        }
+
+        if (typeof window !== "undefined" && window.__otel && typeof window.__otel.verbosity === "string") {
+            if (window.__otel.verbosity.length > 0) {
+                return window.__otel.verbosity;
+            }
+        }
+
+        const meta =
+            document.querySelector('meta[name="otel-verbosity"]') ||
+            document.querySelector('meta[name="abies-otel-verbosity"]');
+
+        if (meta && typeof meta.content === "string" && meta.content.length > 0) {
+            return meta.content;
+        }
+
+        return null;
+    }
+
+    async function initializeOtel(scriptTag) {
+        const verbosity = resolveOtelVerbosity();
+        if (!verbosity || verbosity === "off") return;
+
+        try {
+            const moduleUrl = new URL("../abies-otel.js", scriptTag.src || window.location.href);
+            const mod = await import(/* webpackIgnore: true */ moduleUrl.href);
+            const success = await mod.initialize(verbosity);
+            otelModule = success ? mod : null;
+        } catch (err) {
+            console.warn("[abies-server] Failed to load OTel module. Tracing disabled.", err);
+            otelModule = null;
+        }
+    }
+
+    function createEventTraceContext(commandId, eventName, eventData, element) {
+        if (!otelModule) return null;
+
+        try {
+            return otelModule.traceEvent(commandId, eventName, eventData, element);
+        } catch {
+            return null;
+        }
+    }
+
+    // =========================================================================
     // HTML fragment parser — uses <template> for context-independent parsing
     // =========================================================================
     const _fragmentTemplate = document.createElement("template");
+    const TEXT_MARKER_PREFIX = "abies-text:";
+    const TEXT_MARKER_SUFFIX = ":start";
 
     function parseHtmlFragment(html) {
         _fragmentTemplate.innerHTML = html;
         return _fragmentTemplate.content.firstElementChild;
+    }
+
+    function textMarkerValue(id) {
+        return `${TEXT_MARKER_PREFIX}${id}${TEXT_MARKER_SUFFIX}`;
+    }
+
+    function createManagedTextFragment(id, value) {
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(document.createComment(textMarkerValue(id)));
+        fragment.appendChild(document.createTextNode(value));
+        return fragment;
+    }
+
+    function findManagedTextAnchor(parent, id) {
+        const markerValue = textMarkerValue(id);
+
+        for (const child of parent.childNodes) {
+            if (child.nodeType !== Node.COMMENT_NODE || child.data !== markerValue) {
+                continue;
+            }
+
+            const textNode = child.nextSibling && child.nextSibling.nodeType === Node.TEXT_NODE
+                ? child.nextSibling
+                : null;
+            return { marker: child, text: textNode };
+        }
+
+        return null;
+    }
+
+    function removeManagedTextAnchor(anchor) {
+        if (anchor.text) {
+            anchor.text.remove();
+        }
+
+        anchor.marker.remove();
+    }
+
+    function removeLegacyEndMarkerAfterAnchor(anchor, id) {
+        const legacyEndValue = `${TEXT_MARKER_PREFIX}${id}:end`;
+        const candidate = anchor.text
+            ? anchor.text.nextSibling
+            : anchor.marker.nextSibling;
+
+        if (candidate && candidate.nodeType === Node.COMMENT_NODE && candidate.data === legacyEndValue) {
+            candidate.remove();
+        }
+    }
+
+    function removeManagedTextRange(range) {
+        let current = range.start;
+        while (current) {
+            const next = current.nextSibling;
+            current.remove();
+            if (current === range.end) {
+                break;
+            }
+
+            current = next;
+        }
+    }
+
+    function findManagedTextRangeLegacy(parent, id) {
+        const startValue = textMarkerValue(id);
+        const endValue = `${TEXT_MARKER_PREFIX}${id}:end`;
+
+        for (const child of parent.childNodes) {
+            if (child.nodeType !== Node.COMMENT_NODE || child.data !== startValue) {
+                continue;
+            }
+
+            let current = child.nextSibling;
+            let textNode = null;
+            while (current) {
+                if (current.nodeType === Node.COMMENT_NODE && current.data === endValue) {
+                    return { start: child, text: textNode, end: current };
+                }
+
+                if (!textNode && current.nodeType === Node.TEXT_NODE) {
+                    textNode = current;
+                }
+
+                current = current.nextSibling;
+            }
+        }
+
+        return null;
     }
 
     // =========================================================================
@@ -169,6 +530,7 @@
 
         if (event instanceof KeyboardEvent) {
             data.key = event.key;
+            data.repeat = event.repeat;
             data.code = event.code;
             data.altKey = event.altKey;
             data.ctrlKey = event.ctrlKey;
@@ -218,10 +580,15 @@
     // DOM Mutation — applies a single patch
     // =========================================================================
 
-    function applyPatch(type, f1, f2, f3) {
+    function applyPatch(type, f1, f2, f3, f4) {
         switch (type) {
             case OP_ADD_ROOT: {
+                const existingDebuggerMount = document.getElementById("abies-debugger-timeline");
                 document.body.innerHTML = f2;
+                if (existingDebuggerMount && !document.getElementById("abies-debugger-timeline")) {
+                    document.body.appendChild(existingDebuggerMount);
+                }
+                remountDebuggerAfterRootPatch();
                 break;
             }
 
@@ -326,9 +693,37 @@
             case OP_UPDATE_TEXT: {
                 const parent = document.getElementById(f1);
                 if (parent) {
+                    const anchor = findManagedTextAnchor(parent, f2);
+                    if (anchor) {
+                        removeLegacyEndMarkerAfterAnchor(anchor, f2);
+
+                        if (anchor.text) {
+                            anchor.text.textContent = f3;
+                        } else {
+                            parent.insertBefore(document.createTextNode(f3), anchor.marker.nextSibling);
+                        }
+
+                        anchor.marker.data = textMarkerValue(f4);
+                        break;
+                    }
+
+                    const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                    if (legacyRange) {
+                        if (legacyRange.text) {
+                            legacyRange.text.textContent = f3;
+                        } else {
+                            parent.insertBefore(document.createTextNode(f3), legacyRange.end);
+                        }
+
+                        legacyRange.start.data = textMarkerValue(f4);
+                        legacyRange.end.remove();
+                        break;
+                    }
+
+                    // Backward compatibility for pre-marker DOM.
                     for (const child of parent.childNodes) {
                         if (child.nodeType === Node.TEXT_NODE) {
-                            child.textContent = f2;
+                            child.textContent = f3;
                             break;
                         }
                     }
@@ -338,13 +733,27 @@
 
             case OP_ADD_TEXT: {
                 const parent = document.getElementById(f1);
-                if (parent) parent.appendChild(document.createTextNode(f2));
+                if (parent) parent.appendChild(createManagedTextFragment(f3, f2));
                 break;
             }
 
             case OP_REMOVE_TEXT: {
                 const parent = document.getElementById(f1);
                 if (parent) {
+                    const anchor = findManagedTextAnchor(parent, f2);
+                    if (anchor) {
+                        removeLegacyEndMarkerAfterAnchor(anchor, f2);
+                        removeManagedTextAnchor(anchor);
+                        break;
+                    }
+
+                    const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                    if (legacyRange) {
+                        removeManagedTextRange(legacyRange);
+                        break;
+                    }
+
+                    // Backward compatibility for pre-marker DOM.
                     for (const child of parent.childNodes) {
                         if (child.nodeType === Node.TEXT_NODE) {
                             child.remove();
@@ -437,7 +846,7 @@
         const strings = readStringTable(bytes, stringTableOffset, bytes.byteLength);
 
         const headerSize = 8;
-        const entrySize = 16;
+        const entrySize = 20;
 
         for (let i = 0; i < patchCount; i++) {
             const offset = headerSize + (i * entrySize);
@@ -445,13 +854,17 @@
             const f1Idx = view.getInt32(offset + 4, true);
             const f2Idx = view.getInt32(offset + 8, true);
             const f3Idx = view.getInt32(offset + 12, true);
+            const f4Idx = view.getInt32(offset + 16, true);
 
             const f1 = f1Idx >= 0 ? strings[f1Idx] : null;
             const f2 = f2Idx >= 0 ? strings[f2Idx] : null;
             const f3 = f3Idx >= 0 ? strings[f3Idx] : null;
+            const f4 = f4Idx >= 0 ? strings[f4Idx] : null;
 
-            applyPatch(type, f1, f2, f3);
+            applyPatch(type, f1, f2, f3, f4);
         }
+
+        refreshDebuggerState();
     }
 
     // =========================================================================
@@ -460,6 +873,8 @@
 
     const registeredEventTypes = new Set();
     let ws = null;
+    let debuggerRequestSeq = 0;
+    const pendingDebuggerResponses = new Map();
 
     // =========================================================================
     // WASM Handoff (InteractiveAuto)
@@ -472,15 +887,70 @@
     // =========================================================================
     let wasmActive = false;
 
-    function sendEvent(commandId, eventName, eventData) {
+    function sendEvent(commandId, eventName, eventData, traceContext) {
         if (wasmActive) return;
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
+            const payload = {
                 commandId: commandId,
                 eventName: eventName,
                 eventData: eventData
+            };
+
+            if (traceContext && typeof traceContext.traceparent === "string" && traceContext.traceparent.length > 0) {
+                payload.traceparent = traceContext.traceparent;
+            }
+
+            if (traceContext && typeof traceContext.tracestate === "string" && traceContext.tracestate.length > 0) {
+                payload.tracestate = traceContext.tracestate;
+            }
+
+            ws.send(JSON.stringify(payload));
+        }
+    }
+
+    function sendDebuggerCommand(type, entryId, dataJson) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            return Promise.resolve(JSON.stringify({
+                status: "unavailable",
+                appName: "",
+                appVersion: "",
+                cursorPosition: -1,
+                timelineSize: 0,
+                atStart: true,
+                atEnd: true,
+                modelSnapshotPreview: ""
             }));
         }
+
+        const requestId = `dbg-${++debuggerRequestSeq}`;
+        const eventData = JSON.stringify({
+            requestId,
+            type,
+            entryId,
+            data: dataJson ? JSON.parse(dataJson) : undefined
+        });
+
+        return new Promise(resolve => {
+            pendingDebuggerResponses.set(requestId, resolve);
+            sendEvent(DEBUGGER_COMMAND_ID, "debugger-command", eventData);
+
+            setTimeout(() => {
+                const pending = pendingDebuggerResponses.get(requestId);
+                if (pending) {
+                    pendingDebuggerResponses.delete(requestId);
+                    pending(JSON.stringify({
+                        status: "error",
+                        appName: "",
+                        appVersion: "",
+                        cursorPosition: -1,
+                        timelineSize: 0,
+                        atStart: true,
+                        atEnd: true,
+                        modelSnapshotPreview: ""
+                    }));
+                }
+            }, 2000);
+        });
     }
 
     function registerEventType(eventType) {
@@ -488,18 +958,25 @@
         registeredEventTypes.add(eventType);
 
         const useCapture = eventType === "focus" || eventType === "blur"
-            || eventType === "focusin" || eventType === "focusout";
+            || eventType === "focusin" || eventType === "focusout"
+            || eventType === "submit";
 
         document.addEventListener(eventType, function (event) {
             const attrName = "data-event-" + eventType;
+            const debugHandlers = window.__ABIES_DEBUG_HANDLERS ?? false;
 
             let el = event.target;
+            let walkDepth = 0;
             while (el && el !== document) {
                 if (el.hasAttribute && el.hasAttribute(attrName)) {
                     const commandId = el.getAttribute(attrName);
-                    const eventData = extractEventData(event);
-                    sendEvent(commandId, eventType, eventData);
+                    if (debugHandlers) {
+                        console.log("[ServerEventDelegation] HIT: " + eventType + " on " + el.tagName + " (depth=" + walkDepth + "), commandId=" + commandId);
+                    }
 
+                    // Block native browser form/anchor defaults before dispatching
+                    // to the server so transport errors cannot trigger full-page
+                    // navigation in interactive server mode.
                     if (eventType === "submit") {
                         event.preventDefault();
                     }
@@ -517,9 +994,17 @@
                             event.preventDefault();
                         }
                     }
+
+                    const eventData = extractEventData(event);
+                    const traceContext = createEventTraceContext(commandId, eventType, eventData, el);
+                    sendEvent(commandId, eventType, eventData, traceContext);
                     return;
                 }
+                walkDepth++;
                 el = el.parentElement;
+            }
+            if (debugHandlers) {
+                console.log("[ServerEventDelegation] MISS: " + eventType + " on " + (event.target?.tagName ?? "?") + ". Walked " + walkDepth + " levels, never found " + attrName);
             }
         }, useCapture);
     }
@@ -597,11 +1082,13 @@
             case "push":
                 if (msg.url) {
                     history.pushState(null, "", msg.url);
+                    window.dispatchEvent(new PopStateEvent("popstate"));
                 }
                 break;
             case "replace":
                 if (msg.url) {
                     history.replaceState(null, "", msg.url);
+                    window.dispatchEvent(new PopStateEvent("popstate"));
                 }
                 break;
             case "back":
@@ -639,6 +1126,7 @@
             // Connection established — the server will send the initial
             // patch batch (the diff from empty → current view) automatically
             // when the session starts.
+            refreshDebuggerState();
         };
 
         ws.onmessage = function (event) {
@@ -660,6 +1148,13 @@
                     const msg = JSON.parse(event.data);
                     if (msg.type === "navigate") {
                         handleNavigationMessage(msg);
+                    } else if (msg.type === "debugger-response" && typeof msg.requestId === "string") {
+                        const resolve = pendingDebuggerResponses.get(msg.requestId);
+                        if (resolve) {
+                            pendingDebuggerResponses.delete(msg.requestId);
+                            const { type: _type, requestId: _requestId, ...response } = msg;
+                            resolve(JSON.stringify(response));
+                        }
                     }
                 } catch (e) {
                     // Ignore malformed text frames
@@ -721,6 +1216,12 @@
         // via WebSocket while WASM downloads. Once WASM is ready, we hand
         // off to it and tear down the server connection.
         const isAutoMode = scriptTag.getAttribute("data-auto") === "true";
+
+        // Best-effort debug UI startup (non-blocking).
+        initializeDebugger(scriptTag);
+        Promise.resolve().then(() => ensureDebuggerSurfaceVisible());
+
+        initializeOtel(scriptTag);
 
         // Register all common event types for delegation
         COMMON_EVENT_TYPES.forEach(registerEventType);

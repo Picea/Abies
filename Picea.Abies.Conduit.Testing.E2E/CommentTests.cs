@@ -109,7 +109,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First
             .DispatchEventAsync("click");
 
-        await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
+        await Expect(_page.Locator($".card .card-block p:text-is('{comment.Body}')")).ToHaveCountAsync(0,
             new() { Timeout = 10000 });
     }
 
@@ -151,7 +151,7 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
 
         await _page.Locator(".card .card-footer .mod-options i.ion-trash-a").First.DispatchEventAsync("click");
 
-        await Expect(_page.Locator($"text={comment.Body}")).ToHaveCountAsync(0,
+        await Expect(_page.Locator($".card .card-block p:text-is('{comment.Body}')")).ToHaveCountAsync(0,
             new() { Timeout = 10000 });
     }
 
@@ -206,7 +206,12 @@ public sealed class CommentTests : IAsyncInitializer, IAsyncDisposable
         await _page.ReloadAsync();
         await _page.WaitForWasmReady();
 
-        await Expect(_page.Locator($"text={comment.Body}")).ToBeVisibleAsync(new() { Timeout = 10000 });
+        var reloadedComment = _page
+            .Locator(".card .card-block p")
+            .Filter(new() { HasText = comment.Body })
+            .First;
+
+        await Expect(reloadedComment).ToBeVisibleAsync(new() { Timeout = 10000 });
     }
 
     [Test]

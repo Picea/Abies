@@ -118,8 +118,11 @@ public static class OtlpProxyEndpoint
     /// </para>
     /// <list type="number">
     ///   <item><see cref="OtlpProxyOptions.CollectorEndpoint"/> (explicit)</item>
-    ///   <item><c>OTEL_EXPORTER_OTLP_ENDPOINT</c> environment variable</item>
-    ///   <item><c>DOTNET_DASHBOARD_OTLP_ENDPOINT_URL</c> environment variable (Aspire)</item>
+    ///   <item><c>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</c> environment variable</item>
+    ///   <item><c>ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL</c> environment variable (Aspire, preferred)</item>
+    ///   <item><c>DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL</c> environment variable (Aspire alternative)</item>
+    ///   <item><c>OTEL_EXPORTER_OTLP_ENDPOINT</c> environment variable (only when OTEL_EXPORTER_OTLP_PROTOCOL is HTTP)</item>
+    ///   <item><c>DOTNET_DASHBOARD_OTLP_ENDPOINT_URL</c> environment variable (Aspire, fallback)</item>
     ///   <item><c>OpenTelemetry:Endpoint</c> configuration key</item>
     /// </list>
     /// <para>
@@ -165,7 +168,7 @@ public static class OtlpProxyEndpoint
         {
             logger?.LogInformation(
                 "OTLP proxy enabled — no collector configured. " +
-                "Set OTEL_EXPORTER_OTLP_ENDPOINT or configure OpenTelemetry:Endpoint to enable forwarding.");
+                "Set OTEL_EXPORTER_OTLP_TRACES_ENDPOINT or configure OpenTelemetry:Endpoint to enable forwarding.");
         }
 
         // Map POST /otlp/v1/traces
@@ -262,7 +265,7 @@ public static class OtlpProxyEndpoint
         }
 
         // --- Forward to Collector ---
-        var targetUrl = $"{collectorUrl.TrimEnd('/')}/v1/{signalType}";
+        var targetUrl = BuildTargetUrl(collectorUrl, signalType);
         activity?.SetTag("otlp.target_url", targetUrl);
 
         try
@@ -271,9 +274,12 @@ public static class OtlpProxyEndpoint
 
             using var forwardRequest = new HttpRequestMessage(HttpMethod.Post, targetUrl);
             memoryStream.Position = 0;
-            forwardRequest.Content = new StreamContent(memoryStream);
-            forwardRequest.Content.Headers.ContentType =
-                new System.Net.Http.Headers.MediaTypeHeaderValue(contentType!);
+            using var forwardContent = new StreamContent(memoryStream);
+            if (!forwardContent.Headers.TryAddWithoutValidation("Content-Type", contentType))
+            {
+                forwardContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
+            }
+            forwardRequest.Content = forwardContent;
 
             // Forward timeout: 10 seconds max
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
@@ -292,7 +298,7 @@ public static class OtlpProxyEndpoint
         catch (HttpRequestException ex)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
-            await context.Response.WriteAsync($"Failed to forward to collector: {ex.Message}");
+            await context.Response.WriteAsync("Failed to forward to collector.");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             logger?.LogWarning(ex, "OTLP proxy failed to forward {SignalType} to {TargetUrl}", signalType, targetUrl);
         }
@@ -302,6 +308,13 @@ public static class OtlpProxyEndpoint
             await context.Response.WriteAsync("Collector did not respond within timeout.");
             activity?.SetStatus(ActivityStatusCode.Error, "Timeout");
             logger?.LogWarning("OTLP proxy timeout forwarding {SignalType} to {TargetUrl}", signalType, targetUrl);
+        }
+        catch (Exception ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsync("An unexpected error occurred while forwarding the request.");
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            logger?.LogError(ex, "OTLP proxy unexpected failure forwarding {SignalType} to {TargetUrl}", signalType, targetUrl);
         }
     }
 
@@ -316,23 +329,63 @@ public static class OtlpProxyEndpoint
         if (!string.IsNullOrEmpty(options.CollectorEndpoint))
             return options.CollectorEndpoint;
 
-        // 2. Standard OTel environment variable
+        // 2. Signal-specific OTel endpoint (already points to /v1/traces)
+        var otelTracesEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
+        if (!string.IsNullOrEmpty(otelTracesEndpoint))
+            return otelTracesEndpoint;
+
+        // 3. Aspire HTTP endpoint (preferred for browser OTLP proxying)
+        var aspireHttpEndpoint = Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL");
+        if (!string.IsNullOrEmpty(aspireHttpEndpoint))
+            return aspireHttpEndpoint;
+
+        // 4. Aspire HTTP endpoint (alternative name)
+        var dotnetDashboardHttpEndpoint = Environment.GetEnvironmentVariable("DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL");
+        if (!string.IsNullOrEmpty(dotnetDashboardHttpEndpoint))
+            return dotnetDashboardHttpEndpoint;
+
+        // 5. Standard OTel environment variable (only if explicitly HTTP protocol)
         var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-        if (!string.IsNullOrEmpty(otelEndpoint))
+        if (!string.IsNullOrEmpty(otelEndpoint) && IsHttpOtlpProtocol())
             return otelEndpoint;
 
-        // 3. Aspire Dashboard environment variable
+        // 6. Aspire Dashboard environment variable (fallback, often gRPC)
         var aspireEndpoint = Environment.GetEnvironmentVariable("DOTNET_DASHBOARD_OTLP_ENDPOINT_URL");
         if (!string.IsNullOrEmpty(aspireEndpoint))
             return aspireEndpoint;
 
-        // 4. IConfiguration
+        // 7. IConfiguration
         var config = endpoints.ServiceProvider.GetService<IConfiguration>();
         var configEndpoint = config?["OpenTelemetry:Endpoint"];
         if (!string.IsNullOrEmpty(configEndpoint))
             return configEndpoint;
 
         return null;
+    }
+
+    private static bool IsHttpOtlpProtocol()
+    {
+        var protocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
+        return string.Equals(protocol, "http/protobuf", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(protocol, "http/json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildTargetUrl(string collectorUrl, string signalType)
+    {
+        var trimmed = collectorUrl.TrimEnd('/');
+
+        // Support both base collector endpoints (http://host:4318) and
+        // signal-specific endpoints (http://host:4318/v1/traces).
+        if (trimmed.EndsWith("/v1/traces", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.EndsWith("/v1/metrics", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.EndsWith("/v1/logs", StringComparison.OrdinalIgnoreCase))
+        {
+            var v1Index = trimmed.LastIndexOf("/v1/", StringComparison.OrdinalIgnoreCase);
+            var baseEndpoint = v1Index >= 0 ? trimmed[..v1Index] : trimmed;
+            return $"{baseEndpoint}/v1/{signalType}";
+        }
+
+        return $"{trimmed}/v1/{signalType}";
     }
 
     /// <summary>

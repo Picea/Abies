@@ -44,11 +44,10 @@ public static class UserEndpoints
         JwtTokenService jwtTokenService,
         CancellationToken cancellationToken)
     {
-        var userId = JwtTokenService.GetUserId(context.User);
-        if (userId is null)
+        if (JwtTokenService.GetUserId(context.User) is not { } userId)
             return ApiErrors.Unauthorized();
 
-        var userOption = await findUserById(userId.Value, cancellationToken).ConfigureAwait(false);
+        var userOption = await findUserById(userId, cancellationToken).ConfigureAwait(false);
 
         return userOption.Match(
             user =>
@@ -71,90 +70,124 @@ public static class UserEndpoints
     private static async Task<IResult> UpdateCurrentUser(
         UpdateUserRequest request,
         HttpContext context,
+        RequestIdempotencyStore idempotencyStore,
         AggregateStore aggregateStore,
         FindUserById findUserById,
+        FindUserByEmail findUserByEmail,
+        FindUserByUsername findUserByUsername,
         JwtTokenService jwtTokenService,
         CancellationToken cancellationToken)
     {
-        var userId = JwtTokenService.GetUserId(context.User);
-        if (userId is null)
-            return ApiErrors.Unauthorized();
-
-        var body = request.User;
-
-        // Build optional constrained types for each provided field
-        var emailOption = Option<EmailAddress>.None;
-        if (body.Email is not null)
-        {
-            var emailResult = EmailAddress.Create(body.Email);
-            if (emailResult.IsErr)
-                return ApiErrors.FromUserError(emailResult.Error);
-            emailOption = Option<EmailAddress>.Some(emailResult.Value);
-        }
-
-        var usernameOption = Option<Username>.None;
-        if (body.Username is not null)
-        {
-            var usernameResult = Username.Create(body.Username);
-            if (usernameResult.IsErr)
-                return ApiErrors.FromUserError(usernameResult.Error);
-            usernameOption = Option<Username>.Some(usernameResult.Value);
-        }
-
-        var passwordHashOption = Option<PasswordHash>.None;
-        if (body.Password is not null)
-        {
-            var passwordResult = Password.Create(body.Password);
-            if (passwordResult.IsErr)
-                return ApiErrors.FromUserError(passwordResult.Error);
-            passwordHashOption = Option<PasswordHash>.Some(PasswordHasher.Hash(passwordResult.Value));
-        }
-
-        var bioOption = Option<Bio>.None;
-        if (body.Bio is not null)
-        {
-            var bioResult = Bio.Create(body.Bio);
-            if (bioResult.IsErr)
-                return ApiErrors.FromUserError(bioResult.Error);
-            bioOption = Option<Bio>.Some(bioResult.Value);
-        }
-
-        var imageOption = Option<ImageUrl>.None;
-        if (body.Image is not null)
-        {
-            if (body.Image == string.Empty)
+        return await idempotencyStore.ExecuteAsync(
+            context,
+            async ct =>
             {
-                imageOption = Option<ImageUrl>.Some(ImageUrl.Empty);
-            }
-            else
-            {
-                var imageResult = ImageUrl.Create(body.Image);
-                if (imageResult.IsErr)
-                    return ApiErrors.FromUserError(imageResult.Error);
-                imageOption = Option<ImageUrl>.Some(imageResult.Value);
-            }
-        }
+                if (JwtTokenService.GetUserId(context.User) is not { } userId)
+                    return ApiErrors.Unauthorized();
 
-        var command = new UserCommand.UpdateProfile(
-            emailOption, usernameOption, passwordHashOption,
-            bioOption, imageOption, Timestamp.Now());
+                var body = request.User;
 
-        var result = await aggregateStore.HandleUserCommand(
-            userId.Value, command, cancellationToken).ConfigureAwait(false);
+                // Build optional constrained types for each provided field
+                var emailOption = Option<EmailAddress>.None;
+                if (body.Email is not null)
+                {
+                    var emailResult = EmailAddress.Create(body.Email);
+                    if (emailResult.IsErr)
+                        return ApiErrors.FromUserError(emailResult.Error);
+                    emailOption = Option<EmailAddress>.Some(emailResult.Value);
+                }
 
-        return result.Match(
-            state =>
-            {
-                var token = jwtTokenService.GenerateToken(
-                    userId.Value, state.Username.Value, state.Email.Value);
+                var usernameOption = Option<Username>.None;
+                if (body.Username is not null)
+                {
+                    var usernameResult = Username.Create(body.Username);
+                    if (usernameResult.IsErr)
+                        return ApiErrors.FromUserError(usernameResult.Error);
+                    usernameOption = Option<Username>.Some(usernameResult.Value);
+                }
 
-                return Results.Ok(new UserResponse(new UserDto(
-                    Email: state.Email.Value,
-                    Token: token,
-                    Username: state.Username.Value,
-                    Bio: state.Bio.Value,
-                    Image: string.IsNullOrEmpty(state.Image.Value) ? null : state.Image.Value)));
+                var passwordHashOption = Option<PasswordHash>.None;
+                if (body.Password is not null)
+                {
+                    var passwordResult = Password.Create(body.Password);
+                    if (passwordResult.IsErr)
+                        return ApiErrors.FromUserError(passwordResult.Error);
+                    passwordHashOption = Option<PasswordHash>.Some(PasswordHasher.Hash(passwordResult.Value));
+                }
+
+                var bioOption = Option<Bio>.None;
+                if (body.Bio is not null)
+                {
+                    var bioResult = Bio.Create(body.Bio);
+                    if (bioResult.IsErr)
+                        return ApiErrors.FromUserError(bioResult.Error);
+                    bioOption = Option<Bio>.Some(bioResult.Value);
+                }
+
+                var imageOption = Option<ImageUrl>.None;
+                if (body.Image is not null)
+                {
+                    if (body.Image == string.Empty)
+                    {
+                        imageOption = Option<ImageUrl>.Some(ImageUrl.Empty);
+                    }
+                    else
+                    {
+                        var imageResult = ImageUrl.Create(body.Image);
+                        if (imageResult.IsErr)
+                            return ApiErrors.FromUserError(imageResult.Error);
+                        imageOption = Option<ImageUrl>.Some(imageResult.Value);
+                    }
+                }
+
+                // ─── Pre-commit Uniqueness Checks ────────────────────────────────────────
+                // Check the read model before dispatching the command. Including the current
+                // user's own ID in the comparison allows a user to keep their existing
+                // email/username without triggering a false conflict.
+                if (emailOption.IsSome)
+                {
+                    var existingByEmail = await findUserByEmail(emailOption.Value.Value, ct)
+                        .ConfigureAwait(false);
+                    if (existingByEmail.IsSome && existingByEmail.Value.Id != userId)
+                        return ApiErrors.FromUserError(new UserError.DuplicateEmail());
+                }
+
+                if (usernameOption.IsSome)
+                {
+                    var existingByUsername = await findUserByUsername(usernameOption.Value.Value, ct)
+                        .ConfigureAwait(false);
+                    if (existingByUsername.IsSome && existingByUsername.Value.Id != userId)
+                        return ApiErrors.FromUserError(new UserError.DuplicateUsername());
+                }
+                // ────────────────────────────────────────────────────────────────────────
+
+                var command = new UserCommand.UpdateProfile(
+                    emailOption, usernameOption, passwordHashOption,
+                    bioOption, imageOption, Timestamp.Now());
+
+                var result = await aggregateStore.HandleUniqueUserUpdate(
+                    userId,
+                    command,
+                    newEmail: emailOption.IsSome ? emailOption.Value.Value : null,
+                    newUsername: usernameOption.IsSome ? usernameOption.Value.Value : null,
+                    ct).ConfigureAwait(false);
+
+                return result.Match(
+                    state =>
+                    {
+                        var token = jwtTokenService.GenerateToken(
+                            userId, state.Username.Value, state.Email.Value);
+
+                        return Results.Ok(new UserResponse(new UserDto(
+                            Email: state.Email.Value,
+                            Token: token,
+                            Username: state.Username.Value,
+                            Bio: state.Bio.Value,
+                            Image: string.IsNullOrEmpty(state.Image.Value) ? null : state.Image.Value)));
+                    },
+                    error => ApiErrors.FromUserError(error));
             },
-            error => ApiErrors.FromUserError(error));
+                    payloadFingerprintInput: System.Text.Json.JsonSerializer.Serialize(request),
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

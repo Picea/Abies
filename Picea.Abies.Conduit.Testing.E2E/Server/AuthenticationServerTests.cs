@@ -41,12 +41,10 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("password123");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign up" }).ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
-
-        await Expect(_page.Locator(".navbar").GetByText(uniqueName))
-            .ToBeVisibleAsync(new() { Timeout = 10000 });
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync("Settings");
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync("New Article");
+        await _page.WaitForAuthenticatedShell();
+        await _page.OpenSettingsFromNavbar();
+        await Expect(_page.GetByPlaceholder("Email")).ToHaveValueAsync(email);
+        await Expect(_page.GetByPlaceholder("Your Name")).ToHaveValueAsync(uniqueName);
     }
 
     [Test]
@@ -64,8 +62,10 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync(username);
+        await _page.WaitForAuthenticatedShell();
+        await _page.OpenSettingsFromNavbar();
+        await Expect(_page.GetByPlaceholder("Email")).ToHaveValueAsync(email);
+        await Expect(_page.GetByPlaceholder("Your Name")).ToHaveValueAsync(username);
     }
 
     [Test]
@@ -78,8 +78,8 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await Expect(_page.Locator(".error-messages")).ToBeVisibleAsync(
-            new() { Timeout = 10000 });
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     [Test]
@@ -97,9 +97,9 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByRole(AriaRole.Button, new() { Name = "Or click here to logout." })
             .ClickAsync();
 
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 10000 });
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign in");
-        await Expect(_page.Locator(".navbar")).ToContainTextAsync("Sign up");
+        await _page.NavigateInApp("/settings");
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     /// <summary>
@@ -119,8 +119,8 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch("wrongpassword");
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
 
-        await Expect(_page.Locator(".error-messages")).ToBeVisibleAsync(
-            new() { Timeout = 10000 });
+        await Expect(_page.Locator(".auth-page h1")).ToContainTextAsync("Sign in", new() { Timeout = 10000 });
+        await Expect(_page.Locator(".navbar a[href='/settings']")).ToHaveCountAsync(0, new() { Timeout = 10000 });
     }
 
     /// <summary>
@@ -148,9 +148,11 @@ public sealed class AuthenticationServerTests : IAsyncInitializer, IAsyncDisposa
         await _page.GetByPlaceholder("Email").FillAndWaitForPatch(email);
         await _page.GetByPlaceholder("Password").FillAndWaitForPatch(password);
         await _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
-        await _page.WaitForSelectorAsync(".home-page", new() { Timeout = 15000 });
+        await _page.WaitForAuthenticatedShell();
+        await _page.OpenSettingsFromNavbar();
     }
 
     private static ILocatorAssertions Expect(ILocator locator) =>
         Assertions.Expect(locator);
+
 }

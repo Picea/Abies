@@ -20,6 +20,7 @@
 // =============================================================================
 
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -80,6 +81,43 @@ public class WebSocketSessionTests
         var updatedBatch = await ReceiveBinaryBatch(ws);
         var allStrings = string.Join(" ", updatedBatch.Strings);
         await Assert.That(allStrings).Contains("Count: 1");
+    }
+
+    [Test]
+    public async Task WebSocket_ClickIncrement_WithTraceparent_PropagatesTraceToServerActivities()
+    {
+        using var activityCapture = ActivityCapture.Start();
+        await using var host = await AbiesTestHost.Create(
+            new RenderMode.InteractiveServer());
+
+        using var ws = await ConnectWebSocket(host);
+        var initialBatch = await ReceiveInitialBatch(ws);
+
+        var incrementCommandId = FindHandlerCommandId(initialBatch, "increment");
+        await Assert.That(incrementCommandId).IsNotNull();
+
+        var parentTraceId = ActivityTraceId.CreateRandom();
+        var parentSpanId = ActivitySpanId.CreateRandom();
+        var traceparent = $"00-{parentTraceId}-{parentSpanId}-01";
+
+        await SendClickEvent(ws, incrementCommandId!, traceparent);
+
+        _ = await ReceiveBinaryBatch(ws);
+
+        var sessionActivity = await activityCapture.WaitForAsync(activity =>
+            activity.Source.Name == "Picea.Abies.Server.Session"
+            && activity.OperationName == "Picea.Abies.Server.Session.ReceiveEvent"
+            && activity.TraceId == parentTraceId);
+
+        await Assert.That(sessionActivity).IsNotNull();
+        await Assert.That(sessionActivity!.ParentSpanId).IsEqualTo(parentSpanId);
+
+        var runtimeActivity = await activityCapture.WaitForAsync(activity =>
+            activity.Source.Name == "Picea.Abies.Runtime"
+            && activity.OperationName == "Picea.Abies.Render"
+            && activity.TraceId == parentTraceId);
+
+        await Assert.That(runtimeActivity).IsNotNull();
     }
 
     [Test]
@@ -214,6 +252,26 @@ public class WebSocketSessionTests
         ws.Dispose();
     }
 
+    [Test]
+    public async Task WebSocket_DebuggerCommand_ReceivesDebuggerResponseEnvelope()
+    {
+        await using var host = await AbiesTestHost.Create(
+            new RenderMode.InteractiveServer());
+
+        using var ws = await ConnectWebSocket(host);
+        _ = await ReceiveInitialBatch(ws);
+
+        await SendDebuggerCommand(ws, "get-timeline");
+
+        using var response = await ReceiveTextJson(ws);
+        var root = response.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("debugger-response");
+        await Assert.That(root.GetProperty("requestId").GetString()).IsNotNull();
+        await Assert.That(root.GetProperty("status").GetString()).IsNotEqualTo("error");
+        await Assert.That(root.TryGetProperty("timelineSize", out _)).IsTrue();
+    }
+
     // =========================================================================
     // Helpers — WebSocket Connection
     // =========================================================================
@@ -235,13 +293,19 @@ public class WebSocketSessionTests
     /// <summary>
     /// Sends a click event as a JSON text frame.
     /// </summary>
-    private static async Task SendClickEvent(WebSocket ws, string commandId)
+    private static async Task SendClickEvent(
+        WebSocket ws,
+        string commandId,
+        string? traceparent = null,
+        string? tracestate = null)
     {
         var json = JsonSerializer.Serialize(new
         {
             commandId,
             eventName = "click",
-            eventData = "{}"
+            eventData = "{}",
+            traceparent,
+            tracestate
         });
 
         var bytes = Encoding.UTF8.GetBytes(json);
@@ -264,6 +328,26 @@ public class WebSocketSessionTests
         var bytes = Encoding.UTF8.GetBytes(json);
         await ws.SendAsync(
             bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+    }
+
+    private static async Task SendDebuggerCommand(WebSocket ws, string type, int entryId = -1)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            requestId = "dbg-test-1",
+            type,
+            entryId
+        });
+
+        var json = JsonSerializer.Serialize(new
+        {
+            commandId = "__debugger_command__",
+            eventName = "debugger-command",
+            eventData = payload
+        });
+
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
     }
 
     // =========================================================================
@@ -296,6 +380,20 @@ public class WebSocketSessionTests
         return ParseBinaryBatch(buffer.AsSpan(0, result.Count));
     }
 
+    private static async Task<JsonDocument> ReceiveTextJson(WebSocket ws, int timeoutMs = 5000)
+    {
+        var buffer = new byte[64 * 1024];
+        using var cts = new CancellationTokenSource(timeoutMs);
+
+        var result = await ws.ReceiveAsync(buffer, cts.Token);
+
+        await Assert.That(result.MessageType).IsEqualTo(WebSocketMessageType.Text);
+        await Assert.That(result.EndOfMessage).IsTrue();
+
+        var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+        return JsonDocument.Parse(json);
+    }
+
     /// <summary>
     /// Parses a binary patch batch into a structured representation.
     /// </summary>
@@ -310,7 +408,7 @@ public class WebSocketSessionTests
         // Read patches
         var patches = new List<PatchEntry>(patchCount);
         const int headerSize = 8;
-        const int entrySize = 16;
+        const int entrySize = 20;
 
         for (var i = 0; i < patchCount; i++)
         {
@@ -319,12 +417,14 @@ public class WebSocketSessionTests
             var f1Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 4)..]);
             var f2Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 8)..]);
             var f3Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 12)..]);
+            var f4Idx = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 16)..]);
 
             patches.Add(new PatchEntry(
                 type,
                 f1Idx >= 0 ? strings[f1Idx] : null,
                 f2Idx >= 0 ? strings[f2Idx] : null,
-                f3Idx >= 0 ? strings[f3Idx] : null));
+                f3Idx >= 0 ? strings[f3Idx] : null,
+                f4Idx >= 0 ? strings[f4Idx] : null));
         }
 
         return new PatchBatch(patchCount, strings, patches);
@@ -510,5 +610,59 @@ public class WebSocketSessionTests
     private record PatchBatch(int PatchCount, List<string> Strings, List<PatchEntry> Patches);
 
     /// <summary>A single patch entry with resolved string values.</summary>
-    private record PatchEntry(int Type, string? Field1, string? Field2, string? Field3);
+    private record PatchEntry(int Type, string? Field1, string? Field2, string? Field3, string? Field4);
+
+    private sealed class ActivityCapture : IDisposable
+    {
+        private readonly Lock _gate = new();
+        private readonly List<Activity> _activities = [];
+        private readonly ActivityListener _listener;
+
+        private ActivityCapture()
+        {
+            _listener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name.StartsWith("Picea.Abies", StringComparison.Ordinal),
+                Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+                SampleUsingParentId = static (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = activity =>
+                {
+                    lock (_gate)
+                    {
+                        _activities.Add(activity);
+                    }
+                }
+            };
+
+            ActivitySource.AddActivityListener(_listener);
+        }
+
+        public static ActivityCapture Start() => new();
+
+        public async Task<Activity?> WaitForAsync(Func<Activity, bool> predicate, int timeoutMs = 5000)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(timeoutMs);
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var match = Find(predicate);
+                if (match is not null)
+                    return match;
+
+                await Task.Delay(25);
+            }
+
+            return Find(predicate);
+        }
+
+        private Activity? Find(Func<Activity, bool> predicate)
+        {
+            lock (_gate)
+            {
+                return _activities.FirstOrDefault(predicate);
+            }
+        }
+
+        public void Dispose() => _listener.Dispose();
+    }
 }

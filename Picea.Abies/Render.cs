@@ -36,8 +36,13 @@ internal static class HtmlSpec
 
 public static class Render
 {
+    private const string TextMarkerPrefix = "abies-text:";
+    private const string TextMarkerSuffix = ":start";
+
     private static readonly ConcurrentStack<StringBuilder> _stringBuilderPool = new();
-    private const int MaxPooledStringBuilderCapacity = 8192;
+    private static int _pooledStringBuilderCount;
+    private const int MaxPooledStringBuilderCapacity = 4 * 1024 * 1024; // 4 MB - covers largest real-world renders
+    private const int MaxPooledStringBuilderCount = 8;
 
     private static readonly SearchValues<char> HtmlSpecialChars =
         SearchValues.Create("&<>\"'");
@@ -58,6 +63,7 @@ public static class Render
     {
         if (_stringBuilderPool.TryPop(out var sb))
         {
+            Interlocked.Decrement(ref _pooledStringBuilderCount);
             sb.Clear();
             return sb;
         }
@@ -67,10 +73,18 @@ public static class Render
 
     private static void ReturnStringBuilder(StringBuilder sb)
     {
-        if (sb.Capacity <= MaxPooledStringBuilderCapacity)
+        if (sb.Capacity > MaxPooledStringBuilderCapacity)
+        {
+            return;
+        }
+
+        if (Interlocked.Increment(ref _pooledStringBuilderCount) <= MaxPooledStringBuilderCount)
         {
             _stringBuilderPool.Push(sb);
+            return;
         }
+
+        Interlocked.Decrement(ref _pooledStringBuilderCount);
     }
 
     public static string Html(Node node)
@@ -103,6 +117,15 @@ public static class Render
         {
             ReturnStringBuilder(sb);
         }
+    }
+
+    private static void AppendTextMarker(StringBuilder sb, string id)
+    {
+        sb.Append("<!--")
+          .Append(TextMarkerPrefix)
+          .Append(id)
+          .Append(TextMarkerSuffix)
+          .Append("-->");
     }
 
     private static void RenderNode(Node node, StringBuilder sb)
@@ -143,6 +166,7 @@ public static class Render
                 break;
 
             case Text text:
+                AppendTextMarker(sb, text.Id);
                 AppendHtmlEncoded(sb, text.Value);
                 break;
 

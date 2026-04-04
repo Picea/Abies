@@ -13,6 +13,7 @@
 // - ADR-002: Pure Functional Programming
 // =============================================================================
 
+using System.Collections.Concurrent;
 using Picea.Abies.DOM;
 using Praefixum;
 
@@ -43,7 +44,9 @@ public static class Elements
     // The cache is also automatically trimmed when it exceeds MaxViewCacheSize.
     // =========================================================================
 
-    private static readonly Dictionary<string, Node> _lazyCache = new();
+    private static readonly ConcurrentDictionary<string, Node> _lazyCache = new();
+    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, Node>> _scopedLazyCaches = new();
+    private static readonly AsyncLocal<string?> _currentViewCacheScope = new();
     private const int MaxViewCacheSize = 2000;
 
     /// <summary>
@@ -53,12 +56,43 @@ public static class Elements
     public static void ClearViewCache()
     {
         _lazyCache.Clear();
+
+        foreach (var scopedCache in _scopedLazyCaches.Values)
+        {
+            scopedCache.Clear();
+        }
     }
 
     /// <summary>
     /// Gets the current size of the view cache for diagnostics.
     /// </summary>
-    public static int ViewCacheCount => _lazyCache.Count;
+    public static int ViewCacheCount =>
+        _lazyCache.Count + _scopedLazyCaches.Values.Sum(cache => cache.Count);
+
+    internal static IDisposable EnterViewCacheScope(string scopeId)
+    {
+        var previousScope = _currentViewCacheScope.Value;
+        _currentViewCacheScope.Value = scopeId;
+        return new ViewCacheScope(previousScope);
+    }
+
+    internal static void RemoveViewCacheScope(string scopeId)
+    {
+        _scopedLazyCaches.TryRemove(scopeId, out _);
+    }
+
+    private static ConcurrentDictionary<string, Node> GetActiveLazyCache()
+    {
+        var scopeId = _currentViewCacheScope.Value;
+        return scopeId is null
+            ? _lazyCache
+            : _scopedLazyCaches.GetOrAdd(scopeId, _ => new ConcurrentDictionary<string, Node>());
+    }
+
+    private sealed class ViewCacheScope(string? previousScope) : IDisposable
+    {
+        public void Dispose() => _currentViewCacheScope.Value = previousScope;
+    }
 
     // =========================================================================
     // Core Element Factory
@@ -122,9 +156,11 @@ public static class Elements
     /// </remarks>
     public static Node lazy<TKey>(TKey key, Func<Node> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null) where TKey : notnull
     {
+        var cache = GetActiveLazyCache();
+
         // View cache optimization: return same reference if ID and key match.
         // This enables ReferenceEquals bailout in DiffInternal.
-        if (id is not null && _lazyCache.TryGetValue(id, out var cached) &&
+        if (id is not null && cache.TryGetValue(id, out var cached) &&
             cached is LazyMemo<TKey> lazyCached &&
             EqualityComparer<TKey>.Default.Equals(lazyCached.Key, key))
         {
@@ -135,12 +171,12 @@ public static class Elements
         if (id is not null)
         {
             // Auto-trim cache if it gets too large to prevent memory leaks.
-            if (_lazyCache.Count >= MaxViewCacheSize)
+            if (cache.Count >= MaxViewCacheSize)
             {
-                _lazyCache.Clear();
+                cache.Clear();
             }
 
-            _lazyCache[id] = node;
+            cache[id] = node;
         }
 
         return node;

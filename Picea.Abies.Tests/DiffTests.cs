@@ -217,7 +217,7 @@ public class DiffTests
         await Assert.That(update).IsTypeOf<UpdateHandler>();
         var updateHandler = (UpdateHandler)update;
         await Assert.That(updateHandler.OldHandler.CommandId).IsEqualTo("cmd-1");
-        await Assert.That(updateHandler.NewHandler.CommandId).IsEqualTo("cmd-2");
+        await Assert.That(updateHandler.NewHandler.CommandId).IsEqualTo("cmd-1"); // commandId is preserved from old handler to avoid stale-ID race on rapid re-render
     }
 
     [Test]
@@ -438,6 +438,51 @@ public class DiffTests
         var patches = Operations.Diff(old, @new);
 
         await Assert.That(patches).IsEmpty();
+    }
+
+    [Test]
+    public async Task Diff_UpdateText_MixedContent_TargetsSpecificTextNode()
+    {
+        var old = new Element("e1", "p", [],
+            new Text("t1", "prefix"),
+            new Element("c1", "strong", [], new Text("t3", "middle")),
+            new Text("t2", "old suffix"));
+        var @new = new Element("e1", "p", [],
+            new Text("t1", "prefix"),
+            new Element("c1", "strong", [], new Text("t3", "middle")),
+            new Text("t2", "new suffix"));
+
+        var patches = Operations.Diff(old, @new);
+
+        await Assert.That(patches.Count).IsEqualTo(1);
+        await Assert.That(patches[0] is UpdateText).IsTrue();
+
+        var patch = (UpdateText)patches[0];
+        await Assert.That(patch.Parent.Id).IsEqualTo("e1");
+        await Assert.That(patch.Node.Id).IsEqualTo("t2");
+        await Assert.That(patch.Text).IsEqualTo("new suffix");
+        await Assert.That(patch.NewId).IsEqualTo("t2");
+    }
+
+    [Test]
+    public async Task Diff_RemoveText_MixedContent_TargetsSpecificTextNode()
+    {
+        var old = new Element("e1", "p", [],
+            new Text("t1", "prefix"),
+            new Element("c1", "strong", [], new Text("t3", "middle")),
+            new Text("t2", "remove me"));
+        var @new = new Element("e1", "p", [],
+            new Text("t1", "prefix"),
+            new Element("c1", "strong", [], new Text("t3", "middle")));
+
+        var patches = Operations.Diff(old, @new);
+
+        await Assert.That(patches.Count).IsEqualTo(1);
+        await Assert.That(patches[0] is RemoveText).IsTrue();
+
+        var patch = (RemoveText)patches[0];
+        await Assert.That(patch.Parent.Id).IsEqualTo("e1");
+        await Assert.That(patch.Child.Id).IsEqualTo("t2");
     }
 
     // =========================================================================

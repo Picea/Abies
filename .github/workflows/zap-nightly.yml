@@ -1,0 +1,190 @@
+name: ZAP Nightly Full Scan
+
+on:
+  schedule:
+    # 02:00 UTC every night — after most PRs have merged, before EU business hours
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      spider_minutes:
+        description: "ZAP spider time per target (minutes)"
+        required: false
+        default: "10"
+
+permissions:
+  contents: read
+  issues: write       # required for auto-creating failure issues
+
+jobs:
+  zap-full-scan:
+    name: ZAP Full Active Scan
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: conduit
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d conduit"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      kurrentdb:
+        image: kurrentplatform/kurrentdb:latest
+        env:
+          EVENTSTORE_CLUSTER_SIZE: 1
+          EVENTSTORE_RUN_PROJECTIONS: All
+          EVENTSTORE_START_STANDARD_PROJECTIONS: true
+          EVENTSTORE_INSECURE: true
+        ports:
+          - 2113:2113
+        options: >-
+          --health-cmd "curl -fsS http://localhost:2113/health/live"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install WASM workload
+        run: dotnet workload install wasm-tools
+
+      - name: Restore API
+        run: dotnet restore Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Build API
+        run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore
+
+      - name: Restore Frontend (WASM host)
+        run: dotnet restore Picea.Abies.Conduit.Wasm.Host/Picea.Abies.Conduit.Wasm.Host.csproj
+        env:
+          DOTNET_NUGET_AUDIT: "false"
+
+      - name: Build Frontend (publishes WASM bundle)
+        # The PublishWasmProject MSBuild target runs 'dotnet publish' on the WASM
+        # library as part of this build, producing the AppBundle served at runtime.
+        run: dotnet build Picea.Abies.Conduit.Wasm.Host/Picea.Abies.Conduit.Wasm.Host.csproj --no-restore
+
+      - name: Start API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__conduit: "Host=127.0.0.1;Port=5432;Database=conduit;Username=postgres;Password=postgres"
+          Conduit__EventStore__ConnectionString: "esdb://127.0.0.1:2113?tls=false"
+        run: |
+          dotnet run --project Picea.Abies.Conduit.Api --no-build --urls http://127.0.0.1:5179 \
+            > /tmp/conduit-api-nightly.log 2>&1 &
+          echo $! > /tmp/conduit-api-nightly.pid
+
+      - name: Wait for API readiness
+        run: |
+          for _ in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:5179/api/tags >/dev/null 2>&1; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to become ready"
+          tail -n 200 /tmp/conduit-api-nightly.log || true
+          exit 1
+
+      - name: Start Frontend (WASM host)
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConduitApiUrl: "http://127.0.0.1:5179"
+        run: |
+          dotnet run --project Picea.Abies.Conduit.Wasm.Host --no-build --urls http://127.0.0.1:5200 \
+            > /tmp/conduit-wasm-nightly.log 2>&1 &
+          echo $! > /tmp/conduit-wasm-nightly.pid
+
+      - name: Wait for Frontend readiness
+        run: |
+          for _ in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:5200/ >/dev/null 2>&1; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend failed to become ready"
+          tail -n 200 /tmp/conduit-wasm-nightly.log || true
+          exit 1
+
+      - name: Run ZAP full active scan
+        id: zap_full
+        run: bash scripts/run-zap-full.sh http://127.0.0.1:5179 http://127.0.0.1:5200
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-nightly-full-reports
+          path: |
+            zap-nightly-reports/**
+            /tmp/conduit-api-nightly.log
+            /tmp/conduit-wasm-nightly.log
+          retention-days: 30
+
+      - name: Stop servers
+        if: always()
+        run: |
+          for pidfile in /tmp/conduit-api-nightly.pid /tmp/conduit-wasm-nightly.pid; do
+            pid=$(cat "$pidfile" 2>/dev/null || true)
+            if [ -n "${pid:-}" ]; then kill "$pid" || true; fi
+          done
+
+      - name: Open GitHub issue on scan failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const today  = new Date().toISOString().slice(0, 10);
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `🚨 ZAP Nightly Full Scan Failed — ${today}`,
+              labels: ["security", "nightly-scan"],
+              body: [
+                "## ZAP Full Active Scan — Failure Report",
+                "",
+                `**Date:** ${today}`,
+                `**Workflow run:** [View run](${runUrl})`,
+                "",
+                "### What happened",
+                "The nightly ZAP full (active) scan detected one or more **HIGH-risk** security",
+                "findings against the Conduit API. Active scanning tests for real attack payloads",
+                "(SQL injection, XSS, path traversal, OS command injection, etc.).",
+                "",
+                "### Next steps",
+                "1. Open the workflow run linked above.",
+                "2. Download the `zap-nightly-full-reports` artifact.",
+                "3. Review `phase1-unauth.json` (unauthenticated surface) and",
+                "   `phase2-auth__*.json` files (authenticated endpoints).",
+                "4. Triage HIGH-risk alerts — confirm exploitability before filing CVEs.",
+                "5. Apply fixes and re-run via **Actions → ZAP Nightly Full Scan → Run workflow**.",
+                "",
+                "### Affected paths",
+                "See artifact reports for the full list of affected endpoints and payloads.",
+                "",
+                "_This issue was created automatically by the nightly security workflow._",
+              ].join("\n"),
+            });

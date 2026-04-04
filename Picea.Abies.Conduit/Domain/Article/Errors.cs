@@ -12,6 +12,7 @@ namespace Picea.Abies.Conduit.Domain.Article;
 public interface ArticleError
 {
     record Validation(string Message) : ArticleError;
+    record DuplicateSlug : ArticleError;
     record AlreadyPublished : ArticleError;
     record NotPublished : ArticleError;
     record AlreadyDeleted : ArticleError;

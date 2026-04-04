@@ -29,6 +29,12 @@
 // =============================================================================
 
 using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+#if DEBUG
+using Picea.Abies.Debugger;
+#endif
 
 namespace Picea.Abies.Server;
 
@@ -74,6 +80,9 @@ public static class Session
     /// <param name="sendText">Delegate to send text messages (e.g., navigation commands) to the client.</param>
     /// <param name="argument">Initialization parameters for the program.</param>
     /// <param name="initialUrl">Optional initial URL for routing.</param>
+    /// <param name="debuggerModelJsonTypeInfo">
+    /// Optional source-generated JSON metadata for model debugger snapshots.
+    /// </param>
     /// <returns>A started session ready to run the event loop.</returns>
     public static Task<Session<TProgram, TModel, TArgument>> Start<TProgram, TModel, TArgument>(
         SendPatches sendPatches,
@@ -81,11 +90,12 @@ public static class Session
         Interpreter<Command, Message> interpreter,
         SendText? sendText = null,
         TArgument argument = default!,
-        Url? initialUrl = null)
+        Url? initialUrl = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>
     {
         return Session<TProgram, TModel, TArgument>.Start(
-            sendPatches, receiveEvent, interpreter, sendText, argument, initialUrl);
+            sendPatches, receiveEvent, interpreter, sendText, argument, initialUrl, debuggerModelJsonTypeInfo);
     }
 }
 
@@ -107,20 +117,24 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
     /// message directly into the MVU loop.
     /// </summary>
     private const string _urlChangedCommandId = "__url_changed__";
+    private const string _debuggerCommandId = "__debugger_command__";
 
     private readonly Runtime<TProgram, TModel, TArgument> _runtime;
     private readonly ReceiveEvent _receiveEvent;
     private readonly SendPatches _sendPatches;
+    private readonly SendText? _sendText;
     private bool _disposed;
 
     private Session(
         Runtime<TProgram, TModel, TArgument> runtime,
         ReceiveEvent receiveEvent,
-        SendPatches sendPatches)
+        SendPatches sendPatches,
+        SendText? sendText)
     {
         _runtime = runtime;
         _receiveEvent = receiveEvent;
         _sendPatches = sendPatches;
+        _sendText = sendText;
     }
 
     /// <summary>
@@ -137,7 +151,8 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
         Interpreter<Command, Message> interpreter,
         SendText? sendText = null,
         TArgument argument = default!,
-        Url? initialUrl = null)
+        Url? initialUrl = null,
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
     {
         using var activity = _activitySource.StartActivity("Picea.Abies.Server.Session.Start");
         activity?.SetTag("abies.program", typeof(TProgram).Name);
@@ -189,11 +204,20 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             argument: argument,
             navigationExecutor: navigationExecutor,
             initialUrl: initialUrl,
-            threadSafe: true);
+            threadSafe: true,
+            debuggerModelJsonTypeInfo: debuggerModelJsonTypeInfo);
+
+#if DEBUG
+        if (DebuggerConfiguration.Default.Enabled)
+        {
+            runtime.UseDebugger();
+            runtime.SeedDebugger(initialUrl is not null ? new UrlChanged(initialUrl) : null);
+        }
+#endif
 
         activity?.SetStatus(ActivityStatusCode.Ok);
 
-        return new Session<TProgram, TModel, TArgument>(runtime, receiveEvent, sendPatches);
+        return new Session<TProgram, TModel, TArgument>(runtime, receiveEvent, sendPatches, sendText);
     }
 
     /// <summary>
@@ -228,6 +252,14 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
                 break;
 
             var evt = domEvent.Value;
+            using var eventActivity = StartReceiveEventActivity(evt);
+
+            eventActivity?.SetTag("abies.event.commandId", evt.CommandId);
+            eventActivity?.SetTag("abies.event.name", evt.EventName);
+            if (evt.TraceParent is { Length: > 0 } traceParent)
+                eventActivity?.SetTag("abies.event.traceparent", traceParent);
+            if (evt.TraceState is { Length: > 0 } traceState)
+                eventActivity?.SetTag("abies.event.tracestate", traceState);
 
             // Handle URL change events from client-side navigation.
             // These bypass the HandlerRegistry — there is no DOM element handler
@@ -237,8 +269,18 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
             {
                 var url = Navigation.ParseUrl(evt.EventData);
                 await _runtime.Dispatch(new UrlChanged(url), cancellationToken);
+                eventActivity?.SetStatus(ActivityStatusCode.Ok);
                 continue;
             }
+
+#if DEBUG
+            if (evt.CommandId == _debuggerCommandId)
+            {
+                await HandleDebuggerCommand(evt, cancellationToken);
+                eventActivity?.SetStatus(ActivityStatusCode.Ok);
+                continue;
+            }
+#endif
 
             // Look up the handler in this session's registry and create a message
             var message = _runtime.Handlers.CreateMessage(evt.CommandId, evt.EventData);
@@ -247,9 +289,223 @@ public sealed class Session<TProgram, TModel, TArgument> : IDisposable
 
             // Dispatch into the MVU loop
             await _runtime.Dispatch(message, cancellationToken);
+            eventActivity?.SetStatus(ActivityStatusCode.Ok);
         }
 
         activity?.SetStatus(ActivityStatusCode.Ok);
+    }
+
+#if DEBUG
+    private async Task HandleDebuggerCommand(DomEvent evt, CancellationToken cancellationToken)
+    {
+        if (!TryParseDebuggerPayload(evt.EventData, out var requestId, out var message))
+        {
+            if (_sendText is not null)
+            {
+                await _sendText(JsonSerializer.Serialize(new DebuggerResponseEnvelope
+                {
+                    Type = "debugger-response",
+                    RequestId = "unknown",
+                    Status = "error",
+                    AppName = string.Empty,
+                    AppVersion = string.Empty,
+                    CursorPosition = -1,
+                    TimelineSize = 0,
+                    AtStart = true,
+                    AtEnd = true,
+                    InitialModelSnapshotPreview = string.Empty,
+                    ModelSnapshotPreview = string.Empty
+                }));
+            }
+
+            return;
+        }
+
+#if DEBUG
+        var debugger = _runtime.Debugger;
+        if (debugger is not null)
+        {
+            var response = DebuggerRuntimeBridge.Execute(message, debugger);
+            _ = _runtime.TryApplyDebuggerSnapshot(debugger.CurrentModelSnapshot);
+            if (_sendText is not null)
+            {
+                await _sendText(JsonSerializer.Serialize(DebuggerResponseEnvelope.From(requestId, response)));
+            }
+
+            return;
+        }
+#endif
+
+        if (_sendText is not null)
+        {
+            await _sendText(JsonSerializer.Serialize(new DebuggerResponseEnvelope
+            {
+                Type = "debugger-response",
+                RequestId = requestId,
+                Status = "unavailable",
+                AppName = string.Empty,
+                AppVersion = string.Empty,
+                CursorPosition = -1,
+                TimelineSize = 0,
+                AtStart = true,
+                AtEnd = true,
+                InitialModelSnapshotPreview = string.Empty,
+                ModelSnapshotPreview = string.Empty
+            }));
+        }
+    }
+
+    private static bool TryParseDebuggerPayload(string payload, out string requestId, out DebuggerAdapterMessage message)
+    {
+        requestId = "unknown";
+        message = null!;
+        var commandType = string.Empty;
+        int? entryId = null;
+        object? data = null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+
+            if (root.TryGetProperty("requestId", out var requestIdProperty) && requestIdProperty.ValueKind == JsonValueKind.String)
+            {
+                requestId = requestIdProperty.GetString() ?? "unknown";
+            }
+
+            if (root.TryGetProperty("type", out var typeProperty) && typeProperty.ValueKind == JsonValueKind.String)
+            {
+                commandType = typeProperty.GetString() ?? string.Empty;
+            }
+
+            if (root.TryGetProperty("entryId", out var entryIdProperty) && entryIdProperty.TryGetInt32(out var parsed))
+            {
+                entryId = parsed;
+            }
+
+            if (root.TryGetProperty("data", out var dataProperty))
+            {
+                data = dataProperty.Clone();
+            }
+
+            if (string.IsNullOrWhiteSpace(commandType))
+            {
+                return false;
+            }
+
+            message = new DebuggerAdapterMessage
+            {
+                Type = commandType,
+                EntryId = entryId,
+                Data = data
+            };
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+#endif
+
+#if DEBUG
+    private sealed record DebuggerResponseEnvelope
+    {
+        [JsonPropertyName("type")]
+        public required string Type { get; init; }
+
+        [JsonPropertyName("requestId")]
+        public required string RequestId { get; init; }
+
+        [JsonPropertyName("status")]
+        public required string Status { get; init; }
+
+        [JsonPropertyName("appName")]
+        public required string AppName { get; init; }
+
+        [JsonPropertyName("appVersion")]
+        public required string AppVersion { get; init; }
+
+        [JsonPropertyName("cursorPosition")]
+        public int CursorPosition { get; init; }
+
+        [JsonPropertyName("timelineSize")]
+        public int TimelineSize { get; init; }
+
+        [JsonPropertyName("atStart")]
+        public bool AtStart { get; init; }
+
+        [JsonPropertyName("atEnd")]
+        public bool AtEnd { get; init; }
+
+        [JsonPropertyName("currentEntry")]
+        public DebuggerAdapterTimelineEntry? CurrentEntry { get; init; }
+
+        [JsonPropertyName("initialModelSnapshotPreview")]
+        public required string InitialModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("modelSnapshotPreview")]
+        public required string ModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("previousModelSnapshotPreview")]
+        public string? PreviousModelSnapshotPreview { get; init; }
+
+        [JsonPropertyName("timelineEntries")]
+        public IReadOnlyList<DebuggerAdapterTimelineEntry>? TimelineEntries { get; init; }
+
+        [JsonPropertyName("error")]
+        public string? Error { get; init; }
+
+        [JsonPropertyName("session")]
+        public DebuggerAdapterSession? Session { get; init; }
+
+        public static DebuggerResponseEnvelope From(string requestId, DebuggerAdapterResponse response) =>
+            new()
+            {
+                Type = "debugger-response",
+                RequestId = requestId,
+                Status = response.Status,
+                AppName = response.AppName,
+                AppVersion = response.AppVersion,
+                CursorPosition = response.CursorPosition,
+                TimelineSize = response.TimelineSize,
+                AtStart = response.AtStart,
+                AtEnd = response.AtEnd,
+                CurrentEntry = response.CurrentEntry,
+                InitialModelSnapshotPreview = response.InitialModelSnapshotPreview,
+                ModelSnapshotPreview = response.ModelSnapshotPreview,
+                PreviousModelSnapshotPreview = response.PreviousModelSnapshotPreview,
+                TimelineEntries = response.TimelineEntries,
+                Error = response.Error,
+                Session = response.Session
+            };
+    }
+#endif
+
+    private static Activity? StartReceiveEventActivity(DomEvent domEvent)
+    {
+        if (TryParseParentContext(domEvent, out var parentContext))
+        {
+            var propagatedActivity = _activitySource.StartActivity(
+                "Picea.Abies.Server.Session.ReceiveEvent",
+                ActivityKind.Server,
+                parentContext);
+            propagatedActivity?.SetTag("abies.trace.propagated", true);
+            return propagatedActivity;
+        }
+
+        return _activitySource.StartActivity(
+            "Picea.Abies.Server.Session.ReceiveEvent",
+            ActivityKind.Server);
+    }
+
+    private static bool TryParseParentContext(DomEvent domEvent, out ActivityContext parentContext)
+    {
+        parentContext = default;
+
+        return domEvent.TraceParent is { Length: > 0 } traceParent
+            && ActivityContext.TryParse(traceParent, domEvent.TraceState, out parentContext);
     }
 
     /// <inheritdoc/>

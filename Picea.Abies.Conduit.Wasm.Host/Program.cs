@@ -102,6 +102,9 @@ var wasmAppBundlePath = Path.GetFullPath(Path.Combine(
 app.UseAbiesWasmFiles(wasmAppBundlePath);
 app.UseAbiesStaticFiles();
 
+// OTEL: Proxy browser traces to server's OTLP endpoint
+app.MapOtlpProxy();
+
 // Forward /api/** to the conduit-api service
 app.MapReverseProxy();
 

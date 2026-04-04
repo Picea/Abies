@@ -4,6 +4,8 @@ using Picea.Abies.Server;
 using Picea.Abies.Server.Kestrel;
 using Picea.Abies.Subscriptions;
 using Picea;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
@@ -23,11 +25,22 @@ using static Picea.Abies.Head;
 // =============================================================================
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+    .WithTracing(tracing => tracing
+        .AddSource("Picea.Abies")
+        .AddSource("Picea.Abies.Server.Kestrel.OtlpProxy")
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter());
+
 var app = builder.Build();
 
 app.UseWebSockets();
 app.UseStaticFiles();
 app.UseAbiesStaticFiles();
+app.MapOtlpProxy();
 app.MapAbies<Counter, CounterModel, Unit>(
     "/{**catch-all}",
     new RenderMode.InteractiveServer());
@@ -123,12 +136,12 @@ public sealed class Counter : Program<CounterModel, Unit>
                     div([class_("counter")],
                     [
                         button(
-                            [type("button"), onclick(new Decrement()), class_("btn")],
-                            [text("\u2212")]
+                            [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
+                            [text("-")]
                         ),
                         span([class_("count")], [text(model.Count.ToString())]),
                         button(
-                            [type("button"), onclick(new Increment()), class_("btn")],
+                            [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
                             [text("+")]
                         )
                     ]),

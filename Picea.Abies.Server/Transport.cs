@@ -9,7 +9,7 @@
 // The transport carries two flows:
 //
 //     Server → Client:  Binary patch batches (same format as WASM interop)
-//     Client → Server:  DOM events (commandId + event data)
+//     Client → Server:  DOM events (commandId + event data + optional trace context)
 //
 // By expressing transport as delegates rather than interfaces, we stay
 // consistent with the Abies pattern (see Apply delegate in Runtime.cs)
@@ -67,7 +67,7 @@ public delegate ValueTask<DomEvent?> ReceiveEvent(CancellationToken cancellation
 /// <para>
 /// Maps to the same event structure that the WASM interop uses:
 /// a command ID (from Praefixum) that identifies the event handler,
-/// plus the event name and serialized event data.
+/// plus the event name, serialized event data, and optional W3C trace context.
 /// </para>
 /// <para>
 /// The <see cref="CommandId"/> is looked up in the <see cref="HandlerRegistry"/>
@@ -85,7 +85,20 @@ public delegate ValueTask<DomEvent?> ReceiveEvent(CancellationToken cancellation
 /// Serialized event data (JSON string). The format depends on the event type.
 /// For click events this may be empty; for input events it contains the value.
 /// </param>
-public readonly record struct DomEvent(string CommandId, string EventName, string EventData);
+/// <param name="TraceParent">
+/// Optional W3C <c>traceparent</c> header value captured in the browser when
+/// OpenTelemetry UI-event tracing is enabled.
+/// </param>
+/// <param name="TraceState">
+/// Optional W3C <c>tracestate</c> header value captured alongside
+/// <see cref="TraceParent"/>.
+/// </param>
+public readonly record struct DomEvent(
+    string CommandId,
+    string EventName,
+    string EventData,
+    string? TraceParent = null,
+    string? TraceState = null);
 
 /// <summary>
 /// Sends a text message to the client over the transport.
