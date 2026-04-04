@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775203852127,
+  "lastUpdate": 1775303096135,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13162,6 +13162,84 @@ window.BENCHMARK_DATA = {
             "value": 56.1,
             "unit": "ms",
             "extra": "mean: 57.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "bf57b613ed1cb98c41d90f019c6f94ffb75b6c67",
+          "message": "fix: Clean up legacy managed text end markers",
+          "timestamp": "2026-04-04T13:34:33+02:00",
+          "tree_id": "3ed1a49bc51606f8f3b6a11d8efe0f927c2023b7",
+          "url": "https://github.com/Picea/Abies/commit/bf57b613ed1cb98c41d90f019c6f94ffb75b6c67"
+        },
+        "date": 1775303095868,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 343.4,
+            "unit": "ms",
+            "extra": "mean: 342.8ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 357.1,
+            "unit": "ms",
+            "extra": "mean: 356.5ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 203.2,
+            "unit": "ms",
+            "extra": "mean: 204.8ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 30.3,
+            "unit": "ms",
+            "extra": "mean: 30.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 78.4,
+            "unit": "ms",
+            "extra": "mean: 78.6ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 52.1,
+            "unit": "ms",
+            "extra": "mean: 51.7ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3343.4,
+            "unit": "ms",
+            "extra": "mean: 3329.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 378.2,
+            "unit": "ms",
+            "extra": "mean: 380.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 57.4,
+            "unit": "ms",
+            "extra": "mean: 58.0ms, samples: 15"
           }
         ]
       }
