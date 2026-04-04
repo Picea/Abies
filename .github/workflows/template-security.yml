@@ -102,7 +102,7 @@ jobs:
             dotnet restore "$project" --configfile /tmp/template-security-nuget.config
 
             echo "🔨 Building $project"
-            dotnet build "$project" --no-restore
+            dotnet build "$project" --no-restore -c Release
 
             echo "🔍 Running SCA for $project"
             report="$project/vulnerability-report.txt"

@@ -12,6 +12,7 @@
 
 using Microsoft.Playwright;
 using Picea.Abies.Templates.Testing.E2E.Fixtures;
+using Picea.Abies.Templates.Testing.E2E.Infrastructure;
 
 namespace Picea.Abies.Templates.Testing.E2E;
 
@@ -89,5 +90,17 @@ public class BrowserEmptyTemplateTests : IAsyncDisposable
 
         var content = await response.Content.ReadAsStringAsync();
         await Assert.That(content.Length).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task ReleasePublish_Succeeds()
+    {
+        var (exitCode, stdOut, stdErr) = await DotNetCli.RunAsync(
+            "publish -c Release",
+            workingDirectory: Fixture.ProjectDir,
+            timeoutSeconds: 600);
+
+        await Assert.That(exitCode).IsEqualTo(0);
+        await Assert.That($"STDOUT:\n{stdOut}\nSTDERR:\n{stdErr}").DoesNotContain("error CA2252");
     }
 }
