@@ -254,8 +254,7 @@ async function initializeOtel() {
 // =============================================================================
 const _fragmentTemplate = document.createElement("template");
 const TEXT_MARKER_PREFIX = "abies-text:";
-const TEXT_MARKER_START_SUFFIX = ":start";
-const TEXT_MARKER_END_SUFFIX = ":end";
+const TEXT_MARKER_SUFFIX = ":start";
 
 /**
  * Parses an HTML string into a DOM element.
@@ -268,21 +267,58 @@ function parseHtmlFragment(html) {
     return _fragmentTemplate.content.firstElementChild;
 }
 
-function textMarkerValue(id, isStart) {
-    return `${TEXT_MARKER_PREFIX}${id}${isStart ? TEXT_MARKER_START_SUFFIX : TEXT_MARKER_END_SUFFIX}`;
+function textMarkerValue(id) {
+    return `${TEXT_MARKER_PREFIX}${id}${TEXT_MARKER_SUFFIX}`;
 }
 
 function createManagedTextFragment(id, value) {
     const fragment = document.createDocumentFragment();
-    fragment.appendChild(document.createComment(textMarkerValue(id, true)));
+    fragment.appendChild(document.createComment(textMarkerValue(id)));
     fragment.appendChild(document.createTextNode(value));
-    fragment.appendChild(document.createComment(textMarkerValue(id, false)));
     return fragment;
 }
 
-function findManagedTextRange(parent, id) {
-    const startValue = textMarkerValue(id, true);
-    const endValue = textMarkerValue(id, false);
+function findManagedTextAnchor(parent, id) {
+    const markerValue = textMarkerValue(id);
+
+    for (const child of parent.childNodes) {
+        if (child.nodeType !== Node.COMMENT_NODE || child.data !== markerValue) {
+            continue;
+        }
+
+        const textNode = child.nextSibling && child.nextSibling.nodeType === Node.TEXT_NODE
+            ? child.nextSibling
+            : null;
+        return { marker: child, text: textNode };
+    }
+
+    return null;
+}
+
+function removeManagedTextAnchor(anchor) {
+    if (anchor.text) {
+        anchor.text.remove();
+    }
+
+    anchor.marker.remove();
+}
+
+function removeManagedTextRange(range) {
+    let current = range.start;
+    while (current) {
+        const next = current.nextSibling;
+        current.remove();
+        if (current === range.end) {
+            break;
+        }
+
+        current = next;
+    }
+}
+
+function findManagedTextRangeLegacy(parent, id) {
+    const startValue = textMarkerValue(id);
+    const endValue = `${TEXT_MARKER_PREFIX}${id}:end`;
 
     for (const child of parent.childNodes) {
         if (child.nodeType !== Node.COMMENT_NODE || child.data !== startValue) {
@@ -305,19 +341,6 @@ function findManagedTextRange(parent, id) {
     }
 
     return null;
-}
-
-function removeManagedTextRange(range) {
-    let current = range.start;
-    while (current) {
-        const next = current.nextSibling;
-        current.remove();
-        if (current === range.end) {
-            break;
-        }
-
-        current = next;
-    }
 }
 
 // =============================================================================
@@ -698,16 +721,28 @@ function applyPatch(type, f1, f2, f3, f4) {
             // f1 = parentId, f2 = oldTextId, f3 = newText, f4 = newTextId
             const parent = document.getElementById(f1);
             if (parent) {
-                const range = findManagedTextRange(parent, f2);
-                if (range) {
-                    if (range.text) {
-                        range.text.textContent = f3;
+                const anchor = findManagedTextAnchor(parent, f2);
+                if (anchor) {
+                    if (anchor.text) {
+                        anchor.text.textContent = f3;
                     } else {
-                        parent.insertBefore(document.createTextNode(f3), range.end);
+                        parent.insertBefore(document.createTextNode(f3), anchor.marker.nextSibling);
                     }
 
-                    range.start.data = textMarkerValue(f4, true);
-                    range.end.data = textMarkerValue(f4, false);
+                    anchor.marker.data = textMarkerValue(f4);
+                    break;
+                }
+
+                const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                if (legacyRange) {
+                    if (legacyRange.text) {
+                        legacyRange.text.textContent = f3;
+                    } else {
+                        parent.insertBefore(document.createTextNode(f3), legacyRange.end);
+                    }
+
+                    legacyRange.start.data = textMarkerValue(f4);
+                    legacyRange.end.remove();
                     break;
                 }
 
@@ -735,9 +770,15 @@ function applyPatch(type, f1, f2, f3, f4) {
             // f1 = parentId, f2 = textId
             const parent = document.getElementById(f1);
             if (parent) {
-                const range = findManagedTextRange(parent, f2);
-                if (range) {
-                    removeManagedTextRange(range);
+                const anchor = findManagedTextAnchor(parent, f2);
+                if (anchor) {
+                    removeManagedTextAnchor(anchor);
+                    break;
+                }
+
+                const legacyRange = findManagedTextRangeLegacy(parent, f2);
+                if (legacyRange) {
+                    removeManagedTextRange(legacyRange);
                     break;
                 }
 
