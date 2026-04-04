@@ -37,8 +37,7 @@ internal static class HtmlSpec
 public static class Render
 {
     private const string TextMarkerPrefix = "abies-text:";
-    private const string TextMarkerStartSuffix = ":start";
-    private const string TextMarkerEndSuffix = ":end";
+    private const string TextMarkerSuffix = ":start";
 
     private static readonly ConcurrentStack<StringBuilder> _stringBuilderPool = new();
     private static int _pooledStringBuilderCount;
@@ -120,12 +119,12 @@ public static class Render
         }
     }
 
-    private static void AppendTextMarker(StringBuilder sb, string id, bool isStart)
+        private static void AppendTextMarker(StringBuilder sb, string id)
     {
         sb.Append("<!--")
           .Append(TextMarkerPrefix)
           .Append(id)
-          .Append(isStart ? TextMarkerStartSuffix : TextMarkerEndSuffix)
+                    .Append(TextMarkerSuffix)
           .Append("-->");
     }
 
@@ -167,9 +166,8 @@ public static class Render
                 break;
 
             case Text text:
-                AppendTextMarker(sb, text.Id, isStart: true);
+                AppendTextMarker(sb, text.Id);
                 AppendHtmlEncoded(sb, text.Value);
-                AppendTextMarker(sb, text.Id, isStart: false);
                 break;
 
             case RawHtml raw:
