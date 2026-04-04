@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Conduit\Picea.Abies.Conduit.csproj" />
-    <PackageReference Include="Picea" Version="1.0.*-*" />
+    <PackageReference Include="Picea" Version="1.0.34-rc-0002" />
   </ItemGroup>
 
 </Project>
