@@ -119,12 +119,12 @@ public static class Render
         }
     }
 
-        private static void AppendTextMarker(StringBuilder sb, string id)
+    private static void AppendTextMarker(StringBuilder sb, string id)
     {
         sb.Append("<!--")
           .Append(TextMarkerPrefix)
           .Append(id)
-                    .Append(TextMarkerSuffix)
+          .Append(TextMarkerSuffix)
           .Append("-->");
     }
 
