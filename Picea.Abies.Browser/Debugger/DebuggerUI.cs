@@ -282,6 +282,11 @@ internal sealed class DebuggerUiProgram : Program<DebuggerUiModel, DebuggerUiIni
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(DebuggerUiModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(DebuggerUiModel _) => false;
+
     public static Document View(DebuggerUiModel model)
     {
         var timelineSummary = model.IsMounted

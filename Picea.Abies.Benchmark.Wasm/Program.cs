@@ -173,6 +173,11 @@ public sealed class BenchmarkApp : Program<BenchmarkModel, Unit>
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(BenchmarkModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(BenchmarkModel _) => false;
+
     private static List<Row> UpdateEvery10thRow(List<Row> data)
     {
         var result = new List<Row>(data.Count);

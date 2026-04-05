@@ -152,6 +152,11 @@ public sealed class RuntimeReplayGatingTests
                 _ => (model, Commands.None)
             };
 
+        public static Result<Message[], Message> Decide(ReplayProbeModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(ReplayProbeModel _) => false;
+
         public static Document View(ReplayProbeModel model) =>
             new("Replay Probe", div([], [text($"version:{model.Version}")]));
 
