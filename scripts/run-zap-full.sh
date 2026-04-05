@@ -26,8 +26,6 @@ EPHEMERAL_EMAIL="${EPHEMERAL_USER}@zap.invalid"
 EPHEMERAL_PASS="ZapN!ghtlyP@ss$(date +%s)"
 
 mkdir -p "$REPORT_DIR"
-# Ensure the mounted report directory is writable by the ZAP container user.
-chmod a+rwx "$REPORT_DIR"
 
 echo "================================================================"
 echo "Conduit — ZAP Full Active Scan (frontend primary)"
@@ -43,6 +41,7 @@ echo "================================================================"
 
 docker_zap() {
   docker run --rm \
+    --user "$(id -u):$(id -g)" \
     --network host \
     -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
     "$ZAP_IMAGE" \
