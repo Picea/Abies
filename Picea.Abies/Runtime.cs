@@ -3,7 +3,6 @@ using Picea.Abies.DOM;
 using Picea.Abies.Html;
 using Picea.Abies.Subscriptions;
 using System.Text.Json.Serialization.Metadata;
-using System.Threading;
 #if DEBUG
 using Picea.Abies.Debugger;
 #endif
