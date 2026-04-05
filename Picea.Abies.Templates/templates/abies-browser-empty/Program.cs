@@ -6,16 +6,6 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
-#if DEBUG
-var debugUiOptOut = string.Equals(
-    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
-    "0",
-    StringComparison.OrdinalIgnoreCase);
-
-Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
-    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
-#endif
-
 // Start the Abies runtime with your application
 await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 
@@ -41,6 +31,11 @@ public class App : Program<Model, Unit>
     /// </summary>
     public static (Model, Command) Transition(Model model, Message message)
         => (model, Commands.None);
+
+    public static Result<Message[], Message> Decide(Model _, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model _) => false;
 
     /// <summary>
     /// Render the view based on the current model.
