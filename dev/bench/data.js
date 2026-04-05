@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775417262118,
+  "lastUpdate": 1775417263670,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14362,6 +14362,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98897743225098,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "42556db952b0ef5f30ae2b50b3249dd2d56ded29",
+          "message": "fix(counter): restore symbol button names for e2e selectors",
+          "timestamp": "2026-04-05T21:17:54+02:00",
+          "tree_id": "a126df561ffcf9b386224d3e2c922a8623ae74d9",
+          "url": "https://github.com/Picea/Abies/commit/42556db952b0ef5f30ae2b50b3249dd2d56ded29"
+        },
+        "date": 1775417263070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.102356910705566,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98961067199707,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
