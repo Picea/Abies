@@ -445,3 +445,39 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **By:** Maurice Cornelius Gerardus Petrus Peters (via Security Expert)
 **What:** Keep exploit-critical security gates on PR (secrets, SCA high/critical, one mandatory SAST gate, relevant Trivy high/critical), move heavy DAST/template scans to push-main and nightly with path-filtered PR exceptions, and remove duplicate SCA gate overlap.
 **Why:** Preserve pre-merge security blocking while reducing PR latency and maintaining defense-in-depth through scheduled full scans.
+
+### 2026-04-04T20:43:47Z: Program contract should be decider-shaped
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot, Architect, and C# Dev)
+**What:** Record the directive that Program should be a decider, while preserving MVU/runtime compatibility through a staged migration. The canonical shape is decider-first semantics with explicit decide/evolve behavior and value-based errors; migration remains constrained by current `AutomatonRuntime` contracts.
+**Why:** Align app-level program flow with existing decider usage in the domain while avoiding a one-step breaking API/runtime transition.
+
+### 2026-04-04T20:43:47Z: Program-as-Decider migration guardrails
+**By:** Architect
+**What:** Adopt a two-phase approach: immediate semantic/contract alignment toward decider behavior, followed by a later runtime-native decider path after explicit ADR and migration cost acceptance.
+**Why:** A direct hard replacement is high risk given public API blast radius and runtime coupling to `AutomatonRuntime`.
+
+### 2026-04-04T20:58:02Z: Breaking-change directive (deduplicated)
+**By:** Maurice Cornelius Gerardus Petrus Peters (via Copilot)
+**What:**
+- Always ask about breaking changes before making potentially breaking edits.
+- Breaking changes are explicitly allowed for Program-to-Decider migration work.
+**Why:** User directives captured and deduplicated with latest wording.
+
+### 2026-04-04T21:10:00Z: Program-to-Decider evaluation round outcome
+**By:** Architect, C# Dev, Reviewer
+**Requested by:** Maurice Cornelius Gerardus Petrus Peters
+**Verdict:** Proceed with staged migration, blocked for release until conditions are met.
+**What:**
+- Adopt staged convergence: keep runtime compatibility now, plan runtime-native decider cutover later via ADR and explicit gates.
+- Treat this as a breaking migration path requiring explicit `Decide`/`IsTerminal` coverage across all Program implementers.
+- Require migration updates in lockstep for templates, docs, tests, and runtime seams.
+**Why:** Direction is architecturally correct, but runtime coupling and migration blast radius make hard one-step replacement too risky.
+
+### 2026-04-04T21:10:00Z: Program-to-Decider merge/release gate conditions
+**By:** Architect, C# Dev, Reviewer
+**What:**
+- Fix compile regressions in server test projects and template-generated projects (missing Program decider members).
+- Clarify/enforce Program compatibility contract so implementers satisfy decider requirements consistently.
+- Add migration guard tests that fail early when Program contract changes are not propagated.
+- Keep `AutomatonRuntime` coupling until a replacement path is benchmarked, verified, and documented in ADR.
+**Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
