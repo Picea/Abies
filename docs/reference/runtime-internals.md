@@ -1,6 +1,6 @@
 # Runtime Internals
 
-The `Runtime<TProgram,TModel,TArgument>` class orchestrates the MVU execution loop. It composes the Automaton kernel's `AutomatonRuntime` with three MVU-specific concerns: **View** (render + diff + apply), **Subscriptions** (lifecycle management), and **Commands** (side effect interpretation).
+The `Runtime<TProgram,TModel,TArgument>` class orchestrates the MVU execution loop. It is decider-first: each incoming command is processed through `Decide` and `IsTerminal`, then resulting events are dispatched through the kernel runtime. Around that core, Abies adds **View** (render + diff + apply), **Subscriptions** (lifecycle management), and **Commands** (side effect interpretation).
 
 ## Architecture
 
@@ -9,9 +9,9 @@ The `Runtime<TProgram,TModel,TArgument>` class orchestrates the MVU execution lo
 │ Runtime<TProgram, TModel, TArgument>                     │
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐  │
-│  │ AutomatonRuntime (Automaton kernel)                 │  │
+│  │ Kernel Runtime (Decider-first execution)            │  │
 │  │                                                    │  │
-│  │  Dispatch(message)                                 │  │
+│  │  Dispatch(event)                                   │  │
 │  │    │                                               │  │
 │  │    ▼                                               │  │
 │  │  TProgram.Transition(model, message)               │  │
@@ -36,9 +36,22 @@ The `Runtime<TProgram,TModel,TArgument>` class orchestrates the MVU execution lo
 
 ## The MVU Loop
 
-Every dispatched `Message` triggers the following sequence:
+Every dispatched command `Message` triggers the following sequence:
 
-### 1. Transition
+### 1. Decide
+
+```csharp
+static Result<Message[], Message> Decide(TModel state, Message command);
+```
+
+The runtime first calls `Decide` with the current state and the incoming command.
+
+- `Ok(events)` means each produced event will be dispatched and evolved.
+- `Err(message)` means the command is rejected and the error message is dispatched through the same transition pipeline.
+
+The runtime also checks `IsTerminal(state)` before deciding. Terminal states short-circuit command handling.
+
+### 2. Transition
 
 ```csharp
 static (TModel, Command) Transition(TModel model, Message message);
@@ -46,7 +59,7 @@ static (TModel, Command) Transition(TModel model, Message message);
 
 The program's `Transition` function (inherited from `Automaton<TState,TEvent,TEffect,TParameters>`) produces a new model and an optional command. This is a **pure function** — no side effects.
 
-### 2. Observer (View → Diff → Apply)
+### 3. Observer (View → Diff → Apply)
 
 The observer is an instance method on `Runtime` that runs after every transition:
 
@@ -79,7 +92,7 @@ Key details:
 - **Title changes are detected** by string comparison and trigger a separate `titleChanged` callback.
 - **Subscriptions are reconciled** after every render via `SubscriptionManager.Update`.
 
-### 3. Handler Registry Update
+### 4. Handler Registry Update
 
 The runtime walks the patch list and updates the `HandlerRegistry` based on what changed:
 
@@ -122,9 +135,9 @@ private void UpdateHandlerRegistry(IReadOnlyList<Patch> patches)
 
 For tree-level patches (`AddChild`, `ReplaceChild`, `ClearChildren`, `SetChildrenHtml`, `AppendChildrenHtml`), the registry recursively walks the virtual DOM subtree to register/unregister all handlers, including those inside `MemoNode` and `LazyMemoNode` wrappers.
 
-### 4. Command Interpretation
+### 5. Command Interpretation
 
-After the observer runs, the Automaton kernel passes the command to the interpreter. The runtime wraps the caller-supplied interpreter with structural command handling:
+After each transition, the kernel passes the produced command to the interpreter. The runtime wraps the caller-supplied interpreter with structural command handling:
 
 ```csharp
 static async ValueTask<Result<Message[], PipelineError>> InterpretCommand(
@@ -249,7 +262,7 @@ Phase 5: Diff(null, document.Body) → AddRoot patch
 Phase 6: Set initial title
     │
     ▼
-Phase 7: Create AutomatonRuntime with wrapped interpreter
+Phase 7: Create kernel runtime with wrapped interpreter
     │
     ▼
 Phase 8: SubscriptionManager.Start(initialSubscriptions)
@@ -280,7 +293,7 @@ The `SubscriptionManager` handles the lifecycle:
   - Unchanged keys → keep running
 - **Stop**: called during disposal, cancels all running subscriptions
 
-Subscriptions dispatch messages via a `DispatchFromSubscription` method that calls `_core.Dispatch` (fire-and-forget).
+Subscriptions dispatch command messages via `DispatchFromSubscription`, which routes through runtime `Dispatch` and therefore through `Decide`/`IsTerminal`.
 
 ## Thread Safety
 
@@ -293,13 +306,13 @@ Each server-side session creates its own `Runtime` instance with its own `Handle
 
 ## Observability
 
-The runtime uses `System.Diagnostics.ActivitySource` with the name `"Abies.Runtime"` for OpenTelemetry instrumentation:
+The runtime uses `System.Diagnostics.ActivitySource` with the name `"Picea.Abies.Runtime"` for OpenTelemetry instrumentation:
 
 | Activity Name | Tags | When |
 |---|---|---|
-| `Abies.Start` | `abies.program` | Runtime startup |
-| `Abies.Render` | `abies.patches` (count) | Each render cycle |
-| `Abies.Stop` | — | Runtime disposal |
+| `Picea.Abies.Start` | `abies.program` | Runtime startup |
+| `Picea.Abies.Render` | `abies.patches` (count) | Each render cycle |
+| `Picea.Abies.Stop` | — | Runtime disposal |
 
 ## Disposal
 
@@ -308,19 +321,19 @@ The runtime uses `System.Diagnostics.ActivitySource` with the name `"Abies.Runti
 1. Stops all running subscriptions via `SubscriptionManager.Stop`
 2. Clears the `HandlerRegistry.Dispatch` callback
 3. Clears all registered handlers
-4. Disposes the underlying `AutomatonRuntime`
+4. Disposes the underlying kernel runtime
 
 ## Source Files
 
 | File | Role |
 |---|---|
-| `Abies/Runtime.cs` | MVU runtime, observer, command interpretation, startup |
-| `Abies/Program.cs` | `Program<TModel,TArgument>` interface, `Url`, `UrlChanged`, `UrlRequest` |
-| `Abies/Navigation.cs` | `NavigationCommand` types, `Navigation` convenience API, URL subscriptions |
-| `Abies/HandlerRegistry.cs` | Per-runtime event handler mapping |
-| `Abies/Head.cs` | `HeadContent` sum type and factory functions |
-| `Abies/Diff.cs` | Virtual DOM diff algorithm |
-| `Abies/RenderBatchWriter.cs` | Binary patch serializer |
-| `Abies/Subscriptions/` | Subscription infrastructure |
-| `Abies.Browser/Runtime.cs` | Browser-specific bootstrap |
-| `Abies.Browser/Interop.cs` | JSImport/JSExport declarations |
+| `Picea.Abies/Runtime.cs` | MVU runtime, observer, command interpretation, startup |
+| `Picea.Abies/Program.cs` | `Program<TModel,TArgument>` interface, `Url`, `UrlChanged`, `UrlRequest` |
+| `Picea.Abies/Navigation.cs` | `NavigationCommand` types, `Navigation` convenience API, URL subscriptions |
+| `Picea.Abies/HandlerRegistry.cs` | Per-runtime event handler mapping |
+| `Picea.Abies/Head.cs` | `HeadContent` sum type and factory functions |
+| `Picea.Abies/Diff.cs` | Virtual DOM diff algorithm |
+| `Picea.Abies/RenderBatchWriter.cs` | Binary patch serializer |
+| `Picea.Abies/Subscriptions/` | Subscription infrastructure |
+| `Picea.Abies.Browser/Runtime.cs` | Browser-specific bootstrap |
+| `Picea.Abies.Browser/Interop.cs` | JSImport/JSExport declarations |

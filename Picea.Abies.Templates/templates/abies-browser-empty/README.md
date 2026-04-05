@@ -1,6 +1,6 @@
 # Abies Browser Application (Empty)
 
-A minimal [Abies](https://github.com/MCGPPeters/Abies) browser application with a blank slate for building your own MVU application.
+A minimal [Abies](https://github.com/Picea/Abies) browser application with a blank slate for building your own MVU application.
 
 ## What is Abies?
 
@@ -19,7 +19,7 @@ Abies is a functional MVU framework for building web applications in C# that com
 dotnet run
 ```
 
-The application will start on `http://localhost:5000` by default.
+The application starts on the URL shown in the terminal output.
 
 ## Customize Your App
 
@@ -42,20 +42,20 @@ Edit `Program.cs` to add your own:
 
 ### Debugger (Built-In)
 
-The **Abies Time Travel Debugger** is automatically enabled in Debug builds:
+In Debug builds, the browser debugger panel is enabled by default.
 
-1. Open the app in your browser
-2. Look for the debugger panel
-3. Interact with the app — see each action and state transition recorded
-4. Click any event to time travel back to that state
-
-To disable:
+To force-disable the **Abies Time Travel Debugger** before calling `Runtime.Run()`:
 
 ```csharp
-DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
+#if DEBUG
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = false });
+#endif
 ```
 
-See [docs/guides/devtools.md](../../docs/guides/devtools.md) for the full guide.
+In Release builds, keep debugger configuration inside `#if DEBUG` to avoid debug UI setup.
+
+See [Devtools Guide](https://github.com/Picea/Abies/blob/main/docs/guides/devtools.md) for the full guide.
 
 ### Hot Reload (Debug Mode)
 
@@ -67,10 +67,10 @@ Edit your view code and save — changes apply instantly without losing state.
 
 ## Documentation
 
-- [Abies Documentation](../../docs/index.md)
-- [Debugging Guide](../../docs/guides/debugging.md)
-- [Complete Counter Example](../abies-browser/) — See a full working example
+- [Abies Documentation](https://github.com/Picea/Abies/blob/main/docs/index.md)
+- [Debugging Guide](https://github.com/Picea/Abies/blob/main/docs/guides/debugging.md)
+- [Complete Counter Example](https://github.com/Picea/Abies/tree/main/Picea.Abies.Templates/templates/abies-browser) — See a full working example
 
 ## License
 
-MIT — See [LICENSE](../../LICENSE) for details.
+Apache 2.0 — See [LICENSE](https://github.com/Picea/Abies/blob/main/LICENSE) for details.

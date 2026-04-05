@@ -5,7 +5,7 @@ Templates for creating MVU-style web applications with the [Abies](https://githu
 ## Installation
 
 ```bash
-dotnet new install Picea.Abies.Templates
+dotnet new install Picea.Abies.Templates::1.0.*-*
 ```
 
 ## Available Templates
@@ -34,7 +34,20 @@ dotnet new abies-browser-empty -n MyApp
 ### Run the application
 
 ```bash
+# Browser templates (abies-browser / abies-browser-empty)
 cd MyApp
+dotnet run --project MyApp.Host
+
+# Server template (abies-server)
+cd MyApp
+dotnet run
+```
+
+For browser templates, if you run directly from `MyApp.Host`, build the app project first so the host can serve the generated AppBundle:
+
+```bash
+cd MyApp/MyApp.Host
+dotnet build ../MyApp.csproj
 dotnet run
 ```
 
@@ -67,18 +80,55 @@ Both templates use the **same `Program` interface** — application code is iden
 
 ### abies-browser
 
-- Counter example demonstrating the MVU pattern
+- Counter example demonstrating the MVU pattern (increment, decrement, reset)
 - WebAssembly configuration with trimming for Release builds
 - `index.html` with Abies design system CSS
 - References `Picea.Abies.Browser` package
 
 ### abies-server
 
-- Counter example demonstrating the MVU pattern (same program logic)
+- Counter example demonstrating the MVU pattern (increment, decrement, reset)
 - ASP.NET Core server with WebSocket support
 - Server-side rendering with binary DOM patches
 - Abies design system CSS
 - References `Picea.Abies.Server.Kestrel` package
+
+## Debugger Defaults (Important)
+
+Browser runtime templates (`abies-browser`, `abies-browser-empty`) show the debugger panel by default in Debug builds.
+
+To force-disable it explicitly before `Runtime.Run(...)`:
+
+```csharp
+#if DEBUG
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = false });
+#endif
+```
+
+Release builds can keep this behind `#if DEBUG` to avoid shipping debug UI setup code.
+
+Server template (`abies-server`) enables the browser debugger panel by default in local debug startup.
+
+Hide panel options:
+
+- URL query: `?abies-debugger=off`
+- Meta tag: `<meta name="abies-debugger" content="off">`
+- Global config: `window.__abiesDebugger = { enabled: false }`
+
+To disable server-side debugger runtime in Debug startup, set `ABIES_DEBUG_UI=0`.
+
+In Release builds, debugger panel assets are absent. Use server logs, browser DevTools, and OpenTelemetry traces.
+
+## Out-of-Box Quality Expectations
+
+A fresh template project should work without manual fixes:
+
+- `dotnet run` starts the app.
+- `dotnet build` succeeds.
+- `dotnet publish -c Release` succeeds.
+
+If any of these fail for newly generated projects, treat it as a template quality regression.
 
 ## Learn More
 
