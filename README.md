@@ -69,7 +69,7 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
-await Runtime.Run<Counter, Model, Arguments>(new Arguments());
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Arguments>(new Arguments());
 
 public record Arguments;
 public record Model(int Count);
