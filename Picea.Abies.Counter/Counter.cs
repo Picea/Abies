@@ -106,9 +106,9 @@ public sealed class CounterProgram : Program<CounterModel, Unit>
                 h1([], [text("Abies Counter")]),
                 div([class_("controls")],
                 [
-                    button([type("button"), class_("btn"), ariaLabel("Decrease"), onclick(new Decrement())], [text("−")]),
+                    button([type("button"), class_("btn"), onclick(new Decrement())], [text("−")]),
                     span([class_("count")], [text(model.Count.ToString())]),
-                    button([type("button"), class_("btn"), ariaLabel("Increase"), onclick(new Increment())], [text("+")])
+                    button([type("button"), class_("btn"), onclick(new Increment())], [text("+")])
                 ]),
                 button([type("button"), class_("reset"), onclick(new Reset())], [text("Reset")])
             ]),
