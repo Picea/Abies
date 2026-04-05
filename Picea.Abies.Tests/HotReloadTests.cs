@@ -89,6 +89,11 @@ public sealed class HotReloadTests
                 _ => (model, Commands.None)
             };
 
+        public static Result<Message[], Message> Decide(HotReloadModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(HotReloadModel _) => false;
+
         public static Document View(HotReloadModel model) =>
             new(
                 $"Hot Reload {ViewRevision}",

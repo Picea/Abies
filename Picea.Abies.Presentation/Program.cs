@@ -11,6 +11,7 @@
 // =============================================================================
 
 using System.Runtime.Versioning;
+using Picea;
 using Picea.Abies;
 using Picea.Abies.Browser;
 using Picea.Abies.DOM;
@@ -105,6 +106,11 @@ public class Presentation : Program<Model, Arguments>
         Message.DemoInputChanged m => (AddLog(model with { DemoInput = m.Value }, $"Input: \"{m.Value}\""), Commands.None),
         _ => (model, Commands.None)
     };
+
+    public static Result<Picea.Abies.Message[], Picea.Abies.Message> Decide(Model _, Picea.Abies.Message command) =>
+        Result<Picea.Abies.Message[], Picea.Abies.Message>.Ok([command]);
+
+    public static bool IsTerminal(Model _) => false;
 
     public static Subscription Subscriptions(Model model)
     {
@@ -467,8 +473,8 @@ public class Presentation : Program<Model, Arguments>
              "4. Update: takes (Message, Model) and returns (Model, Command) — still pure",
              "5. Runtime applies the new Model, diffs the virtual DOM, patches the real DOM",
              "6. Commands execute asynchronously, dispatching result Messages back into the loop"],
-            Code: "public interface Program<TModel, in TArgument>\n{\n    static abstract (TModel, Command) Initialize(Url url, TArgument arg);\n    static abstract (TModel, Command) Update(Message msg, TModel model);\n    static abstract Document View(TModel model);\n    static abstract Subscription Subscriptions(TModel model);\n}",
-            Takeaway: "The entire application is defined by four static functions — no inheritance, no lifecycle hooks, no hidden state.",
+            Code: "public interface Program<TModel, TArgument>\n{\n    static abstract (TModel, Command) Initialize(TArgument argument);\n    static abstract Result<Message[], Message> Decide(TModel state, Message command);\n    static abstract (TModel, Command) Transition(TModel state, Message @event);\n    static abstract bool IsTerminal(TModel state);\n    static abstract Document View(TModel model);\n    static abstract Subscription Subscriptions(TModel model);\n}",
+            Takeaway: "The entire application is defined by six static functions — no inheritance, no lifecycle hooks, no hidden state.",
             NextStep: "Let's explore the Model."),
 
         new("model-records", "Section 2 - Model", "Immutable Records",
@@ -763,8 +769,8 @@ public class Presentation : Program<Model, Arguments>
              "User interaction dispatches a Message to Update(Message, Model) returning (Model, Command)",
              "Runtime diffs virtual DOM, patches real DOM, executes Commands",
              "Commands dispatch result Messages back into the loop"],
-            Code: "public interface Program<TModel, in TArgument>\n{\n    static abstract (TModel, Command) Initialize(Url url, TArgument arg);\n    static abstract (TModel, Command) Update(Message msg, TModel model);\n    static abstract Document View(TModel model);\n    static abstract Subscription Subscriptions(TModel model);\n}",
-            Takeaway: "Four functions define your entire application — no base classes, no lifecycle hooks."),
+            Code: "public interface Program<TModel, TArgument>\n{\n    static abstract (TModel, Command) Initialize(TArgument argument);\n    static abstract Result<Message[], Message> Decide(TModel state, Message command);\n    static abstract (TModel, Command) Transition(TModel state, Message @event);\n    static abstract bool IsTerminal(TModel state);\n    static abstract Document View(TModel model);\n    static abstract Subscription Subscriptions(TModel model);\n}",
+            Takeaway: "Six functions define your entire application — no base classes, no lifecycle hooks."),
 
         new("x-model", "Model and Messages", "Immutable State",
             "Records + sealed message types",

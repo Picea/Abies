@@ -309,6 +309,11 @@ public sealed partial class DebuggerRuntimeReplayApplicationTests
                 _ => (model, Commands.None)
             };
 
+        public static Result<Message[], Message> Decide(ReplayCounterModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(ReplayCounterModel _) => false;
+
         public static Document View(ReplayCounterModel model) =>
             new("Replay Counter", div([], [
                 button([onclick(new IncrementMessage())], [text("+")]),
@@ -350,6 +355,11 @@ public sealed partial class DebuggerRuntimeReplayApplicationTests
                     (model with { Page = new PolyPage.PolyHomePage(home.Count + 1) }, Commands.None),
                 _ => (model, Commands.None)
             };
+
+        public static Result<Message[], Message> Decide(PolyCounterModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(PolyCounterModel _) => false;
 
         public static Document View(PolyCounterModel model) =>
             model.Page switch

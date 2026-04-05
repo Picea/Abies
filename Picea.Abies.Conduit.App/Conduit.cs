@@ -152,6 +152,11 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(Model model, Message command) =>
+        DecideDecision(model, command);
+
+    public static bool IsTerminal(Model _) => false;
+
     public static Document View(Model model)
     {
         var content = model.Page switch
@@ -348,4 +353,94 @@ public sealed class ConduitProgram : Program<Model, ConduitStartup>
             : new FetchArticles(model.ApiUrl, model.Session?.Token, Constants.ArticlesPerPage, offset, Author: profile.Username);
         return (model with { Page = new Page.Profile(newProfile) }, articleCmd);
     }
+
+    private static Result<Message[], Message> DecideDecision(Model model, Message command) =>
+        command switch
+        {
+            LoginEmailChanged or LoginPasswordChanged when model.Page is not Page.Login =>
+                Result<Message[], Message>.Err(new ApiError(["Login form is not active."])),
+            LoginSubmitted when model.Page is not Page.Login =>
+                Result<Message[], Message>.Err(new ApiError(["Login form is not active."])),
+            LoginSubmitted when model.Page is Page.Login login
+                && (string.IsNullOrWhiteSpace(login.Data.Email) || string.IsNullOrWhiteSpace(login.Data.Password)) =>
+                Result<Message[], Message>.Err(new ApiError(["Email and password are required."])),
+
+            RegisterUsernameChanged or RegisterEmailChanged or RegisterPasswordChanged when model.Page is not Page.Register =>
+                Result<Message[], Message>.Err(new ApiError(["Registration form is not active."])),
+            RegisterSubmitted when model.Page is not Page.Register =>
+                Result<Message[], Message>.Err(new ApiError(["Registration form is not active."])),
+            RegisterSubmitted when model.Page is Page.Register reg
+                && (string.IsNullOrWhiteSpace(reg.Data.Username)
+                    || string.IsNullOrWhiteSpace(reg.Data.Email)
+                    || string.IsNullOrWhiteSpace(reg.Data.Password)) =>
+                Result<Message[], Message>.Err(new ApiError(["Username, email, and password are required."])),
+
+            CommentBodyChanged when model.Page is not Page.Article =>
+                Result<Message[], Message>.Err(new ApiError(["Comments are only available on article pages."])),
+            CommentSubmitted => model.Page is Page.Article article
+                ? model.Session is null
+                    ? Result<Message[], Message>.Err(new ApiError(["You must be signed in to comment."]))
+                    : string.IsNullOrWhiteSpace(article.Data.CommentBody)
+                        ? Result<Message[], Message>.Err(new ApiError(["Comment body is required."]))
+                        : Result<Message[], Message>.Ok([command])
+                : Result<Message[], Message>.Err(new ApiError(["Comments are only available on article pages."])),
+
+            SettingsImageChanged or SettingsUsernameChanged or SettingsBioChanged or SettingsEmailChanged or SettingsPasswordChanged
+                when model.Page is not Page.Settings =>
+                Result<Message[], Message>.Err(new ApiError(["Settings form is not active."])),
+            SettingsSubmitted => model.Page is Page.Settings settings
+                ? model.Session is null
+                    ? Result<Message[], Message>.Err(new ApiError(["You must be signed in to update settings."]))
+                    : string.IsNullOrWhiteSpace(settings.Data.Username) || string.IsNullOrWhiteSpace(settings.Data.Email)
+                        ? Result<Message[], Message>.Err(new ApiError(["Username and email are required."]))
+                        : Result<Message[], Message>.Ok([command])
+                : Result<Message[], Message>.Err(new ApiError(["Settings form is not active."])),
+
+            EditorTitleChanged or EditorDescriptionChanged or EditorBodyChanged or EditorTagInputChanged or EditorRemoveTag
+                when model.Page is not Page.Editor =>
+                Result<Message[], Message>.Err(new ApiError(["Editor form is not active."])),
+            EditorAddTag => model.Page is Page.Editor editor
+                ? CanAddTag(editor.Data)
+                    ? Result<Message[], Message>.Ok([command])
+                    : Result<Message[], Message>.Err(new ApiError(["Tag must be non-empty and unique."]))
+                : Result<Message[], Message>.Err(new ApiError(["Editor form is not active."])),
+            EditorTagKeyDown { Key: "Enter" } => model.Page is Page.Editor editor
+                ? CanAddTag(editor.Data)
+                    ? Result<Message[], Message>.Ok([command])
+                    : Result<Message[], Message>.Err(new ApiError(["Tag must be non-empty and unique."]))
+                : Result<Message[], Message>.Err(new ApiError(["Editor form is not active."])),
+            EditorTagKeyDown => model.Page is Page.Editor
+                ? Result<Message[], Message>.Ok([command])
+                : Result<Message[], Message>.Err(new ApiError(["Editor form is not active."])),
+            EditorSubmitted => model.Page is Page.Editor editor
+                ? model.Session is null
+                    ? Result<Message[], Message>.Err(new ApiError(["You must be signed in to save an article."]))
+                    : IsEditorSubmissionValid(editor.Data)
+                        ? Result<Message[], Message>.Ok([command])
+                        : Result<Message[], Message>.Err(new ApiError(["Title, description, and body are required."]))
+                : Result<Message[], Message>.Err(new ApiError(["Editor form is not active."])),
+
+            ProfileTabChanged when model.Page is not Page.Profile =>
+                Result<Message[], Message>.Err(new ApiError(["Profile navigation is not active."])),
+            FeedTabChanged when model.Page is not Page.Home =>
+                Result<Message[], Message>.Err(new ApiError(["Feed navigation is not active."])),
+            PageChanged msg when msg.PageNumber <= 0 =>
+                Result<Message[], Message>.Err(new ApiError(["Page number must be greater than zero."])),
+            PageChanged when model.Page is not (Page.Home or Page.Profile) =>
+                Result<Message[], Message>.Err(new ApiError(["Pagination is not active on this page."])),
+
+            ToggleFavorite or ToggleFollow or DeleteArticle or DeleteComment when model.Session is null =>
+                Result<Message[], Message>.Err(new ApiError(["You must be signed in to perform this action."])),
+
+            _ => Result<Message[], Message>.Ok([command])
+        };
+
+    private static bool CanAddTag(EditorModel editor) =>
+        !string.IsNullOrWhiteSpace(editor.TagInput)
+        && !editor.TagList.Contains(editor.TagInput.Trim());
+
+    private static bool IsEditorSubmissionValid(EditorModel editor) =>
+        !string.IsNullOrWhiteSpace(editor.Title)
+        && !string.IsNullOrWhiteSpace(editor.Description)
+        && !string.IsNullOrWhiteSpace(editor.Body);
 }
