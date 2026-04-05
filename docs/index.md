@@ -52,7 +52,7 @@ Deep dives into core Abies concepts.
 | [Commands & Effects](./concepts/commands-effects.md) | Side effect model and async operations |
 | [Subscriptions](./concepts/subscriptions.md) | External event sources |
 | [Components](./concepts/components.md) | The Element pattern for reusable UI |
-| [The Picea Kernel](./concepts/the-kernel.md) | The Mealy machine abstraction underneath Abies |
+| [The Picea Kernel](https://github.com/Picea/Picea) | The Mealy machine abstraction underneath Abies |
 
 ---
 
@@ -71,14 +71,13 @@ Comprehensive documentation for all public types.
 | [Command](./api/command.md) | Side effect descriptors |
 | [Subscription](./api/subscription.md) | External event subscriptions |
 
-### Render Modes & Server
+### Render Modes & Hosting
 
 | API | Description |
 | --- | --- |
-| [RenderMode](./api/render-mode.md) | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
-| [Page](./api/page.md) | Static page rendering |
-| [Session](./api/session.md) | Server-side interactive MVU session |
-| [Transport](./api/transport.md) | SendPatches, ReceiveEvent delegates |
+| [Render Modes](./concepts/render-modes.md) | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
+| [Runtime](./api/runtime.md) | Browser and server runtime entry points |
+| [Deployment](./guides/deployment.md) | Hosting and production deployment guidance |
 
 ### Navigation & Routing
 
@@ -123,7 +122,7 @@ Deep technical documentation.
 | Reference | Description |
 | --- | --- |
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
-| [Binary Batch Protocol](./reference/binary-batch-protocol.md) | How patches are serialized and applied |
+| [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
 | [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
 | [JavaScript Interop](./reference/js-interop.md) | The JavaScript bridge (`abies.js`) |
 

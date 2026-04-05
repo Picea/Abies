@@ -21,13 +21,13 @@ MyApp.Wasm/
 **`Program.cs`** — The entry point. A single line starts the runtime:
 
 ```csharp
-await Abies.Browser.Runtime.Run<App, Model, Unit>();
+await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 ```
 
 Or with an interpreter for side effects:
 
 ```csharp
-await Abies.Browser.Runtime.Run<App, Model, Unit>(
+await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>(
     interpreter: MyInterpreter.Handle);
 ```
 
@@ -48,7 +48,7 @@ await Abies.Browser.Runtime.Run<App, Model, Unit>(
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="1.0.0-*" />
+    <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
   </ItemGroup>
 </Project>
 ```
@@ -70,13 +70,13 @@ MyApp.Server/
 **`Program.cs`** — Configures Kestrel and maps the Abies endpoint:
 
 ```csharp
-using Abies.Server.Kestrel;
+using Picea.Abies.Server.Kestrel;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.MapAbies<App, Model, Unit>("/",
-    renderMode: RenderMode.InteractiveServer("/ws"),
+  mode: new RenderMode.InteractiveServer("/ws"),
     interpreter: MyInterpreter.Handle);
 
 app.Run();
@@ -90,7 +90,7 @@ app.Run();
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.0-*" />
+    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.*-*" />
   </ItemGroup>
 </Project>
 ```
@@ -154,7 +154,7 @@ Picea.Abies.Conduit.Api/                ← REST API backend
 ├── Authentication/                      ← JWT auth
 └── Infrastructure/                      ← Database, DI
 
-Picea.Abies.Conduit.Wasm/               ← Browser host
+Picea.Abies.Conduit.Wasm.Host/          ← Browser host
 └── Program.cs                           ← One-liner entry point
 
 Picea.Abies.Conduit.Server/             ← Server host
@@ -211,7 +211,7 @@ For the Picea ecosystem, prefix with `Picea.Abies.`:
 | Convention | Example |
 | ---------- | ------- |
 | App library | `Picea.Abies.Conduit` |
-| Browser host | `Picea.Abies.Conduit.Wasm` |
+| Browser host | `Picea.Abies.Conduit.Wasm.Host` |
 | Server host | `Picea.Abies.Conduit.Server` |
 
 ## See Also

@@ -69,7 +69,7 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
-await Runtime.Run<Counter, Arguments, Model>(new Arguments());
+await Runtime.Run<Counter, Model, Arguments>(new Arguments());
 
 public record Arguments;
 public record Model(int Count);
@@ -216,7 +216,7 @@ dotnet run --project Picea.Abies.Conduit.AppHost
 
 # Or run individually
 dotnet run --project Picea.Abies.Conduit.Api &
-dotnet run --project Picea.Abies.Conduit.Wasm
+dotnet run --project Picea.Abies.Conduit.Wasm.Host
 ```
 
 ## Project Structure
@@ -241,7 +241,7 @@ dotnet run --project Picea.Abies.Conduit.Wasm
 | `Picea.Abies.Counter.Server` | Counter — server-side hosting |
 | `Picea.Abies.Conduit` | RealWorld app — domain model |
 | `Picea.Abies.Conduit.App` | RealWorld app — MVU frontend |
-| `Picea.Abies.Conduit.Wasm` | RealWorld app — WASM hosting |
+| `Picea.Abies.Conduit.Wasm.Host` | RealWorld app — WASM hosting |
 | `Picea.Abies.Conduit.Server` | RealWorld app — server hosting |
 | `Picea.Abies.Conduit.Api` | RealWorld app — REST API |
 | `Picea.Abies.Presentation` | Conference presentation app |
@@ -251,7 +251,7 @@ dotnet run --project Picea.Abies.Conduit.Wasm
 | Project | Description |
 | --- | --- |
 | `Picea.Abies.Conduit.AppHost` | .NET Aspire orchestration |
-| `Picea.Abies.ServiceDefaults` | Shared defaults (OpenTelemetry, health checks) |
+| `Picea.Abies.Conduit.ServiceDefaults` | Shared defaults (OpenTelemetry, health checks) |
 | `Picea.Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
 | `contrib/js-framework-benchmark` | js-framework-benchmark entry point |
 | `Picea.Abies.Tests` | Unit tests |

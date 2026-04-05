@@ -36,7 +36,7 @@ It demonstrates how all the concepts from previous tutorials come together in a 
 dotnet run --project Picea.Abies.Conduit.Api
 
 # In another terminal, start the frontend
-dotnet run --project Picea.Abies.Conduit.Wasm
+dotnet run --project Picea.Abies.Conduit.Wasm.Host
 ```
 
 ## Project Structure
@@ -44,7 +44,7 @@ dotnet run --project Picea.Abies.Conduit.Wasm
 The Conduit frontend is split into a platform-independent library and a WASM host:
 
 ```text
-Abies.Conduit.App/              # Platform-independent MVU program
+Picea.Abies.Conduit.App/        # Platform-independent MVU program
 ├── Conduit.cs                  # Main Program implementation
 ├── Model.cs                    # Application state (all record types)
 ├── Messages.cs                 # All message types
@@ -66,7 +66,7 @@ Abies.Conduit.App/              # Platform-independent MVU program
     ├── Layout.cs
     └── ArticlePreview.cs
 
-Abies.Conduit.Wasm/             # Browser host
+Picea.Abies.Conduit.Wasm.Host/  # Browser host
 └── Program.cs                  # await Runtime.Run<ConduitProgram, Model, Unit>(...)
 ```
 

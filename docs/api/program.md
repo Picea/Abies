@@ -1,33 +1,39 @@
 # Program Interface
 
-The `Program<TModel, TArgument>` interface is the compile-time contract that defines an Abies MVU application. It extends the Automaton kernel's transition function with two MVU-specific capabilities: rendering views and declaring subscriptions.
+The `Program<TModel, TArgument>` interface is the compile-time contract for an Abies MVU application. It is a strict decider contract: commands are validated through `Decide`, state evolution happens through `Transition`, and runtime termination is defined by `IsTerminal`.
 
 ## Type Signature
 
 ```csharp
-public interface Program<TModel, TArgument> : Automaton<TModel, Message, Command, TArgument>
+public interface Program<TModel, TArgument> : Decider<TModel, Message, Message, Command, Message, TArgument>
 {
+    static abstract Result<Message[], Message> Decide(TModel state, Message command);
+    static abstract bool IsTerminal(TModel state);
     static abstract Document View(TModel model);
     static abstract Subscription Subscriptions(TModel model);
 }
 ```
 
-## Automaton Kernel Mapping
+## Decider Kernel Mapping
 
-The `Program` interface inherits two members from the `Automaton<TState, TEvent, TEffect, TParameters>` kernel and adds two MVU-specific members:
+The `Program` interface inherits the decider core members and adds MVU-specific rendering/subscription members:
 
-| Automaton | MVU | Member | Signature |
+| Decider | MVU | Member | Signature |
 |-----------|-----|--------|-----------|
 | `TState` | `TModel` | — | The application state |
-| `TEvent` | `Message` | — | User and system events |
+| `TCommand` | `Message` | — | User/system commands fed into `Decide` |
+| `TEvent` | `Message` | — | Events produced by `Decide` and consumed by `Transition` |
 | `TEffect` | `Command` | — | Side effects |
+| `TError` | `Message` | — | Command rejection type |
 | `TParameters` | `TArgument` | — | Initialization parameters |
 | `Initialize` | `Initialize` | From kernel | `static (TModel, Command) Initialize(TArgument argument)` |
 | `Transition` | `Transition` | From kernel | `static (TModel, Command) Transition(TModel model, Message message)` |
+| `Decide` | `Decide` | From kernel | `static Result<Message[], Message> Decide(TModel state, Message command)` |
+| `IsTerminal` | `IsTerminal` | From kernel | `static bool IsTerminal(TModel state)` |
 | — | `View` | MVU-specific | `static Document View(TModel model)` |
 | — | `Subscriptions` | MVU-specific | `static Subscription Subscriptions(TModel model)` |
 
-The interface has exactly **four static abstract members** — two inherited from the Automaton kernel (`Initialize`, `Transition`) and two defined directly (`View`, `Subscriptions`).
+The interface has **six static members in practice**: four from decider semantics (`Initialize`, `Decide`, `Transition`, `IsTerminal`) and two MVU-specific members (`View`, `Subscriptions`).
 
 ## Members
 
@@ -57,6 +63,31 @@ The pure state transition function. Given the current model and a message, produ
 - **Returns** — A tuple of the new model and a command to execute.
 
 This function must be **pure** — no side effects, no mutation. All side effects are expressed as `Command` values that the runtime's interpreter executes.
+
+### Decide
+
+```csharp
+static Result<Message[], Message> Decide(TModel state, Message command)
+```
+
+Validates and maps an incoming command to zero or more events.
+
+- **`state`** — Current application state.
+- **`command`** — Incoming command message.
+- **Returns** — `Ok(events)` when accepted, `Err(message)` when rejected.
+
+Abies runtime processes commands through `Decide` before any transition runs.
+
+### IsTerminal
+
+```csharp
+static bool IsTerminal(TModel state)
+```
+
+Declares whether the runtime should stop handling incoming commands for the current state.
+
+- **`state`** — Current application state.
+- **Returns** — `true` when command handling should stop; otherwise `false`.
 
 ### View
 
@@ -94,13 +125,13 @@ Subscriptions are **declarative** — the runtime's `SubscriptionManager` handle
 ## Complete Example
 
 ```csharp
-using Abies;
-using Abies.DOM;
-using Abies.Subscriptions;
-using Automaton;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
+using Picea;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 public record CounterModel(int Count);
 
@@ -123,6 +154,11 @@ public class Counter : Program<CounterModel, Unit>
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(CounterModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(CounterModel _) => false;
+
     public static Document View(CounterModel model) =>
         new("Counter",
             div([], [
@@ -141,7 +177,7 @@ public class Counter : Program<CounterModel, Unit>
 ### Browser (WASM)
 
 ```csharp
-await Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
 ```
 
 ### Server (ASP.NET Core)
@@ -156,7 +192,7 @@ See [Runtime](runtime.md) for the full API reference of both hosting models.
 
 ### Pure Functions Only
 
-All four members are pure functions. Side effects are expressed as `Command` values returned from `Initialize` and `Transition`. The runtime's interpreter executes commands and feeds any resulting messages back into the loop.
+All six members are pure functions. Side effects are expressed as `Command` values returned from `Initialize` and `Transition`. The runtime's interpreter executes commands and feeds any resulting messages back into the loop.
 
 ### Navigation is a Message
 
