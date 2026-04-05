@@ -4,7 +4,7 @@ The Abies runtime orchestrates the MVU loop: it wires the Automaton kernel to vi
 
 ## Browser Runtime
 
-### Abies.Browser.Runtime.Run
+### Picea.Abies.Browser.Runtime.Run
 
 ```csharp
 [SupportedOSPlatform("browser")]
@@ -12,7 +12,8 @@ public static class Runtime
 {
     public static async Task Run<TProgram, TModel, TArgument>(
         TArgument argument = default!,
-        Interpreter<Command, Message>? interpreter = null)
+    Interpreter<Command, Message>? interpreter = null,
+    JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
         where TProgram : Program<TModel, TArgument>;
 }
 ```
@@ -35,23 +36,24 @@ One-line entry point for running an Abies application in the browser. This singl
 |-----------|------|---------|-------------|
 | `argument` | `TArgument` | `default!` | Initialization parameters passed to `TProgram.Initialize`. Use `Unit` for parameterless apps. |
 | `interpreter` | `Interpreter<Command, Message>?` | `null` | Converts commands into feedback messages. When `null`, a no-op interpreter is used. |
+| `debuggerModelJsonTypeInfo` | `JsonTypeInfo<TModel>?` | `null` | Optional source-generated metadata used for debugger snapshot export/import in Debug builds. |
 
 #### Usage
 
 ```csharp
 // Entire Program.cs for a browser application:
-await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
 ```
 
 ```csharp
 // With a custom interpreter for HTTP commands:
-await Abies.Browser.Runtime.Run<ConduitProgram, ConduitModel, Unit>(
+await Picea.Abies.Browser.Runtime.Run<ConduitProgram, ConduitModel, Unit>(
     interpreter: ConduitInterpreter.Interpret);
 ```
 
 ```csharp
 // With initialization argument:
-await Abies.Browser.Runtime.Run<MyApp, MyModel, AppConfig>(
+await Picea.Abies.Browser.Runtime.Run<MyApp, MyModel, AppConfig>(
     argument: new AppConfig(ApiBaseUrl: "https://api.example.com"),
     interpreter: MyInterpreter.Interpret);
 ```
@@ -68,7 +70,8 @@ public static IEndpointRouteBuilder MapAbies<TProgram, TModel, TArgument>(
     string path,
     RenderMode mode,
     Interpreter<Command, Message>? interpreter = null,
-    TArgument argument = default!)
+    TArgument argument = default!,
+    JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
     where TProgram : Program<TModel, TArgument>;
 ```
 
@@ -82,6 +85,7 @@ ASP.NET Core extension method that maps an Abies application to a URL path with 
 | `mode` | `RenderMode` | — | The rendering strategy (see below) |
 | `interpreter` | `Interpreter<Command, Message>?` | `null` | Command interpreter. Required for interactive modes with custom commands. |
 | `argument` | `TArgument` | `default!` | Initialization parameters for the program. |
+| `debuggerModelJsonTypeInfo` | `JsonTypeInfo<TModel>?` | `null` | Optional source-generated metadata used for debugger snapshot export/import in Debug builds. |
 
 #### Render Modes
 
@@ -109,7 +113,7 @@ app.MapAbies<MyApp, MyModel, Unit>("/", new RenderMode.InteractiveServer());
 // Interactive WASM — server-rendered HTML, then client takes over
 app.MapAbies<MyApp, MyModel, Unit>(
     "/{**catch-all}",
-    new RenderMode.InteractiveWasm,
+    new RenderMode.InteractiveWasm(),
     interpreter: MyInterpreter.Interpret);
 
 // Interactive Auto — server-first, transitions to WASM when ready
@@ -226,11 +230,11 @@ The runtime emits spans via `System.Diagnostics.ActivitySource`:
 
 | Span | Source | Description |
 |------|--------|-------------|
-| `Abies.Start` | `Abies.Runtime` | Runtime initialization |
-| `Abies.Render` | `Abies.Runtime` | View + diff + apply cycle |
-| `Abies.Stop` | `Abies.Runtime` | Runtime disposal |
-| `Abies.Server.Session.Start` | `Abies.Server.Session` | Server session initialization |
-| `Abies.Server.Session.EventLoop` | `Abies.Server.Session` | Server event loop |
+| `Picea.Abies.Start` | `Picea.Abies.Runtime` | Runtime initialization |
+| `Picea.Abies.Render` | `Picea.Abies.Runtime` | View + diff + apply cycle |
+| `Picea.Abies.Stop` | `Picea.Abies.Runtime` | Runtime disposal |
+| `Picea.Abies.Server.Session.Start` | `Picea.Abies.Server.Session` | Server session initialization |
+| `Picea.Abies.Server.Session.EventLoop` | `Picea.Abies.Server.Session` | Server event loop |
 
 The browser-side `abies.js` also creates spans for DOM events and propagates `traceparent` headers on fetch requests.
 

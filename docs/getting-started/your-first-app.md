@@ -25,7 +25,7 @@ Abies runs on two platforms. Pick one to start (you can add the other later):
 ```bash
 dotnet new console -n MyCounter
 cd MyCounter
-dotnet add package Picea.Abies.Browser
+dotnet add package Picea.Abies.Browser --prerelease
 ```
 
 ### 2. Define the Model
@@ -41,7 +41,7 @@ public record Model(int Count);
 Messages describe everything that can happen. Use `record struct` for zero-allocation hot-path messages:
 
 ```csharp
-using Abies;
+using Picea.Abies;
 
 public interface CounterMessage : Message
 {
@@ -55,13 +55,13 @@ public interface CounterMessage : Message
 A Program connects model, messages, and view:
 
 ```csharp
-using Abies;
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 public class Counter : Program<Model, Unit>
 {
@@ -94,7 +94,7 @@ public class Counter : Program<Model, Unit>
 The browser runtime is a single line:
 
 ```csharp
-await Abies.Browser.Runtime.Run<Counter, Model, Unit>();
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 ```
 
 That's it. This:
@@ -131,7 +131,7 @@ Update your `.csproj`:
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="1.0.0-*" />
+        <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
   </ItemGroup>
 </Project>
 ```
@@ -153,7 +153,7 @@ Open the URL shown in the terminal. Click **+** and **−** to see the counter u
 ```bash
 dotnet new web -n MyCounter.Server
 cd MyCounter.Server
-dotnet add package Picea.Abies.Server.Kestrel
+dotnet add package Picea.Abies.Server.Kestrel --prerelease
 ```
 
 ### 2. Define Model, Messages, and Program
@@ -161,13 +161,13 @@ dotnet add package Picea.Abies.Server.Kestrel
 The Model, Messages, and Program are **identical** to the browser version:
 
 ```csharp
-using Abies;
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 public record Model(int Count);
 
@@ -208,13 +208,13 @@ public class Counter : Program<Model, Unit>
 ### 3. Wire Up the Server
 
 ```csharp
-using Abies.Server.Kestrel;
+using Picea.Abies.Server.Kestrel;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.MapAbies<Counter, Model, Unit>("/",
-    renderMode: RenderMode.InteractiveServer("/ws"));
+    mode: new RenderMode.InteractiveServer("/ws"));
 
 app.Run();
 ```
@@ -308,7 +308,7 @@ Interpreter<Command, Message> interpreter = async command =>
 };
 
 // 4. Pass the interpreter to the runtime
-await Abies.Browser.Runtime.Run<Counter, Model, Unit>(
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>(
     interpreter: interpreter);
 ```
 

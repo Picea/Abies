@@ -23,7 +23,7 @@ dotnet new classlib -n MyCounter
 cd MyCounter
 
 # Add the Abies framework reference
-dotnet add package Picea.Abies
+dotnet add package Picea.Abies --prerelease
 ```
 
 ## Step 1: Define the Model
@@ -31,12 +31,13 @@ dotnet add package Picea.Abies
 The **model** is the entire state of your application. For a counter, that's a single integer:
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace MyCounter;
 
@@ -119,7 +120,7 @@ The `View` function renders the model as a virtual DOM tree. It's called after e
                 [
                     button([class_("btn"), onclick(new Decrement())], [text("−")]),
                     span([class_("count")], [text(model.Count.ToString())]),
-                    button([class_("btn")], onclick(new Increment())], [text("+")])
+                    button([class_("btn"), onclick(new Increment())], [text("+")])
                 ]),
                 button([class_("reset"), onclick(new Reset())], [text("Reset")])
             ]));
@@ -148,12 +149,13 @@ Subscriptions connect your program to external event sources (timers, WebSockets
 Here's the full counter in one file:
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace MyCounter;
 
@@ -206,7 +208,7 @@ cd ..
 dotnet new web -n MyCounter.Wasm
 cd MyCounter.Wasm
 dotnet add reference ../MyCounter/MyCounter.csproj
-dotnet add package Picea.Abies.Browser
+dotnet add package Picea.Abies.Browser --prerelease
 ```
 
 Replace `Program.cs` with:
@@ -214,7 +216,7 @@ Replace `Program.cs` with:
 ```csharp
 using MyCounter;
 
-await Abies.Browser.Runtime.Run<Counter, Model, Unit>();
+await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 ```
 
 That's it — one line. The runtime:

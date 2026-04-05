@@ -1,19 +1,24 @@
 # Abies Time Travel Debugger
 
-> **Scope: browser runtime only.**  The auto-mount path described in this guide is implemented in `Picea.Abies.Browser.Runtime` and `debugger.js`. It is not available for server render mode. For server-side debugging, see the [Debugging Guide](debugging.md).
+> **Scope:** Debugger panel defaults are available in Debug builds for browser runtime and server template local startup. In Release builds, debugger panel assets are absent.
 
 The Abies Time Travel Debugger provides a complete trace of your application's MVU loop: every message, state transition, and rendered DOM patch.
 
-## Quick Start (Auto-Enabled — browser runtime only)
+## Quick Start (Auto-Enabled in Debug)
 
-When your app starts through `Picea.Abies.Browser.Runtime.Run(...)` in a Debug build, the debugger is enabled by default and the browser runtime mounts it automatically. No host-page markup is required.
+In Debug builds, the debugger panel is enabled by default:
+
+- Browser runtime apps started via `Picea.Abies.Browser.Runtime.Run(...)` auto-mount the panel.
+- Server template local debug startup includes the debugger panel by default.
+
+No host-page markup is required.
 
 When you run your app in Debug mode:
 1. Open your application in the browser
 2. Look for the **Abies Time Travel Debugger** panel (appears as a timeline at the bottom or side of the screen)
 3. Interact with your app — see each action, transition, and render recorded in the timeline
 
-In Release builds, the debugger is completely stripped out (zero bytes, zero overhead).
+In Release builds, debugger panel assets are absent.
 
 The supported configuration surface is the C# API:
 
@@ -105,12 +110,12 @@ This is useful for:
 - Reload the page (`Ctrl+R` or `Cmd+R`) to start fresh
 - For long development sessions, periodically clear the timeline
 
-### Q: Can I use the debugger in Server Render mode?
+### Q: What about Server Render mode?
 
-**A:** No. The auto-mount debugger is **browser runtime only**. The implementation lives entirely in `Picea.Abies.Browser.Runtime` and `debugger.js`; there is no equivalent server-mode path. For server render mode, use the debugging workflow in [debugging.md](debugging.md): server logs, browser DevTools, and tracing.
+**A:** In local Debug startup, the server template includes the debugger panel by default. You can hide the panel UI with `?abies-debugger=off`, `<meta name="abies-debugger" content="off">`, or `window.__abiesDebugger = { enabled: false }`. To disable server-side debugger runtime in Debug startup, set `ABIES_DEBUG_UI=0`. In Release builds, debugger panel assets are absent; use server logs, browser DevTools, and tracing.
 
 ## See Also
 
 - [Debugging Guide](debugging.md) — Additional debugging strategies for MVU applications
 - [ADR-026: Debugger Auto-Mount with C# API](../adr/ADR-026-debugger-auto-mount-with-csharp-api.md) — Design decisions and rationale
-- [ADR-025: Debugger Boundary Contract](../adr/ADR-025-debugger-boundary-contract.md) — Debugger interface and semantics
+- [ADR-025: Debugger Boundary Contract](../adr/ADR-025-issue-160-debugger-boundary-contract-phase1.md) — Debugger interface and semantics
