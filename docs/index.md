@@ -124,7 +124,6 @@ Deep technical documentation.
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
 | [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
 | [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
-| [JavaScript Interop](./reference/js-interop.md) | The JavaScript bridge (`abies.js`) |
 
 ---
 
