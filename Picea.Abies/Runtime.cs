@@ -76,7 +76,8 @@ public static class HeadDiff
 }
 
 /// <summary>
-/// The MVU runtime: wires the Automaton kernel to View, Diff, and Subscriptions.
+/// The MVU runtime: executes decider flow (Decide -> Transition -> Interpret)
+/// while wiring View, Diff, and Subscriptions.
 /// </summary>
 public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
@@ -439,19 +440,48 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     public async ValueTask<Result<Unit, PipelineError>> Dispatch(
         Message message, CancellationToken cancellationToken = default)
     {
-        var dispatchResult = await _core.Dispatch(message, cancellationToken);
+        if (TProgram.IsTerminal(_core.State))
+        {
+            return Result<Unit, PipelineError>.Ok(Unit.Value);
+        }
+
+        var decision = TProgram.Decide(_core.State, message);
+        if (decision.IsErr)
+        {
+            var errorDispatchResult = await _core.Dispatch(decision.Error, cancellationToken);
+            if (errorDispatchResult.IsErr)
+            {
+                return errorDispatchResult;
+            }
+        }
+        else
+        {
+            if (decision.Value.Length == 0)
+            {
+                return Result<Unit, PipelineError>.Ok(Unit.Value);
+            }
+
+            foreach (var @event in decision.Value)
+            {
+                var dispatchResult = await _core.Dispatch(@event, cancellationToken);
+                if (dispatchResult.IsErr)
+                {
+                    return dispatchResult;
+                }
+            }
+        }
 
 #if DEBUG
-        // Capture debugger snapshots after transition so timeline entries represent
-        // user-visible post-message state.
-        if (_debuggerMachine != null && dispatchResult.IsOk)
+        // Capture debugger snapshots after command handling so entries represent
+        // user-visible post-command state.
+        if (_debuggerMachine != null)
         {
             var modelSnapshot = GenerateModelSnapshot(_core.State);
             _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
         }
 #endif
 
-        return dispatchResult;
+        return Result<Unit, PipelineError>.Ok(Unit.Value);
     }
 
 #if DEBUG
