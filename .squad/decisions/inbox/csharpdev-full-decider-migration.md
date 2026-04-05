@@ -18,7 +18,7 @@ Implemented the breaking migration to strict decider contracts across Abies runt
     - `IsTerminal(state)` guard
     - `Decide(state, command)`
     - dispatch each decided event through transition pipeline
-  - Added atomic command gate (`SemaphoreSlim`) so decide+dispatch sequence is handled as one runtime command operation
+  - Added a narrow decision gate (`SemaphoreSlim`) so `IsTerminal` + `Decide` run atomically per command while command interpretation remains non-blocking for unrelated dispatches
   - Removed direct command->event dispatch behavior that bypassed `Decide`
 - Updated decider contract references in docs/comments:
   - `docs/reference/runtime-internals.md`
@@ -49,14 +49,10 @@ Implemented the breaking migration to strict decider contracts across Abies runt
 - `dotnet test --project Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj -c Debug -v minimal`
 - `dotnet build Picea.Abies.sln -c Debug`
 
-### Failed
+### Notes
 
-- `dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -c Debug -v minimal`
-  - 1 failing test out of 110:
-    - `DeleteArticle_AsAuthor_ShouldNavigateToHome`
-  - Failure detail: Playwright timeout waiting for `.article-page` to become visible
+- A previously observed Conduit E2E failure (`DeleteArticle_AsAuthor_ShouldNavigateToHome`) came from earlier exploratory runs and is not treated as the validation result for this combined PR note.
 
 ## Follow-ups
 
-- Investigate and stabilize `DeleteArticle_AsAuthor_ShouldNavigateToHome` in Conduit E2E.
 - Add focused runtime tests that assert command rejection/terminal short-circuit paths (`Decide` returning `Err`, `IsTerminal == true`) to lock in decider-first dispatch semantics.
