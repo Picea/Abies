@@ -6,6 +6,19 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
+#if DEBUG
+var debugUiOptOut = string.Equals(
+    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+    "0",
+    StringComparison.OrdinalIgnoreCase);
+
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions
+    {
+        Enabled = !debugUiOptOut
+    });
+#endif
+
 // Start the Abies runtime with the Counter program
 await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 
