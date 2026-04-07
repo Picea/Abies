@@ -76,7 +76,8 @@ public static class HeadDiff
 }
 
 /// <summary>
-/// The MVU runtime: wires the Automaton kernel to View, Diff, and Subscriptions.
+/// The MVU runtime: executes decider flow (Decide -> Transition -> Interpret)
+/// while wiring View, Diff, and Subscriptions.
 /// </summary>
 public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 #if DEBUG
@@ -95,6 +96,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     private readonly bool _replay;
     private readonly string _viewCacheScope = $"runtime:{Guid.CreateVersion7()}";
     private readonly Lock _renderGate = new();
+    private readonly SemaphoreSlim _decisionGate = new(1, 1);
     private Document? _currentDocument;
     private SubscriptionState _subscriptionState = SubscriptionState.Empty;
 #if DEBUG
@@ -439,19 +441,75 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
     public async ValueTask<Result<Unit, PipelineError>> Dispatch(
         Message message, CancellationToken cancellationToken = default)
     {
-        var dispatchResult = await _core.Dispatch(message, cancellationToken);
+        Message? decidedError = null;
+        Message[] decidedEvents = [];
+        var shouldShortCircuit = false;
+
+        await _decisionGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (TProgram.IsTerminal(_core.State))
+            {
+                shouldShortCircuit = true;
+            }
+            else
+            {
+                var decision = TProgram.Decide(_core.State, message);
+                if (decision.IsErr)
+                {
+                    decidedError = decision.Error;
+                }
+                else
+                {
+                    decidedEvents = decision.Value;
+                    if (decidedEvents.Length == 0)
+                    {
+                        shouldShortCircuit = true;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _decisionGate.Release();
+        }
+
+        if (shouldShortCircuit)
+        {
+            return Result<Unit, PipelineError>.Ok(Unit.Value);
+        }
+
+        if (decidedError is not null)
+        {
+            var errorDispatchResult = await _core.Dispatch(decidedError, cancellationToken);
+            if (errorDispatchResult.IsErr)
+            {
+                return errorDispatchResult;
+            }
+        }
+        else
+        {
+            foreach (var @event in decidedEvents)
+            {
+                var dispatchResult = await _core.Dispatch(@event, cancellationToken);
+                if (dispatchResult.IsErr)
+                {
+                    return dispatchResult;
+                }
+            }
+        }
 
 #if DEBUG
-        // Capture debugger snapshots after transition so timeline entries represent
-        // user-visible post-message state.
-        if (_debuggerMachine != null && dispatchResult.IsOk)
+        // Capture debugger snapshots after command handling so entries represent
+        // user-visible post-command state.
+        if (_debuggerMachine != null)
         {
             var modelSnapshot = GenerateModelSnapshot(_core.State);
             _debuggerMachine.CaptureMessage(message, modelSnapshot, _core.State);
         }
 #endif
 
-        return dispatchResult;
+        return Result<Unit, PipelineError>.Ok(Unit.Value);
     }
 
 #if DEBUG
@@ -604,6 +662,7 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
         Elements.RemoveViewCacheScope(_viewCacheScope);
         _handlerRegistry.Dispatch = null;
         _handlerRegistry.Clear();
+        _decisionGate.Dispose();
         _core.Dispose();
 
         activity?.SetStatus(ActivityStatusCode.Ok);

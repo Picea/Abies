@@ -318,6 +318,10 @@ jobs:
     name: Template Smoke Test
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
 
     steps:
       - name: Checkout
@@ -401,7 +405,7 @@ jobs:
             echo "No template source changes detected"
           fi
 
-      - name: Smoke test — abies-browser
+      - name: Smoke test — abies-browser (${{ matrix.configuration }})
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-browser into $TEMP_DIR..."
@@ -411,12 +415,12 @@ jobs:
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
 
           echo "🔨 Building scaffolded project..."
-          dotnet build "$TEMP_DIR" --no-restore
+          dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
 
           echo "✅ abies-browser template compiles successfully"
           rm -rf "$TEMP_DIR"
 
-      - name: Smoke test — abies-browser-empty
+      - name: Smoke test — abies-browser-empty (${{ matrix.configuration }})
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-browser-empty into $TEMP_DIR..."
@@ -426,12 +430,12 @@ jobs:
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
 
           echo "🔨 Building scaffolded project..."
-          dotnet build "$TEMP_DIR" --no-restore
+          dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
 
           echo "✅ abies-browser-empty template compiles successfully"
           rm -rf "$TEMP_DIR"
 
-      - name: Smoke test — abies-server
+      - name: Smoke test — abies-server (${{ matrix.configuration }})
         run: |
           TEMP_DIR=$(mktemp -d)
           echo "🧪 Scaffolding abies-server into $TEMP_DIR..."
@@ -441,7 +445,7 @@ jobs:
           dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
 
           echo "🔨 Building scaffolded project..."
-          dotnet build "$TEMP_DIR" --no-restore
+          dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
 
           echo "✅ abies-server template compiles successfully"
           rm -rf "$TEMP_DIR"

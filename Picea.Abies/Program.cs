@@ -4,8 +4,12 @@ using Picea.Abies.Subscriptions;
 
 namespace Picea.Abies;
 
-public interface Program<TModel, TArgument> : Automaton<TModel, Message, Command, TArgument>
+public interface Program<TModel, TArgument> : Decider<TModel, Message, Message, Command, Message, TArgument>
 {
+    new static abstract Result<Message[], Message> Decide(TModel state, Message command);
+
+    new static abstract bool IsTerminal(TModel state);
+
     static abstract Document View(TModel model);
 
     static abstract Subscription Subscriptions(TModel model);

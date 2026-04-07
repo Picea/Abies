@@ -1,6 +1,6 @@
 # Abies Browser Application
 
-A minimal [Abies](https://github.com/MCGPPeters/Abies) browser application demonstrating the Model-View-Update (MVU) pattern in WebAssembly.
+A minimal [Abies](https://github.com/Picea/Abies) browser application demonstrating the Model-View-Update (MVU) pattern in WebAssembly.
 
 ## What is Abies?
 
@@ -19,16 +19,16 @@ Abies is a functional MVU framework for building web applications in C# that com
 dotnet run
 ```
 
-The application will start on `http://localhost:5000` by default.
+The application starts on the URL shown in the terminal output.
 
 ### Project Structure
 
-```
+```text
 ├── Program.cs              # Application entry point (MVU loop)
 ├── AbiesApp.csproj         # Project configuration
 ├── wwwroot/                # Static files served to the browser
 │   ├── index.html          # Bootstrap HTML (includes abies.js)
-│   └── app.css             # Application styles
+│   └── site.css            # Application styles
 └── Properties/
     └── launchSettings.json # Development server configuration
 ```
@@ -49,20 +49,20 @@ See `Program.cs` for the complete implementation.
 
 ### Debugger (Built-In)
 
-The **Abies Time Travel Debugger** is automatically enabled in Debug builds. No setup required:
+In Debug builds, the browser debugger panel is enabled by default.
 
-1. Open the app in your browser
-2. Look for the debugger panel at the bottom or side of the screen
-3. Interact with the app — see each action and state transition recorded
-4. Click any event to time travel back to that state
-
-To disable the debugger, set this before calling `Runtime.Run()`:
+To force-disable the **Abies Time Travel Debugger** before calling `Runtime.Run()`:
 
 ```csharp
-DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
+#if DEBUG
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+  new Picea.Abies.Debugger.DebuggerOptions { Enabled = false });
+#endif
 ```
 
-See [docs/guides/devtools.md](../../docs/guides/devtools.md) for the full debugger guide.
+In Release builds, keep debugger configuration inside `#if DEBUG` to avoid debug UI setup.
+
+See [Devtools Guide](https://github.com/Picea/Abies/blob/main/docs/guides/devtools.md) for the full debugger guide.
 
 ### Hot Reload (Debug Mode)
 
@@ -76,16 +76,13 @@ Change the `View` function, save, and see the changes instantly.
 
 ### Release Optimization
 
-Release builds compile out all debug code:
-- Zero overhead from the debugger (completely stripped)
-- Optimized WebAssembly output
-- Minimal bundle size
+Release builds optimize WebAssembly output and minimize bundle size.
 
 ## Customization
 
 ### Styling
 
-Edit `wwwroot/app.css` to customize the look and feel:
+Edit `wwwroot/site.css` to customize the look and feel:
 
 ```css
 .app {
@@ -118,9 +115,9 @@ Hook into timers, events, or API streams:
 
 ```csharp
 public static Subscription Subscriptions(Model model) =>
-    model.Count > 10 ? 
-        Subscriptions.Interval(1000, () => new TimerTick()) :
-        Subscriptions.Empty;
+  model.Count > 10
+    ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new TimerTick())
+    : SubscriptionModule.None;
 ```
 
 ## Building for Production
@@ -135,19 +132,19 @@ The output is in `bin/Release/net10.0/publish/wwwroot/`. Deploy to any static fi
 
 ## Documentation
 
-- [Abies Documentation](../../docs/index.md) — Complete Abies guide
-- [Debugging Guide](../../docs/guides/debugging.md) — Debug strategies and tools
-- [Performance Guide](../../docs/guides/performance.md) — Optimization tips
-- [Architecture Decision Records (ADRs)](../../docs/adr/) — Design rationale
+- [Abies Documentation](https://github.com/Picea/Abies/blob/main/docs/index.md) — Complete Abies guide
+- [Debugging Guide](https://github.com/Picea/Abies/blob/main/docs/guides/debugging.md) — Debug strategies and tools
+- [Performance Guide](https://github.com/Picea/Abies/blob/main/docs/guides/performance.md) — Optimization tips
+- [Architecture Decision Records (ADRs)](https://github.com/Picea/Abies/tree/main/docs/adr) — Design rationale
 
 ## Examples
 
-See [Conduit](../../Picea.Abies.Conduit/) for a full-featured real-world application built with Abies.
+See [Conduit](https://github.com/Picea/Abies/tree/main/Picea.Abies.Conduit) for a full-featured real-world application built with Abies.
 
 ## Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](https://github.com/Picea/Abies/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT — See [LICENSE](../../LICENSE) for details.
+Apache 2.0 — See [LICENSE](https://github.com/Picea/Abies/blob/main/LICENSE) for details.

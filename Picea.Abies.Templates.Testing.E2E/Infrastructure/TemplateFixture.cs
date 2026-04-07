@@ -56,6 +56,11 @@ public abstract class TemplateFixture : IAsyncInitializer, IAsyncDisposable
     public string BaseUrl { get; private set; } = "";
 
     /// <summary>
+    /// Absolute path to the scaffolded template project directory.
+    /// </summary>
+    public string ProjectDir => _projectDir;
+
+    /// <summary>
     /// Creates a new Playwright browser context with an isolated page.
     /// Each test should call this for isolation.
     /// </summary>

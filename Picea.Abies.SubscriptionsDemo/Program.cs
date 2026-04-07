@@ -13,6 +13,7 @@
 // =============================================================================
 
 using System.Runtime.Versioning;
+using Picea;
 using Picea.Abies;
 using Picea.Abies.Browser;
 using Picea.Abies.DOM;
@@ -195,6 +196,11 @@ public class SubscriptionsDemo : Program<Model, Arguments>
             ),
             _ => (model, Commands.None)
         };
+
+    public static Result<Picea.Abies.Message[], Picea.Abies.Message> Decide(Model _, Picea.Abies.Message command) =>
+        Result<Picea.Abies.Message[], Picea.Abies.Message>.Ok([command]);
+
+    public static bool IsTerminal(Model _) => false;
 
     /// <summary>
     /// Renders the demo UI.

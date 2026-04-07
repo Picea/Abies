@@ -26,6 +26,16 @@ using static Picea.Abies.Head;
 
 var builder = WebApplication.CreateBuilder(args);
 
+#if DEBUG
+var debugUiOptOut = string.Equals(
+    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+    "0",
+    StringComparison.OrdinalIgnoreCase);
+
+Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
+    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+#endif
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
     .WithTracing(tracing => tracing
@@ -105,6 +115,11 @@ public sealed class Counter : Program<CounterModel, Unit>
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(CounterModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(CounterModel _) => false;
+
     /// <summary>
     /// Render the view based on the current model.
     /// </summary>
@@ -135,21 +150,23 @@ public sealed class Counter : Program<CounterModel, Unit>
 
                     div([class_("counter")],
                     [
+                        div([class_("counter-controls")],
+                        [
+                            button(
+                                [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
+                                [text("-")]
+                            ),
+                            span([class_("count")], [text(model.Count.ToString())]),
+                            button(
+                                [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
+                                [text("+")]
+                            )
+                        ]),
                         button(
-                            [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
-                            [text("-")]
-                        ),
-                        span([class_("count")], [text(model.Count.ToString())]),
-                        button(
-                            [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
-                            [text("+")]
+                            [type("button"), onclick(new Reset()), class_("btn-reset")],
+                            [text("Reset")]
                         )
                     ]),
-
-                    button(
-                        [type("button"), onclick(new Reset()), class_("btn-reset")],
-                        [text("Reset")]
-                    ),
 
                     div([class_("info-panel")],
                     [

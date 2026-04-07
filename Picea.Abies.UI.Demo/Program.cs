@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using Picea;
 using Picea.Abies;
 using Picea.Abies.Browser;
 using Picea.Abies.DOM;
@@ -72,6 +73,11 @@ internal sealed class UiDemo : Program<DemoModel, DemoArguments>
             DemoMessage.ToggleAlert => (model with { IsAlertVisible = !model.IsAlertVisible }, Commands.None),
             _ => (model, Commands.None)
         };
+
+    public static Result<Message[], Message> Decide(DemoModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(DemoModel _) => false;
 
     public static Document View(DemoModel model)
         => new(

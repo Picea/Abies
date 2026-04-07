@@ -13,7 +13,10 @@ var debugUiOptOut = string.Equals(
     StringComparison.OrdinalIgnoreCase);
 
 Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
-    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+    new Picea.Abies.Debugger.DebuggerOptions
+    {
+        Enabled = !debugUiOptOut
+    });
 #endif
 
 // Start the Abies runtime with the Counter program
@@ -62,6 +65,11 @@ public class Counter : Program<Model, Unit>
             _ => (model, Commands.None)
         };
 
+    public static Result<Message[], Message> Decide(Model _, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model _) => false;
+
     /// <summary>
     /// Render the current model as HTML.
     /// </summary>
@@ -92,17 +100,20 @@ public class Counter : Program<Model, Unit>
 
                     div([class_("counter")],
                     [
+                        div([class_("counter-controls")],
+                        [
+                            button(
+                                [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
+                                [text("-")]
+                            ),
+                            span([class_("count")], [text(model.Count.ToString())]),
+                            button(
+                                [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
+                                [text("+")]
+                            )
+                        ]),
                         button(
-                            [type("button"), onclick(new Decrement()), class_("btn"), ariaLabel("Decrease")],
-                            [text("-")]
-                        ),
-                        span([class_("counter-value")], [text(model.Count.ToString())]),
-                        button(
-                            [type("button"), onclick(new Increment()), class_("btn"), ariaLabel("Increase")],
-                            [text("+")]
-                        ),
-                        button(
-                            [type("button"), onclick(new Reset()), class_("btn")],
+                            [type("button"), onclick(new Reset()), class_("btn-reset")],
                             [text("Reset")]
                         )
                     ]),

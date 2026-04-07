@@ -1,10 +1,11 @@
 # Abies Server Application
 
-An [Abies](https://github.com/MCGPPeters/Abies) server-rendered MVU application with Kestrel hosting and WebSocket support.
+An [Abies](https://github.com/Picea/Abies) server-rendered MVU application with Kestrel hosting and WebSocket support.
 
 ## What is Abies?
 
 Abies is a functional MVU framework for building web applications in C# that work across multiple render modes:
+
 - **Server**: Runs on the server, sends DOM updates over WebSocket
 - **WASM**: Runs in the browser via WebAssembly
 - **Auto**: Automatically selects between server and WASM based on capability
@@ -24,15 +25,15 @@ This template uses the **Server** render mode.
 dotnet run
 ```
 
-The application will start on `http://localhost:5000` by default.
+The application starts on the URL shown in the terminal output.
 
 ### Project Structure
 
-```
+```text
 ├── Program.cs                  # Application entry point & Kestrel setup
-├── Pages/
-│   └── Index.cshtml           # Server-rendered page shell
 ├── AbiesServerApp.csproj      # Project configuration
+├── wwwroot/                    # Static assets
+│   └── site.css                # Template styling
 └── Properties/
     └── launchSettings.json    # Development server configuration
 ```
@@ -47,6 +48,7 @@ In **Server render mode**:
 4. A thin JavaScript client applies patches to the real DOM
 
 This approach provides:
+
 - ✅ Fast initial page load (HTML renders on server)
 - ✅ Progressive enhancement (works without JavaScript, degrades gracefully)
 - ✅ Reduced client-side overhead (no .NET WASM runtime)
@@ -55,22 +57,28 @@ This approach provides:
 
 ## Features
 
-### Debugger (Built-In)
+### Debugging (Server Mode)
 
-The **Abies Time Travel Debugger** is automatically enabled in Debug builds:
+In local debug startup, the browser-mounted Abies Time Travel Debugger panel is enabled by default.
 
-1. Open the app in your browser
-2. Look for the debugger panel
-3. Use it to inspect every server-side state transition
-4. Time travel back to any previous state (server re-processes transitions)
+For `abies-server`, use:
 
-To disable:
+1. Abies Time Travel Debugger panel (default on)
+2. Server logs (`Console.WriteLine` output)
+3. Browser DevTools (network + WebSocket frames)
+4. OpenTelemetry traces for end-to-end flow
 
-```csharp
-DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions { Enabled = false });
-```
+Disable the panel when needed:
 
-See [docs/guides/devtools.md](../../docs/guides/devtools.md) for the full guide.
+- URL query: `?abies-debugger=off`
+- Meta tag: `<meta name="abies-debugger" content="off">`
+- Global config: `window.__abiesDebugger = { enabled: false }`
+
+To disable server-side debugger runtime in Debug startup, set `ABIES_DEBUG_UI=0`.
+
+In Release builds, debugger panel assets are absent.
+
+See [Debugging Guide](https://github.com/Picea/Abies/blob/main/docs/guides/debugging.md) for the recommended server-mode workflow.
 
 ### Hot Reload (Debug Mode)
 
@@ -84,7 +92,7 @@ Edit your `View`, `Transition`, or `Model` — changes apply instantly. Your bro
 
 To switch to **WASM** mode, create a `.Wasm` project and use: `await Picea.Abies.Browser.Runtime.Run<>()`
 
-See [ADR-024: Four Render Modes](../../docs/adr/ADR-024-four-render-modes.md) for architecture details.
+See [ADR-024: Four Render Modes](https://github.com/Picea/Abies/blob/main/docs/adr/ADR-024-four-render-modes.md) for architecture details.
 
 ## Customization
 
@@ -119,9 +127,9 @@ Server render mode has full access to your server's capabilities:
 
 ```csharp
 public static Subscription Subscriptions(Model model) =>
-    model.IsLoading ? 
-        Subscriptions.Interval(1000, () => new RefreshData()) :
-        Subscriptions.Empty;
+    model.IsLoading
+        ? SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new RefreshData())
+        : SubscriptionModule.None;
 ```
 
 ## Building for Production
@@ -131,6 +139,7 @@ dotnet publish -c Release
 ```
 
 Release builds:
+
 - Strip all debug code (no debugger overhead)
 - Optimize .NET runtime
 - Minimize bundle size
@@ -177,11 +186,11 @@ For larger applications:
 
 ## Documentation
 
-- [Abies Documentation](../../docs/index.md)
-- [Debugging Guide](../../docs/guides/debugging.md)
-- [Four Render Modes (ADR-024)](../../docs/adr/ADR-024-four-render-modes.md)
-- [Server Integration Guide](../../docs/guides/deployment.md)
+- [Abies Documentation](https://github.com/Picea/Abies/blob/main/docs/index.md)
+- [Debugging Guide](https://github.com/Picea/Abies/blob/main/docs/guides/debugging.md)
+- [Four Render Modes (ADR-024)](https://github.com/Picea/Abies/blob/main/docs/adr/ADR-024-four-render-modes.md)
+- [Server Integration Guide](https://github.com/Picea/Abies/blob/main/docs/guides/deployment.md)
 
 ## License
 
-MIT — See [LICENSE](../../LICENSE) for details.
+Apache 2.0 — See [LICENSE](https://github.com/Picea/Abies/blob/main/LICENSE) for details.

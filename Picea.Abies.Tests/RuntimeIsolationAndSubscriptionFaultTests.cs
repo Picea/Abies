@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Elements;
@@ -60,6 +61,132 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
         await Assert.That(observed.Any(f => f.Exception is ArgumentException)).IsTrue();
     }
 
+    [Test]
+    public async Task Runtime_DispatchesDecisionErr_ThroughProgramMessageFlow()
+    {
+        using var runtime = await Runtime<DecisionErrProgram, DecisionErrModel, Unit>.Start(
+            _ => { },
+            _ => ValueTask.FromResult(Result<Message[], PipelineError>.Ok([])));
+
+        await runtime.Dispatch(new TriggerDecisionErr());
+
+        await Assert.That(runtime.Model.DecisionErrCount).IsEqualTo(1);
+        await Assert.That(runtime.Model.TriggerCount).IsEqualTo(0);
+        await Assert.That(runtime.Model.LastError).IsEqualTo("decider rejected command");
+    }
+
+    [Test]
+    public async Task Runtime_DoesNotBlockFastDispatch_WhileSlowCommandIsInFlight()
+    {
+        static async ValueTask<Result<Message[], PipelineError>> Interpreter(Command command)
+        {
+            if (command is DelayCommand)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250));
+            }
+
+            return Result<Message[], PipelineError>.Ok([]);
+        }
+
+        using var runtime = await Runtime<DispatchProbeProgram, DispatchProbeModel, Unit>.Start(
+            _ => { },
+            Interpreter);
+
+        var slowDispatch = runtime.Dispatch(new BeginSlowWorkflow());
+        await Task.Delay(TimeSpan.FromMilliseconds(25));
+
+        var stopwatch = Stopwatch.StartNew();
+        await runtime.Dispatch(new FastUiCommand());
+        stopwatch.Stop();
+
+        await slowDispatch;
+
+        await Assert.That(stopwatch.ElapsedMilliseconds < 200).IsTrue();
+        await Assert.That(runtime.Model.FastCount).IsEqualTo(1);
+        await Assert.That(runtime.Model.SlowCount).IsEqualTo(1);
+    }
+
+    private sealed record DecisionErrModel(int TriggerCount, int DecisionErrCount, string? LastError);
+
+    private sealed record DispatchProbeModel(int FastCount, int SlowCount);
+
+    private sealed record TriggerDecisionErr : Message;
+
+    private sealed record DecisionErrMessage(string Text) : Message;
+
+    private sealed record BeginSlowWorkflow : Message;
+
+    private sealed record FastUiCommand : Message;
+
+    private sealed record SlowObserved : Message;
+
+    private sealed record DelayCommand : Command;
+
+    private sealed class DecisionErrProgram : Program<DecisionErrModel, Unit>
+    {
+        public static (DecisionErrModel, Command) Initialize(Unit argument) =>
+            (new DecisionErrModel(0, 0, null), Commands.None);
+
+        public static (DecisionErrModel, Command) Transition(DecisionErrModel model, Message message) =>
+            message switch
+            {
+                TriggerDecisionErr => (model with { TriggerCount = model.TriggerCount + 1 }, Commands.None),
+                DecisionErrMessage error =>
+                    (model with
+                    {
+                        DecisionErrCount = model.DecisionErrCount + 1,
+                        LastError = error.Text
+                    }, Commands.None),
+                _ => (model, Commands.None)
+            };
+
+        public static Result<Message[], Message> Decide(DecisionErrModel _, Message command) =>
+            command switch
+            {
+                TriggerDecisionErr => Result<Message[], Message>.Err(new DecisionErrMessage("decider rejected command")),
+                _ => Result<Message[], Message>.Ok([command])
+            };
+
+        public static bool IsTerminal(DecisionErrModel _) => false;
+
+        public static Document View(DecisionErrModel model) =>
+            new("Decision Err", div([], [text($"errors:{model.DecisionErrCount}")]));
+
+        public static Subscription Subscriptions(DecisionErrModel model) =>
+            SubscriptionModule.None;
+    }
+
+    private sealed class DispatchProbeProgram : Program<DispatchProbeModel, Unit>
+    {
+        public static (DispatchProbeModel, Command) Initialize(Unit argument) =>
+            (new DispatchProbeModel(0, 0), Commands.None);
+
+        public static (DispatchProbeModel, Command) Transition(DispatchProbeModel model, Message message) =>
+            message switch
+            {
+                BeginSlowWorkflow => (model, new DelayCommand()),
+                SlowObserved => (model with { SlowCount = model.SlowCount + 1 }, Commands.None),
+                FastUiCommand => (model with { FastCount = model.FastCount + 1 }, Commands.None),
+                _ => (model, Commands.None)
+            };
+
+        public static Result<Message[], Message> Decide(DispatchProbeModel _, Message command) =>
+            command switch
+            {
+                BeginSlowWorkflow => Result<Message[], Message>.Ok([new BeginSlowWorkflow(), new SlowObserved()]),
+                FastUiCommand => Result<Message[], Message>.Ok([new FastUiCommand()]),
+                _ => Result<Message[], Message>.Ok([command])
+            };
+
+        public static bool IsTerminal(DispatchProbeModel _) => false;
+
+        public static Document View(DispatchProbeModel model) =>
+            new("Dispatch Probe", div([], [text($"fast:{model.FastCount};slow:{model.SlowCount}")]));
+
+        public static Subscription Subscriptions(DispatchProbeModel model) =>
+            SubscriptionModule.None;
+    }
+
     private sealed record ScopedLazyModel(string Label);
 
     private sealed class ScopedLazyProgram : Program<ScopedLazyModel, string>
@@ -69,6 +196,11 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
 
         public static (ScopedLazyModel, Command) Transition(ScopedLazyModel model, Message message) =>
             (model, Commands.None);
+
+        public static Result<Message[], Message> Decide(ScopedLazyModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(ScopedLazyModel _) => false;
 
         public static Document View(ScopedLazyModel model) =>
             new(
@@ -92,6 +224,11 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
 
         public static (FaultProbeModel, Command) Transition(FaultProbeModel model, Message message) =>
             (model, Commands.None);
+
+        public static Result<Message[], Message> Decide(FaultProbeModel _, Message command) =>
+            Result<Message[], Message>.Ok([command]);
+
+        public static bool IsTerminal(FaultProbeModel _) => false;
 
         public static Document View(FaultProbeModel model) =>
             new("Fault probe", div([], [text("ready")]));

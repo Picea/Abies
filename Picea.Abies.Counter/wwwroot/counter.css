@@ -226,8 +226,8 @@ h1 {
   font-weight: 600;
   border: var(--stroke-1) solid var(--colorBrandStroke1);
   border-radius: var(--radius-2);
-  background: transparent;
-  color: var(--colorBrandForeground2);
+  background: var(--colorBrandTint);
+  color: var(--colorNeutralForeground1);
   cursor: pointer;
   transition:
     background var(--transition-fast),
@@ -236,7 +236,7 @@ h1 {
 }
 
 .reset:hover {
-  background: var(--colorBrandTint);
+  background: var(--abies-brand-200);
   border-color: var(--colorBrandTintStroke);
   box-shadow: var(--shadow-2);
 }

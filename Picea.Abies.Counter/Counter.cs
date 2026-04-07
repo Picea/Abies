@@ -44,6 +44,10 @@ public record Decrement : CounterMessage;
 /// <summary>Reset the counter to zero.</summary>
 public record Reset : CounterMessage;
 
+/// <summary>Decider rejection for commands outside the Counter command set.</summary>
+/// <param name="Reason">Human-readable rejection reason.</param>
+public record CounterCommandRejected(string Reason) : CounterMessage;
+
 /// <summary>
 /// The Counter program — implements the Abies MVU contract.
 /// </summary>
@@ -72,8 +76,18 @@ public sealed class CounterProgram : Program<CounterModel, Unit>
             Increment => (model with { Count = model.Count + 1 }, Commands.None),
             Decrement => (model with { Count = model.Count - 1 }, Commands.None),
             Reset => (model with { Count = 0 }, Commands.None),
+            CounterCommandRejected => (model, Commands.None),
             _ => (model, Commands.None)
         };
+
+    public static Result<Message[], Message> Decide(CounterModel _, Message command) =>
+        command switch
+        {
+            Increment or Decrement or Reset => Result<Message[], Message>.Ok([command]),
+            _ => Result<Message[], Message>.Err(new CounterCommandRejected($"Unsupported counter command: {command.GetType().Name}"))
+        };
+
+    public static bool IsTerminal(CounterModel _) => false;
 
     /// <summary>
     /// Renders the counter view as a virtual DOM document.
@@ -92,11 +106,11 @@ public sealed class CounterProgram : Program<CounterModel, Unit>
                 h1([], [text("Abies Counter")]),
                 div([class_("controls")],
                 [
-                    button([class_("btn"), onclick(new Decrement())], [text("−")]),
+                    button([type("button"), class_("btn"), onclick(new Decrement())], [text("−")]),
                     span([class_("count")], [text(model.Count.ToString())]),
-                    button([class_("btn"), onclick(new Increment())], [text("+")])
+                    button([type("button"), class_("btn"), onclick(new Increment())], [text("+")])
                 ]),
-                button([class_("reset"), onclick(new Reset())], [text("Reset")])
+                button([type("button"), class_("reset"), onclick(new Reset())], [text("Reset")])
             ]),
             stylesheet("/counter.css"));
 

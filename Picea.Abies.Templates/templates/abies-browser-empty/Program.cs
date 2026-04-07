@@ -13,7 +13,10 @@ var debugUiOptOut = string.Equals(
     StringComparison.OrdinalIgnoreCase);
 
 Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
-    new Picea.Abies.Debugger.DebuggerOptions { Enabled = !debugUiOptOut });
+    new Picea.Abies.Debugger.DebuggerOptions
+    {
+        Enabled = !debugUiOptOut
+    });
 #endif
 
 // Start the Abies runtime with your application
@@ -41,6 +44,11 @@ public class App : Program<Model, Unit>
     /// </summary>
     public static (Model, Command) Transition(Model model, Message message)
         => (model, Commands.None);
+
+    public static Result<Message[], Message> Decide(Model _, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model _) => false;
 
     /// <summary>
     /// Render the view based on the current model.

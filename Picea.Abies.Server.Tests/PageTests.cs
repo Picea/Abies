@@ -35,6 +35,11 @@ public sealed class TestCounter : Program<TestModel, Unit>
     public static (TestModel, Command) Initialize(Unit argument) =>
         (new TestModel(0, "home"), Commands.None);
 
+    public static Result<Message[], Message> Decide(TestModel _, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(TestModel _) => false;
+
     public static (TestModel, Command) Transition(TestModel model, Message message) =>
         message switch
         {
