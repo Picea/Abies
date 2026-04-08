@@ -11,6 +11,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     private const int MaxBatchDepth = 4_096;
     private readonly Queue<Command> _pendingCommands = new();
     private readonly Dictionary<Type, Func<Command, IReadOnlyList<Message>>> _commandMocks = new();
+    private readonly List<Type> _mockRegistrationOrder = [];
     private readonly TestHarnessOptions _options;
     private int _transitionCount;
 
@@ -104,18 +105,8 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
         for (var index = 0; index < session.Entries.Count; index++)
         {
             var entry = session.Entries[index];
-            Message message;
-
-            try
-            {
-                message = mapEntryToMessage(entry);
-            }
-            catch (Exception exception)
-            {
-                throw new InvalidOperationException(
-                    $"Session entry at index {index} ({entry.MessageType}) could not be mapped to a message.",
-                    exception);
-            }
+            var message = mapEntryToMessage(entry) ?? throw new InvalidOperationException(
+                $"Session entry at index {index} ({entry.MessageType}) was mapped to null.");
 
             Dispatch(message);
         }
@@ -142,10 +133,30 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     {
         ArgumentNullException.ThrowIfNull(mock);
 
+        if (_mockRegistrationOrder.Contains(typeof(TCommand)) is false)
+        {
+            _mockRegistrationOrder.Add(typeof(TCommand));
+        }
+
         _commandMocks[typeof(TCommand)] = command =>
         {
             var typedCommand = (TCommand)command;
-            return mock(typedCommand).ToArray();
+            var messages = mock(typedCommand);
+
+            if (messages is null)
+            {
+                throw new InvalidOperationException(
+                    $"Mock for command '{typeof(TCommand).Name}' returned null. Command mocks must return a non-null message list.");
+            }
+
+            var materialized = messages.ToArray();
+            if (materialized.Any(static message => message is null))
+            {
+                throw new InvalidOperationException(
+                    $"Mock for command '{typeof(TCommand).Name}' returned a message list containing null entries.");
+            }
+
+            return materialized;
         };
     }
 
@@ -196,7 +207,8 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
             }
 
             var command = _pendingCommands.Dequeue();
-            if (_commandMocks.TryGetValue(command.GetType(), out var mock) is false)
+            var mock = ResolveCommandMock(command.GetType());
+            if (mock is null)
             {
                 throw new InvalidOperationException(
                     $"No command mock registered for {command.GetType().Name}. " +
@@ -274,5 +286,23 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
 
             _pendingCommands.Enqueue(current);
         }
+    }
+
+    private Func<Command, IReadOnlyList<Message>>? ResolveCommandMock(Type commandType)
+    {
+        if (_commandMocks.TryGetValue(commandType, out var exact))
+        {
+            return exact;
+        }
+
+        foreach (var registeredType in _mockRegistrationOrder)
+        {
+            if (registeredType.IsAssignableFrom(commandType) && _commandMocks.TryGetValue(registeredType, out var assignable))
+            {
+                return assignable;
+            }
+        }
+
+        return null;
     }
 }
