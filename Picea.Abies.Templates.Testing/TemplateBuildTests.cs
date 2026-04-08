@@ -113,7 +113,23 @@ public sealed class TemplateBuildTests
 
         var content = await File.ReadAllTextAsync(programPath);
 
-        await Assert.That(content).Contains("DebuggerConfiguration.ConfigureDebugger(");
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
+        await Assert.That(content).Contains("ABIES_DEBUG_UI");
+    }
+
+    [Test]
+    public async Task BrowserTemplate_Generated_Defaults_EnableDebuggerUi_WithOptOutPath()
+    {
+        await using var project = await TemplateProject.CreateAsync(
+            "abies-browser", "BuildTestBrowserGeneratedDebuggerDefaults");
+
+        var generatedProgramPath = Path.Join(project.ProjectDir, "Program.cs");
+
+        await Assert.That(File.Exists(generatedProgramPath)).IsTrue();
+
+        var content = await File.ReadAllTextAsync(generatedProgramPath);
+
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
         await Assert.That(content).Contains("ABIES_DEBUG_UI");
     }
 
@@ -132,7 +148,39 @@ public sealed class TemplateBuildTests
 
         var content = await File.ReadAllTextAsync(programPath);
 
-        await Assert.That(content).Contains("DebuggerConfiguration.ConfigureDebugger(");
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
+        await Assert.That(content).Contains("ABIES_DEBUG_UI");
+    }
+
+    [Test]
+    public async Task BrowserEmptyTemplate_Generated_Defaults_EnableDebuggerUi_WithOptOutPath()
+    {
+        await using var project = await TemplateProject.CreateAsync(
+            "abies-browser-empty", "BuildTestBrowserEmptyGeneratedDebuggerDefaults");
+
+        var generatedProgramPath = Path.Join(project.ProjectDir, "Program.cs");
+
+        await Assert.That(File.Exists(generatedProgramPath)).IsTrue();
+
+        var content = await File.ReadAllTextAsync(generatedProgramPath);
+
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
+        await Assert.That(content).Contains("ABIES_DEBUG_UI");
+    }
+
+    [Test]
+    public async Task ServerTemplate_Generated_Defaults_EnableDebuggerUi_WithOptOutPath()
+    {
+        await using var project = await TemplateProject.CreateAsync(
+            "abies-server", "BuildTestServerGeneratedDebuggerDefaults");
+
+        var generatedProgramPath = Path.Join(project.ProjectDir, "Program.cs");
+
+        await Assert.That(File.Exists(generatedProgramPath)).IsTrue();
+
+        var content = await File.ReadAllTextAsync(generatedProgramPath);
+
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
         await Assert.That(content).Contains("ABIES_DEBUG_UI");
     }
 
@@ -150,6 +198,27 @@ public sealed class TemplateBuildTests
 
         await Assert.That(content).Contains("app.MapOtlpProxy();");
         await Assert.That(content).Contains(".AddConsoleExporter()");
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
+        await Assert.That(content).Contains("ABIES_DEBUG_UI");
+    }
+
+    [Test]
+    public async Task ServerTemplate_Source_Defaults_EnableDebuggerUi_WithOptOutPath()
+    {
+        var repoRoot = Path.GetFullPath(Path.Join(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        var programPath = Path.Join(
+            repoRoot,
+            "Picea.Abies.Templates",
+            "templates",
+            "abies-server",
+            "Program.cs");
+
+        await Assert.That(File.Exists(programPath)).IsTrue();
+
+        var content = await File.ReadAllTextAsync(programPath);
+
+        await Assert.That(content).Contains("ConfigureAbiesDebugger();");
+        await Assert.That(content).Contains("ABIES_DEBUG_UI");
     }
 
     [Test]
