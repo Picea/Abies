@@ -6,21 +6,36 @@ using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
 
-#if DEBUG
-var debugUiOptOut = string.Equals(
-    Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
-    "0",
-    StringComparison.OrdinalIgnoreCase);
-
-Picea.Abies.Debugger.DebuggerConfiguration.ConfigureDebugger(
-    new Picea.Abies.Debugger.DebuggerOptions
-    {
-        Enabled = !debugUiOptOut
-    });
-#endif
+ConfigureAbiesDebugger();
 
 // Start the Abies runtime with your application
 await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
+
+[System.Diagnostics.Conditional("DEBUG")]
+static void ConfigureAbiesDebugger()
+{
+    var debugUiOptOut = string.Equals(
+        Environment.GetEnvironmentVariable("ABIES_DEBUG_UI"),
+        "0",
+        StringComparison.OrdinalIgnoreCase);
+
+    var debuggerConfigurationType =
+        Type.GetType("Picea.Abies.Debugger.DebuggerConfiguration, Picea.Abies");
+    var debuggerOptionsType =
+        Type.GetType("Picea.Abies.Debugger.DebuggerOptions, Picea.Abies");
+
+    if (debuggerConfigurationType is null || debuggerOptionsType is null)
+        return;
+
+    var options = Activator.CreateInstance(debuggerOptionsType);
+    debuggerOptionsType.GetProperty("Enabled")?.SetValue(options, !debugUiOptOut);
+
+    var configureMethod = debuggerConfigurationType.GetMethod(
+        "ConfigureDebugger",
+        [debuggerOptionsType]);
+
+    configureMethod?.Invoke(null, [options]);
+}
 
 /// <summary>
 /// The application model (state).
