@@ -1,8 +1,7 @@
-using Picea.Abies.Testing;
-using Picea.Abies.DOM;
-using Picea.Abies.Subscriptions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 
 namespace Picea.Abies.Testing.Tests;
 
@@ -86,7 +85,7 @@ public sealed class TestHarnessTests
     {
         var harness = TestHarness<TestProgram, TestModel, Unit>.Create(Unit.Value);
 
-        var act = () => harness.MockCommand<AddFromCommand>((Func<AddFromCommand, Message>)null!);
+        var act = () => harness.MockCommand((Func<AddFromCommand, Message>)null!);
         await Assert.That(act).Throws<ArgumentNullException>();
     }
 
@@ -306,7 +305,7 @@ public sealed class TestHarnessTests
         public static bool IsTerminal(TestModel state) => false;
 
         public static Document View(TestModel model) =>
-            new("Test", Picea.Abies.Html.Elements.div([], []));
+            new("Test", Html.Elements.div([], []));
 
         public static Subscription Subscriptions(TestModel model) =>
             new Subscription.None();
