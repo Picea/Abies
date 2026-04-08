@@ -49,6 +49,7 @@ app.MapAbies<Counter, CounterModel, Unit>(
 
 app.Run();
 
+[System.Diagnostics.Conditional("DEBUG")]
 static void ConfigureAbiesDebugger()
 {
     var debugUiOptOut = string.Equals(

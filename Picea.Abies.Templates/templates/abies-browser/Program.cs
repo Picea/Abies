@@ -11,6 +11,7 @@ ConfigureAbiesDebugger();
 // Start the Abies runtime with the Counter program
 await Picea.Abies.Browser.Runtime.Run<Counter, Model, Unit>();
 
+[System.Diagnostics.Conditional("DEBUG")]
 static void ConfigureAbiesDebugger()
 {
     var debugUiOptOut = string.Equals(

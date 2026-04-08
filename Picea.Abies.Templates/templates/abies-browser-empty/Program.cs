@@ -11,6 +11,7 @@ ConfigureAbiesDebugger();
 // Start the Abies runtime with your application
 await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>();
 
+[System.Diagnostics.Conditional("DEBUG")]
 static void ConfigureAbiesDebugger()
 {
     var debugUiOptOut = string.Equals(
