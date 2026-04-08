@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.19.57" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Testing\Picea.Abies.Testing.csproj" />
+    <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
+  </ItemGroup>
+
+</Project>
