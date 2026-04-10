@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775812762585,
+  "lastUpdate": 1775814334887,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13396,6 +13396,84 @@ window.BENCHMARK_DATA = {
             "value": 41.8,
             "unit": "ms",
             "extra": "mean: 42.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d43b9927dc4bc19f382ae04bf535da2d084d94f",
+          "message": "fix(testing): Resolve phase 3 follow-up review and lint issues (#210)\n\n* fix(testing): apply post-merge phase3 review follow-ups\n\n* chore(ci): retrigger PR validation after metadata update",
+          "timestamp": "2026-04-10T11:35:25+02:00",
+          "tree_id": "617b2157ffc55e8fa367ad397b852c3c3c7bbe5f",
+          "url": "https://github.com/Picea/Abies/commit/7d43b9927dc4bc19f382ae04bf535da2d084d94f"
+        },
+        "date": 1775814334611,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 303.6,
+            "unit": "ms",
+            "extra": "mean: 306.3ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 315,
+            "unit": "ms",
+            "extra": "mean: 327.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 186.9,
+            "unit": "ms",
+            "extra": "mean: 188.3ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.6,
+            "unit": "ms",
+            "extra": "mean: 29.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 81,
+            "unit": "ms",
+            "extra": "mean: 81.8ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 51.9,
+            "unit": "ms",
+            "extra": "mean: 52.3ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2901.1,
+            "unit": "ms",
+            "extra": "mean: 2900.7ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 335.1,
+            "unit": "ms",
+            "extra": "mean: 335.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 56.6,
+            "unit": "ms",
+            "extra": "mean: 56.3ms, samples: 15"
           }
         ]
       }
