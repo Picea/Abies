@@ -1,10 +1,10 @@
+using System.Globalization;
+using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Picea.Abies.DOM;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Globalization;
-using System.Net;
-using System.Text.RegularExpressions;
 
 namespace Picea.Abies.Testing;
 
@@ -236,7 +236,7 @@ public static class TestHarnessVisualExtensions
             head = StripExternalResourceTags(head);
         }
         var body = Render.Html(document.Body);
-                var encodedTitle = WebUtility.HtmlEncode(document.Title);
+        var encodedTitle = WebUtility.HtmlEncode(document.Title);
 
         return $"""
             <!DOCTYPE html>
