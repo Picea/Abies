@@ -8,12 +8,19 @@ namespace Picea.Abies.Testing;
 public sealed class TestHarness<TProgram, TModel, TArgument>
     where TProgram : Program<TModel, TArgument>
 {
-    private const int MaxBatchDepth = 4_096;
+    private const int _maxBatchDepth = 4_096;
     private readonly Queue<Command> _pendingCommands = new();
     private readonly Dictionary<Type, Func<Command, IReadOnlyList<Message>>> _commandMocks = new();
     private readonly List<Type> _mockRegistrationOrder = [];
+    private readonly List<TestHarnessMessageHistoryEntry> _messageHistory = [];
+    private readonly List<TestHarnessDecisionHistoryEntry> _decisionHistory = [];
+    private readonly List<TestHarnessCommandHistoryEntry> _commandHistory = [];
+    private readonly List<TestHarnessReplayMetadataV1> _replayMetadataHistory = [];
     private readonly TestHarnessOptions _options;
     private int _transitionCount;
+    private int _messageSequence;
+    private int _decisionSequence;
+    private int _commandSequence;
 
     private TestHarness(TModel initialModel, TestHarnessOptions options)
     {
@@ -35,6 +42,26 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     /// Number of queued commands waiting to be drained.
     /// </summary>
     public int PendingCommandCount => _pendingCommands.Count;
+
+    /// <summary>
+    /// Ordered history of messages processed by the harness.
+    /// </summary>
+    public IReadOnlyList<TestHarnessMessageHistoryEntry> MessageHistory => _messageHistory;
+
+    /// <summary>
+    /// Ordered history of Decide outputs produced for processed messages.
+    /// </summary>
+    public IReadOnlyList<TestHarnessDecisionHistoryEntry> DecisionHistory => _decisionHistory;
+
+    /// <summary>
+    /// Ordered history of command queue stages.
+    /// </summary>
+    public IReadOnlyList<TestHarnessCommandHistoryEntry> CommandHistory => _commandHistory;
+
+    /// <summary>
+    /// Ordered metadata for replay sessions executed by this harness.
+    /// </summary>
+    public IReadOnlyList<TestHarnessReplayMetadataV1> ReplayMetadataHistory => _replayMetadataHistory;
 
     /// <summary>
     /// Creates a harness from the program's initial state and initial command.
@@ -87,6 +114,17 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     }
 
     /// <summary>
+    /// Serializes a replay session using the harness source-generated JSON context.
+    /// </summary>
+    /// <param name="session">The replay session to serialize.</param>
+    /// <returns>Serialized JSON payload.</returns>
+    public static string SerializeReplaySession(TestHarnessReplaySessionV1 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        return JsonSerializer.Serialize(session, TestHarnessReplayJsonContext.Default.TestHarnessReplaySessionV1);
+    }
+
+    /// <summary>
     /// Replays a validated session by mapping each entry to a domain message and dispatching it in sequence order.
     /// </summary>
     /// <param name="session">The replay session to execute.</param>
@@ -101,6 +139,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
         ArgumentNullException.ThrowIfNull(mapEntryToMessage);
 
         session.Validate();
+        _replayMetadataHistory.Add(session.Metadata);
 
         for (var index = 0; index < session.Entries.Count; index++)
         {
@@ -108,7 +147,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
             var message = mapEntryToMessage(entry) ?? throw new InvalidOperationException(
                 $"Session entry at index {index} ({entry.MessageType}) was mapped to null.");
 
-            Dispatch(message);
+            DispatchCore(message, TestHarnessMessageSource.Replay);
         }
     }
 
@@ -123,6 +162,64 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     {
         var session = LoadReplaySession(sessionJson);
         ReplaySession(session, mapEntryToMessage);
+    }
+
+    /// <summary>
+    /// Exports recorded message history to deterministic replay schema v1.
+    /// </summary>
+    /// <param name="mapEntryPayload">Maps one history entry into a replay payload object.</param>
+    /// <param name="mapEntryMessageType">Optional message type mapper. Defaults to the recorded CLR type name.</param>
+    /// <param name="metadata">Optional replay metadata. Defaults to harness-generated metadata.</param>
+    /// <param name="sourceFilter">Optional source filter when exporting only dispatch or replay-origin messages.</param>
+    /// <returns>A validated replay session payload.</returns>
+    public TestHarnessReplaySessionV1 ExportReplaySession(
+        Func<TestHarnessMessageHistoryEntry, JsonElement> mapEntryPayload,
+        Func<TestHarnessMessageHistoryEntry, string>? mapEntryMessageType = null,
+        TestHarnessReplayMetadataV1? metadata = null,
+        TestHarnessMessageSource? sourceFilter = null)
+    {
+        ArgumentNullException.ThrowIfNull(mapEntryPayload);
+
+        var selectedEntries = sourceFilter is null
+            ? _messageHistory
+            : _messageHistory.Where(entry => entry.Source == sourceFilter.Value).ToList();
+
+        var replayEntries = selectedEntries
+            .Select((entry, index) => new TestHarnessReplayEntryV1
+            {
+                Sequence = index,
+                MessageType = mapEntryMessageType?.Invoke(entry) ?? entry.MessageType,
+                Payload = mapEntryPayload(entry)
+            })
+            .ToArray();
+
+        var session = new TestHarnessReplaySessionV1
+        {
+            SchemaVersion = TestHarnessReplaySchema.Version1,
+            Metadata = metadata ?? CreateDefaultReplayMetadata(),
+            Entries = replayEntries
+        };
+
+        session.Validate();
+        return session;
+    }
+
+    /// <summary>
+    /// Exports message history to deterministic replay schema v1 JSON.
+    /// </summary>
+    /// <param name="mapEntryPayload">Maps one history entry into a replay payload object.</param>
+    /// <param name="mapEntryMessageType">Optional message type mapper. Defaults to the recorded CLR type name.</param>
+    /// <param name="metadata">Optional replay metadata. Defaults to harness-generated metadata.</param>
+    /// <param name="sourceFilter">Optional source filter when exporting only dispatch or replay-origin messages.</param>
+    /// <returns>Serialized replay session JSON.</returns>
+    public string ExportReplaySessionJson(
+        Func<TestHarnessMessageHistoryEntry, JsonElement> mapEntryPayload,
+        Func<TestHarnessMessageHistoryEntry, string>? mapEntryMessageType = null,
+        TestHarnessReplayMetadataV1? metadata = null,
+        TestHarnessMessageSource? sourceFilter = null)
+    {
+        var session = ExportReplaySession(mapEntryPayload, mapEntryMessageType, metadata, sourceFilter);
+        return SerializeReplaySession(session);
     }
 
     /// <summary>
@@ -185,7 +282,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
 
         foreach (var message in messages)
         {
-            DispatchCore(message);
+            DispatchCore(message, TestHarnessMessageSource.Dispatch);
         }
     }
 
@@ -207,6 +304,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
             }
 
             var command = _pendingCommands.Dequeue();
+            RecordCommandHistory(command, TestHarnessCommandStage.Dequeued);
             var mock = ResolveCommandMock(command.GetType());
             if (mock is null)
             {
@@ -220,8 +318,10 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
         }
     }
 
-    private void DispatchCore(Message message)
+    private void DispatchCore(Message message, TestHarnessMessageSource source)
     {
+        RecordMessageHistory(message, source);
+
         if (TProgram.IsTerminal(Model))
         {
             return;
@@ -230,12 +330,14 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
         var decision = TProgram.Decide(Model, message);
         if (decision.IsErr)
         {
+            RecordDecisionHistory(message, decision.Error, isError: true);
             ApplyTransition(decision.Error);
             return;
         }
 
         foreach (var decidedEvent in decision.Value)
         {
+            RecordDecisionHistory(message, decidedEvent, isError: false);
             ApplyTransition(decidedEvent);
         }
     }
@@ -270,10 +372,10 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
 
             if (current is Command.Batch batch)
             {
-                if (depth >= MaxBatchDepth)
+                if (depth >= _maxBatchDepth)
                 {
                     throw new InvalidOperationException(
-                        $"Command batch nesting exceeded {MaxBatchDepth}. The command graph is likely malformed.");
+                    $"Command batch nesting exceeded {_maxBatchDepth}. The command graph is likely malformed.");
                 }
 
                 for (var i = batch.Commands.Count - 1; i >= 0; i--)
@@ -285,7 +387,56 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
             }
 
             _pendingCommands.Enqueue(current);
+            RecordCommandHistory(current, TestHarnessCommandStage.Enqueued);
         }
+    }
+
+    private void RecordMessageHistory(Message message, TestHarnessMessageSource source)
+    {
+        var entry = new TestHarnessMessageHistoryEntry(
+            Sequence: _messageSequence,
+            Message: message,
+            MessageType: message.GetType().Name,
+            Source: source);
+
+        _messageHistory.Add(entry);
+        _messageSequence++;
+    }
+
+    private void RecordDecisionHistory(Message triggerMessage, Message outputMessage, bool isError)
+    {
+        var entry = new TestHarnessDecisionHistoryEntry(
+            Sequence: _decisionSequence,
+            TriggerMessage: triggerMessage,
+            OutputMessage: outputMessage,
+            IsError: isError);
+
+        _decisionHistory.Add(entry);
+        _decisionSequence++;
+    }
+
+    private void RecordCommandHistory(Command command, TestHarnessCommandStage stage)
+    {
+        var entry = new TestHarnessCommandHistoryEntry(
+            Sequence: _commandSequence,
+            Command: command,
+            Stage: stage);
+
+        _commandHistory.Add(entry);
+        _commandSequence++;
+    }
+
+    private static TestHarnessReplayMetadataV1 CreateDefaultReplayMetadata()
+    {
+        var programVersion = typeof(TProgram).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+
+        return new TestHarnessReplayMetadataV1
+        {
+            SessionId = Guid.NewGuid().ToString("N"),
+            ProgramName = typeof(TProgram).FullName ?? typeof(TProgram).Name,
+            ProgramVersion = programVersion,
+            RecordedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        };
     }
 
     private Func<Command, IReadOnlyList<Message>>? ResolveCommandMock(Type commandType)
