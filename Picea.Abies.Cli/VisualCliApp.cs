@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Text;
 
-namespace Picea.Abies.Testing.Cli;
+namespace Picea.Abies.Cli;
 
 public static class VisualCliApp
 {

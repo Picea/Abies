@@ -1,4 +1,4 @@
-using Picea.Abies.Testing.Cli;
+using Picea.Abies.Cli;
 
 namespace Picea.Abies.Testing.Tests;
 

@@ -89,7 +89,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Testing", "Pice
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Testing.Tests", "Picea.Abies.Testing.Tests\Picea.Abies.Testing.Tests.csproj", "{052F811A-ECDC-4223-A488-2E0BBD0D2163}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Testing.Cli", "Picea.Abies.Testing.Cli\Picea.Abies.Testing.Cli.csproj", "{D1A498DB-F10E-49E8-A372-4AF81FB9B342}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Cli", "Picea.Abies.Cli\Picea.Abies.Cli.csproj", "{D1A498DB-F10E-49E8-A372-4AF81FB9B342}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

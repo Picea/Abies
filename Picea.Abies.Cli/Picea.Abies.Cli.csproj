@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>Picea.Abies.Testing.Cli</PackageId>
+    <PackageId>Picea.Abies.Cli</PackageId>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <IsPackable>true</IsPackable>
