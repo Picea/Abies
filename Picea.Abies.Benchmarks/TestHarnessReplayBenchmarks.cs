@@ -1,8 +1,8 @@
+using System.Text.Json;
 using BenchmarkDotNet.Attributes;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
 using Picea.Abies.Testing;
-using System.Text.Json;
 
 namespace Picea.Abies.Benchmarks;
 
