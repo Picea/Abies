@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775812760903,
+  "lastUpdate": 1775812762585,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14476,6 +14476,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98961067199707,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1b393f551a3466d8827fec2a057fe748c456ad5",
+          "message": "feat(testing): add harness replay diagnostics and export APIs (#207)",
+          "timestamp": "2026-04-10T11:09:30+02:00",
+          "tree_id": "29f056196583a84050c6a57bef280b37b4ed48ea",
+          "url": "https://github.com/Picea/Abies/commit/b1b393f551a3466d8827fec2a057fe748c456ad5"
+        },
+        "date": 1775812761980,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.12673854827881,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98906135559082,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
