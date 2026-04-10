@@ -1,6 +1,6 @@
+using System.Text.Json;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using System.Text.Json;
 
 namespace Picea.Abies.Testing.Tests;
 
