@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775417263670,
+  "lastUpdate": 1775812760903,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13318,6 +13318,84 @@ window.BENCHMARK_DATA = {
             "value": 44.3,
             "unit": "ms",
             "extra": "mean: 44.0ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1b393f551a3466d8827fec2a057fe748c456ad5",
+          "message": "feat(testing): add harness replay diagnostics and export APIs (#207)",
+          "timestamp": "2026-04-10T11:09:30+02:00",
+          "tree_id": "29f056196583a84050c6a57bef280b37b4ed48ea",
+          "url": "https://github.com/Picea/Abies/commit/b1b393f551a3466d8827fec2a057fe748c456ad5"
+        },
+        "date": 1775812760251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 298.1,
+            "unit": "ms",
+            "extra": "mean: 295.5ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 297,
+            "unit": "ms",
+            "extra": "mean: 296.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 168.7,
+            "unit": "ms",
+            "extra": "mean: 168.9ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 24.7,
+            "unit": "ms",
+            "extra": "mean: 24.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 67.7,
+            "unit": "ms",
+            "extra": "mean: 67.6ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 45.4,
+            "unit": "ms",
+            "extra": "mean: 45.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2732.8,
+            "unit": "ms",
+            "extra": "mean: 2740.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 317.7,
+            "unit": "ms",
+            "extra": "mean: 318.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 41.8,
+            "unit": "ms",
+            "extra": "mean: 42.1ms, samples: 15"
           }
         ]
       }
