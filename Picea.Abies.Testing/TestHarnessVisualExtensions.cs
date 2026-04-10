@@ -416,8 +416,13 @@ public static class TestHarnessVisualExtensions
                     pixelErrorCount++;
                 }
 
+                var drd = (double)dr;
+                var dgd = (double)dg;
+                var dbd = (double)db;
+                var dad = (double)da;
+
                 var absolute = (dr + dg + db + da) / (4d * 255d);
-                var mean = Math.Sqrt((dr * dr + dg * dg + db * db + da * da) / (4d * 255d * 255d));
+                var mean = Math.Sqrt((drd * drd + dgd * dgd + dbd * dbd + dad * dad) / (4d * 255d * 255d));
 
                 absoluteErrorTotal += absolute;
                 meanErrorTotal += mean;
