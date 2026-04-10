@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775814334887,
+  "lastUpdate": 1775814336455,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14590,6 +14590,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98906135559082,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d43b9927dc4bc19f382ae04bf535da2d084d94f",
+          "message": "fix(testing): Resolve phase 3 follow-up review and lint issues (#210)\n\n* fix(testing): apply post-merge phase3 review follow-ups\n\n* chore(ci): retrigger PR validation after metadata update",
+          "timestamp": "2026-04-10T11:35:25+02:00",
+          "tree_id": "617b2157ffc55e8fa367ad397b852c3c3c7bbe5f",
+          "url": "https://github.com/Picea/Abies/commit/7d43b9927dc4bc19f382ae04bf535da2d084d94f"
+        },
+        "date": 1775814336195,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11160469055176,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.00073051452637,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
