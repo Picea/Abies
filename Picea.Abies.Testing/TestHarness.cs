@@ -8,7 +8,7 @@ namespace Picea.Abies.Testing;
 public sealed class TestHarness<TProgram, TModel, TArgument>
     where TProgram : Program<TModel, TArgument>
 {
-    private const int _maxBatchDepth = 4_096;
+    private const int MaxBatchDepth = 4_096;
     private readonly Queue<Command> _pendingCommands = new();
     private readonly Dictionary<Type, Func<Command, IReadOnlyList<Message>>> _commandMocks = new();
     private readonly List<Type> _mockRegistrationOrder = [];
@@ -46,22 +46,22 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     /// <summary>
     /// Ordered history of messages processed by the harness.
     /// </summary>
-    public IReadOnlyList<TestHarnessMessageHistoryEntry> MessageHistory => _messageHistory;
+    public IReadOnlyList<TestHarnessMessageHistoryEntry> MessageHistory => _messageHistory.AsReadOnly();
 
     /// <summary>
     /// Ordered history of Decide outputs produced for processed messages.
     /// </summary>
-    public IReadOnlyList<TestHarnessDecisionHistoryEntry> DecisionHistory => _decisionHistory;
+    public IReadOnlyList<TestHarnessDecisionHistoryEntry> DecisionHistory => _decisionHistory.AsReadOnly();
 
     /// <summary>
     /// Ordered history of command queue stages.
     /// </summary>
-    public IReadOnlyList<TestHarnessCommandHistoryEntry> CommandHistory => _commandHistory;
+    public IReadOnlyList<TestHarnessCommandHistoryEntry> CommandHistory => _commandHistory.AsReadOnly();
 
     /// <summary>
     /// Ordered metadata for replay sessions executed by this harness.
     /// </summary>
-    public IReadOnlyList<TestHarnessReplayMetadataV1> ReplayMetadataHistory => _replayMetadataHistory;
+    public IReadOnlyList<TestHarnessReplayMetadataV1> ReplayMetadataHistory => _replayMetadataHistory.AsReadOnly();
 
     /// <summary>
     /// Creates a harness from the program's initial state and initial command.
@@ -165,13 +165,13 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     }
 
     /// <summary>
-    /// Exports recorded message history to deterministic replay schema v1.
+    /// Exports recorded message history to replay schema v1 with deterministic entry ordering.
     /// </summary>
     /// <param name="mapEntryPayload">Maps one history entry into a replay payload object.</param>
     /// <param name="mapEntryMessageType">Optional message type mapper. Defaults to the recorded CLR type name.</param>
-    /// <param name="metadata">Optional replay metadata. Defaults to harness-generated metadata.</param>
+    /// <param name="metadata">Optional replay metadata. Supply explicit values for stable golden files; default metadata includes runtime-generated values.</param>
     /// <param name="sourceFilter">Optional source filter when exporting only dispatch or replay-origin messages.</param>
-    /// <returns>A validated replay session payload.</returns>
+    /// <returns>A validated replay session payload with entries exported in deterministic sequence order.</returns>
     public TestHarnessReplaySessionV1 ExportReplaySession(
         Func<TestHarnessMessageHistoryEntry, JsonElement> mapEntryPayload,
         Func<TestHarnessMessageHistoryEntry, string>? mapEntryMessageType = null,
@@ -180,9 +180,10 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
     {
         ArgumentNullException.ThrowIfNull(mapEntryPayload);
 
-        var selectedEntries = sourceFilter is null
+        var filter = sourceFilter;
+        var selectedEntries = filter is null
             ? _messageHistory
-            : _messageHistory.Where(entry => entry.Source == sourceFilter.Value).ToList();
+            : _messageHistory.Where(entry => entry.Source == filter.Value).ToList();
 
         var replayEntries = selectedEntries
             .Select((entry, index) => new TestHarnessReplayEntryV1
@@ -372,10 +373,10 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
 
             if (current is Command.Batch batch)
             {
-                if (depth >= _maxBatchDepth)
+                if (depth >= MaxBatchDepth)
                 {
                     throw new InvalidOperationException(
-                    $"Command batch nesting exceeded {_maxBatchDepth}. The command graph is likely malformed.");
+                    $"Command batch nesting exceeded {MaxBatchDepth}. The command graph is likely malformed.");
                 }
 
                 for (var i = batch.Commands.Count - 1; i >= 0; i--)
@@ -396,7 +397,7 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
         var entry = new TestHarnessMessageHistoryEntry(
             Sequence: _messageSequence,
             Message: message,
-            MessageType: message.GetType().Name,
+            MessageType: GetRecordedTypeName(message),
             Source: source);
 
         _messageHistory.Add(entry);
@@ -438,6 +439,9 @@ public sealed class TestHarness<TProgram, TModel, TArgument>
             RecordedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
     }
+
+    private static string GetRecordedTypeName(Message message) =>
+        message.GetType().FullName ?? message.GetType().Name;
 
     private Func<Command, IReadOnlyList<Message>>? ResolveCommandMock(Type commandType)
     {
