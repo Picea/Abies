@@ -236,25 +236,51 @@ public static class VisualBaselineWorkflow
         Directory.CreateDirectory(outputDirectory);
 
         var status = GetStatus(artifactsDirectory, baselinesDirectory);
-        var reportPath = Path.Combine(outputDirectory, "visual-report.txt");
+        var reportPath = Path.Combine(outputDirectory, "visual-report.md");
 
         var builder = new StringBuilder();
-        builder.AppendLine("Visual Baseline Report");
-        builder.AppendLine($"GeneratedAtUtc: {DateTimeOffset.UtcNow:O}");
-        builder.AppendLine($"ArtifactsDirectory: {artifactsDirectory}");
-        builder.AppendLine($"BaselinesDirectory: {baselinesDirectory}");
-        builder.AppendLine($"PendingCount: {status.PendingCount}");
+        builder.AppendLine("# Visual Baseline Report");
+        builder.AppendLine();
+        builder.AppendLine($"- Generated (UTC): {DateTimeOffset.UtcNow:O}");
+        builder.AppendLine($"- Artifacts directory: `{artifactsDirectory}`");
+        builder.AppendLine($"- Baselines directory: `{baselinesDirectory}`");
+        builder.AppendLine($"- Pending snapshots: **{status.PendingCount}**");
+        builder.AppendLine();
+
+        if (status.PendingCount == 0)
+        {
+            builder.AppendLine("No pending visual snapshots.");
+            File.WriteAllText(reportPath, builder.ToString(), Encoding.UTF8);
+            return reportPath;
+        }
+
+        builder.AppendLine("| Snapshot | Baseline | Actual | Diff |");
+        builder.AppendLine("|---|---|---|---|");
 
         foreach (var pending in status.PendingSnapshots)
         {
-            builder.AppendLine($"- Snapshot: {pending.SnapshotName}");
-            builder.AppendLine($"  Actual: {pending.ActualPath}");
-            builder.AppendLine($"  Baseline: {pending.BaselinePath}");
-            builder.AppendLine($"  Diff: {pending.DiffPath ?? "(none)"}");
+            var baselineLink = BuildMarkdownLink(outputDirectory, pending.BaselinePath, "baseline");
+            var actualLink = BuildMarkdownLink(outputDirectory, pending.ActualPath, "actual");
+            var diffLink = pending.DiffPath is null
+                ? "(none)"
+                : BuildMarkdownLink(outputDirectory, pending.DiffPath, "diff");
+
+            builder.AppendLine($"| {pending.SnapshotName} | {baselineLink} | {actualLink} | {diffLink} |");
         }
 
         File.WriteAllText(reportPath, builder.ToString(), Encoding.UTF8);
         return reportPath;
+    }
+
+    private static string BuildMarkdownLink(string reportDirectory, string path, string label)
+    {
+        if (File.Exists(path) is false)
+        {
+            return "(missing)";
+        }
+
+        var relativePath = Path.GetRelativePath(reportDirectory, path).Replace('\\', '/');
+        return $"[{label}]({relativePath})";
     }
 
     private static string ResolveActualPath(string snapshot, string artifactsDirectory)

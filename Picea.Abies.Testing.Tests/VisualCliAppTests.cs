@@ -75,7 +75,7 @@ public sealed class VisualCliAppTests
             await Assert.That(statusExitCode).IsEqualTo(0);
             await Assert.That(reportExitCode).IsEqualTo(0);
             await Assert.That(File.Exists(Path.Combine(baselinesDirectory, "article-list.png"))).IsTrue();
-            await Assert.That(File.Exists(Path.Combine(reportDirectory, "visual-report.txt"))).IsTrue();
+            await Assert.That(File.Exists(Path.Combine(reportDirectory, "visual-report.md"))).IsTrue();
         }
         finally
         {
