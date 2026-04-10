@@ -3,6 +3,8 @@ using Picea.Abies.DOM;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Globalization;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace Picea.Abies.Testing;
 
@@ -47,7 +49,8 @@ public sealed record VisualComparisonOptions(
     int ViewportHeight = 720,
     bool FullPage = true,
     string? ArtifactDirectory = null,
-    VisualComparisonTolerance? Tolerance = null)
+    VisualComparisonTolerance? Tolerance = null,
+    bool BlockExternalResources = true)
 {
     /// <summary>
     /// Resolve tolerance to the strict default when not explicitly configured.
@@ -84,10 +87,14 @@ public static class TestHarnessVisualExtensions
             ValidateOptions(resolvedOptions);
 
             var document = TProgram.View(harness.Model);
-            var htmlContent = RenderDocumentHtml(document);
+            var htmlContent = RenderDocumentHtml(document, resolvedOptions.BlockExternalResources);
 
             await page.SetViewportSizeAsync(resolvedOptions.ViewportWidth, resolvedOptions.ViewportHeight);
-            await page.SetContentAsync(htmlContent);
+
+            await page.SetContentAsync(htmlContent, new PageSetContentOptions
+            {
+                WaitUntil = WaitUntilState.DOMContentLoaded
+            });
 
             var actualBytes = await page.ScreenshotAsync(new PageScreenshotOptions
             {
@@ -221,17 +228,22 @@ public static class TestHarnessVisualExtensions
         throw new InvalidOperationException(message);
     }
 
-    private static string RenderDocumentHtml(Document document)
+    private static string RenderDocumentHtml(Document document, bool blockExternalResources)
     {
         var head = string.Concat(document.Head.Select(content => content.ToHtml()));
+        if (blockExternalResources)
+        {
+            head = StripExternalResourceTags(head);
+        }
         var body = Render.Html(document.Body);
-        var encodedTitle = System.Web.HttpUtility.HtmlEncode(document.Title);
+                var encodedTitle = WebUtility.HtmlEncode(document.Title);
 
         return $"""
             <!DOCTYPE html>
             <html>
             <head>
               <meta charset="utf-8" />
+                            <meta name="viewport" content="width=device-width, initial-scale=1" />
               <title>{encodedTitle}</title>
               {head}
             </head>
@@ -240,6 +252,33 @@ public static class TestHarnessVisualExtensions
             </body>
             </html>
             """;
+    }
+
+    private static string StripExternalResourceTags(string headHtml)
+    {
+        if (string.IsNullOrWhiteSpace(headHtml))
+        {
+            return headHtml;
+        }
+
+        if (Regex.IsMatch(headHtml, "https?://", RegexOptions.IgnoreCase) is false)
+        {
+            return headHtml;
+        }
+
+        var strippedLinkTags = Regex.Replace(
+            headHtml,
+            "<link\\b[^>]*href\\s*=\\s*['\"][^'\"]*https?://[^'\"]*['\"][^>]*>",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+
+        var strippedScriptTags = Regex.Replace(
+            strippedLinkTags,
+            "<script\\b[^>]*src\\s*=\\s*['\"][^'\"]*https?://[^'\"]*['\"][^>]*>\\s*</script>",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+
+        return strippedScriptTags;
     }
 
     private static void ValidateBaselinePath(string baselinePath)
@@ -293,9 +332,9 @@ public static class TestHarnessVisualExtensions
         var artifactDirectory = ResolveArtifactDirectory(options.ArtifactDirectory);
         Directory.CreateDirectory(artifactDirectory);
 
-        var baselineName = Path.GetFileNameWithoutExtension(baselinePath);
-        var actualPath = Path.Combine(artifactDirectory, $"{baselineName}.actual.png");
-        var diffPath = Path.Combine(artifactDirectory, $"{baselineName}.diff.png");
+        var artifactStem = BuildArtifactStem(baselinePath);
+        var actualPath = Path.Combine(artifactDirectory, $"{artifactStem}.actual.png");
+        var diffPath = Path.Combine(artifactDirectory, $"{artifactStem}.diff.png");
 
         File.WriteAllBytes(actualPath, actualBytes);
         File.WriteAllBytes(diffPath, diffBytes);
@@ -311,6 +350,28 @@ public static class TestHarnessVisualExtensions
         }
 
         return Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "visual");
+    }
+
+    private static string BuildArtifactStem(string baselinePath)
+    {
+        var fullPathWithoutExtension = Path.GetFullPath(Path.ChangeExtension(baselinePath, null) ?? baselinePath);
+        var cwd = Path.GetFullPath(Directory.GetCurrentDirectory());
+        var relativeOrFull = Path.GetRelativePath(cwd, fullPathWithoutExtension);
+
+        var chars = relativeOrFull
+            .Select(ch =>
+            {
+                if (ch == Path.DirectorySeparatorChar || ch == Path.AltDirectorySeparatorChar)
+                {
+                    return '_';
+                }
+
+                return Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch;
+            })
+            .ToArray();
+
+        var stem = new string(chars).Trim();
+        return string.IsNullOrWhiteSpace(stem) ? "snapshot" : stem;
     }
 
     private static VisualMetrics CompareImages(byte[] baselinePng, byte[] actualPng, byte perChannelThreshold)

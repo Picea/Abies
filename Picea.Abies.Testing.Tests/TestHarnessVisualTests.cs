@@ -265,13 +265,9 @@ public sealed class TestHarnessVisualTests
             }
             catch (PlaywrightException ex) when (ex.Message.Contains("Executable doesn't exist", StringComparison.OrdinalIgnoreCase))
             {
-                var installExitCode = global::Microsoft.Playwright.Program.Main(["install", "chromium"]);
-                if (installExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Playwright browser install failed with exit code {installExitCode}.", ex);
-                }
-
-                return await LaunchChromium(playwright);
+                throw new InvalidOperationException(
+                    "Playwright Chromium is not installed for this test environment. Install Playwright browsers before running tests (for example using the generated Playwright install script in local and CI setup steps).",
+                    ex);
             }
         }
 
