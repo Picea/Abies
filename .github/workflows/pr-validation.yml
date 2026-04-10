@@ -417,6 +417,12 @@ jobs:
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
 
+          if [ "${{ matrix.configuration }}" = "Debug" ]; then
+            echo "🔍 Verifying debugger defaults in generated abies-browser template..."
+            grep -q "ConfigureAbiesDebugger();" "$TEMP_DIR/Program.cs"
+            grep -q "ABIES_DEBUG_UI" "$TEMP_DIR/Program.cs"
+          fi
+
           echo "✅ abies-browser template compiles successfully"
           rm -rf "$TEMP_DIR"
 
@@ -432,6 +438,12 @@ jobs:
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
 
+          if [ "${{ matrix.configuration }}" = "Debug" ]; then
+            echo "🔍 Verifying debugger defaults in generated abies-browser-empty template..."
+            grep -q "ConfigureAbiesDebugger();" "$TEMP_DIR/Program.cs"
+            grep -q "ABIES_DEBUG_UI" "$TEMP_DIR/Program.cs"
+          fi
+
           echo "✅ abies-browser-empty template compiles successfully"
           rm -rf "$TEMP_DIR"
 
@@ -446,6 +458,12 @@ jobs:
 
           echo "🔨 Building scaffolded project..."
           dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
+
+          if [ "${{ matrix.configuration }}" = "Debug" ]; then
+            echo "🔍 Verifying debugger defaults in generated abies-server template..."
+            grep -q "ConfigureAbiesDebugger();" "$TEMP_DIR/Program.cs"
+            grep -q "ABIES_DEBUG_UI" "$TEMP_DIR/Program.cs"
+          fi
 
           echo "✅ abies-server template compiles successfully"
           rm -rf "$TEMP_DIR"
