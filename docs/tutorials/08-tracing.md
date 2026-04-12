@@ -48,6 +48,8 @@ Open the Aspire dashboard (typically `https://localhost:17195`) and navigate to 
 - HTTP calls as child spans
 - Backend processing linked to frontend actions
 
+Use [Development Ports](../reference/development-ports.md) as the canonical source for local URLs and ports.
+
 ### 3. Understand Trace Structure
 
 A typical user journey trace looks like:
@@ -81,8 +83,10 @@ Abies supports three verbosity levels:
 **Method 2: URL parameter (development)**
 
 ```
-https://localhost:5209/?otel_verbosity=debug
+https://localhost:<PORT>/?otel_verbosity=debug
 ```
+
+Replace `<PORT>` using [Development Ports](../reference/development-ports.md).
 
 **Method 3: JavaScript global**
 
@@ -93,6 +97,8 @@ window.__OTEL_VERBOSITY = 'debug';
 // At runtime (in browser console)
 window.__otel.setVerbosity('debug');
 ```
+
+> **See also:** For runtime control, see [Browser Runtime API — window.__otel](../reference/browser-runtime-api.md). For implementation tracking, see [Issue #214](https://github.com/Picea/Abies/issues/214).
 
 ## What Each Level Traces
 
@@ -219,6 +225,8 @@ Force shim mode with:
 <meta name="otel-cdn" content="off">
 ```
 
+> Intended behavior note: full support for documented OTel meta tags (`otel-enabled`, `otel-cdn`, `otlp-endpoint`) is tracked in [Issue #212](https://github.com/Picea/Abies/issues/212).
+
 ## Configuration Reference
 
 ### HTML Meta Tags
@@ -237,6 +245,8 @@ Force shim mode with:
 <meta name="otlp-endpoint" content="https://my-collector:4318/v1/traces">
 ```
 
+> Intended behavior note: meta tag support is being completed in [Issue #212](https://github.com/Picea/Abies/issues/212).
+
 ### JavaScript Runtime API
 
 ```javascript
@@ -249,6 +259,8 @@ window.__otel.setVerbosity('debug');
 // Force flush pending spans
 await window.__otel.provider.forceFlush();
 ```
+
+> Intended behavior note: runtime API support is being completed in [Issue #214](https://github.com/Picea/Abies/issues/214).
 
 ## Best Practices
 

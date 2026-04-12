@@ -46,10 +46,14 @@ Open browser console:
 ```javascript
 window.__otel.setVerbosity('debug');
 window.__otel.getVerbosity();
-await window.__otel.provider.forceFlush();
+await window.__otel.forceFlush();
 ```
 
+For the complete API reference, including method signatures and usage patterns, see [Browser Runtime API — window.__otel](../reference/browser-runtime-api.md). For implementation tracking, see [Issue #214](https://github.com/Picea/Abies/issues/214).
+
 For the complete tracing tutorial, see [Tutorial: Distributed Tracing](../tutorials/08-tracing.md).
+
+For canonical local URLs and ports, see [Development Ports](../reference/development-ports.md).
 
 ## Console Logging
 
