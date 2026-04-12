@@ -425,3 +425,9 @@ Simple increment (no `Interlocked`) because WASM is single-threaded.
 | `Abies/RenderBatchWriter.cs` | Binary serialization of patches |
 | `Abies/Render.cs` | HTML string rendering for bulk patches |
 | `Abies/Head.cs` | `HeadContent` types and `HeadDiff` |
+
+## See Also
+
+- [Binary Patch Protocol](./binary-patch-protocol.md) — How patches are encoded and transmitted to the browser
+- [JavaScript Interop](./js-interop.md) — The JS bridge and memory transfer mechanics
+- [Performance Guide](../guides/performance.md) — Optimization techniques built on top of the diff algorithm
