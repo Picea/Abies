@@ -133,11 +133,10 @@ public class ConduitFixture : IAsyncLifetime
 Tests can run against **multiple render modes** using xUnit theory fixtures:
 
 ```csharp
-public class ArticleTests : ConduitFixture
+public class ArticleTests
 {
-    // Theory: runs test for each value in the data source
-    [Theory]
-    [ClassData(typeof(RenderModeTestData))]
+    // Parameterized test: runs for each render mode
+    [ParameterizedTest]
     public async Task CanCreateArticle(string renderMode, string baseUrl)
     {
         // This test runs 3 times:
@@ -648,14 +647,14 @@ await Page.WaitForSelectorAsync(".submit-btn", new PageWaitForSelectorOptions { 
 **Cause:** Timing, race conditions, or URL differences.
 
 ```csharp
-// Add delays for CI
-if (Environment.GetEnvironmentVariable("CI") == "true")
-{
-    await Page.WaitForTimeoutAsync(500);
-}
+// Let Playwright auto-wait instead of adding delays
+await Page.GotoAsync("/editor");
+await Page.FillAsync("#title", "Test Article");
+// Playwright automatically waits for network idle and element visibility
 
-// Use explicit waits instead of sleeps
+// Use explicit waits only for complex scenarios
 await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+await Page.WaitForSelectorAsync(".article-meta");
 ```
 
 ## Source Files

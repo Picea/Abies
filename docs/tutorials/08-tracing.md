@@ -83,19 +83,16 @@ Abies supports three verbosity levels:
 **Method 2: URL parameter (development)**
 
 ```
-https://localhost:<PORT>/?otel_verbosity=debug
+https://localhost:<PORT>/?otel-verbosity=debug
 ```
 
 Replace `<PORT>` using [Development Ports](../reference/development-ports.md).
 
-**Method 3: JavaScript global**
+**Method 3: JavaScript global (before page load)**
 
 ```javascript
-// Before page load
-window.__OTEL_VERBOSITY = 'debug';
-
-// At runtime (in browser console)
-window.__otel.setVerbosity('debug');
+// Set via window.__otel before abies.js loads
+window.__otel = { verbosity: 'debug' };
 ```
 
 > **See also:** For runtime control, see [Browser Runtime API — window.__otel](../reference/browser-runtime-api.md). For implementation tracking, see [Issue #214](https://github.com/Picea/Abies/issues/214).

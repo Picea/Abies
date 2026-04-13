@@ -46,7 +46,7 @@ The binary batch is a contiguous byte array with three regions:
 
 ```
 [Header (8 bytes)]
-[Patch Entries (16 bytes each × N)]
+[Patch Entries (20 bytes each × N)]
 [String Table (variable)]
 ```
 
@@ -67,16 +67,17 @@ The binary batch is a contiguous byte array with three regions:
 
 ---
 
-## Patch Entries (Offset 8, 16 bytes each)
+## Patch Entries (Offset 8, 20 bytes each)
 
 Each entry describes one DOM operation.
 
 | Offset | Size | Name | Type | Description |
-|--------|------|------|------|-------------|
+|--------|------|------|------|-------------|----------|
 | 0 | 4 | Type | BinaryPatchType (int32) | Enum: operation type |
 | 4 | 4 | Field1 | StringTableIndex (int32) | Index into string table (or -1 for null) |
 | 8 | 4 | Field2 | StringTableIndex (int32) | Index into string table (or -1 for null) |
 | 12 | 4 | Field3 | StringTableIndex (int32) | Index into string table (or -1 for null) |
+| 16 | 4 | Field4 | StringTableIndex (int32) | Index into string table (or -1 for null) |
 
 **Field semantics depend on patch type:**
 
@@ -131,21 +132,34 @@ Patch entries reference strings by **zero-based index**:
 
 ## Patch Types (BinaryPatchType Enum)
 
+For the authoritative list, see `Picea.Abies/RenderBatchWriter.cs`.
+
 | Value | Name | Purpose |
-|-------|------|---------|
-| 0 | CreateElement | Create empty element node |
-| 1 | CreateText | Create text node |
+|-------|------|----------|
+| 0 | AddRoot | Initialize root element |
+| 1 | ReplaceChild | Replace one child with another |
 | 2 | AddChild | Append child to parent |
 | 3 | RemoveChild | Remove child from parent |
-| 4 | ReplaceChild | Replace one child with another |
-| 5 | ClearChildren | Remove all children |
-| 6 | UpdateAttribute | Set attribute on element |
-| 7 | RemoveAttribute | Remove attribute from element |
-| 8 | UpdateText | Change text node content |
-| 9 | MoveChild | Reorder child within parent |
-| 10 | (reserved) | — |
-| 11 | (reserved) | — |
-| 12 | SetChildrenHtml | Bulk set children from HTML string |
+| 4 | ClearChildren | Remove all children |
+| 5 | SetChildrenHtml | Bulk set children from HTML string |
+| 6 | MoveChild | Reorder child within parent |
+| 7 | UpdateAttribute | Set attribute on element |
+| 8 | AddAttribute | Add new attribute |
+| 9 | RemoveAttribute | Remove attribute from element |
+| 10 | AddHandler | Register event handler |
+| 11 | RemoveHandler | Unregister event handler |
+| 12 | UpdateHandler | Update event handler |
+| 13 | UpdateText | Change text node content |
+| 14 | AddText | Add text node |
+| 15 | RemoveText | Remove text node |
+| 16 | AddRaw | Add raw HTML |
+| 17 | RemoveRaw | Remove raw HTML |
+| 18 | ReplaceRaw | Replace raw HTML |
+| 19 | UpdateRaw | Update raw HTML |
+| 20 | AddHeadElement | Add element to `<head>` |
+| 21 | UpdateHeadElement | Update `<head>` element |
+| 22 | RemoveHeadElement | Remove `<head>` element |
+| 23 | AppendChildrenHtml | Append children from HTML string |
 
 ---
 

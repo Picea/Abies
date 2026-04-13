@@ -8,22 +8,21 @@ The Abies framework exposes a browser-level OpenTelemetry API via `window.__otel
 
 ## Overview
 
-`window.__otel` is initialized when `abies.js` loads (or when the OTel shim is active). It provides methods to:
-- **Control tracing verbosity** — switch between `off`, `user` (default), and `debug` modes at runtime
-- **Query current state** — inspect verbosity level and provider health
-- **Force flush** — ensure pending spans are exported before page unload
-- **Access the provider** — for advanced instrumentation scenarios
+`window.__otel` is initialized when `abies.js` loads (or when the OTel shim is active). It allows you to:
+- **Set tracing verbosity** — set `window.__otel.verbosity` to `off`, `user` (default), or `debug` before page load
+- **Configure via URL** — use `?otel-verbosity=debug` query parameter
+- **Configure via meta tag** — use `<meta name="otel-verbosity" content="debug">`
 
-**Availability:** Always present after `abies.js` loads. In browsers without OTel support, the shim provides a no-op implementation.
+**Availability:** Always present after `abies.js` loads. In browsers without OTel support, a no-op shim is used.
 
-## API Reference
+## Configuration
 
-### `setVerbosity(level: string)`
+### `window.__otel.verbosity` (Property)
 
-Set the OpenTelemetry tracing verbosity level at runtime.
+Set the OpenTelemetry tracing verbosity level **before page load**.
 
-**Parameters:**
-- `level` (string): One of `"off"`, `"user"`, `"debug"`
+**Type:** string
+**Valid values:** `"off"`, `"user"`, `"debug"`
 
 **Behavior:**
 
@@ -33,44 +32,36 @@ Set the OpenTelemetry tracing verbosity level at runtime.
 | `"user"` (default) | Production mode. Traces UI events (click, change, submit) and HTTP calls. Recommended for reporting. |
 | `"debug"` | Developer mode. Traces all DOM operations (mount, attribute change, text update). High verbosity — use only during development. |
 
-**Example:**
+**Configuration priority** (highest first):
+1. URL query parameter: `?otel-verbosity=debug`
+2. `window.__otel.verbosity` (if set before abies.js loads)
+3. `<meta name="otel-verbosity" content="debug">` tag
+4. Default: `"user"`
 
-```javascript
-// Switch to debug mode for a specific user interaction
-window.__otel.setVerbosity('debug');
+**Example (set before abies.js loads):**
 
-// Reproduce the issue...
-
-// Back to user mode
-window.__otel.setVerbosity('user');
+```html
+<script>
+  window.__otel = { verbosity: 'debug' };
+</script>
+<script src="abies.js"></script>
 ```
 
-**Interop with meta tag:**
-If the page includes `<meta name="otel-verbosity" content="user">`, the initial level is set from that tag. Runtime `setVerbosity()` calls override it.
+**Example (URL parameter):**
 
-### `getVerbosity(): string`
-
-Query the current OpenTelemetry verbosity level.
-
-**Returns:** `"off"`, `"user"`, or `"debug"`
-
-**Example:**
-
-```javascript
-const level = window.__otel.getVerbosity();
-console.log(`OTel verbosity: ${level}`);
+```
+https://localhost:5209/?otel-verbosity=debug
 ```
 
-### `provider`
+### `window.__otel.provider` (Property)
 
-Access the active OpenTelemetry tracer provider (if available).
+Access the active OpenTelemetry tracer provider (if available and CDN load succeeded).
 
 **Type:** `TracerProvider | null`
 
 **Use cases:**
 - Advanced instrumentation — create custom spans for non-standard events
 - Integration with server-side tracing — ensure client spans are correlated
-- Provider health checks — verify the provider is initialized and exporting
 
 **Example (advanced):**
 
@@ -86,32 +77,38 @@ if (provider) {
 }
 ```
 
-### `forceFlush(timeout?: number): Promise<boolean>`
+## Programmatic Tracing
 
-Force a flush of all pending spans to the configured export endpoint. Useful before page unload or navigation.
+The verbosity level is set before `abies.js` loads via one of the configuration methods above. There is no runtime API to change verbosity after initialization. To use different tracing levels:
 
-**Parameters:**
-- `timeout` (optional, number): Timeout in milliseconds. Default: 5000 (5 seconds).
+**Option 1 — Set before page load via JavaScript:**
 
-**Returns:** Promise<boolean>
-- `true` if flush succeeded within the timeout
-- `false` if timeout or export failed
-
-**Example:**
-
-```javascript
-// Before page unload, ensure spans are sent
-window.addEventListener('beforeunload', async () => {
-  await window.__otel.forceFlush();
-});
+```html
+<script>
+  window.__otel = { verbosity: 'debug' };
+</script>
+<script src="abies.js"></script>
 ```
 
-**Tracing behavior:**
-The `forceFlush()` call itself creates a span (verbosity dependent). In `user` mode, it's traced; in `off` mode, no span is created.
+**Option 2 — Use URL query parameter:**
+
+```uri
+https://localhost:5209/?otel-verbosity=debug
+```
+
+**Option 3 — Use HTML meta tag:**
+
+```html
+<meta name="otel-verbosity" content="debug">
+```
 
 ## Configuration Meta Tags
 
-Runtime API values can be initialized via `<meta>` tags in the HTML `<head>`. Runtime calls to `setVerbosity()` override meta tag values.
+Tracing behavior can be initialized via `<meta>` tags in the HTML `<head>` in addition to other configuration methods above.
+
+**Legacy alternative:** `<meta name="abies-otel-verbosity" content="...">` (deprecated, but supported for backward compatibility)
+
+## Configuration Meta Tags
 
 ### `otel-verbosity`
 
@@ -126,106 +123,7 @@ Sets the initial verbosity level. Valid values: `off`, `user`, `debug`. Default:
 - `user` — standard production setting (recommended)
 - `debug` — development/staging environments for detailed tracing
 
-### `otel-enabled`
-
-```html
-<meta name="otel-enabled" content="true">
-```
-
-Enable or disable OpenTelemetry entirely. If `false`, the OTel shim is loaded but no spans are created. Equivalent to `setVerbosity('off')`.
-
-Valid values: `true`, `false`. Default: `true`.
-
-### `otel-cdn`
-
-```html
-<meta name="otel-cdn" content="https://unpkg.com/@opentelemetry/sdk-trace-web@0.51.0/dist/documents.js">
-```
-
-Specify a custom CDN URL for the OpenTelemetry SDK. If not set, `abies.js` uses a bundled fallback or default CDN.
-
-**When to use:**
-- Use a specific OTel version for compatibility
-- Load from your own CDN for air-gapped environments
-- Pin to a specific release for reproducibility
-
-### `otlp-endpoint`
-
-```html
-<meta name="otlp-endpoint" content="http://localhost:4318/v1/traces">
-```
-
-Specify the OTLP (OpenTelemetry Protocol) HTTP export endpoint. Spans are sent to this URL via POST requests.
-
-**Default:** `/otlp/v1/traces` (local application relay)
-
-**When to use:**
-- Send to a remote Jaeger/Grafana Loki instance
-- Use a custom collector URL in your infrastructure
-- Test with a local OTel collector (e.g., `http://localhost:4318/v1/traces`)
-
-**Request format:** OTLP JSON (`application/json`) with `traceparent` context propagation.
-
-## Usage Patterns
-
-### Development — Enable Debug Mode
-
-During development, enable `debug` mode to see all DOM operations:
-
-```javascript
-window.__otel.setVerbosity('debug');
-```
-
-View traces in the browser DevTools Console or send to a local collector. See [Tracing Guide - Debug Mode](../tutorials/08-tracing.md#debug-mode).
-
-### Production — Monitor User Interactions
-
-Keep `user` mode (default) to trace only user-initiated interactions and network calls:
-
-```javascript
-window.__otel.setVerbosity('user');
-const level = window.__otel.getVerbosity();
-console.log(`Tracing: ${level} mode`);
-```
-
-Spans are exported to `/otlp/v1/traces` (or your configured endpoint).
-
-### Feature Flags — Conditional Tracing
-
-Enable tracing based on user preferences or feature flags:
-
-```javascript
-// Load feature flag (e.g., from localStorage or API)
-const isDebugUser = localStorage.getItem('debug-mode') === 'true';
-window.__otel.setVerbosity(isDebugUser ? 'debug' : 'user');
-```
-
-### Page Unload — Ensure Spans are Sent
-
-Force a flush before page navigation:
-
-```javascript
-document.addEventListener('click', async (e) => {
-  if (e.target.matches('a[href^="http"]')) {
-    // External link - flush telemetry before navigation
-    await window.__otel.forceFlush(2000);
-  }
-});
-```
-
-### SPA Navigation — Flush Between Pages
-
-In single-page apps, flush after each route change:
-
-```javascript
-// Example: React Router or similar
-router.beforeEach(async (to, from) => {
-  if (to.path !== from.path) {
-    await window.__otel.forceFlush(1000);
-  }
-  return true;
-});
-```
+**Legacy alternative:** `<meta name="abies-otel-verbosity" content="...">` (deprecated, but supported for backward compatibility)
 
 ## Verbosity Levels
 
@@ -238,10 +136,18 @@ router.beforeEach(async (to, from) => {
 - No exports
 - Minimal runtime overhead (shim only)
 
-**Example:**
+**Configuration:**
 
-```javascript
-window.__otel.setVerbosity('off');
+```html
+<meta name="otel-verbosity" content="off">
+<!-- or via URL: ?otel-verbosity=off -->
+```
+
+### `user` Mode (Default)
+
+```html
+<meta name="otel-verbosity" content="off">
+<!-- or via URL: ?otel-verbosity=off -->
 ```
 
 ### `user` Mode (Default)

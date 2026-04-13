@@ -481,3 +481,13 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 - Add migration guard tests that fail early when Program contract changes are not propagated.
 - Keep `AutomatonRuntime` coupling until a replacement path is benchmarked, verified, and documented in ADR.
 **Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
+
+### 2026-04-08T09:24:22Z: Issue #165 squad verdict and routing
+**By:** Scribe
+**Requested by:** Maurice Cornelius Gerardus Petrus Peters
+**Verdict:** Needs revision first.
+**What:**
+- Recorded issue verdict as "Needs revision first".
+- Recorded posted GitHub comment: https://github.com/Picea/Abies/issues/165#issuecomment-4205199298
+- Recorded routing labels on issue #165: squad, squad:c# dev, squad:architect, squad:reviewer.
+**Why:** Preserve squad governance trail for issue #165 kickoff and routing state.

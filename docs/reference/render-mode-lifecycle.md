@@ -32,9 +32,9 @@ Abies supports four render modes, each with distinct initialization, state manag
 **Flow:**
 1. Application starts (ASP.NET Core)
 2. Middleware registers Abies routing components
-3. NUnit/xUnit tests request a route
+3. Client requests a route
 4. Render function called server-side, returns HTML string
-5. HTML is embdedded in response, sent to client
+5. HTML is embedded in response, sent to client
 
 **Example:**
 ```csharp
@@ -111,7 +111,6 @@ Response sent
 **Example:**
 ```csharp
 app.MapAbiesRoutes<CounterApp>();
-app.MapAbiesHub("/abies");
 ```
 
 ### Rendering Pipeline
@@ -610,13 +609,13 @@ const handoff = {
 - Binary batch protocol (see [Binary Patch Protocol](./binary-patch-protocol.md))
 
 **InteractiveWasm:**
-- See `Abies.Browser/Runtime.cs`
+- See `Picea.Abies.Browser/Runtime.cs`
 - WASM runtime in `Picea.Abies.Browser/wwwroot/abies.js`
 - No server involvement (except async commands)
 
 **InteractiveAuto:**
-- See `Abies.Server/Runtime.cs` (auto mode detection)
-- Handoff logic in `Abies.Server/Handoff.cs`
+- See `Picea.Abies.Server/Session.cs` (auto mode detection)
+- WebSocket transport in `Picea.Abies.Server/Transport.cs`
 - Model serialization via source-generated JSON
 
 ### For Application Developers
