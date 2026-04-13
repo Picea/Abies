@@ -3,12 +3,10 @@
 useDefault = true
 
 [allowlist]
-description = "Global allowlist for known non-secret test fixtures"
+description = "Global allowlist for known non-secret generated benchmark and test-result directories"
 paths = [
   '''^benchmark-results/''',
   '''^BenchmarkDotNet\.Artifacts/''',
   '''^test-results/''',
-  '''^TestResults/''',
-  '''^docs/''',
-  '''^\.squad/'''
+  '''^TestResults/'''
 ]

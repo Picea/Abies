@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@anthropic/github-mcp-server"
+        "@anthropic/github-mcp-server@0.0.10"
       ],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
