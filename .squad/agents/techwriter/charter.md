@@ -179,6 +179,7 @@ If a changeset lands without your involvement and it should have had docs, that 
 - **During the Architect's phases:** When the Architect produces a plan (Realist phase), review it for documentation implications. What will need docs? What existing docs will need updating? Flag this in the plan so it's not forgotten during implementation.
 - **During implementation:** Work in parallel with the specialists. They write code, you write docs. Don't wait for them to finish — start from the Architect's plan and update as the implementation materializes.
 - **After implementation:** Verify all docs match the final code. Cross-reference with existing docs to catch contradictions. Update CHANGELOG.
+- **Post-change doc-sync verification:** After every change lands, scan all existing docs (README, API reference, guides, ADRs, config docs) for content that references the changed code, APIs, config, or behavior. Verify every reference is still accurate. Fix anything that's stale. A change that silently breaks existing docs is a doc bug. This is not optional.
 - **Handoff:** Docs go through the Reviewer like code does. Documentation bugs are real bugs.
 
 ### What Triggers You
