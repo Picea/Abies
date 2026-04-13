@@ -99,7 +99,7 @@ The **Conduit** application is a full-featured social blogging platform (Medium 
 - ✅ Real-world API integration
 - ✅ E2E tests with Playwright
 
-Browse it: [Picea.Abies.Conduit](https://github.com/picea/abies)
+Browse it: [Picea.Abies.Conduit](https://github.com/Picea/Abies)
 
 ## Run the Benchmarks
 
@@ -110,7 +110,7 @@ Abies includes a full js-framework-benchmark integration. See how it compares to
 npm run bench -- --headless keyed/abies
 ```
 
-Current results (Abies 2.0 vs Blazor 10.0): **1.98× faster** geometric mean across all benchmarks.
+Current benchmark results are published in [Performance Benchmarks](../benchmarks.md).
 
 ## Explore the Ecosystem
 
@@ -124,6 +124,6 @@ Current results (Abies 2.0 vs Blazor 10.0): **1.98× faster** geometric mean acr
 
 ## Get Help
 
-- **[GitHub Issues](https://github.com/picea/abies/issues)** — Report bugs, request features
-- **[GitHub Discussions](https://github.com/picea/abies/discussions)** — Ask questions, share ideas
-- **[Contributing Guide](https://github.com/picea/abies/blob/main/CONTRIBUTING.md)** — Help build Abies
+- **[GitHub Issues](https://github.com/Picea/Abies/issues)** — Report bugs, request features
+- **[GitHub Discussions](https://github.com/Picea/Abies/discussions)** — Ask questions, share ideas
+- **[Contributing Guide](https://github.com/Picea/Abies/blob/main/CONTRIBUTING.md)** — Help build Abies

@@ -379,3 +379,8 @@ await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
 | `Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
 | `Abies/RenderBatchWriter.cs` | Binary patch serializer |
 | `Abies/DOM/Attribute.cs` | `Handler` record definition |
+
+## See Also
+
+- [Binary Patch Protocol](./binary-patch-protocol.md) — Detailed memory layout and encoding format for render batches
+- [Virtual DOM Algorithm](./virtual-dom-algorithm.md) — How patches are generated during diffing

@@ -12,7 +12,7 @@ Abies is designed for performance:
 - Object pooling to reduce garbage collection
 - WebAssembly provides near-native speed
 
-**Current benchmarks** (Abies 2.0 vs Blazor 10.0): **1.98× faster** geometric mean across all js-framework-benchmark tests.
+Current benchmark results change over time and are published in [Performance Benchmarks](../benchmarks.md). Treat that page as the canonical source for latest numbers.
 
 ## Memoization (Most Important)
 
@@ -266,6 +266,8 @@ Abies includes built-in tracing:
 // Enable debug verbosity to see DOM mutations
 window.__otel.setVerbosity('debug');
 ```
+
+> Intended behavior note: runtime `window.__otel` controls are tracked in [Issue #214](https://github.com/Picea/Abies/issues/214). Until implemented, use meta tags or URL parameters.
 
 View traces in the Aspire dashboard.
 

@@ -293,5 +293,6 @@ dotnet test
 
 ## See Also
 
+- [E2E Fixture Architecture](./e2e-fixture-architecture.md) — Conduit test patterns, page objects, and fixture setup
 - [Pure Functions](../concepts/pure-functions.md) — Why pure functions are testable
 - [Commands and Effects](../concepts/commands-effects.md) — Testing interpreters

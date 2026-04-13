@@ -106,6 +106,7 @@ Practical how-to guides for specific tasks.
 | --- | --- |
 | [Choosing a Render Mode](./guides/render-mode-selection.md) | When to use Static, Server, WASM, or Auto |
 | [Testing](./guides/testing.md) | Testing strategies for Abies apps |
+| [E2E Fixture Architecture](./guides/e2e-fixture-architecture.md) | Playwright fixtures, page objects, and Conduit test patterns |
 | [Debugging](./guides/debugging.md) | Debugging techniques and tools |
 | [Abies DevTools: Time Travel Debugger](./guides/devtools.md) | Step through message history, replay sequences, inspect model state |
 | [Performance](./guides/performance.md) | Optimization tips and benchmark methodology |
@@ -121,7 +122,11 @@ Deep technical documentation.
 
 | Reference | Description |
 | --- | --- |
+| [Development Ports](./reference/development-ports.md) | Canonical local URLs and ports for API, WASM, AppHost, and benchmarks |
+| [Browser Runtime API](./reference/browser-runtime-api.md) | `window.__otel` public surface for observability control |
+| [Render Mode Lifecycle](./reference/render-mode-lifecycle.md) | Initialization, session management, and handoff for each render mode |
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
+| [Binary Patch Protocol](./reference/binary-patch-protocol.md) | Memory layout, patch types, string table encoding, and optimization fast paths |
 | [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
 | [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
 
