@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Playwright" Version="1.55.0" />
-    <PackageReference Include="TUnit" Version="1.19.57" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.59.0" />
+    <PackageReference Include="TUnit" Version="1.33.0" />
   </ItemGroup>
 
   <ItemGroup>
