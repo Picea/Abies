@@ -232,6 +232,7 @@ See the [Performance section](../README.md#performance-abies-browser-vs-blazor-w
 ## Next
 
 - [**Choosing a Render Mode**](../guides/render-mode-selection.md) — Practical guidance for your project
+- [**App Lifecycle Reference**](../reference/app-lifecycle-reference.md) — Session, command, message, and update flow
 - [**MVU Architecture**](mvu-architecture.md) — The Model-View-Update pattern
 - [**Tutorial 1: Counter App**](../tutorials/01-counter-app.md) — Build your first Abies app
 - [**Deployment Guide**](../guides/deployment.md) — Deploying each render mode to production

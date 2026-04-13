@@ -133,11 +133,17 @@ public record SocketEvent(WebSocketEvent Event) : Message;
 
 public static Subscription Subscriptions(Model model) =>
     SubscriptionModule.Batch([
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()),
-        SubscriptionModule.OnResize(size => new ViewportChanged(size)),
-        SubscriptionModule.WebSocket(
-            new WebSocketOptions("wss://example.com/socket"),
-            evt => new SocketEvent(evt))
+        SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick()),
+        SubscriptionModule.Create(
+            "viewport:poll",
+            async (dispatch, cancellationToken) =>
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    dispatch(new ViewportChanged(new ViewportSize(0, 0)));
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                }
+            })
     ]);
 ```
 
@@ -218,6 +224,8 @@ dotnet run --project Picea.Abies.Conduit.AppHost
 dotnet run --project Picea.Abies.Conduit.Api &
 dotnet run --project Picea.Abies.Conduit.Wasm.Host
 ```
+
+For canonical local URLs and ports, see [Development Ports](./docs/reference/development-ports.md).
 
 ## Project Structure
 
@@ -328,6 +336,7 @@ See the [docs](./docs/) folder for comprehensive documentation:
 - [Deployment](./docs/guides/deployment.md)
 - [Head Management](./docs/guides/head-management.md)
 - [Error Handling](./docs/guides/error-handling.md)
+- [Development Ports](./docs/reference/development-ports.md)
 
 ## Contributing
 

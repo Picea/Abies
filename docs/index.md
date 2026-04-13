@@ -124,6 +124,7 @@ Deep technical documentation.
 | --- | --- |
 | [Development Ports](./reference/development-ports.md) | Canonical local URLs and ports for API, WASM, AppHost, and benchmarks |
 | [Browser Runtime API](./reference/browser-runtime-api.md) | `window.__otel` public surface for observability control |
+| [Render Mode Lifecycle](./reference/render-mode-lifecycle.md) | Initialization, session management, and handoff for each render mode |
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
 | [Binary Patch Protocol](./reference/binary-patch-protocol.md) | Memory layout, patch types, string table encoding, and optimization fast paths |
 | [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
