@@ -38,10 +38,7 @@ All PRs must pass 10 checks:
 The **Benchmark (js-framework-benchmark)** check automatically detects performance regressions on:
 - PRs with title starting with `perf:` or `perf(`
 - PRs with the `performance` label
-- PRs with the `ui` label
-- PRs that modify benchmark workflow/scripts
 - All pushes to main (baseline tracking)
-- Manual `workflow_dispatch` runs when requested
 
 **Regression Threshold:** 5% — Any benchmark regressing >5% will fail the check and block merge.
 
@@ -64,7 +61,7 @@ npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k
 npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k
 ```
 
-See [Benchmarking Guide](docs/benchmarks.md) for detailed instructions.
+See [Benchmarking Guide](docs/guides/performance.md) for detailed instructions.
 
 ### Pull Request Requirements
 - ✅ **At least 1 approval** required (for team members)

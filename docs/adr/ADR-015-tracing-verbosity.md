@@ -1,6 +1,6 @@
 # ADR-015: Tracing Verbosity Levels
 
-**Status:** Accepted (Target behavior; partially implemented)  
+**Status:** Accepted  
 **Date:** 2025-01-22  
 **Decision Makers:** Maurice Peters  
 **Supersedes:** None  
@@ -86,11 +86,6 @@ window.__otel = {
     setVerbosity: (v) => { _cachedVerbosity = v; window.__OTEL_VERBOSITY = v; }
 };
 ```
-
-Implementation tracking:
-
-- Runtime `window.__otel` API completion: [Issue #214](https://github.com/Picea/Abies/issues/214)
-- Meta tag support completion (`otel-enabled`, `otel-cdn`, `otlp-endpoint`): [Issue #212](https://github.com/Picea/Abies/issues/212)
 
 ## Consequences
 

@@ -45,7 +45,7 @@
 		{
 			"label": "Run E2E tests",
 			"type": "shell",
-			"command": "dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -c Debug -v minimal",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -c Debug -v minimal",
 			"problemMatcher": [
 				"$msCompile"
 			],
@@ -98,7 +98,7 @@
 		{
 			"label": "Run E2E Favorite and Pagination tests",
 			"type": "shell",
-			"command": "dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -v minimal --filter \"FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.FavoriteTests|FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests\"",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj -v minimal --filter \"FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.FavoriteTests|FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests\"",
 			"isBackground": false,
 			"problemMatcher": [
 				"$msCompile"
@@ -134,7 +134,7 @@
 		{
 			"label": "Run single E2E test",
 			"type": "shell",
-			"command": "dotnet test --project Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj --filter FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests.CanNavigateArticlePages -l trx",
+			"command": "dotnet test Picea.Abies.Conduit.Testing.E2E/Picea.Abies.Conduit.Testing.E2E.csproj --filter FullyQualifiedName~Picea.Abies.Conduit.Testing.E2E.PaginationTests.CanNavigateArticlePages -l trx",
 			"isBackground": false,
 			"problemMatcher": [
 				"$msCompile"

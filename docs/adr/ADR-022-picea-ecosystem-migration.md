@@ -101,6 +101,6 @@ Keep one repo but publish separate NuGet packages with different version tracks.
 
 ## References
 
-- [Picea Migration Plan tracking issue (#215)](https://github.com/Picea/Abies/issues/215)
+- [Picea Migration Plan](../migration/picea-migration-plan.md)
 - [Domain-Driven Design — Bounded Contexts (Eric Evans, 2003)](https://www.domainlanguage.com/ddd/)
 - [Monorepo vs Multi-repo (Atlassian)](https://www.atlassian.com/git/tutorials/monorepos)

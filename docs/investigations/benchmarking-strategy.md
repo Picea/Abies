@@ -196,7 +196,7 @@ npm run bench -- --headless --framework abies-v1.0.152-keyed
 **Run command**:
 
 ```bash
-dotnet run -c Release --project Picea.Abies.Benchmarks -- --filter "*Swap1k*"
+dotnet run -c Release --project Abies.Benchmarks -- --filter "*Swap1k*"
 ```
 
 ---

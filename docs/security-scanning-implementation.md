@@ -37,15 +37,15 @@ Added security scanning step:
   run: |
     echo "🔍 Scanning for vulnerable packages..."
     dotnet list package --vulnerable --include-transitive
-    # Fail on high/critical vulnerabilities unless temporary issue-backed exception is set
+    # Warnings only for now, doesn't fail builds
+  continue-on-error: true
 ```
 
 **What it does:**
 - Runs on every push and pull request
 - Scans entire solution for vulnerable packages
 - Reports findings in CI logs
-- Fails builds when **High** or **Critical** vulnerabilities are found
-- Supports temporary exception via `ALLOW_TRANSITIVE_VULNS` when set to a tracking issue URL
+- Currently set to warn (not fail) to avoid blocking development
 
 #### 3. Dependabot Configuration
 **File:** `.github/dependabot.yml`
