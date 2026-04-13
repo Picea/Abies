@@ -568,6 +568,12 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 ### 2026-04-04T00:00:00Z: Architect — Full Decider Cutover Migration Target (Breaking)
 **By:** Architect
 **Requested by:** Maurice Cornelius Gerardus Petrus Peters
+**Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
+---
+
+### 2026-04-04: Architect — Full Decider Cutover Migration Target (Breaking)
+**By:** Architect
+**Requested by:** Maurice CGP Peters
 **What:**
 - Abies runtime must be decider-native end-to-end. `Runtime<TProgram, TModel, TArgument>` and all hosting entry points compile against strict decider Program contract.
 - Runtime message flow is canonical: `Decide(state, command) -> events`, `Transition(state, event) -> (state, effect)`, `Interpret(effect) -> commands/messages`.
@@ -579,6 +585,7 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **Why:** Remove architectural debt; make illegal states unrepresentable at the runtime boundary.
 
 ### 2026-04-04T00:00:00Z: C# Dev — Full Decider Migration Completed
+### 2026-04-04: C# Dev — Full Decider Migration Completed
 **By:** C# Dev
 **What:**
 - Removed Program-level compatibility defaults (`Decide` pass-through, `IsTerminal` default) from `Picea.Abies/Program.cs`.
@@ -591,6 +598,7 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **Why:** Implement breaking migration to strict decider contracts.
 
 ### 2026-04-04T00:00:00Z: C# Dev — Program Decider Err as Message
+### 2026-04-04: C# Dev — Program Decider Err as Message
 **By:** C# Dev
 **What:**
 - Use `Result<Message[], Message>` instead of `Result<Message[], Unit>` for MVU Program deciders.
@@ -599,6 +607,7 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **Why:** `Unit` as error type forced validation failures into synthetic success events, blurring decider semantics. Routing `decision.Error` through transition preserves user-visible behavior while restoring explicit command rejection semantics.
 
 ### 2026-04-04T00:00:00Z: Reviewer — Full Decider Runtime Migration Audit
+### 2026-04-04: Reviewer — Full Decider Runtime Migration Audit
 **By:** Reviewer
 **Verdict:** Changes requested before approval.
 **Primary blocker:** Runtime dispatch gate scope in `Picea.Abies/Runtime.cs` causes likely behavioral regression in Conduit E2E navigation flow.
