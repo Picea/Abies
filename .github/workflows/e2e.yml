@@ -7,7 +7,45 @@ on:
     branches: [ "main" ]
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.check.outputs.docs_only }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if docs-only change
+        id: check
+        run: |
+          # Determine changed files based on event type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Check if any file is NOT docs-only
+          NON_DOCS=$(echo "$CHANGED" | grep -vE '^(\.squad/|docs/|\.github/instructions/|.*\.md$|LICENSE$)' | grep -v '^$' || true)
+
+          if [ -z "$NON_DOCS" ] && [ -n "$CHANGED" ]; then
+            echo "docs_only=true" >> $GITHUB_OUTPUT
+            echo "✅ Docs-only change detected — skipping expensive jobs"
+          else
+            echo "docs_only=false" >> $GITHUB_OUTPUT
+            echo "🔧 Code changes detected — running all jobs"
+          fi
+
   e2e:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.docs_only == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
