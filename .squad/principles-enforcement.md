@@ -74,6 +74,10 @@ A deviation is any action that contradicts, weakens, bypasses, or works around a
 - Adding a dependency that duplicates BCL/platform functionality.
 - Adding a dependency without documenting the decision.
 
+### Testing Principles
+- Fixing a bug without adding a regression test that reproduces the original failure.
+- Regression test must fail before the fix and pass after — proving the fix works and preventing recurrence.
+
 ## The Protocol
 
 When any agent encounters a situation where a principle cannot be followed as written:

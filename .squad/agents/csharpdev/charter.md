@@ -507,6 +507,7 @@ For MVU apps in this repo:
 - A `dotnet new` template ships without observability wired up.
 - `AddServiceDefaults()` is missing from a service project.
 - Integration or E2E tests start the SUT any way other than through the Aspire AppHost (no `WebApplicationFactory`, no Testcontainers for infra, no manual process startup).
+- A bug fix is submitted without a regression test that reproduces the original failure.
 
 ### When You Defer
 
