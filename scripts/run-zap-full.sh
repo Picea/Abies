@@ -42,10 +42,27 @@ echo "================================================================"
 # ------------------------------------------------------------------ #
 
 docker_zap() {
+  if [ -z "${REPORT_DIR:-}" ]; then
+    echo "docker_zap requires REPORT_DIR to be set" >&2
+    return 1
+  fi
+
+  local workspace_dir="${GITHUB_WORKSPACE:-$(pwd)}"
+  local docker_user="$(id -u):$(id -g)"
+  local report_dir="$REPORT_DIR"
+  # Scan commands write reports under zap-nightly-reports/* inside /zap/wrk.
+  local container_report_dir="/zap/wrk/zap-nightly-reports"
+  if [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+    # In GitHub-hosted CI, the host UID can be unmapped inside the ZAP image.
+    # Falling back to root avoids intermittent "Failed to start ZAP" startup errors.
+    docker_user="0:0"
+  fi
+
   docker run --rm \
-    --user "$(id -u):$(id -g)" \
+    --user "$docker_user" \
     --network host \
-    -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
+    -v "${workspace_dir}:/zap/wrk/:ro" \
+    -v "${report_dir}:${container_report_dir}:rw" \
     "$ZAP_IMAGE" \
     "$@"
 }
