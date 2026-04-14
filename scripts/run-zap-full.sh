@@ -43,7 +43,8 @@ echo "================================================================"
 
 docker_zap() {
   docker run --rm \
-    --user 0:0 \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
     --network host \
     -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
     "$ZAP_IMAGE" \
