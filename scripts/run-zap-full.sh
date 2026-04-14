@@ -42,8 +42,9 @@ echo "================================================================"
 # ------------------------------------------------------------------ #
 
 docker_zap() {
+  # Use the image's built-in 'zap' user; host UID mapping can prevent ZAP from starting.
   docker run --rm \
-    --user 0:0 \
+    --user zap \
     --network host \
     -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
     "$ZAP_IMAGE" \
