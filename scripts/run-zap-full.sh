@@ -43,7 +43,8 @@ echo "================================================================"
 
 docker_zap() {
   docker run --rm \
-    --user "$(id -u):$(id -g)" \
+    # ZAP startup in CI can fail when the container runs as an unmapped host UID.
+    --user 0:0 \
     --network host \
     -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
     "$ZAP_IMAGE" \
