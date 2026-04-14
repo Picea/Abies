@@ -42,6 +42,7 @@ echo "================================================================"
 # ------------------------------------------------------------------ #
 
 docker_zap() {
+  workspace_dir="${GITHUB_WORKSPACE:-$(pwd)}"
   docker_user="$(id -u):$(id -g)"
   if [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
     # In GitHub-hosted CI, the host UID can be unmapped inside the ZAP image.
@@ -52,7 +53,8 @@ docker_zap() {
   docker run --rm \
     --user "$docker_user" \
     --network host \
-    -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
+    -v "${workspace_dir}:/zap/wrk/:ro" \
+    -v "${REPORT_DIR}:/zap/wrk/zap-nightly-reports:rw" \
     "$ZAP_IMAGE" \
     "$@"
 }
