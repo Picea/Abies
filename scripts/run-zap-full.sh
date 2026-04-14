@@ -42,9 +42,15 @@ echo "================================================================"
 # ------------------------------------------------------------------ #
 
 docker_zap() {
+  docker_user="$(id -u):$(id -g)"
+  if [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+    # In GitHub-hosted CI, the host UID can be unmapped inside the ZAP image.
+    # Falling back to root avoids intermittent "Failed to start ZAP" startup errors.
+    docker_user="0:0"
+  fi
+
   docker run --rm \
-    # ZAP startup in CI can fail when the container runs as an unmapped host UID.
-    --user 0:0 \
+    --user "$docker_user" \
     --network host \
     -v "${GITHUB_WORKSPACE:-$(pwd)}:/zap/wrk/:rw" \
     "$ZAP_IMAGE" \
