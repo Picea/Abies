@@ -14,10 +14,48 @@
     window.__OTEL_USE_CDN = false;
     window.__OTEL_DISABLED = true;
     window.__OTLP_ENDPOINT = null;
+
+    document.addEventListener('keydown', (event) => {
+      const keyboardTarget = document.querySelector('.keyboard-capture');
+      if (!(keyboardTarget instanceof HTMLElement)) {
+        return;
+      }
+
+      if (event.target === keyboardTarget) {
+        return;
+      }
+
+      const source = event.target instanceof HTMLElement ? event.target : null;
+      const isEditable = !!source && (
+        source.tagName === 'INPUT' ||
+        source.tagName === 'TEXTAREA' ||
+        source.isContentEditable
+      );
+
+      if (isEditable) {
+        return;
+      }
+
+      const navigationKeys = new Set(['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape', ' ']);
+      if (navigationKeys.has(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      keyboardTarget.dispatchEvent(new KeyboardEvent('keydown', {
+        key: event.key,
+        code: event.code,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        repeat: event.repeat,
+        bubbles: true,
+      }));
+    }, true);
   </script>
   <link rel="stylesheet" href="site.css">
   <script type='module' src="abies.js"></script>
-  <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
 </head>
 
 <body>

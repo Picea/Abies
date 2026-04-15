@@ -5,9 +5,8 @@
 // Demonstrates MVU architecture, virtual DOM, subscriptions, and commands
 // by using the very patterns it explains.
 //
-// Two presentation modes:
-//   Full    — ~36 slides, deep-dive (≈60 min)
-//   Express — ~18 slides, condensed (≈30 min)
+// Single presentation mode:
+//   Deck — ~18 slides, condensed (≈30 min)
 // =============================================================================
 
 using System.Runtime.Versioning;
@@ -32,7 +31,7 @@ public record Arguments;
 
 public enum SlideKind { Intro, Concept, Demo, Outro }
 
-public enum PresentationMode { Menu, Full, Express }
+public enum PresentationMode { Menu, Deck }
 
 public record Slide(
     string Id,
@@ -40,6 +39,7 @@ public record Slide(
     string Title,
     string Subtitle,
     string[] Points,
+    string? MarkdownBody = null,
     string? Code = null,
     string? Callout = null,
     string? Takeaway = null,
@@ -64,12 +64,12 @@ public record Model(
 
 public interface Message : Picea.Abies.Message
 {
-    record SelectPresentation(PresentationMode Mode) : Message;
+    record SelectPresentation : Message;
     record BackToMenu : Message;
     record NextSlide : Message;
     record PrevSlide : Message;
     record GoToSlide(int Index) : Message;
-    record KeyPressed(KeyEventData Data) : Message;
+    record KeyPressed(KeyEventData? Data) : Message;
     record IncrementDemo : Message;
     record ResetDemo : Message;
     record ToggleDemoTimer : Message;
@@ -90,11 +90,22 @@ public class Presentation : Program<Model, Arguments>
 
     public static (Model, Command) Transition(Model model, Picea.Abies.Message message) => message switch
     {
-        Message.SelectPresentation m => (model with { Mode = m.Mode, SlideIndex = 0, Log = [], DemoCount = 0, TickCount = 0, LastTick = null, DemoTimer = false, TrackMouse = false, DemoInput = "" }, Commands.None),
-        Message.BackToMenu => (model with { Mode = PresentationMode.Menu, SlideIndex = 0, Log = [], DemoCount = 0, TickCount = 0, LastTick = null, DemoTimer = false, TrackMouse = false, DemoInput = "" }, Commands.None),
-        Message.NextSlide => (SetSlide(model, model.SlideIndex + 1), Commands.None),
-        Message.PrevSlide => (SetSlide(model, model.SlideIndex - 1), Commands.None),
-        Message.GoToSlide m => (SetSlide(model, m.Index), Commands.None),
+        Message.SelectPresentation => (SetSlide(model with
+        {
+            Mode = PresentationMode.Deck,
+            SlideIndex = 0,
+            Log = [],
+            DemoCount = 0,
+            TickCount = 0,
+            LastTick = null,
+            DemoTimer = false,
+            TrackMouse = false,
+            DemoInput = ""
+        }, 0), Navigation.ReplaceUrl(SlideUrl(0))),
+        Message.BackToMenu => ResetToMenu(model),
+        Message.NextSlide => SetSlideWithNavigation(model, model.SlideIndex + 1),
+        Message.PrevSlide => SetSlideWithNavigation(model, model.SlideIndex - 1),
+        Message.GoToSlide m => SetSlideWithNavigation(model, m.Index),
         Message.KeyPressed m => HandleKeyPress(model, m.Data),
         Message.IncrementDemo => (AddLog(model with { DemoCount = model.DemoCount + 1 }, $"Count → {model.DemoCount + 1}"), Commands.None),
         Message.ResetDemo => (AddLog(model with { DemoCount = 0 }, "Counter reset"), Commands.None),
@@ -104,6 +115,7 @@ public class Presentation : Program<Model, Arguments>
         Message.MouseMoved m => UpdateMouse(model, m.X, m.Y),
         Message.ClearLog => (model with { Log = [] }, Commands.None),
         Message.DemoInputChanged m => (AddLog(model with { DemoInput = m.Value }, $"Input: \"{m.Value}\""), Commands.None),
+        UrlChanged m => HandleUrlChanged(model, m.Url),
         _ => (model, Commands.None)
     };
 
@@ -115,6 +127,8 @@ public class Presentation : Program<Model, Arguments>
     public static Subscription Subscriptions(Model model)
     {
         var subs = new List<Subscription>();
+
+        subs.Add(Navigation.UrlChanges(url => new UrlChanged(url)));
 
         if (model.DemoTimer)
         {
@@ -143,24 +157,19 @@ public class Presentation : Program<Model, Arguments>
                     h1([], [text("Abies")]),
                     p([class_("subtitle")], [text("Model-View-Update for .NET WebAssembly")])
                 ]),
+                input([
+                    class_("keyboard-capture"),
+                    ariaLabel("Keyboard navigation"),
+                    autofocus(),
+                    onkeydown(data => new Message.KeyPressed(data))
+                ]),
                 div([class_("presentation-cards")],
                 [
-                    div([class_("presentation-card"), onclick(new Message.SelectPresentation(PresentationMode.Full))],
+                    button([type("button"), class_("presentation-card"), autofocus(), onclick(new Message.SelectPresentation())],
                     [
                         div([class_("card-icon")], [text("\U0001F332")]),
-                        h2([], [text("Full Conference")]),
-                        p([class_("card-desc")], [text("Deep-dive into every aspect of Abies — from core MVU concepts through virtual DOM internals, the binary batching protocol, E2E benchmarks, and production deployment.")]),
-                        div([class_("card-meta")],
-                        [
-                            span([class_("pill")], [text($"{_fullSlides.Length} slides")]),
-                            span([class_("pill")], [text("\u2248 60 min")])
-                        ])
-                    ]),
-                    div([class_("presentation-card"), onclick(new Message.SelectPresentation(PresentationMode.Express))],
-                    [
-                        div([class_("card-icon")], [text("\u26A1")]),
-                        h2([], [text("Express Overview")]),
-                        p([class_("card-desc")], [text("A focused walkthrough of Abies highlighting the architecture, key differentiators from Blazor, performance results, and how to get started.")]),
+                        h2([], [text("Coderen met AI in 2026")]),
+                        p([class_("card-desc")], [text("Het complete deck voor deze presentatie met workflow, praktijkervaring en live demo.")]),
                         div([class_("card-meta")],
                         [
                             span([class_("pill")], [text($"{_expressSlides.Length} slides")]),
@@ -173,15 +182,21 @@ public class Presentation : Program<Model, Arguments>
 
     private static Document ViewDeck(Model model)
     {
-        var slides = model.Mode == PresentationMode.Full ? _fullSlides : _expressSlides;
+        var slides = _expressSlides;
         var current = slides[model.SlideIndex];
         var progress = slides.Length > 1 ? (double)model.SlideIndex / (slides.Length - 1) * 100 : 0;
-        var modeLabel = model.Mode == PresentationMode.Full ? "Full Conference" : "Express Overview";
+        var modeLabel = "Presentatie";
 
         return new Document(
             $"Abies — {current.Title}",
-            div([class_("app")],
+            div([class_("app"), tabindex("0")],
             [
+                input([
+                    class_("keyboard-capture"),
+                    ariaLabel("Slide keyboard navigation"),
+                    autofocus(),
+                    onkeydown(data => new Message.KeyPressed(data))
+                ]),
                 div([class_("topbar")],
                 [
                     div([class_("brand")],
@@ -200,7 +215,7 @@ public class Presentation : Program<Model, Arguments>
                     div([class_("topbar-actions")],
                     [
                         span([class_("pill")], [text($"{model.SlideIndex + 1} / {slides.Length}")]),
-                        button([class_("ghost"), onclick(new Message.BackToMenu())], [text("\u2630 Menu")]),
+                        button([class_("ghost"), autofocus(), onclick(new Message.BackToMenu())], [text("\u2630 Menu")]),
                         div([class_("keys")],
                         [
                             span([class_("key")], [text("\u2190")]),
@@ -220,12 +235,16 @@ public class Presentation : Program<Model, Arguments>
                         h3([], [text("Agenda")]),
                         ul([],
                             slides.Select((s, i) =>
-                                li([class_(i == model.SlideIndex ? "agenda-link active" : "agenda-link"),
-                                    onclick(new Message.GoToSlide(i))],
+                                li([], [
+                                    button([type("button"),
+                                        class_(i == model.SlideIndex ? "agenda-link active" : "agenda-link"),
+                                        onclick(new Message.GoToSlide(i)),
+                                        ariaCurrent(i == model.SlideIndex ? "true" : "false")],
                                 [
                                     span([class_("agenda-index")], [text($"{i + 1:D2}")]),
                                     span([class_("agenda-title")], [text(s.Title)])
                                 ], id: $"agenda-{s.Id}")
+                                ])
                             ).ToArray()
                         )
                     ]),
@@ -256,10 +275,13 @@ public class Presentation : Program<Model, Arguments>
             children.Add(p([class_("subtitle")], [text(current.Subtitle)]));
         }
 
-        if (current.Points.Length > 0)
+        if (!string.IsNullOrWhiteSpace(current.MarkdownBody))
         {
-            children.Add(ul([class_("points")],
-                current.Points.Select((pt, i) => li([], [text(pt)], id: $"point-{i}")).ToArray()));
+            children.Add(MarkdownView.Render(current.MarkdownBody, current.Id));
+        }
+        else if (current.Points.Length > 0)
+        {
+            children.Add(ul([class_("points")], RenderPoints(current.Points)));
         }
 
         if (current.Code is not null)
@@ -291,7 +313,7 @@ public class Presentation : Program<Model, Arguments>
             body.Add(div([class_("next-step")], [text(slide.NextStep)]));
         }
 
-        return div([class_("panel")],
+        return div([class_("panel takeaway-panel")],
         [
             span([class_("panel-title")], [text("Key Takeaway")]),
             div([class_("panel-body")], body.ToArray())
@@ -355,27 +377,43 @@ public class Presentation : Program<Model, Arguments>
 
     // ── Helpers ──
 
-    private static (Model, Command) HandleKeyPress(Model model, KeyEventData data)
+    private static (Model, Command) HandleKeyPress(Model model, KeyEventData? data)
     {
-        if (model.Mode == PresentationMode.Menu)
+        if (data is null)
         {
             return (model, Commands.None);
         }
+
+        if (model.Mode == PresentationMode.Menu)
+        {
+            return data.Key switch
+            {
+                "Enter" or " " => Transition(model, new Message.SelectPresentation()),
+                _ => (model, Commands.None)
+            };
+        }
+
         return data.Key switch
         {
-            "ArrowRight" or " " or "l" or "j" => (SetSlide(model, model.SlideIndex + 1), Commands.None),
-            "ArrowLeft" or "h" or "k" => (SetSlide(model, model.SlideIndex - 1), Commands.None),
-            "Home" => (SetSlide(model, 0), Commands.None),
-            "End" => (SetSlide(model, int.MaxValue), Commands.None),
-            "Escape" => (model with { Mode = PresentationMode.Menu }, Commands.None),
+            "ArrowRight" or " " or "l" or "j" => SetSlideWithNavigation(model, model.SlideIndex + 1),
+            "ArrowLeft" or "h" or "k" => SetSlideWithNavigation(model, model.SlideIndex - 1),
+            "Home" => SetSlideWithNavigation(model, 0),
+            "End" => SetSlideWithNavigation(model, int.MaxValue),
+            "Escape" => ResetToMenu(model),
             _ => (model, Commands.None)
         };
     }
 
     private static Model SetSlide(Model model, int index)
     {
-        var slides = model.Mode == PresentationMode.Full ? _fullSlides : _expressSlides;
+        var slides = _expressSlides;
         return model with { SlideIndex = ClampSlide(index, slides.Length) };
+    }
+
+    private static (Model, Command) SetSlideWithNavigation(Model model, int index)
+    {
+        var updated = SetSlide(model, index);
+        return (updated, Navigation.ReplaceUrl(SlideUrl(updated.SlideIndex)));
     }
 
     private static int ClampSlide(int index, int count) => Math.Clamp(index, 0, count - 1);
@@ -401,6 +439,98 @@ public class Presentation : Program<Model, Arguments>
 
         index = ClampSlide(parsed, slides.Length);
         return true;
+    }
+
+    private static (Model, Command) HandleUrlChanged(Model model, Url url)
+    {
+        if (TryGetSlideIndex(url, _expressSlides, out var index))
+        {
+            return (SetSlide(model with { Mode = PresentationMode.Deck }, index), Commands.None);
+        }
+
+        if (model.Mode == PresentationMode.Deck && !url.Fragment.IsSome)
+        {
+            return ResetToMenu(model);
+        }
+
+        return (model, Commands.None);
+    }
+
+    private static (Model, Command) ResetToMenu(Model model) =>
+        (model with
+        {
+            Mode = PresentationMode.Menu,
+            SlideIndex = 0,
+            Log = [],
+            DemoCount = 0,
+            TickCount = 0,
+            LastTick = null,
+            DemoTimer = false,
+            TrackMouse = false,
+            DemoInput = ""
+        }, Navigation.ReplaceUrl(Url.Root));
+
+    private static Url SlideUrl(int index) =>
+        new Url(Array.Empty<string>(), new Dictionary<string, string>(), Option.Some($"slide-{index}"));
+
+    private static bool IsGraphLine(string text) =>
+        text.StartsWith("  ", StringComparison.Ordinal) ||
+        text.Contains('┤') ||
+        text.Contains('╭') ||
+        text.Contains('╯') ||
+        text.Contains('│') ||
+        text.Contains('┴');
+
+    private static Node[] RenderPoints(string[] points)
+    {
+        var nodes = new List<Node>();
+        var graphBuffer = new List<string>();
+        var pointIndex = 0;
+
+        void FlushGraphBuffer()
+        {
+            if (graphBuffer.Count == 0)
+            {
+                return;
+            }
+
+            nodes.Add(li([class_("point-graph-block")],
+            [
+                pre([class_("point-graph-pre")], [text(string.Join("\n", graphBuffer))])
+            ], id: $"point-{pointIndex++}"));
+            graphBuffer.Clear();
+        }
+
+        foreach (var point in points)
+        {
+            if (IsGraphLine(point))
+            {
+                graphBuffer.Add(point);
+                continue;
+            }
+
+            FlushGraphBuffer();
+
+            if (string.IsNullOrWhiteSpace(point))
+            {
+                nodes.Add(li([class_("point-spacer")], [], id: $"point-{pointIndex++}"));
+                continue;
+            }
+
+            if (point.Contains('\n'))
+            {
+                nodes.Add(li([class_("point-multiline")],
+                [
+                    pre([class_("point-multiline-pre")], [text(point)])
+                ], id: $"point-{pointIndex++}"));
+                continue;
+            }
+
+            nodes.Add(li([], [text(point)], id: $"point-{pointIndex++}"));
+        }
+
+        FlushGraphBuffer();
+        return nodes.ToArray();
     }
 
     private static Model AddLog(Model model, string entry)
@@ -746,170 +876,411 @@ public class Presentation : Program<Model, Arguments>
 
     private static readonly Slide[] _expressSlides =
     [
-        new("x-intro", "Express", "Abies",
-            "Pure functional UI for .NET WebAssembly — in 30 minutes",
-            ["Model-View-Update architecture for .NET 10",
-             "Zero JavaScript - Type-safe HTML - Binary batching - OpenTelemetry",
-             "This presentation is itself an Abies app"],
+        new("intro", "Opening", "Coderen met AI in 2026",
+            "Hoe ik het doe, en waarom ik denk dat het werkt",
+            [],
+            MarkdownBody: """
+            - Een eerlijk beeld van de stand van zaken — april 2026
+            - De rol van de developer verschuift, maar niet op de manier die je denkt
+            - Hoe ik met een AI-team samenwerk: Squad, charters, en een echte workflow
+            - Aan het eind: live demo. We bouwen een feature die ik eigenlijk nodig had voor deze talk.
+            """,
             Kind: SlideKind.Intro,
-            Takeaway: "Abies brings Elm-style MVU to .NET WebAssembly."),
+            Takeaway: "Na 30 minuten weet je waar AI-coderen staat, hoe ik het aanpak, en waar je mee kunt beginnen."),
 
-        new("x-problem", "The Problem", "Why Not Components?",
-            "The pain points of mutable state",
-            ["Component frameworks scatter state across a mutable tree",
-             "StateHasChanged(), OnParametersSet(), lifecycle soup — complexity grows with every feature",
-             "Shared mutable state leads to race conditions, stale closures, defensive copying",
-             "MVU: one immutable model, one update function, one render — total predictability"],
-            Takeaway: "MVU trades lifecycle complexity for a single, predictable state loop."),
+        new("adoption", "Deel 1 — Stand van zaken", "De adoptie is al gebeurd",
+            "Niet meer de vraag óf, maar hoe",
+            [],
+            MarkdownBody: """
+            JetBrains AI Pulse, januari 2026:
 
-        new("x-architecture", "Architecture", "The MVU Loop",
-            "Model to View to Update, repeat",
-            ["Initialize: create the Model + startup Commands",
-             "View(Model) produces virtual DOM — pure function, no side effects",
-             "User interaction dispatches a Message to Update(Message, Model) returning (Model, Command)",
-             "Runtime diffs virtual DOM, patches real DOM, executes Commands",
-             "Commands dispatch result Messages back into the loop"],
-            Code: "public interface Program<TModel, TArgument>\n{\n    static abstract (TModel, Command) Initialize(TArgument argument);\n    static abstract Result<Message[], Message> Decide(TModel state, Message command);\n    static abstract (TModel, Command) Transition(TModel state, Message @event);\n    static abstract bool IsTerminal(TModel state);\n    static abstract Document View(TModel model);\n    static abstract Subscription Subscriptions(TModel model);\n}",
-            Takeaway: "Six functions define your entire application — no base classes, no lifecycle hooks."),
+            - 90% van professionele developers gebruikt minstens één AI-tool wekelijks
+            - 74% gebruikt gespecialiseerde dev-AI (geen chatbot)
+            - 51% dagelijks
 
-        new("x-model", "Model and Messages", "Immutable State",
-            "Records + sealed message types",
-            ["Model: C# record with value equality and with-expressions",
-             "Messages: sealed records describing events — NextSlide, Tick, KeyPressed, etc.",
-             "Update: pattern match on messages, return new model + optional command",
-             "Testing: given model + message then assert result — no mocking needed"],
-            Code: "record Model(int Count, bool TimerActive);\n\ninterface Message : Abies.Message\n{\n    record Increment : Message;\n    record Reset : Message;\n    record Tick(DateTimeOffset At) : Message;\n}",
-            Takeaway: "Immutable records make state changes explicit, trackable, and testable."),
+            Pragmatic Engineer survey, maart 2026:
 
-        new("x-update", "Update", "Pure State Transitions",
-            "Switch expressions for exhaustive handling",
-            ["Update is a pure function — no I/O, no async, no side effects",
-             "C# switch expressions with pattern matching handle every message type",
-             "Returns (Model, Command) — the Command describes intent without performing it",
-             "New features = new message types — existing Update cases do not change"],
-            Code: "public static (Model, Command) Update(Message msg, Model m) => msg switch\n{\n    Message.Increment => (m with { Count = m.Count + 1 }, Commands.None),\n    Message.Reset     => (m with { Count = 0 }, Commands.None),\n    Message.Tick t    => (m with { TickCount = m.TickCount + 1 }, Commands.None),\n    _ => (m, Commands.None)\n};",
-            Takeaway: "Pure functions are the simplest code to reason about, test, and refactor."),
+            - 95% wekelijks · 55% gebruikt agents · staff+ engineers leiden de adoptie
 
-        new("x-view", "View", "Type-Safe HTML DSL",
-            "C# functions for every HTML element",
-            ["div(), span(), h1(), ul(), li(), button() — all C# functions",
-             "Attributes: class_(), href(), style(), onclick(), oninput()",
-             "No Razor, no templates — if it compiles, it renders valid HTML",
-             "Composes with LINQ, pattern matching, string interpolation"],
-            Code: "div([class_(\"card\")],\n[\n    h2([], [text(article.Title)]),\n    p([], [text(article.Description)]),\n    button([onclick(new Favorite(article.Slug))],\n        [text($\"heart {article.FavoritesCount}\")])\n]);",
-            Takeaway: "HTML-as-code eliminates template parsing errors and enables full IDE support."),
+            Claude Code: van 0 → #1 most-loved tool in 8 maanden tijd
+            """,
+            Takeaway: "Dit is geen toekomstgesprek meer. Het is een achterstandsgesprek."),
 
-        new("x-vdom", "Virtual DOM", "Efficient Diffing and Patching",
-            "LIS - binary batching - memoization",
-            ["Virtual DOM: lightweight in-memory tree diffed against the previous render",
-             "Head/tail skip: matching nodes at edges skipped in O(1)",
-             "Longest Increasing Subsequence (LIS): minimal DOM moves for reordered lists",
-             "Binary batching: all patches serialized into one ArraySegment<byte> per frame",
-             "Memoization: Memo<TKey> skips re-rendering unchanged subtrees"],
-            Takeaway: "Three layers of optimization make Abies competitive with the fastest JS frameworks."),
+        new("tools", "Deel 1 — Stand van zaken", "Het tool-landschap",
+            "Drie spelers, drie strategieën",
+            [],
+            MarkdownBody: """
+            - Claude Code  ·  van 0 → #1 most-loved (46%) in 8 maanden · CSAT 91% · NPS 54 · 18% dagelijks gebruik · 24% in VS+CA
+            - Cursor      ·  groeide ~35% in 9 maanden — bedreigt Copilot
+            - GitHub Copilot · enterprise default — 4.7M paid subs, +75% YoY
 
-        new("x-commands", "Commands", "Controlled Side Effects",
-            "Pure Update, impure runtime",
-            ["Update returns a Command — it never performs I/O directly",
-             "Runtime executes Commands asynchronously and dispatches results back",
-             "Custom commands for HTTP, storage, navigation, clipboard, etc.",
-             "Command.Batch for executing multiple effects from one Update"],
-            Code: "record FetchArticles(int Offset, int Limit) : Command;\n\n// HandleCommand:\ncase FetchArticles cmd:\n    var result = await api.GetArticles(cmd.Offset, cmd.Limit);\n    dispatch(new ArticlesLoaded(result));\n    break;",
-            Takeaway: "Commands separate what from how — Update decides, runtime executes."),
+            Adoptie over tijd (% professionele devs):
 
-        new("x-subscriptions", "Subscriptions", "Declarative Event Sources",
-            "Timers - keyboard - mouse - resize",
-            ["Subscriptions are a function of the model — they activate/deactivate automatically",
-             "Every(1s, ...) — periodic timer",
-             "OnKeyDown(...) — global keyboard events",
-             "OnMouseMove(...) — pointer tracking",
-             "OnResize(...), OnVisibilityChange(...), OnAnimationFrame(...)",
-             "Runtime diffs subscriptions like the DOM — only changes take effect"],
-            Kind: SlideKind.Demo,
-            Takeaway: "Subscriptions are the functional equivalent of addEventListener with automatic cleanup."),
+            | Segment | 2023 | 2024 | 2025 | Jan 2026 | Trend |
+            | --- | ---: | ---: | ---: | ---: | --- |
+            | Any AI tool | 60% | 76% | 84% | 90% | ↑ |
+            | Specialized dev AI | — | ~25% | ~55% | 74% | ↑↑ |
+            | Claude Code daily | — | — | 3% | 18% | ↑↑↑ |
 
-        new("x-routing", "Routing", "URLs as Data",
-            "Sum types for routes, pure parsing",
-            ["Route is a sum type: Home, Article(slug), Profile(username), etc.",
-             "OnUrlChanged maps URL to Message to Model update",
-             "Internal vs External link handling via UrlRequest",
-             "URL fragments for in-page navigation (#slide-5)"],
-            Takeaway: "Routing is just another state transition — no router library needed."),
+            Bron: JetBrains AI Pulse · Stack Overflow · Pragmatic Engineer
+            """,
+            Takeaway: "Markt convergeert op specialized agents. Best-of-breed wint van ecosystem lock-in."),
 
-        new("x-conduit", "Real World", "Conduit Application",
-            "Full-stack CRUD with Aspire",
-            ["RealWorld Conduit specification: articles, comments, auth, tags, profiles",
-             "Abies frontend + ASP.NET Core Minimal API backend",
-             ".NET Aspire AppHost orchestrates both services",
-             "Source-generated JSON (no reflection) — trim-safe and fast",
-             "OpenTelemetry traces from browser click to database query"],
-            Takeaway: "Conduit proves Abies works for production applications — not just counter demos."),
+        new("productivity", "Deel 1 — Stand van zaken", "De productiviteit is genuanceerd",
+            "Positief beeld: wat de grote surveys zeggen",
+            [],
+            MarkdownBody: """
+            DX Q4 2025 · 135.000 developers geanalyseerd:
 
-        new("x-testing", "Testing", "Pure Functions = Easy Tests",
-            "E2E + integration + unit",
-            ["Unit: test Update in isolation — given model + message then assert result",
-             "Integration: test full MVU cycle with HandleCommand",
-             "E2E: Playwright + NUnit — real browser interactions",
-             "No mocking frameworks needed — pure functions have no dependencies"],
-            Code: "// Unit test — pure function\nvar (model, _) = Update(new Increment(), initial);\nAssert.That(model.Count, Is.EqualTo(1));\n\n// E2E test — Playwright\nawait Page.ClickAsync(\"text=New Article\");\nawait Expect(Page.Locator(\"h1\")).ToHaveTextAsync(\"Test\");",
-            Takeaway: "MVU purity makes testing straightforward at every level."),
+            - 3,6 uur per week bespaard (gemiddeld)
+            - Daily users mergen 60% meer PRs
 
-        new("x-performance", "Performance", "Benchmark Results",
-            "Faster than Blazor WASM on every metric",
-            ["js-framework-benchmark — industry standard E2E suite:",
-             "  Create 1k rows: Abies ~ 85ms vs Blazor ~ 220ms",
-             "  Replace 1k rows: Abies ~ 90ms vs Blazor ~ 250ms",
-             "  Partial update: Abies ~ 25ms",
-             "  Select row: Abies ~ 4ms — near instant",
-             "  Swap rows: Abies ~ 18ms — LIS algorithm",
-             "Binary batching: < 1ms interop overhead per frame",
-             "BenchmarkDotNet: micro-benchmarks for diffing, rendering, routing"],
-            Takeaway: "Binary batching + LIS diffing + memoization = Blazor-beating performance."),
+            Stack Overflow 2025 · 84% gebruikt of plant gebruik · 51% dagelijks
+            """,
+            Takeaway: "Brede surveys zijn positief. Maar er zijn ook andere cijfers."),
 
-        new("x-vs-blazor", "Comparison", "Abies vs Blazor WASM",
-            "Different paradigms, honest trade-offs",
-            ["State: single immutable model vs distributed mutable components",
-             "Rendering: virtual DOM + LIS vs RenderTree + sequential diff",
-             "Interop: 1 binary batch/frame vs N individual JS calls",
-             "Syntax: C# functions vs Razor templates",
-             "Testing: pure functions vs component mocking",
-             "Ecosystem: Elm-inspired niche vs large Blazor ecosystem",
-             "Choose Abies for purity and predictability; Blazor for ecosystem and familiarity"],
-            Takeaway: "Abies is not better — it is a different paradigm for developers who value functional purity."),
+        new("productivity-nuance", "Deel 1 — Stand van zaken", "De nuance",
+            "Wat gecontroleerde trials en grote codebases zeggen",
+            [],
+            MarkdownBody: """
+            METR, juli 2025 · randomized controlled trial:
 
-        new("x-otel", "Observability", "OpenTelemetry",
-            "Traces from browser to backend",
-            ["OTLP traces exported from the browser — every render, every HTTP call",
-             "W3C Trace Context propagation across frontend to API",
-             "Aspire Dashboard: live traces, logs, metrics visualization",
-             "Custom ActivitySource per service for fine-grained tracing"],
-            Takeaway: "Built-in observability — no third-party packages needed."),
+            - 16 senior open-source devs · eigen repos · 246 taken
+            - Ervaren devs waren 19% LANGZAMER met AI
+            - Terwijl ze dáchten 20% sneller te zijn
 
-        new("x-deployment", "Ship It", "Deployment",
-            "Static files - .NET 10 - Aspire",
-            ["dotnet publish -c Release produces static WASM files for any CDN",
-             "Output: wwwroot/ with HTML, CSS, JS, WASM — no server runtime",
-             "Aspire AppHost for local dev and container orchestration",
-             "global.json pins SDK version for reproducible builds"],
-            Takeaway: "Abies apps are static files — deploy to GitHub Pages, Azure Static Web Apps, S3, or any CDN."),
+            Microsoft, .NET runtime, mei 2025 → maart 2026:
 
-        new("x-getting-started", "Get Started", "Try Abies Today",
-            "From zero to running in 60 seconds",
-            ["dotnet new install Abies.Templates",
-             "dotnet new abies-browser -n MyApp",
-             "cd MyApp && dotnet run",
-             "Open http://localhost:5000 — your first MVU app is running",
-             "GitHub: github.com/Picea/Abies - License: Apache 2.0"],
-            Code: "dotnet new install Abies.Templates\ndotnet new abies-browser -n MyApp\ncd MyApp && dotnet run",
-            Takeaway: "One template install, one command, and you are building with MVU."),
+            - 878 cloud-agent PRs · 68% merge rate · 0.6% revert rate
+            - Voorbereiding verhoogde succes van 38% → 69% — niet betere modellen
 
-        new("x-thanks", "Closing", "Thank You",
-            "Questions and discussion",
-            ["github.com/Picea/Abies — star, fork, contribute",
-             "These slides: Abies.Presentation — built with Abies itself",
-             "The Conduit app: Abies.Conduit — full-stack reference",
-             "Questions?"],
-            Kind: SlideKind.Outro,
-            Takeaway: "Pure functional UI is here for .NET. Give Abies a try.")
+            Drie cijfers, drie verhalen. Eén ding ontbrak: context.
+            """,
+            Takeaway: "Aggregate cijfers liegen niet. Maar ze vertellen ook niet het hele verhaal."),
+        new("metr-followup", "Deel 1 — Stand van zaken", "Wat er daarna gebeurde",
+            "De follow-up van februari 2026",
+            [],
+            MarkdownBody: """
+            METR herhaalde de studie met dezelfde devs, betere modellen:
+
+            - Speedup van -18% (CI -38% tot +9%) — niet significant
+            - Voor nieuwe devs: -4% (CI -15% tot +9%) — ook niet significant
+
+            Maar de echte bevinding zit in wat ze NIET konden meten:
+
+            - Devs weigerden om aan de 'no AI' conditie mee te doen
+            - De ene dev: 'mijn hoofd ontploft als ik het op de oude manier moet doen — alsof ik plotseling moet lópen door de stad terwijl ik gewend was Uber te nemen'
+            - Selectie-effecten maakten een schoon getal onmogelijk
+
+            De afwezigheid van het cijfer IS het cijfer.
+            """,
+            Takeaway: "Tussen de twee studies in is iets geknikt. Niet de tools — de manier waarop devs eraan gewend zijn."),
+
+        new("trust", "Deel 2 — Bronnen van scepsis", "Het vertrouwen daalt",
+            "Stack Overflow Developer Survey, 2023 → 2025",
+            [],
+            MarkdownBody: """
+            - Gebruik:    84% gebruikt of plant gebruik (was 76%)
+            - Vertrouwen: slechts 29% vertrouwt de output (was 70%+)
+            - Actief wantrouwen: 46%
+            - 'Highly trust': 3%
+
+            Stack Overflow Developer Survey, 2023 → 2025:
+
+            ```text
+                Gebruik AI-tools
+                    2023  ████████████████████████          60%
+                    2024  ██████████████████████████████    76%
+                    2025  ██████████████████████████████████ 84%   ↑
+
+                Vertrouwen in output
+                    2023  ████████████████████████████      70%
+                    2024  ████████████████████████          60%
+                    2025  ████████████                      29%   ↓
+            ```
+
+            Ervaren devs zijn het meest sceptisch — en dat is gezond.
+            """,
+            Takeaway: "Dit is geen ironie. Dit is volwassen worden."),
+
+        new("objections", "Deel 2 — Bronnen van scepsis", "Drie bezwaren die hout snijden",
+            "Eerlijk over wat er fout gaat",
+            [],
+            MarkdownBody: """
+            **'AI maakt brakke code'**
+            - Veracode: 45% van AI-snippets faalt security tests
+            - AI-code heeft 2.74× meer kwetsbaarheden dan handgeschreven
+            - ✓ Waar — als je geen reviewproces hebt
+
+            **'AI sloopt mijn flow'**
+            - METR's screen-recordings: meer idle-tijd, meer context-switching
+            - Het 'slot machine' effect — 1% kans dat het alles oplost
+            - ✓ Waar — als je AI als magic button gebruikt
+
+            **'Het werkt niet op mijn complexe codebase'**
+            - Bewezen waar voor grote, mature codebases bij eerste contact
+            - ✓ Waar — als je je codebase niet leesbaar maakt voor agents
+            """,
+            Takeaway: "Geen van deze bezwaren is onzin. Maar elk heeft een 'als'."),
+
+        new("common-cause", "Deel 2 — Bronnen van scepsis", "Wat alle slechte ervaringen delen",
+            "De tool wordt geframed, de workflow is de bottleneck",
+            [],
+            MarkdownBody: """
+            **Wat mensen vaak doen:**
+
+            - AI behandelen als autocomplete-op-steroïden
+            - Vragen stellen zonder duidelijke acceptance criteria
+            - Suggesties accepteren zonder ze te verifiëren
+            - Geen tests — of tests pas erna
+            - Code in lange ongestructureerde files mikken
+
+            **Wat het oplevert:**
+
+            - Plausibel ogende code die net niet klopt
+            - Een merge-pile van halve oplossingen
+            - De ervaring dat je met een uitzinnige stagiair werkt
+            - Het gevoel: 'AI werkt gewoon niet voor mijn werk'
+
+            De tool krijgt de schuld. De workflow is de bottleneck.
+            """,
+            Takeaway: "Het probleem zit zelden in de AI. Het zit in hoe we ermee samenwerken."),
+
+        new("role-shift", "Deel 3 — Rol van de developer", "Wat verdwijnt en wat blijft",
+            "De waardevolle delen van het werk verschuiven",
+            [],
+            MarkdownBody: """
+            **Wat verdwijnt (of irrelevant wordt):**
+
+            - Typsnelheid
+            - Syntax uit het hoofd kennen
+            - Boilerplate kunnen produceren
+            - 'Ik ken alle stdlib functies' als skill
+
+            **Wat blijft — en belangrijker wordt:**
+
+            - Probleemformulering
+            - Systeemdenken
+            - Domeinkennis
+            - Verificatie & smaak
+            - Wéten wanneer iets fout is
+            - Architectuurkeuzes met de lange termijn in gedachten
+            """,
+            Takeaway: "Het waardevolle deel van programmeren verschuift van syntax naar denken."),
+
+        new("spec-and-verify", "Deel 3 — Rol van de developer", "Spec-schrijver én verificateur",
+            "Twee competenties, niet één",
+            [],
+            MarkdownBody: """
+            Het cliché: 'we worden allemaal spec-schrijvers'
+
+            Dat klopt — maar het is maar de helft van het verhaal.
+
+            De andere helft: verificatie.
+
+            - Weten wat je gevraagd hebt
+            - Kunnen lezen of het systeem dat ook doet
+            - Tests die de spec zíjn, niet er omheen
+            - Een neus voor wanneer 'het werkt' niet 'het werkt' is
+
+            Het is niet 'de developer als manager'. Het is meer:
+            de developer als senior reviewer met heel veel handen.
+            """,
+            Callout: "Sturen + smaak = de nieuwe kerncompetentie",
+            Takeaway: "Schrijven wat je wilt is makkelijker dan zien of je het hebt gekregen. Verifiëren is de schaarse skill."),
+
+        new("ai-readability", "Deel 3 — Rol van de developer", "AI-readability als nieuwe skill",
+            "Code structureren zodat agents er goed in kunnen werken",
+            [],
+            MarkdownBody: """
+            De vraag: hoe maak je een codebase waarin een agent effectief is?
+
+            **Antwoord: hetzelfde als wat een mens-vriendelijke codebase is.**
+            Maar nu beloont het systeem het direct.
+
+            - Kleine modules met scherpe verantwoordelijkheid
+            - Sterke types — maak fouten onmogelijk in plaats van detecteerbaar
+            - Pure functies waar het kan, side effects geïsoleerd
+            - Determinisme — gegeven X, altijd Y
+            - Tests als spec, niet als after-thought
+            - Contracts expliciet, geen impliciete kennis
+
+            Wat lang werd weggezet als 'purisme' (FP, DDD, sterke types)
+            blijkt nu een productiviteitsmultiplier.
+            """,
+            Takeaway: "Goed engineerwerk is altijd al goed engineerwerk geweest. Nu krijg je er direct voor betaald."),
+
+        new("evolution", "Deel 4 — Mijn workflow", "Hoe ik er zelf gekomen ben",
+            "Van één prompt naar een echt team",
+            [],
+            MarkdownBody: """
+            **Fase 1 — De grote prompt file**
+
+            - Eén markdown bestand met 'rollen': architect, dev, tester, reviewer
+            - Werkte... maar het was een trucje
+            - Eén context, één geheugen, geen echte parallelliteit
+            - Het model moest doen alsof het meerdere mensen was
+
+            **Fase 2 — Het verlangen**
+
+            - Wat ik wilde: échte agents
+            - Elk in eigen context, met eigen kennis
+            - Samen aan een gemeenschappelijk doel
+            - Zoals een echt team werkt
+
+            **Fase 3 — Squad ontdekt**
+
+            - Precies wat ik mentaal al had bedacht
+            - Maar dan echt
+            """,
+            Takeaway: "Eén model dat doet alsof het een team is, is iets anders dan een team van modellen."),
+
+        new("agent-landscape", "Deel 4 — Mijn workflow", "Het multi-agent landschap, april 2026",
+            "Drie tiers — pak de juiste voor de taak",
+            [],
+            MarkdownBody: """
+            **Tier 1 — Conductor (jij stuurt direct)**
+
+            - Claude Code · Cursor · GitHub Copilot · Aider
+            - Synchroon · pair programming · single context
+
+            **Tier 2 — Orchestrator (team agents, jij merget)**
+
+            - Squad · Claude Agent Teams · Conductor · Vibe Kanban
+            - Antigravity · Gas Town · Multiclaude
+            - Parallel · jij checkt periodiek in
+            - ← waar ík werk
+
+            **Tier 3 — Cloud (async, je komt terug naar een PR)**
+
+            - Claude Code Web · Codex Web · Copilot Coding Agent · Jules
+            - Fire-and-forget · backlog draining · sleep on it
+
+            De meeste devs gebruiken alle drie. Verschillende taken,
+            verschillende tiers.
+            """,
+            Takeaway: "De industrie convergeert rond het orchestrator-model. Tier 2 is waar het serieuze werk gebeurt."),
+
+        new("squad-what", "Deel 4 — Mijn workflow", "Squad — een echt team in je repo",
+            "Brady Gaster · github.com/bradygaster/squad · Apache 2.0",
+            [],
+            MarkdownBody: """
+            Eén commando, je krijgt een team van specialisten:
+
+            - lead · frontend · backend · tester · scribe
+
+            Elk leeft als een bestand in jouw repo onder .squad/
+
+            Wat er in .squad/ zit:
+
+            ```text
+                team.md           — wie zit in het team
+                routing.md        — wie pakt wat op
+                decisions.md      — gedeeld brein
+                agents/{naam}/
+                    charter.md      — identiteit, expertise, voice
+                    history.md      — wat ze van JOUW project geleerd hebben
+                skills/           — gecomprimeerde learnings
+                log/              — sessiegeschiedenis
+            ```
+
+            Je commit het. Het zit in git. Iedereen die cloont krijgt het team.
+            Met al hun opgebouwde kennis.
+            """,
+            Takeaway: "Geen chatbot met hoeden op. Eigen context, eigen kennis, eigen geheugen — dat compoundt over sessies."),
+
+        new("workflow", "Deel 4 — Mijn workflow", "Van issue tot merge",
+            "Concreet: hoe ziet een feature er bij mij uit?",
+            [],
+            MarkdownBody: """
+            **1. Issue refinen** — sámen met Claude in een chat
+            - Ik begin nooit bij de squad. Ik begin bij een gesprek.
+            - Domein, doel, edge cases, acceptance criteria, test plan.
+
+            **2. Issue committen op GitHub**
+            - Met scherpe acceptance criteria die geverifieerd kunnen worden.
+
+            **3. Squad starten**
+            - Lead-agent leest het issue, decomposeert in subtaken.
+
+            **4. Parallel werk**
+            - Frontend, backend, tester werken tegelijk in eigen worktrees.
+            - Scribe legt onderweg besluiten vast in decisions.md.
+
+            **5. PR review** — door mij
+            - Lees ik de code? Ja. Draaien tests? Verifiëren.
+            - Klopt de architectuur? Past het bij de rest?
+
+            **6. Merge** — of feedback terug
+            - Bij feedback: scherpere prompt, meer tests, opnieuw.
+            """,
+            Takeaway: "De menselijke checkpoints zijn niet weg. Ze zijn juist scherper geworden."),
+
+        new("lessons", "Deel 4 — Mijn workflow", "Wat ik geleerd heb",
+            "De echte tips, geen marketing",
+                        [],
+                        MarkdownBody: """
+                        - Sloppy spec → uren verspilde compute. Investeer vooraf.
+
+                        - Tests laten genereren én verifiëren is niet optioneel. Tests zijn de spec die de agent niet kan jokeren.
+
+                        - FP + DDD werken disproportioneel goed. Sterke types geven agents harde leuningen.
+
+                        - Ken je codebase. Als jij niet weet wat goed is, weet de agent het ook niet.
+
+                        - Token-budget is een echte constraint — Steve Yegge draait drie Claude Max accounts parallel. Geen grap.
+
+                        - Multi-agent voegt overhead toe. Gebruik het waar het bijdraagt, niet automatisch.
+                        """,
+            Takeaway: "De vaardigheid is niet 'AI gebruiken'. De vaardigheid is wéten wanneer en hoe."),
+
+        new("picea-abies", "Deel 5 — Synthese", "Picea, Abies, en de squad",
+            "Het verhaal komt samen — en ja, dit is de shameless plug",
+            [],
+            MarkdownBody: """
+            Alles wat ik beweerde over FP + DDD + AI komt samen in:
+
+            Picea — Mealy machine kernel voor .NET
+
+            - Eén pure transitiefunctie: (state, event) → (state, effect)
+            - Draait als MVU runtime, event-sourced aggregate, of actor
+            - Decider pattern voor command-validatie
+            - Result types in plaats van exceptions
+
+            Abies — MVU framework op Picea
+
+            - C# helemaal naar beneden, geen Razor, geen JS
+            - Verslaat Blazor WASM op vrijwel alle js-framework duration tests*
+            - LIS keyed diffing, binary batching, memoization
+
+            Glauca · Rubens · Mariana — event sourcing, actors, resilience
+
+            Het hele ecosysteem is gebouwd door mij + de squad,
+            in de afgelopen maanden.
+
+            * exacte cijfers in beweging — zie repo voor recent results
+            """,
+            Takeaway: "Snel én AI-readable — hetzelfde principe, twee keer bewezen in de praktijk."),
+
+        new("today", "Deel 5 — Synthese", "Vandaag is jullie beurt",
+            "Een ambitieus project, een hele dag, samen ervaren",
+            [],
+            MarkdownBody: """
+            Aanbevelingen voor vandaag:
+
+            - Begin bij de spec, niet bij de code
+            - Schrijf eerst tests of acceptance criteria
+            - Probeer minstens één tool uit elk tier (single + orchestrator)
+            - Houd bij wat NIET werkt — dat is goud voor de showcase
+            - Vraag elkaar om hulp, deel patronen die werken
+
+            Aan het eind van de dag: showcase + lessons learned.
+
+            Maar eerst, één laatste ding —
+            deze talk had eigenlijk grafieken nodig.
+            Zoals jullie hebben gemerkt :)
+            """,
+            Takeaway: "Klaar om iets te bouwen?",
+            Kind: SlideKind.Outro)
     ];
 }

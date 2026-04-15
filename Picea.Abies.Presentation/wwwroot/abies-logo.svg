@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Abies logo">
+  <defs>
+    <linearGradient id="abiesGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B7D56A" />
+      <stop offset="55%" stop-color="#89B42B" />
+      <stop offset="100%" stop-color="#2E3D10" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="24" fill="#F4F8EA" stroke="#D0E39B" stroke-width="2" />
+  <path d="M64 20 32 72h20l-10 18h16l-8 14h28l-8-14h16L76 72h20z" fill="url(#abiesGradient)" />
+  <rect x="58" y="104" width="12" height="12" rx="2" fill="#4C641A" />
+</svg>
