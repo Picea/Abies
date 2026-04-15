@@ -111,6 +111,13 @@ public static class MarkdownView
 
             var c = source[i];
 
+            if (c == '!' && TryParseImageToken(source, i, out var altText, out var imageSource, out var consumedLength))
+            {
+                nodes.Add(img([class_("markdown-image"), src(imageSource), alt(altText), loading("lazy"), decoding("async")]));
+                i += consumedLength;
+                continue;
+            }
+
             if (c == '`')
             {
                 var end = source.IndexOf('`', i + 1);
@@ -163,11 +170,12 @@ public static class MarkdownView
 
     private static int FindNextSpecial(string input, int start)
     {
+        var bang = input.IndexOf('!', start);
         var tick = input.IndexOf('`', start);
         var star = input.IndexOf('*', start);
         var underscore = input.IndexOf('_', start);
 
-        var candidates = new[] { tick, star, underscore };
+        var candidates = new[] { bang, tick, star, underscore };
         var min = -1;
         foreach (var candidate in candidates)
         {
@@ -183,5 +191,40 @@ public static class MarkdownView
         }
 
         return min;
+    }
+
+    private static bool TryParseImageToken(string source, int startIndex, out string altText, out string imageSource, out int consumedLength)
+    {
+        altText = string.Empty;
+        imageSource = string.Empty;
+        consumedLength = 0;
+
+        if (startIndex + 3 >= source.Length || source[startIndex] != '!' || source[startIndex + 1] != '[')
+        {
+            return false;
+        }
+
+        var altEnd = source.IndexOf(']', startIndex + 2);
+        if (altEnd < 0 || altEnd + 1 >= source.Length || source[altEnd + 1] != '(')
+        {
+            return false;
+        }
+
+        var srcEnd = source.IndexOf(')', altEnd + 2);
+        if (srcEnd < 0)
+        {
+            return false;
+        }
+
+        var parsedSource = source[(altEnd + 2)..srcEnd].Trim();
+        if (parsedSource.Length == 0)
+        {
+            return false;
+        }
+
+        altText = source[(startIndex + 2)..altEnd];
+        imageSource = parsedSource;
+        consumedLength = srcEnd - startIndex + 1;
+        return true;
     }
 }

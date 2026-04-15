@@ -1281,6 +1281,18 @@ public class Presentation : Program<Model, Arguments>
             Zoals jullie hebben gemerkt :)
             """,
             Takeaway: "Klaar om iets te bouwen?",
-            Kind: SlideKind.Outro)
+            Kind: SlideKind.Outro),
+
+        new("final-image-demo", "Demo", "Één plaatje zegt meer",
+            "Markdown image syntax werkt nu direct in slides",
+            [],
+            MarkdownBody: """
+            ![Start vibe coding now](images/start-vibe-coding-now.png)
+
+            - Standaard markdown syntax: `![alt](path)`
+            - Bronbestand uit `wwwroot/images`
+            """,
+            Kind: SlideKind.Demo,
+            Takeaway: "Gebruik markdown-afbeeldingen direct in je deck.")
     ];
 }

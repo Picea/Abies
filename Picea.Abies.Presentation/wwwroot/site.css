@@ -479,6 +479,15 @@ fluent-badge {
   padding: 1px var(--space-1);
 }
 
+.markdown-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-2);
+}
+
 .markdown-list {
   margin: 0;
   padding-left: var(--space-6);
