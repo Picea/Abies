@@ -707,3 +707,70 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 2. 🟠 **Should Fix** — No regression tests for new decider-first concurrency behavior. Add runtime-level tests asserting UrlChanged is not blocked while another command awaits interpreter IO.
 3. 🟡 **Should Fix** — Copied browser runtime assets (Presentation, SubscriptionsDemo, UI Demo `wwwroot/abies.js`) edited directly instead of canonical source (`Picea.Abies.Browser/wwwroot/abies.js`). Apply JS changes in canonical source only, then sync via build target.
 **Contract review:** Program decider migration correctly applied at interface and implementer level. Runtime enforces Decide/IsTerminal before transition. Docs updated.
+
+---
+
+## Issue #243 — Add image support to slides (Pre-implementation review, 2026-04-15)
+
+> **Status: 🔴 BLOCKED — do not implement until all blockers below are resolved.**
+> Four agents reviewed in parallel. Six hard blockers identified. Issue must be substantially amended.
+
+### 2026-04-15: Architect — Issue #243 Design Review
+**By:** Architect  
+**Findings:**
+1. 🔴 **Blocker** — `MarkdownBody` field is absent from the proposed `Slide` record but is present and actively used in the current codebase. Implementing as written causes a compilation error or silent deletion of working functionality. Author must amend issue to include `MarkdownBody` or provide a justified removal plan.
+2. 🔴 **Blocker** — `ImagePosition` semantics are undefined for `MarkdownBody`-mode slides. The issue only describes placement relative to `Points`, but `MarkdownBody` and `Points` are mutually exclusive branches in `ViewSlide`. Author must specify image placement for both modes.
+3. ⚠️ **Design** — Rename `Inline` → `AfterContent` (or `BeforeCode`). "Inline" implies CSS `display: inline`; the actual semantics are "vertical position between the content body and the code block."
+4. ⚠️ **Design** — Use `IReadOnlyList<SlideImage> Images = []` instead of `SlideImage? Image = null`. Avoids a breaking-change rename when gallery support is added later. Enforce single-image constraint in `ViewSlide` today; drop constraint when gallery lands. Zero call-site cost now.
+5. ⚠️ **Design** — `ArgumentException` for empty Alt conflicts with "Errors Are Values" team principle. Either drop validation (acceptable for internal authoring tool, document deviation) or use a smart constructor returning `Result<SlideImage, string>`.
+6. ℹ️ — Add optional `int? Width` / `int? Height` to `SlideImage` to prevent layout shift (CLS) on image-containing slides.
+7. ℹ️ — "figcaption-style element" is ambiguous — specify `<figure>/<figcaption>` explicitly.
+8. ℹ️ — `Src` path constraint (no remote URLs) must be either enforced in the type/constructor or documented explicitly as convention-only.
+
+### 2026-04-15: C# Dev — Issue #243 Implementation Review
+**By:** C# Dev  
+**Findings:**
+1. 🔴 **Blocker** — `ArgumentException` in a record constructor violates "Errors Are Values" and the smart-constructor principle. Recommended fix: either (A) drop validation entirely — consistent with existing `Slide` fields which have no validation — or (B) use a private constructor + static `Create()` factory returning `Result<SlideImage, string>`. Do not use `ArgumentException`.
+2. 🔴 **Blocker** — `ImagePosition` insertion indices are undefined. Existing `ViewSlide` children sequence: kicker → h1 → subtitle → (MarkdownBody OR Points) → Code → Callout. Specification must state for each enum value exactly where the image node is inserted (including fallback when a neighbor is absent).
+3. 🔴 **Blocker** — No `Picea.Abies.Presentation.Tests` project exists. Must be created (TUnit, per team standard) and added to the solution before tests can be written. Recommend extracting `SlideImage`/`ImagePosition` (and factory, if used) to a separate file to make them testable without `InternalsVisibleTo`.
+4. 🟡 **Warning** — Caption element must be `<figure>/<figcaption>`, not `<p>` or `<div>`. `img` helper produces a void element; a figure wrapper is required for semantic caption association.
+5. 🟡 **Warning** — Test coverage in the issue is insufficient. Position-specific ordering, `Caption=null`, `Caption="text"`, and `MarkdownBody+Image` cases are all missing.
+6. 🟡 **Warning** — CSS class naming convention must be agreed before implementation (tests cannot assert correct class names otherwise). Proposed: `slide-image`, `slide-image__caption`, `slide-image--top/--inline/--bottom`.
+
+### 2026-04-15: UI/UX Expert — Issue #243 Accessibility & UX Review
+**By:** UI/UX Expert  
+**Findings:**
+1. 🔴 **Must Fix** — Alt text enforcement throws on empty string, violating WCAG 1.1.1. Decorative images **must** have `alt=""` — not `alt="some text"`. Throwing on `""` forces authors to supply fake alt text, making accessibility worse. Fix: use a discriminated union:
+   ```csharp
+   public abstract record AltText
+   {
+       public sealed record Descriptive(string Value) : AltText;
+       public sealed record Decorative : AltText; // renders alt=""
+   }
+   ```
+2. 🔴 **Must Fix** — "figcaption-style element" must be specified as `<figure>` + `<figcaption>`. A bare `<p>` or `<div>` does not carry the semantic association that screen readers expect. The spec and implementation must require `<figure>/<figcaption>`.
+3. 💡 **Suggestion** — Rename `Inline` → `AfterContent` or `BelowPoints` (same recommendation as Architect; confirmed cross-agent).
+4. 💡 **Suggestion** — The Top/AfterContent/Bottom position model is otherwise sound for a text-column slide layout.
+5. 💡 **Suggestion** — `AltText` discriminated union (above) also improves DX: makes intent explicit at the call site and produces correct HTML for both informational and decorative cases without ambiguity.
+
+### 2026-04-15: Reviewer — Issue #243 AC Completeness Review
+**By:** Reviewer  
+**Verdict:** 🔴 Do not implement. Six items are hard blockers. Full list:
+
+**Ambiguity blockers (implementer would invent behavior):**
+1. 🔴 **A1** — Position semantics completely undefined. At least 3 defensible implementations of `Top` alone. Must specify insertion point for each value relative to the existing children sequence, including fallback when a neighbor is absent.
+2. 🔴 **A2** — HTML structure ambiguous. `<figure>/<figcaption>` vs `<img>+<p>` vs `<img>+<span>` — the choice affects accessibility, test assertions, and CSS. Must specify the exact element structure.
+3. 🔴 **A3** — `Src` path resolution unspecified. Verbatim or prefixed? Affects rendering code and file placement. Current `wwwroot/` has no `images/` subdirectory; convention must be stated.
+
+**Missing AC blockers (present AC 8 would pass even without the feature working):**
+4. 🔴 **M1** — No ACs for position-specific rendering. AC 8 only tests image presence; an implementation that always renders images at the bottom regardless of `Position` would pass all ACs.
+
+**Must-fix items:**
+5. ⚠️ **A4** — AC 7 references a "METR placeholder callout" that does not exist in the current codebase. No slide in `_expressSlides` has a `Callout` value for this content. Must name the exact slide by `Id` and the exact field to change.
+6. ⚠️ **A5** — Alt validation approach (`ArgumentException`) explicitly conflicts with team "Errors Are Values" principle. Must be decided and any deviation documented.
+
+**Missing ACs (not blockers, but required before done):**
+- **M2** — No AC for `Caption=null` producing no figcaption element.
+- **M3** — No AC requiring referenced image files exist in `wwwroot/` (risks a silent 404).
+- **M4** — No E2E test requirement. Team decision: all user journeys must have E2E tests. Navigating to a slide and seeing an image is a user journey.
+- **M6** — No behavior specified for Position + absent neighbor (e.g., `Top` on a slide with no Subtitle, `Bottom` on a slide with no Callout).
