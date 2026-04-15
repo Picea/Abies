@@ -268,11 +268,12 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 │   PatchCount:        int32 LE (4 bytes)  │
 │   StringTableOffset: int32 LE (4 bytes)  │
 ├──────────────────────────────────────────┤
-│ Patch Entries (16 bytes each)            │
+│ Patch Entries (20 bytes each)            │
 │   Type:   int32 LE — BinaryPatchType     │
 │   Field1: int32 LE — string table index  │
 │   Field2: int32 LE — string table index  │
 │   Field3: int32 LE — string table index  │
+│   Field4: int32 LE — string table index  │
 │   (unused fields = -1)                   │
 ├──────────────────────────────────────────┤
 │ String Table                             │
@@ -283,7 +284,7 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 
 ### Design Decisions
 
-- **3 fields per entry** — covers the widest patch (e.g., `MoveChild`: parentId, childId, beforeId). Narrower patches leave trailing fields as `-1`
+- **4 fields per entry** — covers the widest patches (`UpdateText`: parentId, nodeId, text, newId). Narrower patches leave trailing fields as `-1`
 - **Fixed-size entries** — O(1) random access, trivial `DataView` parsing in JavaScript
 - **String deduplication** — Element IDs are frequently repeated (parent + child). Dedup via `Dictionary<string, int>` reduces payload size significantly
 - **LEB128 length encoding** — compact for short strings (IDs, tag names), no wasted bytes on alignment padding
@@ -310,45 +311,43 @@ The protocol must stay synchronized across:
 
 | Opcode | Type | field1 | field2 | field3 | field4 |
 |---|---|---|---|---|---|
-| 0 | `AddRoot` | elementId | html | — | — |
-| 1 | `ReplaceChild` | oldId | newId | html | — |
-| 2 | `AddChild` | parentId | childId | html | — |
-| 3 | `RemoveChild` | parentId | childId | — | — |
-| 4 | `ClearChildren` | parentId | — | — | — |
-| 5 | `SetChildrenHtml` | parentId | html | — | — |
-| 6 | `MoveChild` | parentId | childId | beforeId | — |
-| 7 | `UpdateAttribute` | elementId | name | value | — |
-| 8 | `AddAttribute` | elementId | name | value | — |
-| 9 | `RemoveAttribute` | elementId | name | — | — |
-| 10 | `AddHandler` | elementId | name | commandId | — |
-| 11 | `RemoveHandler` | elementId | name | commandId | — |
-| 12 | `UpdateHandler` | elementId | oldName | newCommandId | — |
+| 0 | `AddRoot` | elementId | html | - | - |
+| 1 | `ReplaceChild` | oldId | newId | html | - |
+| 2 | `AddChild` | parentId | childId | html | - |
+| 3 | `RemoveChild` | parentId | childId | - | - |
+| 4 | `ClearChildren` | parentId | - | - | - |
+| 5 | `SetChildrenHtml` | parentId | html | - | - |
+| 6 | `MoveChild` | parentId | childId | beforeId | - |
+| 7 | `UpdateAttribute` | elementId | name | value | - |
+| 8 | `AddAttribute` | elementId | name | value | - |
+| 9 | `RemoveAttribute` | elementId | name | - | - |
+| 10 | `AddHandler` | elementId | name | commandId | - |
+| 11 | `RemoveHandler` | elementId | name | commandId | - |
+| 12 | `UpdateHandler` | elementId | oldName | newCommandId | - |
 | 13 | `UpdateText` | parentId | nodeId | text | newId |
-| 14 | `AddText` | parentId | value | id | — |
-| 15 | `RemoveText` | parentId | id | — | — |
-| 16 | `AddRaw` | parentId | html | id | — |
-| 17 | `RemoveRaw` | parentId | id | — | — |
-| 18 | `ReplaceRaw` | oldId | newId | html | — |
-| 19 | `UpdateRaw` | nodeId | html | newId | — |
-| 20 | `AddHeadElement` | key | html | — | — |
-| 21 | `UpdateHeadElement` | key | html | — | — |
-| 22 | `RemoveHeadElement` | key | — | — | — |
-| 23 | `AppendChildrenHtml` | parentId | html | — | — |
+| 14 | `AddText` | parentId | value | nodeId | - |
+| 15 | `RemoveText` | parentId | nodeId | - | - |
+| 16 | `AddRaw` | parentId | html | nodeId | - |
+| 17 | `RemoveRaw` | parentId | nodeId | - | - |
+| 18 | `ReplaceRaw` | oldId | newId | html | - |
+| 19 | `UpdateRaw` | nodeId | html | newId | - |
+| 20 | `AddHeadElement` | key | html | - | - |
+| 21 | `UpdateHeadElement` | key | html | - | - |
+| 22 | `RemoveHeadElement` | key | - | - | - |
+| 23 | `AppendChildrenHtml` | parentId | html | - | - |
 
 ### Contributor Update Checklist (Protocol Changes)
 
 Use this checklist for any opcode/field/encoding change:
 
-1. Update `BinaryPatchType` and `RenderBatchWriter.WritePatch(...)` in `Picea.Abies/RenderBatchWriter.cs`.
+1. Update `BinaryPatchType` and the `RenderBatchWriter.WritePatch` method in `Picea.Abies/RenderBatchWriter.cs`.
 2. Update opcode constants and decode/apply logic in `Picea.Abies.Browser/wwwroot/abies.js`.
 3. Apply the same opcode and decode/apply changes in `Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js`.
 4. Update protocol docs in `docs/reference/js-interop.md` (contract + opcode table + changed field semantics).
 5. Update/run protocol contract tests in `Picea.Abies.Tests/RenderBatchWriterTests.cs` (include opcode/field assertions for the changed patch types).
 6. Run transport/integration coverage for protocol decoding paths (for example `Picea.Abies.Server.Kestrel.Tests/WebSocketSessionTests.cs`).
-7. Keep checked-in `abies.js` mirrors in sync when `Picea.Abies.Browser/wwwroot/abies.js` changes (these are source-controlled files used by demos/templates):
-   - `Picea.Abies.Presentation/wwwroot/abies.js`
-   - `Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
-   - `Picea.Abies.UI.Demo/wwwroot/abies.js`
+7. Run builds that execute `SyncAbiesJs` targets (for example `Picea.Abies.Presentation`, `Picea.Abies.SubscriptionsDemo`, `Picea.Abies.Conduit.Wasm`, `Picea.Abies.Counter.Wasm`) so mirrored `wwwroot/abies.js` files stay synchronized.
+8. Update checked-in template copies (template source is used directly in PR validation):
    - `Picea.Abies.Templates/templates/abies-browser/wwwroot/abies.js`
    - `Picea.Abies.Templates/templates/abies-browser-empty/wwwroot/abies.js`
 
