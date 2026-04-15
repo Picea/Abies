@@ -288,34 +288,68 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 - **String deduplication** — Element IDs are frequently repeated (parent + child). Dedup via `Dictionary<string, int>` reduces payload size significantly
 - **LEB128 length encoding** — compact for short strings (IDs, tag names), no wasted bytes on alignment padding
 
-### Patch Type Opcodes
+### Binary Patch Protocol Contract (C# ↔ JavaScript)
 
-| Opcode | Type | Fields |
-|---|---|---|
-| 0 | `AddRoot` | elementId, html, — |
-| 1 | `ReplaceChild` | oldId, newId, html |
-| 2 | `AddChild` | parentId, childId, html |
-| 3 | `RemoveChild` | parentId, childId, — |
-| 4 | `ClearChildren` | parentId, —, — |
-| 5 | `SetChildrenHtml` | parentId, html, — |
-| 6 | `MoveChild` | parentId, childId, beforeId |
-| 7 | `UpdateAttribute` | elementId, name, value |
-| 8 | `AddAttribute` | elementId, name, value |
-| 9 | `RemoveAttribute` | elementId, name, — |
-| 10 | `AddHandler` | elementId, name, commandId |
-| 11 | `RemoveHandler` | elementId, name, commandId |
-| 12 | `UpdateHandler` | elementId, oldName, newCommandId |
-| 13 | `UpdateText` | parentId, text, newId |
-| 14 | `AddText` | parentId, value, id |
-| 15 | `RemoveText` | parentId, id, — |
-| 16 | `AddRaw` | parentId, html, id |
-| 17 | `RemoveRaw` | parentId, id, — |
-| 18 | `ReplaceRaw` | oldId, newId, html |
-| 19 | `UpdateRaw` | nodeId, html, newId |
-| 20 | `AddHeadElement` | key, html, — |
-| 21 | `UpdateHeadElement` | key, html, — |
-| 22 | `RemoveHeadElement` | key, —, — |
-| 23 | `AppendChildrenHtml` | parentId, html, — |
+Each patch entry is `20` bytes:
+
+- `type` (`int32`, little-endian) — opcode value from `BinaryPatchType`
+- `field1` (`int32`) — string table index or `-1`
+- `field2` (`int32`) — string table index or `-1`
+- `field3` (`int32`) — string table index or `-1`
+- `field4` (`int32`) — string table index or `-1`
+
+All patch fields are string-table indices. `-1` means null/unused.
+
+The protocol must stay synchronized across:
+
+- `/home/runner/work/Abies/Abies/Picea.Abies/RenderBatchWriter.cs` (`BinaryPatchType`, `WritePatch`)
+- `/home/runner/work/Abies/Abies/Picea.Abies.Browser/wwwroot/abies.js` (`OP_*`, `applyBinaryBatch`)
+- `/home/runner/work/Abies/Abies/Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js` (`OP_*`, batch reader)
+
+### Patch Type Opcodes and Field Mapping
+
+| Opcode | Type | field1 | field2 | field3 | field4 |
+|---|---|---|---|---|---|
+| 0 | `AddRoot` | elementId | html | — | — |
+| 1 | `ReplaceChild` | oldId | newId | html | — |
+| 2 | `AddChild` | parentId | childId | html | — |
+| 3 | `RemoveChild` | parentId | childId | — | — |
+| 4 | `ClearChildren` | parentId | — | — | — |
+| 5 | `SetChildrenHtml` | parentId | html | — | — |
+| 6 | `MoveChild` | parentId | childId | beforeId | — |
+| 7 | `UpdateAttribute` | elementId | name | value | — |
+| 8 | `AddAttribute` | elementId | name | value | — |
+| 9 | `RemoveAttribute` | elementId | name | — | — |
+| 10 | `AddHandler` | elementId | name | commandId | — |
+| 11 | `RemoveHandler` | elementId | name | commandId | — |
+| 12 | `UpdateHandler` | elementId | oldName | newCommandId | — |
+| 13 | `UpdateText` | parentId | nodeId | text | newId |
+| 14 | `AddText` | parentId | value | id | — |
+| 15 | `RemoveText` | parentId | id | — | — |
+| 16 | `AddRaw` | parentId | html | id | — |
+| 17 | `RemoveRaw` | parentId | id | — | — |
+| 18 | `ReplaceRaw` | oldId | newId | html | — |
+| 19 | `UpdateRaw` | nodeId | html | newId | — |
+| 20 | `AddHeadElement` | key | html | — | — |
+| 21 | `UpdateHeadElement` | key | html | — | — |
+| 22 | `RemoveHeadElement` | key | — | — | — |
+| 23 | `AppendChildrenHtml` | parentId | html | — | — |
+
+### Contributor Update Checklist (Protocol Changes)
+
+Use this checklist for any opcode/field/encoding change:
+
+1. Update `BinaryPatchType` and `RenderBatchWriter.WritePatch(...)` in `/home/runner/work/Abies/Abies/Picea.Abies/RenderBatchWriter.cs`.
+2. Update opcode constants and decode/apply logic in `/home/runner/work/Abies/Abies/Picea.Abies.Browser/wwwroot/abies.js`.
+3. Apply the same opcode and decode/apply changes in `/home/runner/work/Abies/Abies/Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js`.
+4. Update protocol docs in this file (contract + opcode table + changed field semantics).
+5. Run protocol tests: `/home/runner/work/Abies/Abies/Picea.Abies.Tests/RenderBatchWriterTests.cs`.
+6. If `Picea.Abies.Browser/wwwroot/abies.js` changed, verify downstream synced copies/templates:
+   - `/home/runner/work/Abies/Abies/Picea.Abies.Presentation/wwwroot/abies.js`
+   - `/home/runner/work/Abies/Abies/Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
+   - `/home/runner/work/Abies/Abies/Picea.Abies.UI.Demo/wwwroot/abies.js`
+   - `/home/runner/work/Abies/Abies/Picea.Abies.Templates/templates/abies-browser/wwwroot/abies.js`
+   - `/home/runner/work/Abies/Abies/Picea.Abies.Templates/templates/abies-browser-empty/wwwroot/abies.js`
 
 ## Navigation Interop
 
