@@ -302,9 +302,9 @@ All patch fields are string-table indices. `-1` means null/unused.
 
 The protocol must stay synchronized across:
 
-- `/home/runner/work/Abies/Abies/Picea.Abies/RenderBatchWriter.cs` (`BinaryPatchType`, `WritePatch`)
-- `/home/runner/work/Abies/Abies/Picea.Abies.Browser/wwwroot/abies.js` (`OP_*`, `applyBinaryBatch`)
-- `/home/runner/work/Abies/Abies/Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js` (`OP_*`, batch reader)
+- `Picea.Abies/RenderBatchWriter.cs` (`BinaryPatchType`, `WritePatch`)
+- `Picea.Abies.Browser/wwwroot/abies.js` (`OP_*`, `applyBinaryBatch`)
+- `Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js` (`OP_*`, batch reader)
 
 ### Patch Type Opcodes and Field Mapping
 
@@ -339,17 +339,18 @@ The protocol must stay synchronized across:
 
 Use this checklist for any opcode/field/encoding change:
 
-1. Update `BinaryPatchType` and `RenderBatchWriter.WritePatch(...)` in `/home/runner/work/Abies/Abies/Picea.Abies/RenderBatchWriter.cs`.
-2. Update opcode constants and decode/apply logic in `/home/runner/work/Abies/Abies/Picea.Abies.Browser/wwwroot/abies.js`.
-3. Apply the same opcode and decode/apply changes in `/home/runner/work/Abies/Abies/Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js`.
-4. Update protocol docs in this file (contract + opcode table + changed field semantics).
-5. Run protocol tests: `/home/runner/work/Abies/Abies/Picea.Abies.Tests/RenderBatchWriterTests.cs`.
-6. If `Picea.Abies.Browser/wwwroot/abies.js` changed, verify downstream synced copies/templates:
-   - `/home/runner/work/Abies/Abies/Picea.Abies.Presentation/wwwroot/abies.js`
-   - `/home/runner/work/Abies/Abies/Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
-   - `/home/runner/work/Abies/Abies/Picea.Abies.UI.Demo/wwwroot/abies.js`
-   - `/home/runner/work/Abies/Abies/Picea.Abies.Templates/templates/abies-browser/wwwroot/abies.js`
-   - `/home/runner/work/Abies/Abies/Picea.Abies.Templates/templates/abies-browser-empty/wwwroot/abies.js`
+1. Update `BinaryPatchType` and `RenderBatchWriter.WritePatch(...)` in `Picea.Abies/RenderBatchWriter.cs`.
+2. Update opcode constants and decode/apply logic in `Picea.Abies.Browser/wwwroot/abies.js`.
+3. Apply the same opcode and decode/apply changes in `Picea.Abies.Server.Kestrel/wwwroot/_abies/abies-server.js`.
+4. Update protocol docs in `docs/reference/js-interop.md` (contract + opcode table + changed field semantics).
+5. Update/run protocol contract tests in `Picea.Abies.Tests/RenderBatchWriterTests.cs` (include opcode/field assertions for the changed patch types).
+6. Run transport/integration coverage for protocol decoding paths (for example `Picea.Abies.Server.Kestrel.Tests/WebSocketSessionTests.cs`).
+7. Keep checked-in `abies.js` mirrors in sync when `Picea.Abies.Browser/wwwroot/abies.js` changes (these are source-controlled files used by demos/templates):
+   - `Picea.Abies.Presentation/wwwroot/abies.js`
+   - `Picea.Abies.SubscriptionsDemo/wwwroot/abies.js`
+   - `Picea.Abies.UI.Demo/wwwroot/abies.js`
+   - `Picea.Abies.Templates/templates/abies-browser/wwwroot/abies.js`
+   - `Picea.Abies.Templates/templates/abies-browser-empty/wwwroot/abies.js`
 
 ## Navigation Interop
 
