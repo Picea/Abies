@@ -98,6 +98,10 @@ ASP.NET Core extension method that maps an Abies application to a URL path with 
 
 The `webSocketPath` parameter defaults to `"/_abies/ws"` for both `InteractiveServer` and `InteractiveAuto`.
 
+For deep lifecycle details, see:
+- [InteractiveServer transport and session lifecycle](../reference/interactive-server-lifecycle.md)
+- [InteractiveAuto handoff lifecycle](../reference/interactive-auto-handoff.md)
+
 #### Usage
 
 ```csharp

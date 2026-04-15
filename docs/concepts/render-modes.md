@@ -98,6 +98,8 @@ The server maintains a per-client `Session` containing a full MVU runtime with i
 - ❌ Network latency on every interaction
 - ❌ Server memory per connected client
 
+**Deep dive:** [InteractiveServer transport and session lifecycle](../reference/interactive-server-lifecycle.md)
+
 ## InteractiveWasm
 
 **Server renders initial HTML; the .NET WASM runtime takes over on the client.**
@@ -144,8 +146,10 @@ This combines the instant interactivity of `InteractiveServer` with the connecti
 - ✅ No persistent connection after handoff
 - ✅ Best overall user experience
 - ❌ Most complex mode
-- ❌ Requires both server session management and WASM handoff protocol
-- ❌ State transfer during handoff adds implementation complexity
+- ❌ Requires both server session management and WASM handoff coordination
+- ❌ Two runtime phases increase lifecycle complexity
+
+**Deep dive:** [InteractiveAuto handoff lifecycle](../reference/interactive-auto-handoff.md)
 
 ## The Same Program Runs Everywhere
 
