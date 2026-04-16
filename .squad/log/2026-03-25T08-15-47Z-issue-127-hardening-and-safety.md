@@ -2,7 +2,7 @@
 
 - Timestamp (UTC): 2026-03-25T08:15:47Z
 - Requested by: Maurice Cornelius Gerardus Petrus Peters
-- Team root: /Users/mauricepeters/RiderProjects/Abies
+- Team root: <repo-root>
 - Session role: Scribe
 - Issue: #127
 
