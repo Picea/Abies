@@ -77,6 +77,17 @@ A deviation is any action that contradicts, weakens, bypasses, or works around a
 ### Testing Principles
 - Fixing a bug without adding a regression test that reproduces the original failure.
 - Regression test must fail before the fix and pass after — proving the fix works and preventing recurrence.
+- Beginning implementation of a new feature or behavior change without an approved Spec-by-Example test.
+- Modifying the Spec-by-Example test during implementation without re-approval from the user.
+- Skipping the Spec-by-Example phase for anything outside the documented skip list (pure refactoring with no behavior change, trivial config/doc changes, bug fixes).
+
+### Code Review
+- Marking any code-touching work as complete, ready-for-merge, or shippable without an explicit Reviewer approval recorded.
+- Merging or applying code changes that have not gone through the Reviewer.
+- A specialist self-reviewing their own code instead of handing off to the Reviewer.
+- Bypassing the Reviewer for "trivial" code changes — there is no such thing as a trivial code change for review purposes. Trivial changes still need Reviewer sign-off; they just review faster.
+- The Lead approving any code-shaped change (`.cs`, `.js`, `.ts`, Dockerfiles, GitHub Actions workflows, `appsettings.*`, `.csproj`, `package.json`, `Directory.Build.props`, EF migrations, or any file the runtime executes). The Lead's lightweight-review authority is limited to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation.
+- An agent attempting to declare a code work item complete without the Reviewer's explicit verdict triggers the **Missing Review Lockout** (see protocol below).
 
 ## The Protocol
 
@@ -118,6 +129,27 @@ During code review, if you find code that deviates from any principle and there 
 
 ### Security Expert
 If a security principle would be violated and the user approves the deviation, log the risk in the threat model with the user's acceptance. The threat model must reflect all conscious security trade-offs.
+
+### Lead
+The Lead's lightweight-review authority is **strictly limited** to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation. **The Lead never approves**: any `.cs`/`.js`/`.ts`/`.mjs` files, Dockerfiles, GitHub Actions workflows, `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Packages.props`, `package.json`, EF migrations, or any file the runtime executes. Anything code-shaped goes to the Reviewer. If unsure whether something counts as code — route to the Reviewer.
+
+## Missing Review Lockout
+
+Any agent that attempts to mark code-touching work as complete, ready-for-merge, or shippable without an explicit Reviewer approval triggers immediate lockout. This includes specialists who skip handoff, the Lead approving code-shaped changes outside its narrow non-code carve-out, or any agent that says "this is good to merge" without the Reviewer having said so first.
+
+### Protocol
+
+1. **Halt the work.** The agent that attempted the unauthorized completion is locked out for this work item, the same way the Reviewer Rejection Protocol locks out an agent on a 🔴 Must Fix finding.
+2. **Lead is notified.** The coordinator routes the locked-out work to the Lead.
+3. **Lead reassigns or escalates.** The Lead has two options:
+   - **Reassign to the Reviewer** to perform the missed review. If the Reviewer approves, the lockout lifts and work continues. If the Reviewer finds 🔴 Must Fix issues, the standard Reviewer Rejection Protocol applies.
+   - **Escalate to the user** if the situation is ambiguous (e.g., it's not clear whether the change is code-shaped, or whether the Reviewer has already implicitly approved).
+4. **No silent recovery.** The Lead cannot simply re-route the work back to the same locked-out agent and pretend the violation didn't happen. The lockout is recorded in the session log and the Lead's `history.md`.
+5. **No bypass.** Even if the user is unavailable, the agent stays locked out. The Reviewer must run.
+
+### Why This Matters
+
+Code review is the squad's last line of defense before code reaches `main`. Allowing agents to declare their own work complete defeats the purpose of independent review — and erodes the Reviewer's authority over time. The lockout exists to make skipping review structurally impossible, not just discouraged.
 
 ## Non-Deviations (Don't Over-Trigger)
 
