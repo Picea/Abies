@@ -53,6 +53,15 @@ jobs:
             echo "🔧 Code changes detected — running all jobs"
           fi
 
+  analyze-skipped:
+    name: Analyze C# Code
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip CodeQL — docs-only change
+        run: echo "✅ Docs-only change — CodeQL analysis skipped"
+
   analyze:
     name: Analyze C# Code
     needs: [detect-changes]
