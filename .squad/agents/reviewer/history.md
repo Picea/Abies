@@ -16,6 +16,7 @@ This file captures project-specific learnings from the Reviewer's code reviews. 
 *None yet — items flagged but not blocking, to revisit later.*
 
 ## Learnings
+- 2026-04-15: Express presentation dry-run audit — two blocking issues found: (1) benchmark claim "verslaat Blazor WASM op vrijwel alle duration tests" not supported by benchmark data (Abies wins ~5/9, not ~8/9; loses clear1k by 2.5×); (2) "51% dagelijks" attributed to both JetBrains AI Pulse and Stack Overflow 2025 — citation conflict. Non-blocking: METR "dezelfde devs" claim needs verification; Claude Code "8 maanden" timeline and survey source needed; Veracode/DX figures need report names for speaker notes. The asterisk disclaimer does not fix a false directional claim.
 - 2026-03-26: Template counter UI now uses plain '-' and '+' labels with aria labels ('Decrease'/'Increase'); tests were updated to query accessible names where appropriate.
 - 2026-03-26: Browser and browser-empty templates now include '.Host' projects with OTEL setup and OTLP proxy mapping; defaults tests assert host file presence plus 'app.MapOtlpProxy()' and '.AddConsoleExporter()'.
 - 2026-03-26: TUnit filtering in this repo should use tree-node filters (or full runs); FullyQualifiedName filters result in zero-test runs.

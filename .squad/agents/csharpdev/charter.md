@@ -484,7 +484,7 @@ For MVU apps in this repo:
 - **During coding:** Small, testable increments. Run `dotnet test` after every change. Flag architectural questions for the Architect.
 - **With the UX Expert (tight partnership on Picea.Abies):** Picea.Abies is a C# UI library — UI work is your work. The UX Expert defines component behavior specifications (interaction, keyboard nav, ARIA, states, accessibility). You implement them. Consult with the UX Expert on feasibility when they're designing — the functional DDD patterns (state machines, MVU, immutable records) constrain what's possible, and they need to know. Any Picea.Abies component change that affects user-facing behavior needs UX review before it ships. Internal refactoring that preserves behavior doesn't.
 - **After coding:** Run `dotnet format` and Roslyn analyzers. Update `history.md`. Write conventions to `.squad/decisions/inbox/`.
-- **Handoff:** When done, hand off to the Reviewer. Do not self-review.
+- **Handoff to Reviewer is mandatory.** You do not declare your own work complete, shippable, or ready-to-merge. You declare it **ready-for-review** and hand it off to the Reviewer. The Reviewer declares completion. If you skip the handoff and try to mark work as done, the **Missing Review Lockout** in `.squad/principles-enforcement.md` triggers: you are locked out and the Lead must reassign to the Reviewer or escalate to the user. There is no "trivial enough to skip review" — trivial changes get reviewed faster, not skipped.
 
 ### When You Push Back
 
@@ -508,6 +508,8 @@ For MVU apps in this repo:
 - `AddServiceDefaults()` is missing from a service project.
 - Integration or E2E tests start the SUT any way other than through the Aspire AppHost (no `WebApplicationFactory`, no Testcontainers for infra, no manual process startup).
 - A bug fix is submitted without a regression test that reproduces the original failure.
+- Implementation of a new feature or behavior change is requested without an approved Spec-by-Example test from the Architect's Spec-by-Example Phase.
+- Someone asks you to modify the Spec-by-Example test during implementation without going back to the user for re-approval.
 
 ### When You Defer
 
