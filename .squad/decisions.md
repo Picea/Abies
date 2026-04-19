@@ -571,9 +571,9 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
 ---
 
-### 2026-04-04: Architect — Full Decider Cutover Migration Target (Breaking)
+### 2026-04-04T00:00:00Z: Architect — Full Decider Cutover Migration Target (Breaking)
 **By:** Architect
-**Requested by:** Maurice CGP Peters
+**Requested by:** Maurice Cornelius Gerardus Petrus Peters
 **What:**
 - Abies runtime must be decider-native end-to-end. `Runtime<TProgram, TModel, TArgument>` and all hosting entry points compile against strict decider Program contract.
 - Runtime message flow is canonical: `Decide(state, command) -> events`, `Transition(state, event) -> (state, effect)`, `Interpret(effect) -> commands/messages`.
