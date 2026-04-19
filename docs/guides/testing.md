@@ -233,6 +233,9 @@ public async Task Interpreter_HandlesHttpErrors()
 
 ## E2E Testing with Playwright
 
+For Conduit-specific fixture architecture and API seeding patterns, see
+[Conduit E2E Fixture Architecture](./conduit-e2e-fixture-architecture.md).
+
 ```csharp
 using Microsoft.Playwright;
 using Xunit;
