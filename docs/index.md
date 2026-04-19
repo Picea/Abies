@@ -124,6 +124,8 @@ Deep technical documentation.
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
 | [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
 | [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
+| [InteractiveServer Lifecycle](./reference/interactive-server-lifecycle.md) | Server transport/session lifecycle for interactive server mode |
+| [InteractiveAuto Handoff](./reference/interactive-auto-handoff.md) | Server-to-WASM handoff lifecycle and teardown behavior |
 
 ---
 

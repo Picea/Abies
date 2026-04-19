@@ -31,7 +31,11 @@ If yes → **InteractiveServer** or **InteractiveAuto**. Both provide instant in
 
 If yes → **InteractiveServer**. This is the simplest server-side mode. Each client gets a server-side Session that holds the MVU runtime.
 
+Deep dive: [InteractiveServer transport and session lifecycle](../reference/interactive-server-lifecycle.md)
+
 If no → **InteractiveAuto**. The server handles initial interactions, then the WASM runtime takes over and the WebSocket is closed.
+
+Deep dive: [InteractiveAuto handoff lifecycle](../reference/interactive-auto-handoff.md)
 
 ## Scenarios
 
