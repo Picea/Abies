@@ -21,13 +21,31 @@ REPORT_DIR="${GITHUB_WORKSPACE:-$(pwd)}/zap-nightly-reports"
 POLICY_FILE=".zap/full-scan-policy.conf"
 AUTH_TARGETS=".zap/full-scan-targets.txt"
 SPIDER_MINUTES=10
-EPHEMERAL_USER="zap-nightly-$(date +%s)"
+# Username must satisfy Conduit constraints: 1-20 chars, [a-zA-Z0-9_-], starting with alnum.
+EPHEMERAL_USER="zap$(date +%s)$RANDOM"
 EPHEMERAL_EMAIL="${EPHEMERAL_USER}@zap.invalid"
 EPHEMERAL_PASS="ZapN!ghtlyP@ss$(date +%s)"
 
 mkdir -p "$REPORT_DIR"
 # Ensure the mounted report directory is writable by the ZAP container user.
 chmod a+rwx "$REPORT_DIR"
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Required command not found in PATH: $cmd" >&2
+    exit 1
+  fi
+}
+
+require_cmd docker
+require_cmd curl
+require_cmd jq
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker daemon is not available. Start Docker and retry." >&2
+  exit 1
+fi
 
 echo "================================================================"
 echo "Conduit — ZAP Full Active Scan (frontend primary)"
@@ -138,21 +156,46 @@ PHASE1_STATUS=$?
 echo ""
 echo "---- Auth setup: registering ephemeral user -------------------"
 
-REGISTER_RESPONSE=$(curl -fs -X POST "${API_BASE}/api/users" \
+register_tmp=$(mktemp)
+REGISTER_STATUS=$(curl -sS -o "$register_tmp" -w "%{http_code}" -X POST "${API_BASE}/api/users" \
   -H "Content-Type: application/json" \
   -d "{\"user\":{\"username\":\"${EPHEMERAL_USER}\",\"email\":\"${EPHEMERAL_EMAIL}\",\"password\":\"${EPHEMERAL_PASS}\"}}" \
-  || true)
+  || echo "000")
+REGISTER_RESPONSE=$(cat "$register_tmp")
+rm -f "$register_tmp"
 
-if [ -z "$REGISTER_RESPONSE" ]; then
-  echo "❌ Failed to register ephemeral user. Cannot run authenticated pass."
+if [ "$REGISTER_STATUS" != "201" ]; then
+  register_errors=$(echo "$REGISTER_RESPONSE" | jq -r '.errors.body? | join("; ") // empty' 2>/dev/null || true)
+  echo "❌ Failed to register ephemeral user. status=$REGISTER_STATUS username=$EPHEMERAL_USER" >&2
+  if [ -n "$register_errors" ]; then
+    echo "   API validation errors: $register_errors" >&2
+  elif [ -n "$REGISTER_RESPONSE" ]; then
+    echo "   API response: $REGISTER_RESPONSE" >&2
+  fi
+  echo "Cannot run authenticated pass." >&2
   exit 1
 fi
 
 echo "Registered: $EPHEMERAL_USER"
 
-LOGIN_RESPONSE=$(curl -fs -X POST "${API_BASE}/api/users/login" \
+login_tmp=$(mktemp)
+LOGIN_STATUS=$(curl -sS -o "$login_tmp" -w "%{http_code}" -X POST "${API_BASE}/api/users/login" \
   -H "Content-Type: application/json" \
-  -d "{\"user\":{\"email\":\"${EPHEMERAL_EMAIL}\",\"password\":\"${EPHEMERAL_PASS}\"}}")
+  -d "{\"user\":{\"email\":\"${EPHEMERAL_EMAIL}\",\"password\":\"${EPHEMERAL_PASS}\"}}" \
+  || echo "000")
+LOGIN_RESPONSE=$(cat "$login_tmp")
+rm -f "$login_tmp"
+
+if [ "$LOGIN_STATUS" != "200" ]; then
+  login_errors=$(echo "$LOGIN_RESPONSE" | jq -r '.errors.body? | join("; ") // empty' 2>/dev/null || true)
+  echo "❌ Login failed during auth setup. status=$LOGIN_STATUS email=$EPHEMERAL_EMAIL" >&2
+  if [ -n "$login_errors" ]; then
+    echo "   API validation errors: $login_errors" >&2
+  elif [ -n "$LOGIN_RESPONSE" ]; then
+    echo "   API response: $LOGIN_RESPONSE" >&2
+  fi
+  exit 1
+fi
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.user.token // empty')
 
