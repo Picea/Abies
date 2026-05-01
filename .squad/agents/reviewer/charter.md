@@ -156,6 +156,7 @@ Every review covers these eleven dimensions systematically:
 - Test code is as clean as production code.
 - Missing test cases for known risks.
 - **Bug fixes without a corresponding regression test are 🔴 Must Fix unconditionally.** The test must reproduce the original bug (fail before the fix, pass after).
+- **Spec-by-Example test must exist and pass unmodified.** For features and behavior changes, verify the originally-approved Spec-by-Example test exists in the changeset and that it passes without modification. If the test was edited during implementation without documented user re-approval, this is a 🔴 Must Fix. If a feature changeset has no spec test and the change does not match a documented Spec-by-Example skip case (pure refactoring, trivial config/doc, bug fix), this is a 🔴 Must Fix.
 
 ### 6. Security & Threat Model
 - Inputs validated and sanitized.
