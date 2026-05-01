@@ -503,7 +503,7 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 
 ### 2026-04-04T00:00:00Z: Full decider migration — implementation complete
 **By:** C# Dev
-**What:** Removed default `Decide`/`IsTerminal` from `Program.cs`. Made `Runtime.cs` decider-native — `Dispatch` now runs the full decide→transition pipeline. Added `_dispatchGate` SemaphoreSlim for command serialization. All builds and test suite passed (unit tests, integration tests, WASM tests, template tests, E2E suite).
+**What:** Removed default `Decide`/`IsTerminal` from `Program.cs`. Made `Runtime.cs` decider-native — `Dispatch` now runs the full decide→transition pipeline. Added `_dispatchGate` SemaphoreSlim for command serialization. All builds and most tests pass. One failing E2E: `DeleteArticle_AsAuthor_ShouldNavigateToHome` (Playwright timeout on `.article-page`) — root cause identified as dispatch gate scope holding the lock over async HTTP effect awaits; tracked in #245.
 **Why:** Completing the migration target set by the Architect. Runtime now enforces decider contract uniformly across all Program implementors.
 
 ### 2026-04-04T00:00:00Z: Program.Decide return type is Result<Message[], Message>
@@ -560,54 +560,3 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **Requested by:** Maurice Cornelius Gerardus Petrus Peters
 **What:** Applied the requested express slide updates in `Picea.Abies.Presentation/Program.cs` under `_expressSlides`: adoption wording moved to safe non-numeric phrasing for JetBrains, Stack Overflow daily-use wording scoped to professional developers, and benchmark framing adjusted from overclaim language to balanced competitive wording.
 **Why:** Incorporate reviewer fact-check corrections directly into the deck while preserving the narrative flow.
-- [ ] Regression test added for every bug fix (reproduces the bug, verifies the fix)
-- [ ] Tech Writer has verified all existing docs are still in sync after the change
-
----
-
-### 2026-04-04T00:00:00Z: Architect — Full Decider Cutover Migration Target (Breaking)
-**By:** Architect
-**Requested by:** Maurice Cornelius Gerardus Petrus Peters
-**Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
-**What:**
-- Abies runtime must be decider-native end-to-end. `Runtime<TProgram, TModel, TArgument>` and all hosting entry points compile against strict decider Program contract.
-- Runtime message flow is canonical: `Decide(state, command) -> events`, `Transition(state, event) -> (state, effect)`, `Interpret(effect) -> commands/messages`.
-- Remove Program-level compatibility defaults (`Decide` pass-through, `IsTerminal` default).
-- Every concrete Program implementer must explicitly define `Decide` and `IsTerminal`.
-- All Program implementers (Conduit, Counter, SubscriptionsDemo, Presentation, UI Demo, Benchmark, templates, tests) satisfy strict decider contract.
-- Remove staged-migration compatibility posture from implementation surface.
-- Acceptance criteria: core runtime, all hosts, all apps, template-generated projects build and pass tests with strict decider contract.
-**Why:** Remove architectural debt; make illegal states unrepresentable at the runtime boundary.
-
-### 2026-04-04T00:00:00Z: C# Dev — Full Decider Migration Completed
-### 2026-04-04: C# Dev — Full Decider Migration Completed
-**By:** C# Dev
-**What:**
-- Removed Program-level compatibility defaults (`Decide` pass-through, `IsTerminal` default) from `Picea.Abies/Program.cs`.
-- Made runtime command handling decider-native in `Picea.Abies/Runtime.cs`: `Dispatch` now runs canonical decider flow with atomic command gate (`SemaphoreSlim`).
-- Updated docs/comments in `docs/reference/runtime-internals.md`, `docs/api/program.md`, `Picea.Abies.Presentation/Program.cs`.
-- All builds and most tests pass. One failing E2E test: `DeleteArticle_AsAuthor_ShouldNavigateToHome` (Playwright timeout on `.article-page`).
-**Follow-ups:**
-- Investigate and stabilize `DeleteArticle_AsAuthor_ShouldNavigateToHome`.
-- Add focused runtime tests for command rejection and terminal short-circuit paths.
-**Why:** Implement breaking migration to strict decider contracts.
-
-### 2026-04-04T00:00:00Z: C# Dev — Program Decider Err as Message
-### 2026-04-04: C# Dev — Program Decider Err as Message
-**By:** C# Dev
-**What:**
-- Use `Result<Message[], Message>` instead of `Result<Message[], Unit>` for MVU Program deciders.
-- Updated Program contract, runtime dispatch (routes `decision.Error` through transition), Conduit validation, impacted program implementations/templates/tests.
-- Added focused tests: `Runtime_DispatchesDecisionErr_ThroughProgramMessageFlow`, `ConduitDecideTests`.
-**Why:** `Unit` as error type forced validation failures into synthetic success events, blurring decider semantics. Routing `decision.Error` through transition preserves user-visible behavior while restoring explicit command rejection semantics.
-
-### 2026-04-04T00:00:00Z: Reviewer — Full Decider Runtime Migration Audit
-### 2026-04-04: Reviewer — Full Decider Runtime Migration Audit
-**By:** Reviewer
-**Verdict:** Changes requested before approval.
-**Primary blocker:** Runtime dispatch gate scope in `Picea.Abies/Runtime.cs` causes likely behavioral regression in Conduit E2E navigation flow.
-**Findings:**
-1. 🔴 **Must Fix** — `_dispatchGate` serializes entire command lifecycle including async effect/HTTP waits. UrlChanged and UI commands queue behind in-flight network commands → stalled routing. Conduit `DeleteArticle_AsAuthor_ShouldNavigateToHome` failure aligns with this. Fix: narrow synchronization scope to decision/state-transition critical section only.
-2. 🟠 **Should Fix** — No regression tests for new decider-first concurrency behavior. Add runtime-level tests asserting UrlChanged is not blocked while another command awaits interpreter IO.
-3. 🟡 **Should Fix** — Copied browser runtime assets (Presentation, SubscriptionsDemo, UI Demo `wwwroot/abies.js`) edited directly instead of canonical source (`Picea.Abies.Browser/wwwroot/abies.js`). Apply JS changes in canonical source only, then sync via build target.
-**Contract review:** Program decider migration correctly applied at interface and implementer level. Runtime enforces Decide/IsTerminal before transition. Docs updated.
