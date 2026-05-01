@@ -210,6 +210,8 @@ The repository includes **Conduit**, a full implementation of the [RealWorld](ht
 - **E2E tests** with Playwright
 - **.NET Aspire** orchestration for local development
 
+See [Picea.Abies.Conduit/README.md](./Picea.Abies.Conduit/README.md) for the Conduit-specific layout, local run commands, and test strategy.
+
 ```bash
 # Run with .NET Aspire (recommended)
 dotnet run --project Picea.Abies.Conduit.AppHost
