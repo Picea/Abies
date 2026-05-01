@@ -21,7 +21,11 @@ REPORT_DIR="${GITHUB_WORKSPACE:-$(pwd)}/zap-nightly-reports"
 POLICY_FILE=".zap/full-scan-policy.conf"
 AUTH_TARGETS=".zap/full-scan-targets.txt"
 SPIDER_MINUTES=10
-EPHEMERAL_USER="zap-nightly-$(date +%s)"
+# Username must match Conduit's domain rule: 1-20 chars, letters/digits/underscore/hyphen.
+# Use a short prefix plus a portable hex suffix (epoch seconds + random bytes) for uniqueness.
+EPHEMERAL_USER_TIMESTAMP_HEX="$(printf '%08x' "$(date +%s)")"
+EPHEMERAL_USER_RANDOM_HEX="$(od -An -N2 -tx2 /dev/urandom | tr -d '[:space:]')"
+EPHEMERAL_USER="zap-${EPHEMERAL_USER_TIMESTAMP_HEX}${EPHEMERAL_USER_RANDOM_HEX}"
 EPHEMERAL_EMAIL="${EPHEMERAL_USER}@zap.invalid"
 EPHEMERAL_PASS="ZapN!ghtlyP@ss$(date +%s)"
 
