@@ -4,6 +4,8 @@ Abies implements a virtual DOM diff algorithm inspired by Elm's VirtualDom and I
 
 All diffing logic lives in `Abies/Diff.cs` in the static class `Operations`.
 
+For the C#/JS wire-level patch contract and opcode maintenance workflow, see [Binary Patch Protocol Maintenance Guide](./binary-patch-protocol.md).
+
 ## Node Type Hierarchy
 
 The virtual DOM is an Abstract Syntax Tree (AST) of immutable record types:

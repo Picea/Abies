@@ -33,6 +33,8 @@ If yes → **InteractiveServer**. This is the simplest server-side mode. Each cl
 
 If no → **InteractiveAuto**. The server handles initial interactions, then the WASM runtime takes over and the WebSocket is closed.
 
+For transport/session details, see [InteractiveServer and InteractiveAuto Lifecycle](./interactive-lifecycle.md).
+
 ## Scenarios
 
 ### 🏢 Internal Business Application
@@ -117,5 +119,6 @@ Your `Initialize`, `Transition`, `View`, and `Subscriptions` functions remain id
 ## Next
 
 - [**Render Modes Concept**](../concepts/render-modes.md) — Deep dive into how each mode works
+- [**InteractiveServer and InteractiveAuto Lifecycle**](./interactive-lifecycle.md) — Transport lifecycle and WASM handoff details
 - [**Deployment Guide**](deployment.md) — Deploying each mode to production
 - [**Performance Guide**](performance.md) — Optimization strategies per mode

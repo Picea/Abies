@@ -31,6 +31,8 @@ It demonstrates how all the concepts from previous tutorials come together in a 
 
 ## Running Conduit
 
+For the canonical run matrix (AppHost, API, WASM, and test commands), see [Conduit README](../../Picea.Abies.Conduit/README.md).
+
 ```bash
 # Start the API server
 dotnet run --project Picea.Abies.Conduit.Api

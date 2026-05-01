@@ -295,3 +295,4 @@ dotnet test
 
 - [Pure Functions](../concepts/pure-functions.md) — Why pure functions are testable
 - [Commands and Effects](../concepts/commands-effects.md) — Testing interpreters
+- [Conduit E2E Fixture Architecture](./conduit-e2e-fixture-architecture.md) — Real project fixture, seeding, and user-journey coverage patterns
