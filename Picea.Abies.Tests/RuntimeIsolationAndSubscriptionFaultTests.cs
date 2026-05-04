@@ -109,30 +109,39 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
     [Test]
     public async Task Runtime_DoesNotBlockUrlChangedDispatch_WhileSlowCommandIsInFlight()
     {
+        var slowInterpreterStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSlowInterpreter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         static async ValueTask<Result<Message[], PipelineError>> Interpreter(Command command)
+        {
+            return Result<Message[], PipelineError>.Ok([]);
+        }
+
+        async ValueTask<Result<Message[], PipelineError>> ControlledInterpreter(Command command)
         {
             if (command is DelayCommand)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(250));
+                slowInterpreterStarted.TrySetResult();
+                await releaseSlowInterpreter.Task;
             }
 
-            return Result<Message[], PipelineError>.Ok([]);
+            return await Interpreter(command);
         }
 
         using var runtime = await Runtime<NavigationDispatchProbeProgram, NavigationDispatchProbeModel, Unit>.Start(
             _ => { },
-            Interpreter);
+            ControlledInterpreter);
 
         var slowDispatch = runtime.Dispatch(new BeginSlowWorkflow());
-        await Task.Delay(TimeSpan.FromMilliseconds(25));
+        await slowInterpreterStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
-        var stopwatch = Stopwatch.StartNew();
-        await runtime.Dispatch(new UrlChanged(new Url(["articles"], new Dictionary<string, string>(), Option<string>.None)));
-        stopwatch.Stop();
+        await runtime.Dispatch(new UrlChanged(new Url(["articles"], new Dictionary<string, string>(), Option<string>.None)))
+            .AsTask()
+            .WaitAsync(TimeSpan.FromMilliseconds(200));
 
+        releaseSlowInterpreter.TrySetResult();
         await slowDispatch;
 
-        await Assert.That(stopwatch.ElapsedMilliseconds < 200).IsTrue();
         await Assert.That(runtime.Model.UrlChangedCount).IsEqualTo(1);
         await Assert.That(runtime.Model.SlowCount).IsEqualTo(1);
     }
