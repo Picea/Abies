@@ -106,9 +106,42 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
         await Assert.That(runtime.Model.SlowCount).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Runtime_DoesNotBlockUrlChangedDispatch_WhileSlowCommandIsInFlight()
+    {
+        static async ValueTask<Result<Message[], PipelineError>> Interpreter(Command command)
+        {
+            if (command is DelayCommand)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250));
+            }
+
+            return Result<Message[], PipelineError>.Ok([]);
+        }
+
+        using var runtime = await Runtime<NavigationDispatchProbeProgram, NavigationDispatchProbeModel, Unit>.Start(
+            _ => { },
+            Interpreter);
+
+        var slowDispatch = runtime.Dispatch(new BeginSlowWorkflow());
+        await Task.Delay(TimeSpan.FromMilliseconds(25));
+
+        var stopwatch = Stopwatch.StartNew();
+        await runtime.Dispatch(new UrlChanged(new Url(["articles"], new Dictionary<string, string>(), Option<string>.None)));
+        stopwatch.Stop();
+
+        await slowDispatch;
+
+        await Assert.That(stopwatch.ElapsedMilliseconds < 200).IsTrue();
+        await Assert.That(runtime.Model.UrlChangedCount).IsEqualTo(1);
+        await Assert.That(runtime.Model.SlowCount).IsEqualTo(1);
+    }
+
     private sealed record DecisionErrModel(int TriggerCount, int DecisionErrCount, string? LastError);
 
     private sealed record DispatchProbeModel(int FastCount, int SlowCount);
+
+    private sealed record NavigationDispatchProbeModel(int UrlChangedCount, int SlowCount);
 
     private sealed record TriggerDecisionErr : Message;
 
@@ -184,6 +217,37 @@ public sealed class RuntimeIsolationAndSubscriptionFaultTests
             new("Dispatch Probe", div([], [text($"fast:{model.FastCount};slow:{model.SlowCount}")]));
 
         public static Subscription Subscriptions(DispatchProbeModel model) =>
+            SubscriptionModule.None;
+    }
+
+    private sealed class NavigationDispatchProbeProgram : Program<NavigationDispatchProbeModel, Unit>
+    {
+        public static (NavigationDispatchProbeModel, Command) Initialize(Unit argument) =>
+            (new NavigationDispatchProbeModel(0, 0), Commands.None);
+
+        public static (NavigationDispatchProbeModel, Command) Transition(NavigationDispatchProbeModel model, Message message) =>
+            message switch
+            {
+                BeginSlowWorkflow => (model, new DelayCommand()),
+                SlowObserved => (model with { SlowCount = model.SlowCount + 1 }, Commands.None),
+                UrlChanged => (model with { UrlChangedCount = model.UrlChangedCount + 1 }, Commands.None),
+                _ => (model, Commands.None)
+            };
+
+        public static Result<Message[], Message> Decide(NavigationDispatchProbeModel _, Message command) =>
+            command switch
+            {
+                BeginSlowWorkflow => Result<Message[], Message>.Ok([new BeginSlowWorkflow(), new SlowObserved()]),
+                UrlChanged changed => Result<Message[], Message>.Ok([changed]),
+                _ => Result<Message[], Message>.Ok([command])
+            };
+
+        public static bool IsTerminal(NavigationDispatchProbeModel _) => false;
+
+        public static Document View(NavigationDispatchProbeModel model) =>
+            new("Navigation Dispatch Probe", div([], [text($"url:{model.UrlChangedCount};slow:{model.SlowCount}")]));
+
+        public static Subscription Subscriptions(NavigationDispatchProbeModel model) =>
             SubscriptionModule.None;
     }
 
