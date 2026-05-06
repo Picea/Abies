@@ -44,7 +44,7 @@ jobs:
 
       - name: Run Conduit tests
         run: |
-          dotnet test Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
+          dotnet test --project Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
             --no-build \
             -c Release \
             --verbosity normal \
