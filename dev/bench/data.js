@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778067135563,
+  "lastUpdate": 1778067137980,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14818,6 +14818,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.99349498748779,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9dee5da78012dcbdfd8d756e67ce1dcb2e25324b",
+          "message": "chore(deps): Pin Picea compatibly for Glauca projects (#277)\n\n* chore(deps): pin Picea compatibly for Glauca projects\n\n* build(conduit): pin Glauca packages deterministically",
+          "timestamp": "2026-05-06T13:21:31+02:00",
+          "tree_id": "1acbbdb02b097fc4a375e4aabd46578a5feb9154",
+          "url": "https://github.com/Picea/Abies/commit/9dee5da78012dcbdfd8d756e67ce1dcb2e25324b"
+        },
+        "date": 1778067137614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11845684051514,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98375129699707,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
