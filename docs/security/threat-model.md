@@ -73,12 +73,12 @@ This threat model covers the Abies security surface with two primary areas:
 
 | ID | Threat | Severity | Why Open | Planned Mitigation | Target Date |
 |---|---|---|---|---|---|
-| OR-001 | Secret scanning policy tuning and historical scan backlog | Medium | Secrets gate exists; allowlist/tuning and full-history cadence still evolving | Add recurring history scan and documented triage SLA | 2026-04-15 |
-| OR-002 | Missing documented threat model lifecycle integration in CI review gates | Medium | Threat model file absent before this baseline | Require threat model updates on trust-boundary touching PRs | 2026-04-07 |
-| OR-003 | DAST coverage needs full AppHost crawl and policy tuning | Medium | Versioned `.zap` policy/context exists and authenticated API profile runs in CI, but full AppHost/user-flow crawling is not yet enforced | Add AppHost-targeted authenticated context expansion and endpoint-class alert policy | 2026-04-21 |
-| OR-004 | Image-level Trivy policy tuning | Low | CD now scans images built from all repository Dockerfiles with high/critical gating; remaining work is policy tuning and suppressions hygiene | Maintain scan coverage and tune findings policy per image profile | 2026-04-21 |
-| OR-005 | Security header policy needs endpoint-specific CSP tuning | Medium | Baseline headers present but CSP is conservative/non-final | Add endpoint-aware CSP policy and host integration tests | 2026-04-21 |
-| OR-006 | Template output security drift risk | Medium | Templates can accumulate insecure patterns or vulnerable transitive dependencies over time | Keep dedicated template security workflow with SCA+Trivy+Semgrep gates | 2026-04-21 |
+| OR-001 | Secret scanning policy tuning and historical scan backlog | Medium | Secrets gate exists; allowlist/tuning and full-history cadence still evolving | Add recurring history scan and documented triage SLA | 2026-06-30 |
+| OR-002 | Missing documented threat model lifecycle integration in CI review gates | Medium | Threat model lifecycle enforcement still being hardened in PR governance | Require threat model updates on trust-boundary touching PRs | 2026-06-15 |
+| OR-003 | DAST coverage needs full AppHost crawl and policy tuning | Medium | Versioned `.zap` policy/context exists and authenticated API profile runs in CI, but full AppHost/user-flow crawling is not yet enforced | Add AppHost-targeted authenticated context expansion and endpoint-class alert policy | 2026-06-30 |
+| OR-004 | Image-level Trivy policy tuning | Low | CD now scans images built from all repository Dockerfiles with high/critical gating; remaining work is policy tuning and suppressions hygiene | Maintain scan coverage and tune findings policy per image profile | 2026-06-30 |
+| OR-005 | Security header policy needs endpoint-specific CSP tuning | Medium | Baseline headers present but CSP is conservative/non-final | Add endpoint-aware CSP policy and host integration tests | 2026-06-30 |
+| OR-006 | Template output security drift risk | Medium | Templates can accumulate insecure patterns or vulnerable transitive dependencies over time | Keep dedicated template security workflow with SCA+Trivy+Semgrep gates | 2026-06-30 |
 
 ## Review Checklist For Security-Sensitive Changes
 

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'Picea.Abies/**'
+      - 'Picea.Abies.Browser/**'
       - 'Picea.Abies.UI/**'
       - 'Picea.Abies.Benchmark.Wasm/**'
       - 'Picea.Abies.Benchmarks/**'
@@ -80,6 +81,7 @@ jobs:
           filters: |
             e2e-scripts:
               - 'Picea.Abies/**'
+              - 'Picea.Abies.Browser/**'
               - 'Picea.Abies.UI/**'
               - 'Picea.Abies.Benchmark.Wasm/**'
               - '.github/workflows/benchmark.yml'
@@ -467,6 +469,16 @@ jobs:
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
           exit ${EXIT_CODE}
 
+      - name: Generate refreshed baseline from current results (main only)
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.regression-check.outcome != 'failure'
+        run: |
+          mkdir -p benchmark-results
+          python3 scripts/compare-benchmark.py \
+            --results-dir js-framework-benchmark/webdriver-ts/results \
+            --baseline benchmark-results/baseline.json \
+            --framework abies \
+            --update-baseline
+
       - name: Publish benchmark comparison summary
         if: always() && steps.should-run.outputs.run == 'true'
         run: |
@@ -509,6 +521,29 @@ jobs:
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish refreshed baseline snapshot to gh-pages (main only)
+        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true' && steps.regression-check.outcome != 'failure'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Use a worktree so we can publish to gh-pages without disturbing workspace files.
+          git fetch origin gh-pages
+          rm -rf /tmp/gh-pages-worktree
+          git worktree add /tmp/gh-pages-worktree origin/gh-pages
+
+          mkdir -p /tmp/gh-pages-worktree/data
+          cp benchmark-results/baseline.json /tmp/gh-pages-worktree/data/e2e-baseline.json
+
+          cd /tmp/gh-pages-worktree
+          git add data/e2e-baseline.json
+          if git diff --cached --quiet; then
+            echo "No baseline changes to publish."
+          else
+            git commit -m "chore(bench): refresh e2e baseline from main"
+            git push origin HEAD:gh-pages
           fi
 
       - name: Store E2E benchmark trends to gh-pages (main only)

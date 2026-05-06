@@ -7,7 +7,7 @@ Manage `<head>` elements — meta tags, Open Graph, Twitter Cards, canonical URL
 In Abies, `<head>` content is part of the `Document` returned by your `View` function, just like the page body. The runtime diffs head content between renders and applies only the changes — stale elements are automatically removed on navigation.
 
 ```csharp
-using static Abies.Head;
+using static Picea.Abies.Head;
 
 public static Document View(Model model)
     => new Document(
@@ -294,4 +294,4 @@ Managed elements are tagged with `data-abies-head` in the real DOM, so Abies nev
 
 5. **Handle loading states** — return minimal head content while data is loading, then enrich it once data arrives. The runtime diffs efficiently.
 
-6. **Import `using static Abies.Head;`** — the lowercase factory functions (`meta`, `og`, `canonical`) read like DSL when used with static imports.
+6. **Import `using static Picea.Abies.Head;`** — the lowercase factory functions (`meta`, `og`, `canonical`) read like DSL when used with static imports.

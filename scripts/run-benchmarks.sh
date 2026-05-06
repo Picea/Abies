@@ -38,7 +38,9 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-JS_BENCHMARK_DIR="${ROOT_DIR}/../js-framework-benchmark-fork"
+JS_BENCHMARK_DIR_IN_REPO="${ROOT_DIR}/js-framework-benchmark"
+JS_BENCHMARK_DIR_FALLBACK="${ROOT_DIR}/../js-framework-benchmark-fork"
+JS_BENCHMARK_DIR="$JS_BENCHMARK_DIR_FALLBACK"
 RESULTS_DIR="${ROOT_DIR}/benchmark-results/local"
 BASELINE_FILE="${ROOT_DIR}/benchmark-results/baseline.json"
 
@@ -106,11 +108,19 @@ check_prerequisites() {
             exit 1
         fi
         print_success "Node.js: $(node --version)"
+
+        # Prefer in-repo benchmark submodule; fall back to sibling clone path.
+        if [[ -d "$JS_BENCHMARK_DIR_IN_REPO" ]]; then
+            JS_BENCHMARK_DIR="$JS_BENCHMARK_DIR_IN_REPO"
+        else
+            JS_BENCHMARK_DIR="$JS_BENCHMARK_DIR_FALLBACK"
+        fi
         
         # Check js-framework-benchmark directory
         if [[ ! -d "$JS_BENCHMARK_DIR" ]]; then
-            print_warning "js-framework-benchmark not found at: $JS_BENCHMARK_DIR"
-            print_info "Clone it with: git clone https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork"
+            print_warning "js-framework-benchmark not found at: $JS_BENCHMARK_DIR_IN_REPO or $JS_BENCHMARK_DIR_FALLBACK"
+            print_info "Use in-repo submodule path: $JS_BENCHMARK_DIR_IN_REPO"
+            print_info "Or clone sibling fallback: git clone https://github.com/krausest/js-framework-benchmark.git ../js-framework-benchmark-fork"
             exit 1
         fi
         print_success "js-framework-benchmark: $JS_BENCHMARK_DIR"
@@ -141,7 +151,7 @@ run_micro_benchmarks() {
     
     # Run DOM Diffing benchmarks
     print_info "Running DOM Diffing benchmarks..."
-    dotnet run --project Abies.Benchmarks -c Release -- \
+    dotnet run --project Picea.Abies.Benchmarks -c Release -- \
         --filter '*DomDiffingBenchmarks*' \
         --exporters json \
         --artifacts "$RESULTS_DIR/micro/diffing" \
@@ -149,7 +159,7 @@ run_micro_benchmarks() {
     
     # Run Keyed Diffing benchmarks
     print_info "Running Keyed Diffing benchmarks..."
-    dotnet run --project Abies.Benchmarks -c Release -- \
+    dotnet run --project Picea.Abies.Benchmarks -c Release -- \
         --filter '*KeyedDiffingBenchmarks*' \
         --exporters json \
         --artifacts "$RESULTS_DIR/micro/keyed" \
@@ -157,7 +167,7 @@ run_micro_benchmarks() {
     
     # Run Rendering benchmarks
     print_info "Running Rendering benchmarks..."
-    dotnet run --project Abies.Benchmarks -c Release -- \
+    dotnet run --project Picea.Abies.Benchmarks -c Release -- \
         --filter '*RenderingBenchmarks*' \
         --exporters json \
         --artifacts "$RESULTS_DIR/micro/rendering" \
@@ -165,7 +175,7 @@ run_micro_benchmarks() {
     
     # Run Event Handler benchmarks
     print_info "Running Event Handler benchmarks..."
-    dotnet run --project Abies.Benchmarks -c Release -- \
+    dotnet run --project Picea.Abies.Benchmarks -c Release -- \
         --filter '*EventHandlerBenchmarks*' \
         --exporters json \
         --artifacts "$RESULTS_DIR/micro/handlers" \
@@ -245,13 +255,13 @@ run_e2e_benchmarks() {
     
     # Run key benchmarks
     print_info "Running 01_run1k (create 1000 rows)..."
-    npm run bench -- --headless --framework abies-keyed --benchmark 01_run1k || true
+    npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k || true
     
     print_info "Running 05_swap1k (swap two rows)..."
-    npm run bench -- --headless --framework abies-keyed --benchmark 05_swap1k || true
+    npm run bench -- --headless --framework keyed/abies --benchmark 05_swap1k || true
     
     print_info "Running 09_clear1k (clear all rows)..."
-    npm run bench -- --headless --framework abies-keyed --benchmark 09_clear1k || true
+    npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k || true
     
     # Copy results
     cp results/abies*.json "$RESULTS_DIR/e2e/" 2>/dev/null || true
