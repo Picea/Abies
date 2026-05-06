@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778057614165,
+  "lastUpdate": 1778057617078,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14704,6 +14704,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 37.00073051452637,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6cb75e2918628f5033f028dd09346526bddab25c",
+          "message": "ci: Add PR Conduit Integration Workflow (#275)\n\n* ci: Add PR Conduit Integration Workflow\n\n* ci: Address PR Review Comments For Conduit Workflow\n\n* ci: Fix Dotnet Test Project Invocation\n\n* fix: Use Supported Picea Runtime Start API",
+          "timestamp": "2026-05-06T10:42:42+02:00",
+          "tree_id": "bd0b67a4c773e40aa2057ccc48a52ce8eba27507",
+          "url": "https://github.com/Picea/Abies/commit/6cb75e2918628f5033f028dd09346526bddab25c"
+        },
+        "date": 1778057616359,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.10371208190918,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.99349498748779,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
