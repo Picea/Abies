@@ -374,39 +374,39 @@ public static class TestHarnessVisualExtensions
         return string.IsNullOrWhiteSpace(stem) ? "snapshot" : stem;
     }
 
-        private static async Task WaitForVisualStability(IPage page)
-        {
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle).ConfigureAwait(false);
+    private static async Task WaitForVisualStability(IPage page)
+    {
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle).ConfigureAwait(false);
 
-                await page.EvaluateAsync(
-                        """
-                        async () => {
-                            if (document.fonts?.ready) {
-                                try {
-                                    await document.fonts.ready;
-                                } catch {
-                                    // Ignore font readiness failures for deterministic fallback behavior.
-                                }
-                            }
+        await page.EvaluateAsync(
+            """
+            async () => {
+                if (document.fonts?.ready) {
+                    try {
+                        await document.fonts.ready;
+                    } catch {
+                        // Ignore font readiness failures for deterministic fallback behavior.
+                    }
+                }
 
-                            const images = Array.from(document.images ?? []);
-                            if (images.length === 0) {
-                                return;
-                            }
+                const images = Array.from(document.images ?? []);
+                if (images.length === 0) {
+                    return;
+                }
 
-                            await Promise.all(images.map((img) => {
-                                if (img.complete) {
-                                    return Promise.resolve();
-                                }
+                await Promise.all(images.map((img) => {
+                    if (img.complete) {
+                        return Promise.resolve();
+                    }
 
-                                return new Promise((resolve) => {
-                                    img.addEventListener('load', () => resolve(), { once: true });
-                                    img.addEventListener('error', () => resolve(), { once: true });
-                                });
-                            }));
-                        }
-                        """).ConfigureAwait(false);
-        }
+                    return new Promise((resolve) => {
+                        img.addEventListener('load', () => resolve(), { once: true });
+                        img.addEventListener('error', () => resolve(), { once: true });
+                    });
+                }));
+            }
+            """).ConfigureAwait(false);
+    }
 
     private static VisualMetrics CompareImages(byte[] baselinePng, byte[] actualPng, byte perChannelThreshold)
     {
