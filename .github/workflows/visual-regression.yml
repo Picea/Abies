@@ -26,10 +26,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET 10
+      - name: Setup .NET (from global.json)
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
@@ -43,6 +43,17 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      - name: Detect visual regression tests
+        id: detect_visual_tests
+        run: |
+          if rg -n "VisualRegression_" Picea.Abies.Conduit.Tests >/dev/null 2>&1; then
+            echo "has_visual_tests=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Visual regression tests detected"
+          else
+            echo "has_visual_tests=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ No visual regression tests detected in this PR scope"
+          fi
+
       - name: Install Playwright browsers
         run: |
           dotnet tool install --global Microsoft.Playwright.CLI || true
@@ -55,6 +66,7 @@ jobs:
       # so reviewers can use GitHub's image compare viewer in the PR.
       - name: Run pixel snapshot tests
         id: pixel_tests
+        if: steps.detect_visual_tests.outputs.has_visual_tests == 'true'
         continue-on-error: true
         env:
           ABIES_ENABLE_PIXEL_SNAPSHOTS: "1"
@@ -90,7 +102,7 @@ jobs:
 
       # Surface the result after uploading artifacts (so diffs are always available).
       - name: Enforce pixel test result
-        if: steps.pixel_tests.outcome == 'failure'
+        if: steps.detect_visual_tests.outputs.has_visual_tests == 'true' && steps.pixel_tests.outcome == 'failure'
         run: |
           echo "❌ Pixel snapshot tests failed — download the 'visual-regression' artifact above"
           echo "   and open .actual.png vs .png in GitHub's image compare viewer."

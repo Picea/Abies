@@ -96,6 +96,8 @@ public static class TestHarnessVisualExtensions
                 WaitUntil = WaitUntilState.DOMContentLoaded
             });
 
+            await WaitForVisualStability(page).ConfigureAwait(false);
+
             var actualBytes = await page.ScreenshotAsync(new PageScreenshotOptions
             {
                 Type = ScreenshotType.Png,
@@ -258,20 +260,20 @@ public static class TestHarnessVisualExtensions
             return headHtml;
         }
 
-        if (Regex.IsMatch(headHtml, "https?://", RegexOptions.IgnoreCase) is false)
+        if (Regex.IsMatch(headHtml, "(?:https?:)?//", RegexOptions.IgnoreCase) is false)
         {
             return headHtml;
         }
 
         var strippedLinkTags = Regex.Replace(
             headHtml,
-            "<link\\b[^>]*href\\s*=\\s*['\"][^'\"]*https?://[^'\"]*['\"][^>]*>",
+            "<link\\b[^>]*href\\s*=\\s*['\"][^'\"]*(?:https?:)?//[^'\"]*['\"][^>]*>",
             string.Empty,
             RegexOptions.IgnoreCase);
 
         var strippedScriptTags = Regex.Replace(
             strippedLinkTags,
-            "<script\\b[^>]*src\\s*=\\s*['\"][^'\"]*https?://[^'\"]*['\"][^>]*>\\s*</script>",
+            "<script\\b[^>]*src\\s*=\\s*['\"][^'\"]*(?:https?:)?//[^'\"]*['\"][^>]*>\\s*</script>",
             string.Empty,
             RegexOptions.IgnoreCase);
 
@@ -330,8 +332,9 @@ public static class TestHarnessVisualExtensions
         Directory.CreateDirectory(artifactDirectory);
 
         var artifactStem = BuildArtifactStem(baselinePath);
-        var actualPath = Path.Combine(artifactDirectory, $"{artifactStem}.actual.png");
-        var diffPath = Path.Combine(artifactDirectory, $"{artifactStem}.diff.png");
+        var safeStem = Path.GetFileName(artifactStem);
+        var actualPath = Path.Combine(artifactDirectory, $"{safeStem}.actual.png");
+        var diffPath = Path.Combine(artifactDirectory, $"{safeStem}.diff.png");
 
         File.WriteAllBytes(actualPath, actualBytes);
         File.WriteAllBytes(diffPath, diffBytes);
@@ -370,6 +373,40 @@ public static class TestHarnessVisualExtensions
         var stem = new string(chars).Trim();
         return string.IsNullOrWhiteSpace(stem) ? "snapshot" : stem;
     }
+
+        private static async Task WaitForVisualStability(IPage page)
+        {
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle).ConfigureAwait(false);
+
+                await page.EvaluateAsync(
+                        """
+                        async () => {
+                            if (document.fonts?.ready) {
+                                try {
+                                    await document.fonts.ready;
+                                } catch {
+                                    // Ignore font readiness failures for deterministic fallback behavior.
+                                }
+                            }
+
+                            const images = Array.from(document.images ?? []);
+                            if (images.length === 0) {
+                                return;
+                            }
+
+                            await Promise.all(images.map((img) => {
+                                if (img.complete) {
+                                    return Promise.resolve();
+                                }
+
+                                return new Promise((resolve) => {
+                                    img.addEventListener('load', () => resolve(), { once: true });
+                                    img.addEventListener('error', () => resolve(), { once: true });
+                                });
+                            }));
+                        }
+                        """).ConfigureAwait(false);
+        }
 
     private static VisualMetrics CompareImages(byte[] baselinePng, byte[] actualPng, byte perChannelThreshold)
     {
