@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775814336455,
+  "lastUpdate": 1778057614165,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13474,6 +13474,84 @@ window.BENCHMARK_DATA = {
             "value": 56.6,
             "unit": "ms",
             "extra": "mean: 56.3ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6cb75e2918628f5033f028dd09346526bddab25c",
+          "message": "ci: Add PR Conduit Integration Workflow (#275)\n\n* ci: Add PR Conduit Integration Workflow\n\n* ci: Address PR Review Comments For Conduit Workflow\n\n* ci: Fix Dotnet Test Project Invocation\n\n* fix: Use Supported Picea Runtime Start API",
+          "timestamp": "2026-05-06T10:42:42+02:00",
+          "tree_id": "bd0b67a4c773e40aa2057ccc48a52ce8eba27507",
+          "url": "https://github.com/Picea/Abies/commit/6cb75e2918628f5033f028dd09346526bddab25c"
+        },
+        "date": 1778057613436,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 346.4,
+            "unit": "ms",
+            "extra": "mean: 350.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 355.1,
+            "unit": "ms",
+            "extra": "mean: 355.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 204.3,
+            "unit": "ms",
+            "extra": "mean: 205.0ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.7,
+            "unit": "ms",
+            "extra": "mean: 29.3ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 79,
+            "unit": "ms",
+            "extra": "mean: 78.5ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 52.1,
+            "unit": "ms",
+            "extra": "mean: 53.5ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3317.9,
+            "unit": "ms",
+            "extra": "mean: 3317.3ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 379.3,
+            "unit": "ms",
+            "extra": "mean: 380.1ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 52.8,
+            "unit": "ms",
+            "extra": "mean: 52.5ms, samples: 15"
           }
         ]
       }
