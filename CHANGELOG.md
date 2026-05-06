@@ -5,7 +5,13 @@ All notable changes to Abies will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-rc.1] - Unreleased
+## [2.1.0] - Unreleased
+
+### Upcoming
+
+- Placeholder for post-2.0 changes.
+
+## [2.0.0] - 2026-05-04
 
 ### ⚠️ Breaking Changes — Picea Ecosystem Migration
 
@@ -248,6 +254,7 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
 - OpenTelemetry tracing support (browser and .NET)
 - Apache 2.0 license
 
-[2.0.0-rc.1]: https://github.com/Picea/Abies/compare/v1.0.0-rc.2...HEAD
+[2.1.0]: https://github.com/Picea/Abies/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Picea/Abies/compare/v1.0.0-rc.2...v2.0.0
 [1.0.0-rc.2]: https://github.com/Picea/Abies/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Picea/Abies/releases/tag/v1.0.0-rc.1

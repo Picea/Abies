@@ -17,3 +17,4 @@ public static class Commands
     public static Command Batch(IReadOnlyList<Command> commands) =>
         new Command.Batch(commands);
 }
+

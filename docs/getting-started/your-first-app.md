@@ -25,7 +25,7 @@ Abies runs on two platforms. Pick one to start (you can add the other later):
 ```bash
 dotnet new console -n MyCounter
 cd MyCounter
-dotnet add package Picea.Abies.Browser --prerelease
+dotnet add package Picea.Abies.Browser
 ```
 
 ### 2. Define the Model
@@ -131,7 +131,7 @@ Update your `.csproj`:
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-        <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
+      <PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
   </ItemGroup>
 </Project>
 ```
@@ -153,7 +153,7 @@ Open the URL shown in the terminal. Click **+** and **−** to see the counter u
 ```bash
 dotnet new web -n MyCounter.Server
 cd MyCounter.Server
-dotnet add package Picea.Abies.Server.Kestrel --prerelease
+dotnet add package Picea.Abies.Server.Kestrel
 ```
 
 ### 2. Define Model, Messages, and Program

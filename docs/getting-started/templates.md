@@ -5,7 +5,7 @@ Abies provides `dotnet new` templates for quickly scaffolding new applications. 
 ## Installation
 
 ```bash
-dotnet new install Picea.Abies.Templates::1.0.*-*
+dotnet new install Picea.Abies.Templates
 ```
 
 ## Available Templates
@@ -146,7 +146,7 @@ dotnet new abies-browser -n MyApp --dry-run
 
 ```bash
 # Update to latest version
-dotnet new install Picea.Abies.Templates::1.0.*-*
+dotnet new install Picea.Abies.Templates
 
 # Check installed version
 dotnet new list abies
