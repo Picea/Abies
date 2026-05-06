@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778057617078,
+  "lastUpdate": 1778067135563,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13552,6 +13552,84 @@ window.BENCHMARK_DATA = {
             "value": 52.8,
             "unit": "ms",
             "extra": "mean: 52.5ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9dee5da78012dcbdfd8d756e67ce1dcb2e25324b",
+          "message": "chore(deps): Pin Picea compatibly for Glauca projects (#277)\n\n* chore(deps): pin Picea compatibly for Glauca projects\n\n* build(conduit): pin Glauca packages deterministically",
+          "timestamp": "2026-05-06T13:21:31+02:00",
+          "tree_id": "1acbbdb02b097fc4a375e4aabd46578a5feb9154",
+          "url": "https://github.com/Picea/Abies/commit/9dee5da78012dcbdfd8d756e67ce1dcb2e25324b"
+        },
+        "date": 1778067135150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 353.7,
+            "unit": "ms",
+            "extra": "mean: 357.0ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 365.9,
+            "unit": "ms",
+            "extra": "mean: 365.4ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 201.3,
+            "unit": "ms",
+            "extra": "mean: 201.6ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 30.4,
+            "unit": "ms",
+            "extra": "mean: 30.0ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 81.6,
+            "unit": "ms",
+            "extra": "mean: 82.8ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 56.7,
+            "unit": "ms",
+            "extra": "mean: 57.2ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3332,
+            "unit": "ms",
+            "extra": "mean: 3339.4ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 381.2,
+            "unit": "ms",
+            "extra": "mean: 383.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 58.9,
+            "unit": "ms",
+            "extra": "mean: 59.2ms, samples: 15"
           }
         ]
       }
