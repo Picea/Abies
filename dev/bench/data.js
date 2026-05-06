@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778077160110,
+  "lastUpdate": 1778091886018,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13708,6 +13708,84 @@ window.BENCHMARK_DATA = {
             "value": 53,
             "unit": "ms",
             "extra": "mean: 52.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f8fe776ed75437cfcc449829e7e51c62f9a72bbc",
+          "message": "fix: Harden release gates, security checks, and pre-merge testing (#280)\n\n* fix: harden release gates, security checks, pre-merge testing, and docs\n\n- Separate release workflow (tag-driven/manual) from CD validation pipeline\n- Hardened push diff detection in cd.yml and codeql.yml (before..sha with fallback)\n- Added core test gate (Picea.Abies.Tests) to PR validation\n- Benchmark triggers now include Picea.Abies.Browser paths\n- Baseline auto-refresh + gh-pages snapshot publishing\n- Fixed run-benchmarks.sh project/framework paths and submodule discovery\n- Implemented websocket reconnect with bounded exponential backoff\n- Updated docs: namespace fixes (Abies → Picea.Abies), runtime API, benchmark claims\n- Security docs: CodeQL operational framing, threat-model dates updated\n- New release runbook with tag and manual-dispatch procedures\n\nAddresses audit findings on governance, security enforcement, pre-merge testing,\nbaseline freshness, docs accuracy, and runtime reliability.\n\n* trigger: Re-validate PR title",
+          "timestamp": "2026-05-06T20:14:12+02:00",
+          "tree_id": "50cff185ed11dc4d4fcefe052f9b83c001f0803d",
+          "url": "https://github.com/Picea/Abies/commit/f8fe776ed75437cfcc449829e7e51c62f9a72bbc"
+        },
+        "date": 1778091885686,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 299.8,
+            "unit": "ms",
+            "extra": "mean: 302.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 317.7,
+            "unit": "ms",
+            "extra": "mean: 317.1ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 182.8,
+            "unit": "ms",
+            "extra": "mean: 187.5ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 28,
+            "unit": "ms",
+            "extra": "mean: 28.4ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 86.3,
+            "unit": "ms",
+            "extra": "mean: 87.3ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 58,
+            "unit": "ms",
+            "extra": "mean: 58.4ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2958.8,
+            "unit": "ms",
+            "extra": "mean: 2974.5ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 351.7,
+            "unit": "ms",
+            "extra": "mean: 352.3ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 58.8,
+            "unit": "ms",
+            "extra": "mean: 58.6ms, samples: 15"
           }
         ]
       }
