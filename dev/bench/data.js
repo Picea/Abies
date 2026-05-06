@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778091886018,
+  "lastUpdate": 1778091888245,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15046,6 +15046,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98562812805176,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f8fe776ed75437cfcc449829e7e51c62f9a72bbc",
+          "message": "fix: Harden release gates, security checks, and pre-merge testing (#280)\n\n* fix: harden release gates, security checks, pre-merge testing, and docs\n\n- Separate release workflow (tag-driven/manual) from CD validation pipeline\n- Hardened push diff detection in cd.yml and codeql.yml (before..sha with fallback)\n- Added core test gate (Picea.Abies.Tests) to PR validation\n- Benchmark triggers now include Picea.Abies.Browser paths\n- Baseline auto-refresh + gh-pages snapshot publishing\n- Fixed run-benchmarks.sh project/framework paths and submodule discovery\n- Implemented websocket reconnect with bounded exponential backoff\n- Updated docs: namespace fixes (Abies → Picea.Abies), runtime API, benchmark claims\n- Security docs: CodeQL operational framing, threat-model dates updated\n- New release runbook with tag and manual-dispatch procedures\n\nAddresses audit findings on governance, security enforcement, pre-merge testing,\nbaseline freshness, docs accuracy, and runtime reliability.\n\n* trigger: Re-validate PR title",
+          "timestamp": "2026-05-06T20:14:12+02:00",
+          "tree_id": "50cff185ed11dc4d4fcefe052f9b83c001f0803d",
+          "url": "https://github.com/Picea/Abies/commit/f8fe776ed75437cfcc449829e7e51c62f9a72bbc"
+        },
+        "date": 1778091887941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.12176704406738,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98382377624512,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
