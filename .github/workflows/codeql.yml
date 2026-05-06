@@ -36,7 +36,12 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
           else
-            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+            BEFORE="${{ github.event.before }}"
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+              CHANGED=$(git diff --name-only "$BEFORE".."${{ github.sha }}" 2>/dev/null || echo "")
+            else
+              CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+            fi
           fi
 
           echo "Changed files:"

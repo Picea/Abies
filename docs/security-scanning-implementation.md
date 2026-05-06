@@ -88,21 +88,22 @@ Created comprehensive security documentation including:
 5. **Developer-Friendly**: Runs locally without extra tools
 
 ### ⚠️ Trade-offs
-1. **Limited Scope**: Only scans dependencies, not custom code
-2. **No DAST**: No runtime testing (not needed for client-side framework)
-3. **Warnings Only**: Won't block builds initially (can be changed)
+1. **Coverage depth varies by job**: PR jobs prioritize fast feedback; deeper scans run on main/nightly.
+2. **Scanner noise must be tuned**: Rule tuning and suppressions are required to keep gates actionable.
+3. **Runtime coverage is policy-driven**: Baseline DAST is enforced, full crawl depth is iteratively expanded.
 
-## What Was NOT Implemented (Yet)
+## Current Implementation Status
 
-### 🔄 Phase 2: SAST (Static Analysis) - Planned for 3-6 months
-- **GitHub CodeQL**: Free for public repos, analyzes C# code
-- **Why waiting**: Let project mature, minimal attack surface currently
-- **When to enable**: After baseline is established
+### ✅ SAST (Static Analysis)
+- **GitHub CodeQL** is enabled and runs on push, pull request, and schedule.
+- **Semgrep** and **template-focused security checks** are active in PR validation.
 
-### ⏭️ Phase 3: DAST (Dynamic Analysis) - Future consideration
-- **Not needed**: Blazor WASM is client-side only
-- **Reassess if**: Backend authentication or API features are added
-- **Example tools**: OWASP ZAP, Burp Suite
+### ✅ DAST (Dynamic Analysis)
+- **OWASP ZAP baseline** and nightly/full-scan workflows are configured.
+- Authenticated API profile support is included in CI policy.
+
+### ✅ SCA / Container / Secrets
+- **NuGet audit checks**, **Trivy scanning**, and **secrets checks** are integrated in workflows.
 
 ## How to Use
 
@@ -204,10 +205,10 @@ In `Directory.Build.props`:
 - [ ] Create security dashboard
 
 ### Medium-term (3-6 months)
-- [ ] Enable GitHub CodeQL for SAST
-- [ ] Add secret scanning
+- [ ] Expand DAST crawl depth and endpoint-class policy tuning
+- [ ] Tighten suppressions hygiene and documented exception review cadence
 - [ ] Consider SBOM generation
-- [ ] Review need for commercial tools (Snyk, etc.)
+- [ ] Review need for additional/commercial tooling
 
 ## Cost Analysis
 
@@ -237,5 +238,6 @@ In `Directory.Build.props`:
 ---
 
 **Implementation Date:** February 5, 2026  
-**Next Review:** May 2026 (quarterly)  
+**Last Updated:** May 6, 2026  
+**Next Review:** August 2026 (quarterly)
 **Owner:** Development Team

@@ -45,7 +45,7 @@ The module name `"Abies"` is used in all `[JSImport]` and `[JSExport]` attribute
 
 ## JSImport Functions (.NET → JavaScript)
 
-These are C# methods that call into JavaScript. Defined in `Abies.Browser/Interop.cs`:
+These are C# methods that call into JavaScript. Defined in `Picea.Abies.Browser/Interop.cs`:
 
 ### DOM Patching
 
@@ -351,7 +351,7 @@ URL changes flow back from JavaScript to .NET via the `OnUrlChanged` JSExport, w
 
 ## Browser Runtime Bootstrap
 
-The `Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the complete bootstrap sequence:
+The `Picea.Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the complete bootstrap sequence:
 
 1. Load `abies.js` via `JSHost.ImportAsync("Abies", "../abies.js")`
 2. Wire dispatch callback: `SetDispatchCallback(DispatchDomEvent)`
@@ -367,19 +367,19 @@ The `Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the
 This replaces ~30 lines of boilerplate that every WASM consumer previously needed. The consumer's `Program.cs` is a single line:
 
 ```csharp
-await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
 ```
 
 ## Source Files
 
 | File | Role |
 |---|---|
-| `Abies.Browser/Interop.cs` | `[JSImport]`/`[JSExport]` declarations |
-| `Abies.Browser/Runtime.cs` | Browser bootstrap sequence |
-| `Abies.Browser/wwwroot/abies.js` | JavaScript runtime (event delegation, DOM patching, navigation) |
-| `Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
-| `Abies/RenderBatchWriter.cs` | Binary patch serializer |
-| `Abies/DOM/Attribute.cs` | `Handler` record definition |
+| `Picea.Abies.Browser/Interop.cs` | `[JSImport]`/`[JSExport]` declarations |
+| `Picea.Abies.Browser/Runtime.cs` | Browser bootstrap sequence |
+| `Picea.Abies.Browser/wwwroot/abies.js` | JavaScript runtime (event delegation, DOM patching, navigation) |
+| `Picea.Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
+| `Picea.Abies/RenderBatchWriter.cs` | Binary patch serializer |
+| `Picea.Abies/DOM/Attribute.cs` | `Handler` record definition |
 
 ## Related References
 

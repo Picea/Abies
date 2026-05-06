@@ -873,6 +873,11 @@
 
     const registeredEventTypes = new Set();
     let ws = null;
+    let reconnectTimerId = null;
+    let reconnectAttempts = 0;
+    const reconnectBaseDelayMs = 500;
+    const reconnectMaxDelayMs = 15000;
+    const reconnectMaxAttempts = 10;
     let debuggerRequestSeq = 0;
     const pendingDebuggerResponses = new Map();
 
@@ -1109,7 +1114,64 @@
     // WebSocket Connection
     // =========================================================================
 
+    function clearReconnectTimer() {
+        if (reconnectTimerId !== null) {
+            clearTimeout(reconnectTimerId);
+            reconnectTimerId = null;
+        }
+    }
+
+    function canReconnect(isAutoMode) {
+        // In InteractiveAuto, the close after WASM handoff is intentional.
+        // Reconnecting would reintroduce server-side patches that can race
+        // with the WASM renderer now owning the DOM.
+        if (isAutoMode && wasmActive) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function computeReconnectDelayMs(attempt) {
+        const exponent = Math.max(0, attempt - 1);
+        const backoff = Math.min(reconnectMaxDelayMs, reconnectBaseDelayMs * (2 ** exponent));
+        const jitterFactor = 0.5 + Math.random(); // 0.5x .. 1.5x jitter
+        return Math.min(reconnectMaxDelayMs, Math.floor(backoff * jitterFactor));
+    }
+
+    function scheduleReconnect(wsPath, isAutoMode) {
+        if (!canReconnect(isAutoMode)) {
+            return;
+        }
+
+        if (reconnectTimerId !== null) {
+            return;
+        }
+
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        if (reconnectAttempts >= reconnectMaxAttempts) {
+            console.warn(`[abies-server] WebSocket reconnect stopped after ${reconnectMaxAttempts} attempts.`);
+            return;
+        }
+
+        reconnectAttempts += 1;
+        const delayMs = computeReconnectDelayMs(reconnectAttempts);
+        reconnectTimerId = setTimeout(function () {
+            reconnectTimerId = null;
+            connect(wsPath, isAutoMode);
+        }, delayMs);
+    }
+
     function connect(wsPath, isAutoMode) {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        clearReconnectTimer();
+
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         // Append the current page path as a query parameter so the server
         // can initialize the MVU session at the correct route. The Origin
@@ -1126,6 +1188,7 @@
             // Connection established — the server will send the initial
             // patch batch (the diff from empty → current view) automatically
             // when the session starts.
+            reconnectAttempts = 0;
             refreshDebuggerState();
         };
 
@@ -1164,8 +1227,7 @@
 
         ws.onclose = function () {
             ws = null;
-            // TODO: Implement reconnection logic for production use.
-            // For now, the connection is not re-established.
+            scheduleReconnect(wsPath, isAutoMode);
         };
 
         ws.onerror = function () {

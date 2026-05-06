@@ -111,7 +111,7 @@ Test the virtual DOM without a browser.
 A minimal test harness for DOM assertions:
 
 ```csharp
-using Abies.DOM;
+using Picea.Abies.DOM;
 
 public static class MvuDomTestHarness
 {

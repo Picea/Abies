@@ -158,6 +158,8 @@ Design decisions and their rationale.
 | [ADR-018](./adr/ADR-018-pr-lint-only-changed-files.md) | PR Lint Check Only Changed Files |
 | [ADR-019](./adr/ADR-019-trunk-based-development.md) | Trunk-Based Development |
 | [ADR-020](./adr/ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates |
+| [ADR-025](./adr/ADR-025-issue-160-debugger-boundary-contract-phase1.md) | Issue #160 Debugger Boundary Contract (Phase 1) |
+| [ADR-026](./adr/ADR-026-debugger-auto-mount-with-csharp-api.md) | Debugger Auto-Mount with C# API |
 
 [View all ADRs →](./adr/README.md)
 

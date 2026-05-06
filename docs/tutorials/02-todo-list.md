@@ -19,12 +19,12 @@ Build a todo list application that introduces text input handling, list renderin
 A todo app needs a list of items, each with a description and completion status, plus an input field for new items:
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace MyTodo;
 

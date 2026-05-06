@@ -226,7 +226,7 @@ public record Document(string Title, Node Body, params HeadContent[] Head);
 
 Head diffing uses `HeadDiff.Diff(oldHead, newHead)` which produces standard `Patch` types (`AddHeadElement`, `UpdateHeadElement`, `RemoveHeadElement`) that flow through the same binary batch protocol as body patches.
 
-Convenience factories are available via `using static Abies.Head`:
+Convenience factories are available via `using static Picea.Abies.Head`:
 
 ```csharp
 meta("description", "My page")   // <meta name="description" content="My page">

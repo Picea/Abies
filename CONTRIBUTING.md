@@ -20,12 +20,13 @@ The `main` branch is protected with the following rules:
 All PRs must pass the configured PR-gated checks.
 
 **PR-gated workflows:**
-- ✅ **PR Validation workflow** - PR guardrails and compile checks
+- ✅ **PR Validation workflow** - PR guardrails, compile, and core test checks
 - ✅ **CodeQL** - Security and code quality analysis
 - ✅ **Benchmark (js-framework-benchmark)** - E2E performance regression detection (5% threshold)
 
-**Post-merge / scheduled workflows (not PR gates):**
-- 🚀 **CD workflow** - Build and deployment checks on `main`
+**Post-merge / scheduled / release workflows (not PR gates):**
+- 🚀 **CD workflow** - Main-branch validation (build/test/security/container checks) on `main`
+- 📦 **Release workflow** - NuGet pack/publish on version tags (`v*`) or manual dispatch
 - 🌙 **E2E workflow** - End-to-end browser tests run nightly (not a PR gate)
 
 **Other Checks:**

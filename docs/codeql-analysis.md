@@ -1,8 +1,8 @@
-# CodeQL Analysis for Abies - Decision Analysis
+# CodeQL Analysis for Abies
 
-## Quick Answer: **YES, CodeQL Makes Sense** ✅
+## Current Decision: **CodeQL Enabled** ✅
 
-**Recommendation: Enable CodeQL now.** It's free for public repos, low overhead, and provides valuable security coverage beyond dependency scanning.
+CodeQL is active in this repository and is part of the security analysis stack.
 
 ## Why CodeQL is Sensible for Abies
 
@@ -86,23 +86,9 @@ From code analysis:
 
 **Key concern:** Your `Interop.cs` has 20+ JS interop calls. CodeQL excels at finding unsafe data flow through interop boundaries.
 
-### 🚀 Implementation: Super Easy
+### 🚀 Implementation
 
-#### Option 1: Default Setup (Recommended - 2 clicks)
-
-1. Go to: **Settings → Code security and analysis**
-2. Click: **Set up → Default**
-3. Done! ✅
-
-GitHub automatically:
-- Detects C# language
-- Chooses optimal queries
-- Schedules weekly scans
-- Runs on every PR
-
-#### Option 2: Advanced Setup (More control)
-
-Create `.github/workflows/codeql.yml`:
+CodeQL is configured in `.github/workflows/codeql.yml` and runs with repository-defined settings:
 
 ```yaml
 name: "CodeQL Security Scan"
