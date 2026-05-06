@@ -45,7 +45,7 @@ Click **Add rule** for branch `main`
 2. ✅ **Require branches to be up to date before merging**
 3. Then add these checks:
 - `build` (from CD workflow)
-- `e2e` (from E2E workflow)
+- `build` (from PR Validation workflow)
 - `Analyze C# Code` (from CodeQL)
 - `validate-pr-title` (from PR validation)
 - `validate-pr-description` (from PR validation)

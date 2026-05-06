@@ -11,7 +11,7 @@ The fastest way to start is with the Abies project templates:
 
 ```bash
 # Install the templates (one-time)
-dotnet new install Picea.Abies.Templates::1.0.*-*
+dotnet new install Picea.Abies.Templates
 
 # Create a browser (WASM) app
 dotnet new abies-browser -n MyApp
@@ -32,25 +32,25 @@ If you prefer to set up manually, add the appropriate NuGet package:
 ### For Browser (WASM) Apps
 
 ```bash
-dotnet add package Picea.Abies.Browser --prerelease
+dotnet add package Picea.Abies.Browser
 ```
 
 Or in your `.csproj`:
 
 ```xml
-<PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
+<PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
 ```
 
 ### For Server-Rendered Apps
 
 ```bash
-dotnet add package Picea.Abies.Server.Kestrel --prerelease
+dotnet add package Picea.Abies.Server.Kestrel
 ```
 
 Or in your `.csproj`:
 
 ```xml
-<PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.*-*" />
+<PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.0.*" />
 ```
 
 > Prefer `dotnet add package ...` when possible so NuGet resolves the latest compatible version for your feed configuration.
@@ -60,7 +60,7 @@ Or in your `.csproj`:
 If you only need the MVU core (for custom runtimes or testing):
 
 ```bash
-dotnet add package Picea.Abies --prerelease
+dotnet add package Picea.Abies
 ```
 
 ## Package Overview
@@ -80,10 +80,10 @@ If you were using the old `Abies`, `Abies.Browser`, or `Abies.Server` packages, 
 
 ```bash
 # Old (deprecated, still works)
-dotnet add package Abies.Browser --prerelease
+dotnet add package Abies.Browser
 
 # New (recommended)
-dotnet add package Picea.Abies.Browser --prerelease
+dotnet add package Picea.Abies.Browser
 ```
 
 ## Project Configuration

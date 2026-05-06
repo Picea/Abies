@@ -21,9 +21,12 @@ All PRs must pass 10 checks:
 
 **Core Workflows:**
 - ✅ **CD workflow** - Build, test, and package validation
-- ✅ **E2E workflow** - End-to-end integration tests
+- ✅ **PR Validation workflow** - PR guardrails and compile checks
 - ✅ **CodeQL** - Security and code quality analysis
 - ✅ **Benchmark (js-framework-benchmark)** - E2E performance regression detection (5% threshold)
+
+**Nightly Workflow:**
+- 🌙 **E2E workflow** - End-to-end browser tests run nightly (not a PR gate)
 
 **Other Checks:**
 - ✅ **Draft check** - PR must not be in draft state
@@ -404,7 +407,7 @@ When requesting features:
 ## 🎯 Definition of Done
 
 A PR is ready to merge when:
-- ✅ All CI checks pass (CD, E2E, CodeQL)
+- ✅ All PR-gated CI checks pass (CD, PR Validation, CodeQL)
 - ✅ At least 1 approval received
 - ✅ All conversations resolved
 - ✅ Branch is up-to-date with main
