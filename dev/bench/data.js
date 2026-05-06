@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778067137980,
+  "lastUpdate": 1778077157827,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13630,6 +13630,84 @@ window.BENCHMARK_DATA = {
             "value": 58.9,
             "unit": "ms",
             "extra": "mean: 59.2ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6695fef37516e33752e54d0c2a5942930d25a61",
+          "message": "docs(ci): Align release docs and nightly E2E policy (#278)\n\n* docs(ci): align release docs and nightly e2e policy\n\n* docs(ci): clarify PR-gated checks vs push-only workflows\n\n* chore(ci): trigger required codeql check for docs PR\n\n* chore(ci): force required CodeQL C# check\n\n* ci(e2e): add PR gate status while keeping nightly full suite",
+          "timestamp": "2026-05-06T16:08:32+02:00",
+          "tree_id": "13247d87434f0ce8091e83b7ca4d5b5b0e9d8d26",
+          "url": "https://github.com/Picea/Abies/commit/a6695fef37516e33752e54d0c2a5942930d25a61"
+        },
+        "date": 1778077157168,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 348.5,
+            "unit": "ms",
+            "extra": "mean: 351.7ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 359.7,
+            "unit": "ms",
+            "extra": "mean: 359.1ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 207.3,
+            "unit": "ms",
+            "extra": "mean: 208.4ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 28.5,
+            "unit": "ms",
+            "extra": "mean: 28.5ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 79.9,
+            "unit": "ms",
+            "extra": "mean: 80.1ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 54.2,
+            "unit": "ms",
+            "extra": "mean: 53.6ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3317.1,
+            "unit": "ms",
+            "extra": "mean: 3320.2ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 382.7,
+            "unit": "ms",
+            "extra": "mean: 380.9ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 53,
+            "unit": "ms",
+            "extra": "mean: 52.2ms, samples: 15"
           }
         ]
       }
