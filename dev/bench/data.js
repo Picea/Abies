@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778077157827,
+  "lastUpdate": 1778077160110,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14932,6 +14932,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98375129699707,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6695fef37516e33752e54d0c2a5942930d25a61",
+          "message": "docs(ci): Align release docs and nightly E2E policy (#278)\n\n* docs(ci): align release docs and nightly e2e policy\n\n* docs(ci): clarify PR-gated checks vs push-only workflows\n\n* chore(ci): trigger required codeql check for docs PR\n\n* chore(ci): force required CodeQL C# check\n\n* ci(e2e): add PR gate status while keeping nightly full suite",
+          "timestamp": "2026-05-06T16:08:32+02:00",
+          "tree_id": "13247d87434f0ce8091e83b7ca4d5b5b0e9d8d26",
+          "url": "https://github.com/Picea/Abies/commit/a6695fef37516e33752e54d0c2a5942930d25a61"
+        },
+        "date": 1778077159442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.121145248413086,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 36.98562812805176,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
