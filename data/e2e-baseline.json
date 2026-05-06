@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "framework": "abies",
+  "benchmarks": {
+    "01_run1k": 299.8,
+    "02_replace1k": 317.7,
+    "03_update10th1k_x16": 182.8,
+    "04_select1k": 28.0,
+    "05_swap1k": 86.3,
+    "06_remove-one-1k": 58.0,
+    "07_create10k": 2958.8,
+    "08_create1k-after1k_x2": 351.7,
+    "09_clear1k_x8": 58.8,
+    "21_ready-memory": 35.12176704406738,
+    "22_run-memory": 36.98382377624512
+  }
+}
