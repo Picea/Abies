@@ -31,7 +31,8 @@ jobs:
       - name: Set version
         id: version
         run: |
-          VERSION=$(nbgv get-version -v AssemblyInformationalVersion)
+          # Public release mode ensures tag builds produce stable NuGet versions without commit suffixes.
+          VERSION=$(nbgv get-version --public-release=true -v NuGetPackageVersion)
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
