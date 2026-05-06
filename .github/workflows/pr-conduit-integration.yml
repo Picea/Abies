@@ -1,0 +1,68 @@
+name: PR Conduit Integration
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "Picea.Abies.Conduit/**"
+      - "Picea.Abies.Conduit.Api/**"
+      - "Picea.Abies.Conduit.Tests/**"
+      - "Picea.Abies/**"
+      - ".github/workflows/pr-conduit-integration.yml"
+
+concurrency:
+  group: pr-conduit-integration-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conduit-integration-smoke:
+    name: Conduit Integration (PR)
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
+    timeout-minutes: 30
+    env:
+      DOTNET_ROLL_FORWARD: LatestPatch
+      DOTNET_NUGET_AUDIT: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup .NET 8 runtime (required by Aspire SDK tool)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
+      - name: Restore Conduit integration tests
+        run: dotnet restore Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj
+
+      - name: Build Conduit integration tests
+        run: dotnet build Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj --no-restore -c Release
+
+      - name: Run Conduit integration tests
+        run: |
+          dotnet test Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
+            --no-build \
+            -c Release \
+            --verbosity normal \
+            -- \
+            --report-trx \
+            --report-trx-filename conduit-integration-smoke.trx \
+            --results-directory TestResults/conduit-integration-smoke
+
+      - name: Upload smoke test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: conduit-integration-smoke-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
+          path: "**/TestResults/conduit-integration-smoke/**/*.trx"
+          if-no-files-found: ignore
