@@ -1,4 +1,4 @@
-name: PR Conduit Integration
+name: PR Conduit Tests
 
 on:
   pull_request:
@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  conduit-integration-smoke:
-    name: Conduit Integration (PR)
+  conduit-tests:
+    name: Conduit Tests (PR)
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]'
     timeout-minutes: 30
@@ -28,27 +28,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET (from global.json)
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
 
-      - name: Setup .NET 8 runtime (required by Aspire SDK tool)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Install WASM workloads
-        run: dotnet workload install wasm-experimental wasm-tools
-
-      - name: Restore Conduit integration tests
+      - name: Restore Conduit tests
         run: dotnet restore Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj
 
-      - name: Build Conduit integration tests
+      - name: Build Conduit tests
         run: dotnet build Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj --no-restore -c Release
 
-      - name: Run Conduit integration tests
+      - name: Run Conduit tests
         run: |
           dotnet test Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
             --no-build \
@@ -59,7 +53,7 @@ jobs:
             --report-trx-filename conduit-integration-smoke.trx \
             --results-directory TestResults/conduit-integration-smoke
 
-      - name: Upload smoke test results
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
         with:
