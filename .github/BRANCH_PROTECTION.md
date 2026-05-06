@@ -37,8 +37,7 @@ main
   - [x] Require branches to be up to date before merging
 
 **Required status checks:**
-- `CD / build`
-- `E2E / e2e`
+- `PR Validation / build`
 - `CodeQL Security Analysis / Analyze C# Code`
 - `PR Validation / validate-pr-title`
 - `PR Validation / validate-pr-description`
@@ -46,6 +45,8 @@ main
 - `PR Validation / lint-check`
 - `PR Validation / security-scan`
 - `PR Validation / pr-validation-summary`
+
+> **Note**: `CD / build` runs on `push` to `main` and is not a PR status check.
 
 > **Note**: Status checks will appear in the list after they run at least once
 
@@ -99,7 +100,7 @@ main
 |------|---------|---------|
 | **PR Required** | ✅ Yes | All changes through PRs |
 | **Approvals** | 1+ | Peer review required |
-| **Status Checks** | CD, E2E, CodeQL, PR Validation | Automated quality gates |
+| **Status Checks** | PR Validation, CodeQL | Automated PR quality gates |
 | **Up-to-date Branch** | ✅ Required | Prevent integration issues |
 | **Conversation Resolution** | ✅ Required | All feedback addressed |
 | **Linear History** | ✅ Required | Clean git history |
@@ -130,7 +131,7 @@ Once configured, the workflow becomes:
 1. **Create branch** from main
 2. **Make changes** and commit
 3. **Open PR** with descriptive title and description
-4. **Automated checks run** (PR validation, CD, E2E, CodeQL)
+4. **Automated checks run** (PR validation, CodeQL)
 5. **Request review** from team member(s)
 6. **Address feedback** and resolve conversations
 7. **Checks pass** ✅

@@ -48,7 +48,7 @@ await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>(
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
+    <PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
   </ItemGroup>
 </Project>
 ```
@@ -90,7 +90,7 @@ app.Run();
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.*-*" />
+    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.0.*" />
   </ItemGroup>
 </Project>
 ```

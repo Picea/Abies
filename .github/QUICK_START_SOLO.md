@@ -44,8 +44,7 @@ Click **Add rule** for branch `main`
 1. ✅ **Require status checks to pass before merging**
 2. ✅ **Require branches to be up to date before merging**
 3. Then add these checks:
-- `build` (from CD workflow)
-- `e2e` (from E2E workflow)
+- `build` (from PR Validation workflow)
 - `Analyze C# Code` (from CodeQL)
 - `validate-pr-title` (from PR validation)
 - `validate-pr-description` (from PR validation)
@@ -167,8 +166,6 @@ EOF
 # 4. Wait for automated checks
 # - Copilot review (2-5 minutes)
 # - PR validation (~2 minutes)
-# - CD workflow (~5 minutes)
-# - E2E tests (~3 minutes)
 # - CodeQL (~2 minutes)
 
 # 5. Address Copilot feedback if needed

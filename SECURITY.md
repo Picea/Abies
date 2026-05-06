@@ -6,8 +6,8 @@ We actively support the latest major version of Abies. Security updates are prov
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x     | ✅ Yes             |
-| < 1.0   | ❌ No              |
+| 2.x     | ✅ Yes             |
+| < 2.0   | ❌ No              |
 
 ## Reporting a Vulnerability
 
@@ -51,6 +51,12 @@ All pull requests are reviewed for:
 - Proper input validation
 - Dependency updates
 - Adherence to pure functional programming principles
+
+### Development Safeguards
+
+- Development-only fallback secrets are allowed only when production fails fast.
+- In `Picea.Abies.Conduit.Api/Program.cs`, a development JWT secret fallback is present for local runs, and non-development environments throw if `Jwt:Secret` is missing.
+- Production deployments must always provide `Jwt:Secret` through secure configuration (for example, environment variables or a managed secret store).
 
 ### Dependency Management
 
@@ -97,4 +103,4 @@ For security-related questions that are not vulnerability reports, please open a
 
 ---
 
-*Last Updated: February 5, 2026*
+*Last Updated: May 4, 2026*
