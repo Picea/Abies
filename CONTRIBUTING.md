@@ -17,15 +17,15 @@ We follow **trunk-based development** practices:
 The `main` branch is protected with the following rules:
 
 ### Required Status Checks
-All PRs must pass 10 checks:
+All PRs must pass the configured PR-gated checks.
 
-**Core Workflows:**
-- ✅ **CD workflow** - Build, test, and package validation
+**PR-gated workflows:**
 - ✅ **PR Validation workflow** - PR guardrails and compile checks
 - ✅ **CodeQL** - Security and code quality analysis
 - ✅ **Benchmark (js-framework-benchmark)** - E2E performance regression detection (5% threshold)
 
-**Nightly Workflow:**
+**Post-merge / scheduled workflows (not PR gates):**
+- 🚀 **CD workflow** - Build and deployment checks on `main`
 - 🌙 **E2E workflow** - End-to-end browser tests run nightly (not a PR gate)
 
 **Other Checks:**

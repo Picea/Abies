@@ -772,8 +772,7 @@ jobs:
             echo "✅ No untracked TODOs"
             echo ""
             echo "Next steps:"
-            echo "1. Wait for CD workflow to complete"
-            echo "2. Request review from team members"
-            echo "3. Address any feedback"
-            echo "4. Merge when approved!"
+            echo "1. Request review from team members"
+            echo "2. Address any feedback"
+            echo "3. Merge when approved!"
           fi

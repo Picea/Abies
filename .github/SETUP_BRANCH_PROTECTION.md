@@ -50,11 +50,6 @@ Enable these checkboxes:
 
 Then select these status checks (search for each):
 
-**From CD workflow:**
-```
-build
-```
-
 **From CodeQL workflow:**
 ```
 Analyze C# Code
@@ -72,6 +67,8 @@ pr-validation-summary
 ```
 
 > **Nightly only**: The `e2e` workflow is scheduled and is not a required PR status check.
+
+> **Push-only**: The `cd` workflow runs on `push` to `main` and is not a required PR status check.
 
 > **Note**: These status checks only appear after they've run at least once. If you don't see them:
 > 1. Create a test PR
