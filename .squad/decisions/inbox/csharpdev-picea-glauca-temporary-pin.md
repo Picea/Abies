@@ -14,7 +14,7 @@ Current `Picea.Glauca` package line requires prerelease `Picea` versions (`>= 1.
 Adopt migration option 1:
 
 1. Keep all non-Glauca projects on direct `Picea` `1.0.0`.
-2. For Glauca-coupled projects only, pin direct `Picea` to `1.0.27-rc-0002` as a temporary compatibility floor.
+2. For Glauca-coupled projects only, align direct `Picea` to the current Glauca compatibility floor (`>= 1.0.27-rc-0002`) as a temporary compatibility bridge.
 
 Applied to:
 

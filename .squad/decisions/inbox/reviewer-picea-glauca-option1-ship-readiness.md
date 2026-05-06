@@ -16,6 +16,6 @@ Option 1 (temporary Glauca compatibility pin) is shippable for the migration obj
 
 ## Guardrails
 
-1. Treat `1.0.27-rc-0002` as temporary compatibility debt.
+1. Treat prerelease `Picea` pins required by Glauca (`>= 1.0.27-rc-0002`) as temporary compatibility debt.
 2. Remove temporary pins once a Glauca release supports stable `Picea` `1.0.0` or Glauca coupling is removed from Conduit API/read-store/test paths.
 3. Keep this migration slice focused; unrelated CI/workflow/test-infra changes should ship in separate PRs.
