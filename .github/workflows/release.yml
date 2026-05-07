@@ -71,28 +71,28 @@ jobs:
         run: dotnet test --project Picea.Abies.Templates.Testing/Picea.Abies.Templates.Testing.csproj --no-build --verbosity normal -- --treenode-filter "/*/*/*/*[Category!=E2E]"
 
       - name: Pack Picea.Abies
-        run: dotnet pack ./Picea.Abies/Picea.Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Picea.Abies/Picea.Abies.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Picea.Abies.Browser
-        run: dotnet pack ./Picea.Abies.Browser/Picea.Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Picea.Abies.Browser/Picea.Abies.Browser.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Picea.Abies.Server
-        run: dotnet pack ./Picea.Abies.Server/Picea.Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Picea.Abies.Server/Picea.Abies.Server.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Picea.Abies.Server.Kestrel
-        run: dotnet pack ./Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Picea.Abies.Templates
-        run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Abies (redirect metapackage)
-        run: dotnet pack ./Metapackages/Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Metapackages/Abies/Abies.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Abies.Browser (redirect metapackage)
-        run: dotnet pack ./Metapackages/Abies.Browser/Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Metapackages/Abies.Browser/Abies.Browser.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack Abies.Server (redirect metapackage)
-        run: dotnet pack ./Metapackages/Abies.Server/Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack ./Metapackages/Abies.Server/Abies.Server.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Publish to NuGet
         if: startsWith(github.ref, 'refs/tags/v')
