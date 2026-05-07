@@ -37,12 +37,12 @@ Let's build an app that fetches random quotes from an API.
 ### Model
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace QuoteViewer;
 
@@ -222,7 +222,7 @@ Pass the interpreter to the runtime when starting the application:
 ```csharp
 using QuoteViewer;
 
-await Abies.Browser.Runtime.Run<QuoteApp, Model, Unit>(
+await Picea.Abies.Browser.Runtime.Run<QuoteApp, Model, Unit>(
     interpreter: QuoteInterpreter.Interpret);
 ```
 
@@ -388,7 +388,7 @@ The command/interpreter split provides several benefits:
 The Conduit demo application (a Medium.com clone) uses this pattern at scale. Its interpreter handles 15+ command types:
 
 ```csharp
-// Simplified from Abies.Conduit.App/Interpreter.cs
+// Simplified from Picea.Abies.Conduit.App/Interpreter.cs
 public static async ValueTask<Result<Message[], PipelineError>> Interpret(
     Command command)
 {

@@ -23,7 +23,7 @@ dotnet new classlib -n MyCounter
 cd MyCounter
 
 # Add the Abies framework reference
-dotnet add package Picea.Abies --prerelease
+dotnet add package Picea.Abies
 ```
 
 ## Step 1: Define the Model
@@ -208,7 +208,7 @@ cd ..
 dotnet new web -n MyCounter.Wasm
 cd MyCounter.Wasm
 dotnet add reference ../MyCounter/MyCounter.csproj
-dotnet add package Picea.Abies.Browser --prerelease
+dotnet add package Picea.Abies.Browser
 ```
 
 Replace `Program.cs` with:

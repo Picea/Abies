@@ -8,7 +8,47 @@ on:
     branches: [ "main" ]
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.check.outputs.docs_only }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if docs-only change
+        id: check
+        run: |
+          # For push events prefer the exact before..after range from GitHub.
+          # Fallback to HEAD~1..HEAD for first-commit/force-push edge cases.
+          BEFORE="${{ github.event.before }}"
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(git diff --name-only "$BEFORE".."${{ github.sha }}" 2>/dev/null || echo "")
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Check if any file is NOT docs-only
+          NON_DOCS=$(echo "$CHANGED" | grep -vE '^(\.squad/|docs/|\.github/instructions/|.*\.md$|LICENSE$)' | grep -v '^$' || true)
+
+          if [ -z "$NON_DOCS" ] && [ -n "$CHANGED" ]; then
+            echo "docs_only=true" >> $GITHUB_OUTPUT
+            echo "✅ Docs-only change detected — skipping expensive jobs"
+          else
+            echo "docs_only=false" >> $GITHUB_OUTPUT
+            echo "🔧 Code changes detected — running all jobs"
+          fi
+
   build:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.docs_only == 'false'
 
     runs-on: ubuntu-latest
 
@@ -24,11 +64,6 @@ jobs:
         dotnet-version: '10.0.x'
     - name: Install WASM experimental workload
       run: dotnet workload install wasm-experimental wasm-tools
-    - name: Install GitVersioning
-      run: dotnet tool install --global nbgv
-    - name: Set version
-      id: version
-      run: echo "::set-output name=VERSION::$(nbgv get-version -v AssemblyInformationalVersion)"
     - name: Restore dependencies
       run: dotnet restore
 
@@ -139,30 +174,3 @@ jobs:
     # PostgreSQL integration tests are skipped in CD — they require a
     # PostgreSQL service container that is not provisioned in this workflow.
     # Run locally with: CONDUIT_POSTGRES_CONNECTION="..." dotnet test --project ...
-    - name: Pack Picea.Abies
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Picea.Abies/Picea.Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Picea.Abies.Browser
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Picea.Abies.Browser/Picea.Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Picea.Abies.Server
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Picea.Abies.Server/Picea.Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Picea.Abies.Server.Kestrel
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Picea.Abies.Templates
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Abies (redirect metapackage)
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Metapackages/Abies/Abies.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Abies.Browser (redirect metapackage)
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Metapackages/Abies.Browser/Abies.Browser.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Pack Abies.Server (redirect metapackage)
-      if: github.event_name != 'pull_request'
-      run: dotnet pack ./Metapackages/Abies.Server/Abies.Server.csproj --configuration Release --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.VERSION }}
-    - name: Publish to NuGet
-      if: github.event_name != 'pull_request'
-      run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

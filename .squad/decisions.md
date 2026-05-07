@@ -110,6 +110,11 @@ All integration and E2E tests start the SUT via `DistributedApplicationTestingBu
 ### E2E Tests for User Journeys
 Always write E2E tests for user journeys. TUnit + Playwright via TUnit.Playwright.
 
+### Spec-by-Example for New Features
+Every new feature and behavior change starts with a **Spec-by-Example test** — drafted before any production code is written, approved by the user, and immutable during implementation. The test is the executable specification: if it passes, the feature is done. The Architect runs a Spec-by-Example Phase between Critic approval and Handoff (see Architect charter). The Test Strategy Expert Room (🧪) decides which level the spec test lives at (E2E through UI, API/integration, or workflow-direct) per feature. Implementation makes the approved test pass without modifying it; if implementation reveals the test is wrong, work pauses and the test change is re-approved.
+
+**Skip Spec-by-Example for:** pure refactoring with no behavior change, trivial changes (one-line config, doc-only, dependency bumps with no behavior change), and bug fixes (already covered by the bug-fix regression test rule).
+
 ### Playwright MCP for Browsing
 When browsing, inspecting web pages, or running browser diagnostics — always prefer the **Playwright MCP server** over curl, wget, or raw HTTP clients. Playwright gives you a real browser context: JavaScript execution, rendered DOM, network interception, cookies, auth flows, screenshots. Use it for debugging UI issues, verifying rendered output, inspecting Aspire dashboard traces, and validating DAST targets. Fall back to curl/fetch only if Playwright MCP is unavailable.
 
@@ -251,9 +256,12 @@ Every task — feature, bug fix, refactoring, or any code change — must satisf
 - [ ] Boy Scout Rule applied — touched files left better than found
 
 **Testing:**
+- [ ] Spec-by-Example test was approved by the user before implementation began (for new features and behavior changes)
+- [ ] The originally-approved Spec-by-Example test still passes — unmodified — at merge time
 - [ ] Unit tests cover new logic (smart constructors, workflows, edge cases)
 - [ ] Integration/E2E tests run via Aspire AppHost
 - [ ] Security regression tests added for any new threat mitigations
+- [ ] Regression test added for every bug fix (reproduces the bug, verifies the fix)
 - [ ] All tests pass (`dotnet test`)
 
 **Observability:**
@@ -268,12 +276,15 @@ Every task — feature, bug fix, refactoring, or any code change — must satisf
 
 **Documentation:**
 - [ ] Docs updated or created for any user-facing change (Tech Writer involved)
+- [ ] Tech Writer has verified all existing docs are still in sync after the change
 - [ ] API reference current
 - [ ] ADR created for significant architectural decisions
 - [ ] CHANGELOG updated
 
 **Review:**
-- [ ] Reviewer approved (no open 🔴 Must Fix findings)
+- [ ] Reviewer approved (no open 🔴 Must Fix findings) — **mandatory for every code-touching work item; no work item closes without an explicit Reviewer approval recorded**
+- [ ] No specialist self-approved their own work (Reviewer is the only authority that declares code complete)
+- [ ] No code-shaped change was Lead-approved (Lead's lightweight authority is limited to README/CONTRIBUTING/CHANGELOG prose, decisions inbox, code comments, and `.md` docs only)
 - [ ] UX Expert approved (for user-facing changes)
 - [ ] No undocumented principle deviations
 
@@ -292,6 +303,9 @@ The Reviewer approaches code with fresh eyes — no prior context from design ph
 
 ### Reviewer Lockout Authority
 🔴 Must Fix findings block merge. Original author locked out on rejection — coordinator reassigns.
+
+### Reviewer Is Mandatory for Every Code-Touching Work Item
+No code-touching work item closes without an explicit Reviewer approval. This includes "trivial" changes — there is no such thing as too small to review. Trivial changes get reviewed faster, not skipped. Specialists do not self-approve their own code. The Lead does not approve code-shaped changes (`.cs`/`.js`/`.ts`/`.mjs`, Dockerfiles, GitHub Actions workflows, `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Packages.props`, `package.json`, EF migrations). The Lead's lightweight authority is limited to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions inbox, code comments, and `.md` docs. An attempt to declare code work complete without Reviewer approval triggers the **Missing Review Lockout** in `principles-enforcement.md` — the agent is locked out and the Lead reassigns to the Reviewer or escalates.
 
 ### Undocumented Deviations Block
 Any code that deviates from an established principle without a documented approval (decision log + code comment) is 🔴 Must Fix unconditionally.
@@ -481,3 +495,68 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 - Add migration guard tests that fail early when Program contract changes are not propagated.
 - Keep `AutomatonRuntime` coupling until a replacement path is benchmarked, verified, and documented in ADR.
 **Why:** Current state is directionally correct but not release-safe without propagation and guardrails.
+
+### 2026-04-04T00:00:00Z: Full decider migration — breaking contract target
+**By:** Architect
+**What:** Runtime must be decider-native end-to-end. Remove all Program compat shims (default `Decide`/`IsTerminal`). All Program implementors must explicitly declare both members. Remove AutomatonRuntime-first language from docs. This is a breaking migration contract.
+**Why:** Compat shims allow partial implementors to pass the compiler while violating the decider contract. Explicit declaration enforces correct behavior without silent no-ops.
+
+### 2026-04-04T00:00:00Z: Full decider migration — implementation complete
+**By:** C# Dev
+**What:** Removed default `Decide`/`IsTerminal` from `Program.cs`. Made `Runtime.cs` decider-native — `Dispatch` now runs the full decide→transition pipeline. Added `_dispatchGate` SemaphoreSlim for command serialization. All builds and most tests pass. One failing E2E: `DeleteArticle_AsAuthor_ShouldNavigateToHome` (Playwright timeout on `.article-page`) — root cause identified as dispatch gate scope holding the lock over async HTTP effect awaits; tracked in #245.
+**Why:** Completing the migration target set by the Architect. Runtime now enforces decider contract uniformly across all Program implementors.
+
+### 2026-04-04T00:00:00Z: Program.Decide return type is Result<Message[], Message>
+**By:** C# Dev
+**What:** `Decide` returns `Result<Message[], Message>` (not `Result<Message[], Unit>`). Command validation failures are `Err<Message>` values dispatched through the runtime as error messages. Applied to `Program.cs`, `Runtime.cs`, `Conduit.cs`, all affected programs, templates, and tests.
+**Why:** Errors must flow through the standard message pipeline rather than being silently discarded; typed `Err` enables explicit error handling in the update loop.
+
+### 2026-04-04T00:00:00Z: Full decider migration audit — 🔴 dispatch gate scope regression tracked as #245
+**By:** Reviewer
+**What:** `_dispatchGate` is held for the entire command lifecycle including async HTTP effect awaits. This blocks navigation/subscription messages behind in-flight effects (head-of-line blocking). `DeleteArticle_AsAuthor_ShouldNavigateToHome` E2E times out as a result. Fix: narrow gate scope to the decide/transition critical section only, release before awaiting effects. 🟠 No concurrency fairness tests added for the new gate behavior. Tracked in GitHub issue #245.
+**Why:** Gate scope being too wide re-introduces blocking on concurrent messages; E2E failure is a production correctness regression that must be fixed before release.
+
+### 2026-04-15T09:16:51Z: User directive — Issue #243 scope reduction (superseded)
+**By:** Maurice Peters (via Copilot)
+**What:** Scope reduced for issue #243 to a simplified one-image-on-last-slide implementation only (no generic feature machinery).
+**Why:** User directive captured; immediately superseded by the following scope correction.
+
+### 2026-04-15T09:23:29Z: User directive — Issue #243 scope correction to generic image support feature
+**By:** Maurice Peters (via Copilot)
+**What:** Issue #243 is the full generic image support feature (framework-level image embedding in slides) plus a demo slide, not just the simplified one-image variant. Prior scope reduction directive is superseded.
+**Why:** Clarification from user to restore the intended scope of the feature work.
+### 2026-04-28T00:00:00Z: Express presentation dry run — narrative review (Technical Writer)
+**By:** Senior Technical Writer (squad agent)
+**Requested by:** Maurice Peters
+**What:** Narrative and Dutch language review of `_expressSlides` ("Coderen met AI in 2026", 19 slides). 4 must-fix items: tools slide format conflict (pick table or bullets, not both), missing Deel 2→3 transition bridge, "compoundt over sessies" Dunglish (replace with "bouwt op over sessies"), and `metr-followup` delivery protection. 5 should-improve items flagged. Strong lines catalogued and preserved.
+**Why:** Pre-conference dry run to validate structural soundness before delivery.
+**Verdict:** Structurally sound. Ship it after applying must-fix items.
+
+### 2026-04-28T00:00:00Z: Express presentation dry run — factual accuracy audit (Reviewer)
+**By:** Reviewer (independent quality authority)
+**Requested by:** Maurice Peters
+**Status:** 🔴 Blocking until two must-fix items are resolved.
+**What:**
+- BLOCKING 1: Benchmark claim "vrijwel alle" on `picea-abies` slide overstates Abies's position (wins ~5/9, not almost all; 09_clear1k is 2.5× slower than Blazor). Required fix: replace with honest framing ("competitive with Blazor, beats on key creation benchmarks, gaps remain on clear and swap").
+- BLOCKING 2: "51% dagelijks" attributed to both JetBrains AI Pulse January 2026 (`adoption` slide) and Stack Overflow 2025 (`productivity` slide) — one citation is wrong. Required fix: determine correct source and remove from the other.
+- 10 non-blocking verify-before-presenting findings logged in orchestration log.
+**Why:** Factual errors in a conference talk attributed to published surveys are verifiable live by the audience.
+
+### 2026-04-28T00:00:00Z: Express presentation dry run — audience journey and visual design review (UX Expert)
+**By:** UX Expert (squad agent)
+**Requested by:** Maurice Peters
+**What:** Three critical friction points: (1) `tools` slide density is projection-breaking — markdown table must be replaced with a visual chart or split across slides; (2) `trust` slide ASCII charts are the primary missed live demo opportunity — the usage/trust divergence (84% use, 29% trust) should be a real rendered chart as the demo payoff; (3) `picea-abies` at slide 18 introduces new complexity too late — reduce to 3 lines max. CTA "Begin bij de spec, niet bij de code" should appear in intro, not only on final slide.
+**Verdict:** Talk lands despite the slides. Friction is in projection-hostile density and one missed visual payoff.
+**Why:** Conference projector rendering and audience energy curve require different density decisions than document-mode slides.
+
+### 2026-04-15T00:00:00Z: Express slides issue #2 number verification resolved
+**By:** Reviewer
+**Requested by:** Maurice Cornelius Gerardus Petrus Peters
+**What:** Validated the blocking issue #2 percentages and source attribution. Stack Overflow 2025 is confirmed for both lines: "84% gebruikt of plant gebruik" and "51% van professionele developers gebruikt AI-tools dagelijks." The JetBrains AI Pulse URL in use (`https://www.jetbrains.com/lp/devecosystem-2025/ai-pulse/`) returned HTTP 404 at review time, so exact JetBrains percentages were removed from adoption framing.
+**Why:** Prevent a live source-attribution contradiction in conference delivery and keep claims tied to a currently verifiable source.
+
+### 2026-04-15T00:00:00Z: Express slide text updated to safe source-accurate wording
+**By:** C# Dev
+**Requested by:** Maurice Cornelius Gerardus Petrus Peters
+**What:** Applied the requested express slide updates in `Picea.Abies.Presentation/Program.cs` under `_expressSlides`: adoption wording moved to safe non-numeric phrasing for JetBrains, Stack Overflow daily-use wording scoped to professional developers, and benchmark framing adjusted from overclaim language to balanced competitive wording.
+**Why:** Incorporate reviewer fact-check corrections directly into the deck while preserving the narrative flow.

@@ -1,50 +1,27 @@
-# CodeQL Quick Setup Guide
+# CodeQL Operations Guide
 
-## ✅ Ready to Enable!
+## ✅ Current Status
 
-Your CodeQL configuration is **ready to go**. Follow these simple steps:
+CodeQL is enabled via [.github/workflows/codeql.yml](../.github/workflows/codeql.yml) and runs on:
+- Every push to `main`
+- Every pull request targeting `main`
+- Weekly schedule (Mondays at 9 AM UTC)
 
-## Option 1: Enable via Workflow File (Recommended) ✨
+Use this page for operational checks and maintenance, not first-time enablement.
 
-The workflow file is already created at `.github/workflows/codeql.yml`.
+## Verify CodeQL Is Healthy
 
-**To activate:**
-
-1. **Commit the workflow file**
-   ```bash
-   git add .github/workflows/codeql.yml
-   git commit -m "Enable CodeQL security scanning"
-   git push
-   ```
-
-2. **That's it!** 🎉
-   - CodeQL will run automatically on:
-     - Every push to `main`
-     - Every pull request
-     - Weekly (Mondays at 9 AM UTC)
-
-3. **Check results**
-   - Go to: **Security tab → Code scanning**
-   - View alerts, suppress false positives, track trends
-
-## Option 2: Enable via GitHub UI (Alternative)
-
-If you prefer the GUI:
-
-1. Go to: **Settings → Code security and analysis**
-2. Find: **Code scanning**
-3. Click: **Set up → Default**
-4. Select: C#
-5. Click: **Enable CodeQL**
-
-⚠️ **Note:** Option 1 (workflow file) gives you more control and is already configured optimally for Abies.
+1. Check workflow history:
+   - Actions -> `CodeQL Security Analysis`
+2. Check alert surface:
+   - Security -> Code scanning alerts
+3. Confirm no stale failures on recent PRs and main pushes.
 
 ## What to Expect
 
-### First Run
-- **Duration:** 5-10 minutes
-- **Results:** Likely 5-20 findings (mostly informational)
-- **Action:** Review and triage findings
+### Typical Run
+- **Duration:** ~5-10 minutes
+- **Action:** Review new/changed findings and triage by severity
 
 ### Typical Findings
 - ℹ️ **Informational:** Code style suggestions (can ignore)

@@ -54,12 +54,12 @@ Let's build a simple app with Home, About, and User Profile pages.
 ### Model
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace RoutingApp;
 
@@ -312,7 +312,7 @@ public static (Page Page, Command Command) FromUrl(Url url) =>
 The Conduit demo uses the same pattern at scale:
 
 ```csharp
-// From Abies.Conduit.App/Route.cs
+// From Picea.Abies.Conduit.App/Route.cs
 public static (Page Page, Command Command) FromUrl(
     Url url, Session? session, string apiUrl) =>
     url.Path switch

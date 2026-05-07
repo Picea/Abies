@@ -331,40 +331,6 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
 
         runtime._handlerRegistry.Dispatch = runtime.DispatchFromSubscription;
 
-        var (model, initialCommand) = TProgram.Initialize(argument);
-
-        Document document;
-        using (Elements.EnterViewCacheScope(runtime._viewCacheScope))
-        {
-            document = TProgram.View(model);
-        }
-        var bodyPatches = Operations.Diff(null, document.Body);
-        var headPatches = HeadDiff.Diff([], document.Head);
-
-        IReadOnlyList<Patch> allPatches;
-        if (headPatches.Count > 0)
-        {
-            var merged = new List<Patch>(bodyPatches.Count + headPatches.Count);
-            merged.AddRange(bodyPatches);
-            merged.AddRange(headPatches);
-            allPatches = merged;
-        }
-        else
-        {
-            allPatches = bodyPatches;
-        }
-
-        runtime._handlerRegistry.RegisterHandlers(document.Body);
-
-        if (allPatches.Count > 0)
-        {
-            apply(allPatches);
-        }
-
-        runtime._currentDocument = document;
-
-        titleChanged?.Invoke(document.Title);
-
         Interpreter<Command, Message> wrappedInterpreter = command =>
             InterpretCommand(command, interpreter, runtime._navigationExecutor, replay);
 
@@ -407,10 +373,46 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
             }
         }
 
-        runtime._core = new AutomatonRuntime<TProgram, TModel, Message, Command, TArgument>(
-            model, runtime.Observe, wrappedInterpreter,
+        runtime._core = await AutomatonRuntime<TProgram, TModel, Message, Command, TArgument>.Start(
+            argument,
+            runtime.Observe,
+            wrappedInterpreter,
             threadSafe: threadSafe,
             trackEvents: false);
+
+        var model = runtime._core.State;
+
+        Document document;
+        using (Elements.EnterViewCacheScope(runtime._viewCacheScope))
+        {
+            document = TProgram.View(model);
+        }
+        var bodyPatches = Operations.Diff(null, document.Body);
+        var headPatches = HeadDiff.Diff([], document.Head);
+
+        IReadOnlyList<Patch> allPatches;
+        if (headPatches.Count > 0)
+        {
+            var merged = new List<Patch>(bodyPatches.Count + headPatches.Count);
+            merged.AddRange(bodyPatches);
+            merged.AddRange(headPatches);
+            allPatches = merged;
+        }
+        else
+        {
+            allPatches = bodyPatches;
+        }
+
+        runtime._handlerRegistry.RegisterHandlers(document.Body);
+
+        if (allPatches.Count > 0)
+        {
+            apply(allPatches);
+        }
+
+        runtime._currentDocument = document;
+
+        titleChanged?.Invoke(document.Title);
 
 #if DEBUG
         runtime._hotReloadRegistration =
@@ -424,8 +426,6 @@ public sealed class Runtime<TProgram, TModel, TArgument> : IDisposable
                 initialSubscriptions,
                 runtime.DispatchFromSubscription,
                 runtime.ObserveSubscriptionFault);
-
-            await runtime._core.InterpretEffect(initialCommand);
         }
 
         if (initialUrl is not null)

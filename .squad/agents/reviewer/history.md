@@ -16,6 +16,11 @@ This file captures project-specific learnings from the Reviewer's code reviews. 
 *None yet — items flagged but not blocking, to revisit later.*
 
 ## Learnings
+- 2026-05-06: Temporary prerelease floor pinning is acceptable as a scoped compatibility bridge when (a) prerelease direct pins are limited to Glauca-coupled projects, (b) non-Glauca projects remain on stable Picea, (c) restore is verified green (no NU1605), and (d) migration docs include explicit rollback/exit criteria.
+- 2026-05-06: Picea 1.0.0 migration can appear complete at direct package-reference level while still being non-shippable due to transitive floor mismatches (Glauca requiring prerelease Picea). Reviewer must treat NU1605 downgrade errors as hard ship blockers and require either compatible transitive releases or scoped rollback.
+- 2026-05-06: Migration work items are vulnerable to scope drift (CI policy changes plus large new testing infrastructure in the same changeset). Reviewer should enforce split PRs when unrelated concerns dilute release-risk assessment.
+- 2026-05-06: New dependency additions in code-touching migration work must include explicit dependency-approval evidence per principles; missing Security Expert review trail is a merge blocker even when package choices are reasonable.
+- 2026-04-15: Express presentation dry-run audit — two blocking issues found: (1) benchmark claim "verslaat Blazor WASM op vrijwel alle duration tests" not supported by benchmark data (Abies wins ~5/9, not ~8/9; loses clear1k by 2.5×); (2) "51% dagelijks" attributed to both JetBrains AI Pulse and Stack Overflow 2025 — citation conflict. Non-blocking: METR "dezelfde devs" claim needs verification; Claude Code "8 maanden" timeline and survey source needed; Veracode/DX figures need report names for speaker notes. The asterisk disclaimer does not fix a false directional claim.
 - 2026-03-26: Template counter UI now uses plain '-' and '+' labels with aria labels ('Decrease'/'Increase'); tests were updated to query accessible names where appropriate.
 - 2026-03-26: Browser and browser-empty templates now include '.Host' projects with OTEL setup and OTLP proxy mapping; defaults tests assert host file presence plus 'app.MapOtlpProxy()' and '.AddConsoleExporter()'.
 - 2026-03-26: TUnit filtering in this repo should use tree-node filters (or full runs); FullyQualifiedName filters result in zero-test runs.
@@ -26,4 +31,5 @@ This file captures project-specific learnings from the Reviewer's code reviews. 
 ## Review Statistics
 | Date | Scope | Verdict | 🔴 | ⚠️ | 💡 | Files |
 |---|---|---|---|---|---|---|
+| 2026-05-06 | Picea 1.0.0 migration (working tree) | 🔴 Changes Requested | 3 | 2 | 0 | 31 |
 | *None yet* | | | | | | |

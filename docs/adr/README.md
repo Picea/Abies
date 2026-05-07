@@ -32,6 +32,8 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-022](./ADR-022-picea-ecosystem-migration.md) | Picea Ecosystem Migration | Accepted | Migrates Automaton monorepo to Picea GitHub org with five focused repos |
 | [ADR-023](./ADR-023-package-rename.md) | Package Rename: Abies → Picea.Abies | Accepted | All packages use `Picea.` prefix; old names become metapackages |
 | [ADR-024](./ADR-024-four-render-modes.md) | Four Render Modes | Accepted | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
+| [ADR-025](./ADR-025-issue-160-debugger-boundary-contract-phase1.md) | Issue #160 Debugger Boundary Contract (Phase 1) | Accepted | Defines debugger boundary contract for phase 1 integration |
+| [ADR-026](./ADR-026-debugger-auto-mount-with-csharp-api.md) | Debugger Auto-Mount with C# API | Accepted | Adds automatic debugger mount behavior with the C# API |
 
 > **Note:** There are two files numbered ADR-005: [ADR-005-webassembly-runtime.md](./ADR-005-webassembly-runtime.md) (indexed above) and [ADR-005-security-scanning-sast-dast-sca.md](./ADR-005-security-scanning-sast-dast-sca.md) (security scanning). The security scanning ADR was created separately and retains its number for historical reasons.
 

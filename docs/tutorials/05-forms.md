@@ -32,12 +32,12 @@ Let's build a user registration form with validation.
 ### Model
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Events;
 
 namespace RegistrationForm;
 

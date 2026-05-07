@@ -47,11 +47,11 @@ Let's build a clock that updates every second.
 ### Model and Messages
 
 ```csharp
-using Abies.DOM;
-using Abies.Subscriptions;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
 using Automaton;
-using static Abies.Html.Attributes;
-using static Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
 
 namespace ClockApp;
 

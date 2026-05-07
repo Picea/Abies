@@ -24,3 +24,8 @@ Pipeline decisions, container configs, deployment patterns, and CI optimization.
 
 ## Environment Gotchas
 *None yet — environment-specific issues and workarounds.*
+
+## Learnings
+- 2026-04-19: PR title validation in `.github/workflows/pr-validation.yml` enforces Conventional Commits and requires the subject to start with an uppercase letter (`subjectPattern: ^[A-Z].+$`). Titles that otherwise look valid can fail on lowercase subjects.
+- 2026-04-19: When Scribe merges inbox decisions into `.squad/decisions.md`, follow-up hygiene should include checking agent history files for references to deleted `.squad/decisions/inbox/*.md` files and repointing to canonical entries in `.squad/decisions.md`.
+- 2026-04-19: For PR conflict cleanup branches, rebase first, then verify prior review fixes with targeted `rg` checks against the exact previously commented patterns before pushing; this confirms no regression while avoiding unrelated edits.

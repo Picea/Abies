@@ -158,37 +158,67 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const today  = new Date().toISOString().slice(0, 10);
 
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              title: `🚨 ZAP Nightly Full Scan Failed — ${today}`,
-              labels: ["security", "nightly-scan"],
-              body: [
-                "## ZAP Full Active Scan — Failure Report",
-                "",
-                `**Date:** ${today}`,
-                `**Workflow run:** [View run](${runUrl})`,
-                "",
-                "### What happened",
-                "The nightly ZAP full (active) scan failed.",
-                "",
-                "This can be caused by one or more **HIGH-risk** security findings",
-                "or by operational scan errors (for example startup/connectivity/report generation).",
-                "Active scanning tests for real attack payloads (SQL injection, XSS,",
-                "path traversal, OS command injection, etc.).",
-                "",
-                "### Next steps",
-                "1. Open the workflow run linked above.",
-                "2. Download the `zap-nightly-full-reports` artifact.",
-                "3. Check workflow logs first for operational errors.",
-                "4. Review `phase0-frontend.json`, `phase1-unauth.json`, and",
-                "   `phase2-auth__*.json` for HIGH-risk findings when reports are present.",
-                "5. Triage HIGH-risk alerts — confirm exploitability before filing CVEs.",
-                "6. Apply fixes and re-run via **Actions → ZAP Nightly Full Scan → Run workflow**.",
-                "",
-                "### Affected paths",
-                "If reports were generated, see artifact files for affected endpoints and payloads.",
-                "",
-                "_This issue was created automatically by the nightly security workflow._",
-              ].join("\n"),
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = `🚨 ZAP Nightly Full Scan Failed — ${today}`;
+
+            const body = [
+              "## ZAP Full Active Scan — Failure Report",
+              "",
+              `**Date:** ${today}`,
+              `**Workflow run:** [View run](${runUrl})`,
+              "",
+              "### What happened",
+              "The nightly ZAP full (active) scan failed.",
+              "",
+              "This can be caused by one or more **HIGH-risk** security findings",
+              "or by operational scan errors (for example startup/connectivity/report generation).",
+              "Active scanning tests for real attack payloads (SQL injection, XSS,",
+              "path traversal, OS command injection, etc.).",
+              "",
+              "### Next steps",
+              "1. Open the workflow run linked above.",
+              "2. Download the `zap-nightly-full-reports` artifact.",
+              "3. Check workflow logs first for operational errors.",
+              "4. Review `phase0-frontend.json`, `phase1-unauth.json`, and",
+              "   `phase2-auth__*.json` for HIGH-risk findings when reports are present.",
+              "5. Triage HIGH-risk alerts — confirm exploitability before filing CVEs.",
+              "6. Apply fixes and re-run via **Actions → ZAP Nightly Full Scan → Run workflow**.",
+              "",
+              "### Affected paths",
+              "If reports were generated, see artifact files for affected endpoints and payloads.",
+              "",
+              "_This issue was created automatically by the nightly security workflow._",
+            ].join("\n");
+
+            const openNightlyIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              labels: "nightly-scan",
+              per_page: 100,
             });
+
+            const existing = openNightlyIssues.find(issue => issue.title.startsWith("🚨 ZAP Nightly Full Scan Failed"));
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: [
+                  `### Recurrence: ${today}`,
+                  "",
+                  `Nightly full scan failed again: [workflow run](${runUrl}).`,
+                  "Download `zap-nightly-full-reports` from that run for diagnostics.",
+                ].join("\n"),
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                labels: ["security", "nightly-scan"],
+                body,
+              });
+            }

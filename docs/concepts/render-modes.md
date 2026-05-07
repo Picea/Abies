@@ -70,6 +70,14 @@ await session.RunEventLoop(cancellationToken);
 
 The server maintains a per-client `Session` containing a full MVU runtime with its own `HandlerRegistry`. User events arrive via WebSocket; binary patches flow back through the same transport.
 
+**Lifecycle highlights:**
+
+- Initial page load includes `/_abies/abies-server.js` with a `data-ws-path` attribute.
+- The browser opens `ws://.../_abies/ws?url=<currentPath>` (or `wss://` on HTTPS), so the server can initialize route-aware state.
+- Kestrel starts one `Session` per WebSocket connection.
+- The session event loop receives DOM events, resolves handlers, dispatches messages, and streams binary patch batches back to the browser.
+- On disconnect, the WebSocket transport closes and the session is disposed.
+
 **How it works:**
 
 ```text
@@ -133,6 +141,14 @@ var html = Page.Render<MyApp, MyModel, Unit>(
 
 This combines the instant interactivity of `InteractiveServer` with the connectionless scalability of `InteractiveWasm`. The server holds the MVU session initially; once WASM is loaded and hydrated, the server session is disposed and the client takes over.
 
+**Lifecycle highlights:**
+
+- Initial page includes both `/_abies/abies-server.js` and `/_framework/dotnet.js` bootstrapping.
+- While WASM downloads, server-side WebSocket interactivity is active.
+- When WASM applies its first batch, it sets `data-abies-mode="wasm"` on `<body>`.
+- In auto mode, `abies-server.js` watches that attribute and immediately closes the WebSocket, marking the server phase complete.
+- After handoff, browser WASM runtime owns DOM updates and event handling.
+
 **Use when:**
 - You want the best possible user experience
 - First interaction must be immediate (no waiting for WASM)
@@ -145,7 +161,7 @@ This combines the instant interactivity of `InteractiveServer` with the connecti
 - ✅ Best overall user experience
 - ❌ Most complex mode
 - ❌ Requires both server session management and WASM handoff protocol
-- ❌ State transfer during handoff adds implementation complexity
+- ❌ App state that must survive handoff may require explicit persistence strategy
 
 ## The Same Program Runs Everywhere
 
@@ -232,6 +248,7 @@ See the [Performance section](../README.md#performance-abies-browser-vs-blazor-w
 ## Next
 
 - [**Choosing a Render Mode**](../guides/render-mode-selection.md) — Practical guidance for your project
+- [**InteractiveServer and InteractiveAuto Lifecycle**](../guides/interactive-lifecycle.md) — Detailed transport, session, and handoff behavior
 - [**MVU Architecture**](mvu-architecture.md) — The Model-View-Update pattern
 - [**Tutorial 1: Counter App**](../tutorials/01-counter-app.md) — Build your first Abies app
 - [**Deployment Guide**](../guides/deployment.md) — Deploying each render mode to production

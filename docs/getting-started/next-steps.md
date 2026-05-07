@@ -110,7 +110,7 @@ Abies includes a full js-framework-benchmark integration. See how it compares to
 npm run bench -- --headless keyed/abies
 ```
 
-Current results (Abies 2.0 vs Blazor 10.0): **1.98× faster** geometric mean across all benchmarks.
+Current same-session results (Abies 2.0 vs Blazor 10.0): **0.62× vs 1.62× geometric mean** (**38% lower** for Abies).
 
 ## Explore the Ecosystem
 

@@ -105,7 +105,9 @@ Practical how-to guides for specific tasks.
 | Guide | Description |
 | --- | --- |
 | [Choosing a Render Mode](./guides/render-mode-selection.md) | When to use Static, Server, WASM, or Auto |
+| [InteractiveServer and InteractiveAuto Lifecycle](./guides/interactive-lifecycle.md) | Session transport lifecycle and WASM handoff behavior |
 | [Testing](./guides/testing.md) | Testing strategies for Abies apps |
+| [Conduit E2E Fixture Architecture](./guides/conduit-e2e-fixture-architecture.md) | Fixture patterns, API seeding, and user-journey test expansion |
 | [Debugging](./guides/debugging.md) | Debugging techniques and tools |
 | [Abies DevTools: Time Travel Debugger](./guides/devtools.md) | Step through message history, replay sequences, inspect model state |
 | [Performance](./guides/performance.md) | Optimization tips and benchmark methodology |
@@ -123,7 +125,10 @@ Deep technical documentation.
 | --- | --- |
 | [Virtual DOM Algorithm](./reference/virtual-dom-algorithm.md) | Diff and patch implementation |
 | [JavaScript Interop](./reference/js-interop.md) | JavaScript bridge, including patch transport details |
+| [Browser Runtime API](./reference/browser-runtime-api.md) | Public `abies.js` export surface and callback contracts |
+| [Binary Patch Protocol](./reference/binary-patch-protocol.md) | C#/JS wire contract, opcodes, and maintenance checklist |
 | [Runtime Internals](./reference/runtime-internals.md) | How the MVU runtime works |
+| [Picea Migration Plan](./migration/picea-migration-plan.md) | Migration map and contributor checklist for ADR-022/023 |
 
 ---
 
@@ -153,6 +158,8 @@ Design decisions and their rationale.
 | [ADR-018](./adr/ADR-018-pr-lint-only-changed-files.md) | PR Lint Check Only Changed Files |
 | [ADR-019](./adr/ADR-019-trunk-based-development.md) | Trunk-Based Development |
 | [ADR-020](./adr/ADR-020-benchmark-quality-gates.md) | Benchmark Quality Gates |
+| [ADR-025](./adr/ADR-025-issue-160-debugger-boundary-contract-phase1.md) | Issue #160 Debugger Boundary Contract (Phase 1) |
+| [ADR-026](./adr/ADR-026-debugger-auto-mount-with-csharp-api.md) | Debugger Auto-Mount with C# API |
 
 [View all ADRs →](./adr/README.md)
 

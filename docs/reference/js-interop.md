@@ -45,7 +45,7 @@ The module name `"Abies"` is used in all `[JSImport]` and `[JSExport]` attribute
 
 ## JSImport Functions (.NET → JavaScript)
 
-These are C# methods that call into JavaScript. Defined in `Abies.Browser/Interop.cs`:
+These are C# methods that call into JavaScript. Defined in `Picea.Abies.Browser/Interop.cs`:
 
 ### DOM Patching
 
@@ -268,11 +268,12 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 │   PatchCount:        int32 LE (4 bytes)  │
 │   StringTableOffset: int32 LE (4 bytes)  │
 ├──────────────────────────────────────────┤
-│ Patch Entries (16 bytes each)            │
+│ Patch Entries (20 bytes each)            │
 │   Type:   int32 LE — BinaryPatchType     │
 │   Field1: int32 LE — string table index  │
 │   Field2: int32 LE — string table index  │
 │   Field3: int32 LE — string table index  │
+│   Field4: int32 LE — string table index  │
 │   (unused fields = -1)                   │
 ├──────────────────────────────────────────┤
 │ String Table                             │
@@ -283,7 +284,7 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 
 ### Design Decisions
 
-- **3 fields per entry** — covers the widest patch (e.g., `MoveChild`: parentId, childId, beforeId). Narrower patches leave trailing fields as `-1`
+- **4 fields per entry** — covers the widest patches (for example `UpdateText`: parentId, oldTextId, text, newTextId). Narrower patches leave trailing fields as `-1`
 - **Fixed-size entries** — O(1) random access, trivial `DataView` parsing in JavaScript
 - **String deduplication** — Element IDs are frequently repeated (parent + child). Dedup via `Dictionary<string, int>` reduces payload size significantly
 - **LEB128 length encoding** — compact for short strings (IDs, tag names), no wasted bytes on alignment padding
@@ -305,7 +306,7 @@ The `RenderBatchWriter` serializes all patches from a render cycle into a compac
 | 10 | `AddHandler` | elementId, name, commandId |
 | 11 | `RemoveHandler` | elementId, name, commandId |
 | 12 | `UpdateHandler` | elementId, oldName, newCommandId |
-| 13 | `UpdateText` | parentId, text, newId |
+| 13 | `UpdateText` | parentId, oldTextId, text, newTextId |
 | 14 | `AddText` | parentId, value, id |
 | 15 | `RemoveText` | parentId, id, — |
 | 16 | `AddRaw` | parentId, html, id |
@@ -350,7 +351,7 @@ URL changes flow back from JavaScript to .NET via the `OnUrlChanged` JSExport, w
 
 ## Browser Runtime Bootstrap
 
-The `Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the complete bootstrap sequence:
+The `Picea.Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the complete bootstrap sequence:
 
 1. Load `abies.js` via `JSHost.ImportAsync("Abies", "../abies.js")`
 2. Wire dispatch callback: `SetDispatchCallback(DispatchDomEvent)`
@@ -366,16 +367,21 @@ The `Abies.Browser.Runtime.Run<TProgram,TModel,TArgument>()` method performs the
 This replaces ~30 lines of boilerplate that every WASM consumer previously needed. The consumer's `Program.cs` is a single line:
 
 ```csharp
-await Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<CounterProgram, CounterModel, Unit>();
 ```
 
 ## Source Files
 
 | File | Role |
 |---|---|
-| `Abies.Browser/Interop.cs` | `[JSImport]`/`[JSExport]` declarations |
-| `Abies.Browser/Runtime.cs` | Browser bootstrap sequence |
-| `Abies.Browser/wwwroot/abies.js` | JavaScript runtime (event delegation, DOM patching, navigation) |
-| `Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
-| `Abies/RenderBatchWriter.cs` | Binary patch serializer |
-| `Abies/DOM/Attribute.cs` | `Handler` record definition |
+| `Picea.Abies.Browser/Interop.cs` | `[JSImport]`/`[JSExport]` declarations |
+| `Picea.Abies.Browser/Runtime.cs` | Browser bootstrap sequence |
+| `Picea.Abies.Browser/wwwroot/abies.js` | JavaScript runtime (event delegation, DOM patching, navigation) |
+| `Picea.Abies/HandlerRegistry.cs` | CommandId → Handler mapping |
+| `Picea.Abies/RenderBatchWriter.cs` | Binary patch serializer |
+| `Picea.Abies/DOM/Attribute.cs` | `Handler` record definition |
+
+## Related References
+
+- [Browser Runtime API Reference](./browser-runtime-api.md)
+- [Binary Patch Protocol Maintenance Guide](./binary-patch-protocol.md)

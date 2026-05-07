@@ -1,0 +1,109 @@
+name: Visual Regression
+
+on:
+  pull_request:
+    paths:
+      - '**/*.cs'
+      - '**/*.razor'
+      - '**/*.css'
+      - '**/*.js'
+      - '**/Snapshots/**'
+
+concurrency:
+  group: visual-regression-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pixel-comparison:
+    name: Pixel Snapshot Comparison
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install WASM workloads
+        run: dotnet workload install wasm-experimental wasm-tools
+
+      - name: Install GitVersioning
+        run: dotnet tool install --global nbgv
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Detect visual regression tests
+        id: detect_visual_tests
+        run: |
+          if rg -n "VisualRegression_" Picea.Abies.Conduit.Tests >/dev/null 2>&1; then
+            echo "has_visual_tests=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Visual regression tests detected"
+          else
+            echo "has_visual_tests=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ No visual regression tests detected in this PR scope"
+          fi
+
+      - name: Install Playwright browsers
+        run: |
+          dotnet tool install --global Microsoft.Playwright.CLI || true
+          pwsh Picea.Abies.Conduit.Tests/bin/Debug/net10.0/playwright.ps1 install chromium --with-deps || \
+          dotnet run --project Picea.Abies.Conduit.Tests --no-build -- playwright install chromium --with-deps || \
+          npx playwright install chromium --with-deps || \
+          true
+
+      # Run pixel snapshot tests — failures generate .actual.png + .diff.png artifacts
+      # so reviewers can use GitHub's image compare viewer in the PR.
+      - name: Run pixel snapshot tests
+        id: pixel_tests
+        if: steps.detect_visual_tests.outputs.has_visual_tests == 'true'
+        continue-on-error: true
+        env:
+          ABIES_ENABLE_PIXEL_SNAPSHOTS: "1"
+        run: |
+          dotnet test \
+            --project Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
+            --no-build \
+            --verbosity normal \
+            --filter "FullyQualifiedName~VisualRegression" \
+            --logger "trx;LogFileName=visual-regression.trx" \
+            --results-directory TestResults/visual-regression
+
+      # Upload baselines + actuals + diffs so GitHub's image compare works in the PR.
+      # Reviewers can open the artifact and compare images side-by-side.
+      - name: Upload visual comparison artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: visual-regression-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
+          path: |
+            **/Snapshots/**/*.png
+            **/artifacts/visual/**/*.actual.png
+            **/artifacts/visual/**/*.diff.png
+          if-no-files-found: ignore
+
+      - name: Upload TRX results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: visual-regression-trx-${{ github.event.pull_request.number }}
+          path: TestResults/visual-regression/**/*.trx
+          if-no-files-found: ignore
+
+      # Surface the result after uploading artifacts (so diffs are always available).
+      - name: Enforce pixel test result
+        if: steps.detect_visual_tests.outputs.has_visual_tests == 'true' && steps.pixel_tests.outcome == 'failure'
+        run: |
+          echo "❌ Pixel snapshot tests failed — download the 'visual-regression' artifact above"
+          echo "   and open .actual.png vs .png in GitHub's image compare viewer."
+          exit 1

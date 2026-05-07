@@ -65,13 +65,23 @@ Default assignments for common patterns. First match wins. Named routing (user s
 | Implementation complete / PR ready | Reviewer | Independent code review |
 | Post-fix re-review | Reviewer | Targeted review of resolved findings |
 | `"Review the changes in..."` | Reviewer | Explicit review request |
+| Any specialist declares work "done" or "ready" | Reviewer | Mandatory review before completion |
+| Lead tries to approve a code-shaped change | Reviewer | Lead's lightweight authority does not extend to code |
+| Config/CI/Docker/csproj/package.json/migration touched | Reviewer | These are runtime-affecting; not Lead-approvable |
+
+### Reviewer Is the Terminal Node for Code
+
+**Hard rule, not a default:** Any work item that touches code-shaped files (`.cs`, `.js`, `.ts`, `.mjs`, Dockerfiles, `*.yml`/`*.yaml` workflows, `appsettings.*`, `.csproj`, `Directory.Build.props`, `Directory.Packages.props`, `package.json`, EF migrations, or anything the runtime executes) **must** terminate at the Reviewer before being marked complete. The Reviewer is the only agent authorized to declare code-touching work shippable.
+
+If a specialist or the Lead declares such work complete without an explicit Reviewer verdict, the **Missing Review Lockout** in `.squad/principles-enforcement.md` applies: the agent is locked out, the Lead reassigns to the Reviewer or escalates to the user. There is no path from "code changed" to "merged" that bypasses the Reviewer.
 
 ### Coordination
 | Pattern / Trigger | Owner | Reason |
 |---|---|---|
 | "Team, ..." (multi-agent task) | Lead | Decompose and assign |
-| Bug fix with obvious root cause | Lead → Specialist | Quick triage |
-| Config change, dependency bump | Lead | Handle directly |
+| Bug fix with obvious root cause | Lead → Specialist → Reviewer | Quick triage; specialist implements; Reviewer approves |
+| Config change, dependency bump | Lead → Specialist → Reviewer | Lead routes; specialist implements; Reviewer approves (Lead does NOT self-approve code-shaped changes) |
+| README/CONTRIBUTING/CHANGELOG prose-only edits | Lead | True non-code; Lead's lightweight authority applies |
 | Status check, roster question | Lead | Answer directly |
 | Ceremony (retro, design review) | Lead | Facilitate |
 

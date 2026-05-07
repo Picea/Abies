@@ -48,7 +48,7 @@ await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>(
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="1.0.*-*" />
+    <PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
   </ItemGroup>
 </Project>
 ```
@@ -90,7 +90,7 @@ app.Run();
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="1.0.*-*" />
+    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.0.*" />
   </ItemGroup>
 </Project>
 ```
@@ -129,6 +129,8 @@ The platform projects (`Wasm` and `Server`) are thin shells that only wire up th
 ## Real-World Example: Conduit
 
 The [Conduit](https://github.com/picea/abies/tree/main/Picea.Abies.Conduit) application is a full-featured social blogging platform (Medium clone) built with Abies. Here's its structure:
+
+For current local run commands and testing entry points, see the dedicated [Conduit README](../../Picea.Abies.Conduit/README.md).
 
 ```text
 Picea.Abies.Conduit/                    ← Shared application logic
@@ -219,3 +221,5 @@ For the Picea ecosystem, prefix with `Picea.Abies.`:
 - [Your First App](./your-first-app.md) — Build a counter from scratch
 - [Render Modes](../concepts/render-modes.md) — Static, Server, WASM, and Auto
 - [Installation](./installation.md) — Package installation guide
+- [Conduit README](../../Picea.Abies.Conduit/README.md) — Conduit project layout, local run commands, and test strategy
+- [Conduit E2E Fixture Architecture](../guides/conduit-e2e-fixture-architecture.md) — Render-mode fixture and seeding patterns
