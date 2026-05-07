@@ -35,6 +35,8 @@ jobs:
           # For workflow_dispatch on non-tag refs, fall back to a stable computed version.
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
+            nbgv set-version "$VERSION"
+            echo "PublicRelease=true" >> "$GITHUB_ENV"
           else
             VERSION=$(nbgv get-version -v SimpleVersion)
           fi
