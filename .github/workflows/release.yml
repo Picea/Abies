@@ -31,8 +31,8 @@ jobs:
       - name: Set version
         id: version
         run: |
-          # Public release mode ensures tag builds produce stable NuGet versions without commit suffixes.
-          VERSION=$(nbgv get-version --public-release=true -v NuGetPackageVersion)
+          # Use SimpleVersion to force stable package versions from release tags (for example, 2.0.4).
+          VERSION=$(nbgv get-version -v SimpleVersion)
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
