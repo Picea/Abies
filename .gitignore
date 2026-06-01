@@ -3,6 +3,16 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Local tooling / foreign binaries (do not commit)
+rclone
+rclone-*/
+rclone-*.zip
+
+# One-off scratch / status dumps (do not commit)
+BENCHMARK_PR_STATUS.md
+*-traces-snapshot.md
+.github/pr*-body.md
+
 # User-specific files
 *.rsuser
 *.suo
