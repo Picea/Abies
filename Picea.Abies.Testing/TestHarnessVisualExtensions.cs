@@ -23,7 +23,9 @@ public sealed record VisualComparisonResult(
     byte[] BaselineBytes,
     byte[] ActualBytes,
     byte[]? DiffBytes,
-    bool BaselineCreated);
+    bool BaselineCreated,
+    bool BaselineMissing = false,
+    string? Message = null);
 
 /// <summary>
 /// Tolerance configuration for visual assertions.
@@ -131,7 +133,50 @@ public static class TestHarnessVisualExtensions
 
             if (File.Exists(baselinePath) is false)
             {
+                // A missing baseline must NEVER silently pass in strict/CI mode: doing so
+                // would make the visual-regression gate green by construction (no baselines
+                // are committed, so every fresh CI checkout would take this branch). In
+                // strict mode we capture the screenshot as a candidate artifact and report a
+                // loud FAILURE telling the developer to generate and commit a real baseline.
+                if (IsStrictMode())
+                {
+                    var (candidatePath, _, _) = WriteMismatchArtifacts(
+                        baselinePath, resolvedOptions, actualScreenshot, actualScreenshot);
+
+                    var strictMessage = string.Create(CultureInfo.InvariantCulture, $"""
+                        Baseline image is missing and strict visual mode is enabled.
+                        Strict mode is active because one of {StrictModeSignal} is set.
+                        Baseline: {baselinePath}
+                        Captured candidate: {candidatePath}
+                        Generate baselines locally (run the visual tests without strict mode set)
+                        and commit the resulting .png files, then re-run.
+                        """);
+
+                    return new VisualComparisonResult(
+                        IsMatch: false,
+                        PixelErrorCount: 0,
+                        PixelErrorPercentage: 0,
+                        MeanError: 0,
+                        AbsoluteError: 0,
+                        BaselinePath: baselinePath,
+                        ActualPath: candidatePath,
+                        DiffPath: null,
+                        BaselineBytes: Array.Empty<byte>(),
+                        ActualBytes: actualScreenshot,
+                        DiffBytes: null,
+                        BaselineCreated: false,
+                        BaselineMissing: true,
+                        Message: strictMessage);
+                }
+
+                // Local/non-strict convenience: auto-create the baseline and pass, but log
+                // loudly so the developer knows a new baseline was written (and must be
+                // reviewed and committed) rather than an actual comparison having happened.
                 File.WriteAllBytes(baselinePath, actualScreenshot);
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"""
+                    [visual] Baseline created (not compared): {baselinePath}
+                    [visual] Review and commit this file. In strict/CI mode a missing baseline FAILS.
+                    """));
                 return new VisualComparisonResult(
                     IsMatch: true,
                     PixelErrorCount: 0,
@@ -206,11 +251,59 @@ public static class TestHarnessVisualExtensions
         }
     }
 
+    /// <summary>
+    /// Environment variables that, when set to a truthy value, force strict visual mode:
+    /// a missing baseline becomes a failure instead of an auto-write-and-pass.
+    /// <para>
+    /// Strict mode is an <b>explicit opt-in</b> (<c>ABIES_VISUAL_STRICT</c>) rather than
+    /// being inferred from the CI/pixel-snapshot gate. The visual-regression harness was
+    /// reintroduced without committed baselines, so inferring strictness from CI would make
+    /// the gate fail-by-construction on every checkout. Once real baselines are generated and
+    /// committed, set <c>ABIES_VISUAL_STRICT=1</c> in the workflow to enforce that a missing
+    /// baseline fails. Real pixel diffs always fail regardless of this flag.
+    /// </para>
+    /// </summary>
+    private static readonly string[] StrictModeVariables =
+    [
+        "ABIES_VISUAL_STRICT"
+    ];
+
+    private const string StrictModeSignal = "ABIES_VISUAL_STRICT";
+
+    private static bool IsStrictMode()
+    {
+        foreach (var variable in StrictModeVariables)
+        {
+            var value = Environment.GetEnvironmentVariable(variable);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (value is "1" or "true" or "TRUE" or "True")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static void ThrowWhenMismatch(VisualComparisonResult result)
     {
         if (result.IsMatch)
         {
             return;
+        }
+
+        if (result.BaselineMissing)
+        {
+            throw new InvalidOperationException(
+                result.Message ?? string.Create(CultureInfo.InvariantCulture, $"""
+                    Baseline image is missing and strict visual mode is enabled.
+                    Baseline: {result.BaselinePath}
+                    Generate and commit a baseline locally, then re-run.
+                    """));
         }
 
         var message = string.Create(CultureInfo.InvariantCulture, $"""

@@ -393,30 +393,32 @@ Conduit uses multiple testing levels:
 Test the pure `Transition` function and route parsing:
 
 ```csharp
-[Fact]
-public void LoginSubmitted_SetsSubmittingState_AndReturnsLoginCommand()
+[Test]
+public async Task LoginSubmitted_SetsSubmittingState_AndReturnsLoginCommand()
 {
     var model = CreateModel(page: new Page.Login(
         new LoginModel("user@test.com", "password", [], false)));
 
     var (newModel, command) = ConduitProgram.Transition(model, new LoginSubmitted());
 
-    var login = Assert.IsType<Page.Login>(newModel.Page);
-    Assert.True(login.Data.IsSubmitting);
-    Assert.IsType<LoginUser>(command);
+    await Assert.That(newModel.Page).IsTypeOf<Page.Login>();
+    var login = (Page.Login)newModel.Page;
+    await Assert.That(login.Data.IsSubmitting).IsTrue();
+    await Assert.That(command).IsTypeOf<LoginUser>();
 }
 
-[Fact]
-public void FromUrl_ArticlePath_ReturnsArticlePage_WithFetchCommands()
+[Test]
+public async Task FromUrl_ArticlePath_ReturnsArticlePage_WithFetchCommands()
 {
     var url = new Url(["article", "hello-world"],
         new Dictionary<string, string>(), Option<string>.None);
 
     var (page, command) = Route.FromUrl(url, session: null, apiUrl: "http://api");
 
-    var article = Assert.IsType<Page.Article>(page);
-    Assert.Equal("hello-world", article.Data.Slug);
-    Assert.True(article.Data.IsLoading);
+    await Assert.That(page).IsTypeOf<Page.Article>();
+    var article = (Page.Article)page;
+    await Assert.That(article.Data.Slug).IsEqualTo("hello-world");
+    await Assert.That(article.Data.IsLoading).IsTrue();
 }
 ```
 
@@ -425,7 +427,7 @@ public void FromUrl_ArticlePath_ReturnsArticlePage_WithFetchCommands()
 Test the interpreter with mocked HTTP:
 
 ```csharp
-[Fact]
+[Test]
 public async Task Interpret_LoginUser_ReturnsUserAuthenticated()
 {
     var handler = SetupLoginResponse("token123");
@@ -433,9 +435,12 @@ public async Task Interpret_LoginUser_ReturnsUserAuthenticated()
 
     var result = await ConduitInterpreter.Interpret(command);
 
-    var messages = result.Match(ok => ok, _ => []);
-    var auth = Assert.IsType<UserAuthenticated>(Assert.Single(messages));
-    Assert.Equal("token123", auth.Session.Token);
+    var messages = result.Match(
+        ok => ok,
+        _ => Array.Empty<Message>());
+    await Assert.That(messages).HasSingleItem();
+    await Assert.That(messages[0]).IsTypeOf<UserAuthenticated>();
+    await Assert.That(((UserAuthenticated)messages[0]).Session.Token).IsEqualTo("token123");
 }
 ```
 
@@ -444,7 +449,7 @@ public async Task Interpret_LoginUser_ReturnsUserAuthenticated()
 Test in a real browser with Playwright:
 
 ```csharp
-[Fact]
+[Test]
 public async Task CanRegisterAndCreateArticle()
 {
     await Page.GotoAsync("/register");

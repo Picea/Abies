@@ -54,7 +54,7 @@ Interpreter<Command, Message> interpreter = async command =>
 
 In the Picea kernel's type system, Commands map to the `TEffect` parameter of `Automaton`:
 
-```csharp
+```csharp compile
 // Automaton<TState, TEvent, TEffect, TParameters>
 //    ≡     <Model,  Message, Command, Argument>
 ```
@@ -72,7 +72,7 @@ You never need to handle `None`, `Batch`, or navigation commands in your interpr
 
 ## Defining Commands
 
-Commands are any type implementing `Abies.Command`:
+Commands are any type implementing the `Command` interface from `Picea.Abies`:
 
 ```csharp
 // Simple command with no data
@@ -154,7 +154,7 @@ Interpreter<Command, Message> interpreter = async command =>
 ### Browser Usage
 
 ```csharp
-await Abies.Browser.Runtime.Run<MyApp, Model, Unit>(
+await Picea.Abies.Browser.Runtime.Run<MyApp, Model, Unit>(
     interpreter: interpreter);
 ```
 
@@ -162,7 +162,7 @@ await Abies.Browser.Runtime.Run<MyApp, Model, Unit>(
 
 ```csharp
 app.MapAbies<MyApp, Model, Unit>("/",
-    renderMode: RenderMode.InteractiveServer("/ws"),
+    mode: RenderMode.InteractiveServer("/ws"),
     interpreter: interpreter);
 ```
 
@@ -261,26 +261,26 @@ case NetworkError error:
 ### Test Transition Returns Correct Command
 
 ```csharp
-[Fact]
-public void FetchData_ReturnsLoadCommand()
+[Test]
+public async Task FetchData_ReturnsLoadCommand()
 {
     var model = new Model(IsLoading: false);
 
     var (newModel, command) = Transition(model, new FetchData());
 
-    Assert.True(newModel.IsLoading);
-    Assert.IsType<LoadDataCommand>(command);
+    await Assert.That(newModel.IsLoading).IsTrue();
+    await Assert.That(command).IsTypeOf<LoadDataCommand>();
 }
 ```
 
 ### Test Interpreter with Runtime
 
 ```csharp
-[Fact]
+[Test]
 public async Task Interpreter_DispatchesFeedbackMessage()
 {
     var patches = new List<IReadOnlyList<Patch>>();
-    var runtime = await Runtime<MyApp, Model, Unit>.Start(
+    using var runtime = await Runtime<MyApp, Model, Unit>.Start(
         apply: p => patches.Add(p),
         interpreter: async cmd =>
         {
@@ -293,8 +293,8 @@ public async Task Interpreter_DispatchesFeedbackMessage()
     await runtime.Dispatch(new FetchData());
 
     // Model updated with loaded data
-    Assert.False(runtime.Model.IsLoading);
-    Assert.NotEmpty(runtime.Model.Data);
+    await Assert.That(runtime.Model.IsLoading).IsFalse();
+    await Assert.That(runtime.Model.Data).IsNotEmpty();
 }
 ```
 

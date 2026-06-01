@@ -173,8 +173,8 @@ Rejected because it doesn't scale to complex routes.
 - [Elm URL.Parser](https://package.elm-lang.org/packages/elm/url/latest/Url-Parser)
 - [Parser Combinators in Haskell](https://wiki.haskell.org/Parsing_a_simple_imperative_language)
 - [Monadic Parser Combinators (Hutton & Meijer)](http://www.cs.nott.ac.uk/~pszgmh/monparsing.pdf)
-- ~~[`Picea.Abies/Parser.cs`](../../Picea.Abies/Parser.cs)~~ — Removed in v2 migration
-- ~~[`Picea.Abies/Route.cs`](../../Picea.Abies/Route.cs)~~ — Removed in v2 migration
+- ~~`Picea.Abies/Parser.cs`~~ — Removed in the v2 migration; the framework no longer ships parser combinators. Application-level routing now lives in each app's own `Route.cs` (e.g. `Picea.Abies.Conduit.App/Route.cs`).
+- ~~`Picea.Abies/Route.cs`~~ — Removed in the v2 migration; see the deprecation notice at the top of this ADR.
 
 ## Changelog
 

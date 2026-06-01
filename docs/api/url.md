@@ -4,7 +4,7 @@ The `Url` record provides a parsed, strongly-typed representation of a URL with 
 
 ## Definition
 
-```csharp
+```csharp compile
 public record Url(
     IReadOnlyList<string> Path,
     IReadOnlyDictionary<string, string> Query,
@@ -29,7 +29,7 @@ public static readonly Url Root
 
 An empty URL representing the root path with no query or fragment:
 
-```csharp
+```csharp compile
 Url.Root
 // Path: [], Query: {}, Fragment: None
 ```

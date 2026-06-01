@@ -5,11 +5,41 @@ All notable changes to Abies will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - Unreleased
+## [2.2.0] - 2026-06-01
 
-### Upcoming
+### Added
 
-- Placeholder for post-2.0 changes.
+- **Documentation snippet CI guard** — `tools/DocSnippetCheck` compiles C# code fences tagged `compile` against the real Abies/Picea assemblies (workflow `docs-snippets.yml`), so renamed APIs, wrong namespaces, or changed signatures in the docs fail CI. See [CONTRIBUTING](CONTRIBUTING.md) ("Documentation code samples").
+- **In-framework server security headers and WebSocket origin allowlist** — `AbiesServerOptions` adds `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` (on by default), an opt-in `Content-Security-Policy`, and an `AllowedWebSocketOrigins` allowlist enforced on the interactive-server WebSocket upgrade.
+
+### Changed
+
+- **CI/CD hardening** — fixed a PR-title script-injection sink, SHA-pinned third-party actions, added least-privilege `permissions` blocks to all workflows, replaced the deprecated semgrep action, staggered colliding nightly cron schedules, and added concurrency guards.
+- **Visual regression harness is now honest** — a missing baseline in CI/strict mode fails loudly instead of silently auto-passing.
+- **Documentation corrected against the code** — namespaces (`Picea.Abies.*`/`Picea`), `Program` member set, HTML DSL names, `Commands`/`Subscriptions`/`RenderMode` usage, and several ADRs (OpenTelemetry, analyzers, render modes) now match the implementation.
+
+### Fixed
+
+- **Thread-unsafe `HandlerRegistry`** — replaced the backing `Dictionary` with `ConcurrentDictionary` to remove a render/event/subscription data race on the server.
+- **Repo hygiene** — removed stray binaries/scratch artifacts from the tree and tightened `.gitignore`.
+
+## [2.1.0] - 2026-06-01
+
+### Added
+
+- **Visual regression testing harness** ([#296](https://github.com/Picea/Abies/pull/296))
+  - `Picea.Abies.Testing` ships a screenshot-based visual harness (`TestHarnessVisualExtensions`) that renders a model with Playwright, captures a PNG, and diffs it against a stored baseline (auto-created on first run)
+  - `VisualComparisonOptions` / `VisualComparisonTolerance` for controlled pixel-drift thresholds
+  - `Picea.Abies.Cli` (`abies` .NET tool) with `visual accept|status|report` commands for baseline management
+  - See the [Testing guide](docs/guides/testing.md#visual-regression-testing)
+
+### Changed
+
+- **Release publishing pipeline** — packages now publish to NuGet only from tag refs, with the package version derived and stamped from the tag name in public release mode ([#281](https://github.com/Picea/Abies/pull/281), [#282](https://github.com/Picea/Abies/pull/282), [#283](https://github.com/Picea/Abies/pull/283), [#284](https://github.com/Picea/Abies/pull/284), [#285](https://github.com/Picea/Abies/pull/285), [#286](https://github.com/Picea/Abies/pull/286))
+
+### Fixed
+
+- **Template default debugger mount** — added a template test asserting the debugger mounts by default in `abies-browser-empty` ([#298](https://github.com/Picea/Abies/pull/298))
 
 ## [2.0.0] - 2026-05-04
 
@@ -254,7 +284,7 @@ This release migrates Abies into the **Picea ecosystem**. The framework function
 - OpenTelemetry tracing support (browser and .NET)
 - Apache 2.0 license
 
-[2.1.0]: https://github.com/Picea/Abies/compare/v2.0.0...HEAD
+[2.1.0]: https://github.com/Picea/Abies/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Picea/Abies/compare/v1.0.0-rc.2...v2.0.0
 [1.0.0-rc.2]: https://github.com/Picea/Abies/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Picea/Abies/releases/tag/v1.0.0-rc.1

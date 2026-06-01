@@ -62,11 +62,11 @@ new Element("abc123", "div",
     [new Text("t1", "Hello")])
 ```
 
-You never construct these directly — use the factory functions from `Abies.Html.Elements`:
+You never construct these directly — use the factory functions from `Picea.Abies.Html.Elements`:
 
 ```csharp
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
 
 div([class_("container")], [
     text("Hello")
@@ -75,7 +75,7 @@ div([class_("container")], [
 
 ### Text
 
-```csharp
+```csharp compile
 text("Hello, world!")  // HTML-encoded during rendering
 ```
 
@@ -103,10 +103,10 @@ Attribute(Id, Name, Value)             — plain HTML attribute
 ### Plain Attributes
 
 ```csharp
-using static Abies.Html.Attributes;
+using static Picea.Abies.Html.Attributes;
 
-div([class_("container"), id_("main")], [...])
-input([type_("text"), placeholder("Enter name"), value_(model.Name)], [])
+div([class_("container"), id("main")], [...])
+input([type("text"), placeholder("Enter name"), value(model.Name)])
 ```
 
 ### Event Handlers
@@ -118,7 +118,7 @@ Event handlers dispatch messages into the MVU loop:
 button([onclick(new Increment())], [text("+1")])
 
 // With event data (e.g., input value)
-input([oninput<InputEventData>(e => new TextChanged(e.Value))], [])
+input([oninput(e => new TextChanged(e.Value))])
 ```
 
 Handlers render as `data-event-{eventName}="{commandId}"` attributes in the DOM. The runtime registers a single listener per event type at the document level (event delegation), looks up the `CommandId` from the target element's data attribute, and dispatches the corresponding message.
@@ -180,8 +180,8 @@ public static Document View(Model model) =>
         div([class_("app")], [
             h1([], [text("Welcome")])
         ]),
-        new Meta("viewport", "width=device-width"),
-        new Stylesheet("/css/app.css")
+        new HeadContent.Meta("viewport", "width=device-width"),
+        Head.stylesheet("/css/app.css")
     );
 ```
 
@@ -263,7 +263,7 @@ public static Document View(Model model) =>
 static Node Page(string title, Node content) =>
     div([class_("page")], [
         Header(title),
-        main_([], [content]),
+        main([], [content]),
         Footer()
     ]);
 

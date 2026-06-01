@@ -4,7 +4,7 @@ Subscriptions connect the MVU loop to external event sources: timers, WebSocket 
 
 ## Subscription Type
 
-```csharp
+```csharp compile
 public abstract record Subscription
 {
     public sealed record None : Subscription;
@@ -155,7 +155,7 @@ Subscription identity is determined by the `SubscriptionKey` (a string wrapper).
 
 ## Dispatch Delegate
 
-```csharp
+```csharp compile
 public delegate void Dispatch(Message message);
 ```
 

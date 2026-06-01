@@ -4,11 +4,11 @@ The `Option<T>` type represents values that may or may not be present.
 
 ## Usage
 
-```csharp
-using Automaton;
+```csharp compile
+using Picea;
 ```
 
-> **Note:** `Option<T>` is defined in the `Automaton` kernel package, not in `Picea.Abies` itself. Abies applications use it for domain modeling.
+> **Note:** `Option<T>` is `Picea.Option<T>`, defined in the `Picea` kernel package, not in `Picea.Abies` itself. Abies applications use it for domain modeling.
 
 ## Overview
 
@@ -98,7 +98,7 @@ Option<int> fromValue = 42;  // Some(42)
 
 ### None
 
-```csharp
+```csharp compile
 Option<string> name = Option<string>.None;
 Option<int> count = Option<int>.None;
 

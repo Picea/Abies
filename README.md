@@ -34,7 +34,7 @@ All four modes share the same `Program<TModel, TArgument>` interface. Your MVU c
 
 ```csharp
 // Static — one-shot HTML, zero JavaScript
-var html = Page.Render<MyApp, MyModel, Unit>(RenderMode.Static);
+var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.Static());
 
 // InteractiveServer — patches over WebSocket
 var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveServer());
@@ -64,7 +64,9 @@ dotnet run
 ### Counter Example
 
 ```csharp
+using Picea;
 using Picea.Abies;
+using Picea.Abies.Subscriptions;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
@@ -99,6 +101,11 @@ public class Counter : Program<Model, Arguments>
             ]));
 
     public static Subscription Subscriptions(Model model) => SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -128,17 +135,12 @@ Subscriptions let you react to external event sources without putting side effec
 
 ```csharp
 public record Tick : Message;
-public record ViewportChanged(ViewportSize Size) : Message;
-public record SocketEvent(WebSocketEvent Event) : Message;
+public record UrlChangedTo(Url Url) : Message;
 
 public static Subscription Subscriptions(Model model) =>
-    SubscriptionModule.Batch([
-        SubscriptionModule.Every(TimeSpan.FromSeconds(1), _ => new Tick()),
-        SubscriptionModule.OnResize(size => new ViewportChanged(size)),
-        SubscriptionModule.WebSocket(
-            new WebSocketOptions("wss://example.com/socket"),
-            evt => new SocketEvent(evt))
-    ]);
+    SubscriptionModule.Batch(
+        SubscriptionModule.Every(TimeSpan.FromSeconds(1), () => new Tick()),
+        Navigation.UrlChanges(url => new UrlChangedTo(url)));
 ```
 
 ## Performance: Abies Browser vs Blazor WASM
@@ -156,7 +158,7 @@ Latest same-session validation (2026-04-02, AC power, local main baseline):
 Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigations/render-stringbuilder-pool-cap-validation-2026-04-02.md)
 
 <!-- BENCHMARK:DURATION:START -->
-| Benchmark | Abies 2.0 | Blazor 10.0 | Delta |
+| Benchmark | Abies 2.1 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | Create 1,000 rows | 119.5 ms | **89.5 ms** | +34% |
 | Replace 1,000 rows | 124.5 ms | **106.7 ms** | +17% |
@@ -172,7 +174,7 @@ Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigat
 
 ### Startup & Size (lower is better)
 
-| Metric | Abies 2.0 | Blazor 10.0 | Delta |
+| Metric | Abies 2.1 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | First paint | **71.1 ms** | 79.4 ms | **−10%** |
 | Framework bundle artifact (compressed, js-framework-benchmark `40_sizes`) | **116 KB** | 1,078 KB | **−89%** |
@@ -183,7 +185,7 @@ Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigat
 ### Memory (lower is better)
 
 <!-- BENCHMARK:MEMORY:START -->
-| Metric | Abies 2.0 | Blazor 10.0 | Delta |
+| Metric | Abies 2.1 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |
 | Ready memory | **35.1 MB** | 41.1 MB | **−15%** |
 | Run memory | **37.2 MB** | 52.6 MB | **−29%** |
@@ -231,7 +233,7 @@ dotnet run --project Picea.Abies.Conduit.Wasm.Host
 | `Picea.Abies.Browser` | Browser runtime — WASM host, JS interop, real DOM patching |
 | `Picea.Abies.Server` | Server runtime — SSR, websocket patch transport |
 | `Picea.Abies.Server.Kestrel` | Kestrel integration — WebSocket endpoints, static files |
-| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`) |
+| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`, `abies-server`) |
 | `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time HTML checks |
 
 ### Sample Applications

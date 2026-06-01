@@ -1,11 +1,11 @@
 # HTML Events API
 
-The `Abies.Html.Events` static class provides functions for attaching event handlers to virtual DOM elements.
+The `Picea.Abies.Html.Events` static class provides functions for attaching event handlers to virtual DOM elements.
 
 ## Usage
 
-```csharp
-using static Abies.Html.Events;
+```csharp compile
+using static Picea.Abies.Html.Events;
 ```
 
 ## Event Handler Pattern
@@ -71,20 +71,20 @@ public record PointerEventData(
 
 Used by keyboard events:
 
-```csharp
+```csharp compile
 public record KeyEventData(
     string Key,
-    bool Repeat,
     bool AltKey,
     bool CtrlKey,
-    bool ShiftKey);
+    bool ShiftKey,
+    bool Repeat = false);
 ```
 
 ### InputEventData
 
 Used by input and change events:
 
-```csharp
+```csharp compile
 public record InputEventData(string? Value);
 ```
 

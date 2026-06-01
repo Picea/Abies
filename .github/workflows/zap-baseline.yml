@@ -21,9 +21,15 @@ on:
       - 'scripts/run-zap-authenticated.sh'
       - '.zap/**'
       - '.github/workflows/zap-baseline.yml'
-  schedule:
-    - cron: '0 2 * * *'
+  # Nightly schedule removed: the full active scan in zap-nightly.yml (also at
+  # 02:00 UTC) supersedes the baseline scan nightly, so running both collided
+  # on the same cron slot for no added coverage. Baseline still runs on PRs,
+  # pushes to Conduit paths, and on demand via workflow_dispatch.
   workflow_dispatch:
+
+# DAST scan only reads the repo and uploads artifacts.
+permissions:
+  contents: read
 
 jobs:
   zap-baseline:
@@ -72,8 +78,6 @@ jobs:
 
       - name: Restore API
         run: dotnet restore Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj
-        env:
-          DOTNET_NUGET_AUDIT: "false"
 
       - name: Build API
         run: dotnet build Picea.Abies.Conduit.Api/Picea.Abies.Conduit.Api.csproj --no-restore

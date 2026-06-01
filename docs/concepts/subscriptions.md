@@ -190,37 +190,39 @@ The same `Subscriptions` function works everywhere because it's pure — it only
 ### Test Subscription Selection
 
 ```csharp
-[Fact]
-public void RunningModel_HasTimerSubscription()
+[Test]
+public async Task RunningModel_HasTimerSubscription()
 {
     var model = new Model(IsRunning: true);
 
     var sub = MyApp.Subscriptions(model);
 
-    Assert.IsType<Subscription.Source>(sub);
-    Assert.Equal("every:1000", ((Subscription.Source)sub).Key.Value);
+    await Assert.That(sub).IsTypeOf<Subscription.Source>();
+    await Assert.That(((Subscription.Source)sub).Key.Value).IsEqualTo("every:1000");
 }
 
-[Fact]
-public void StoppedModel_HasNoSubscriptions()
+[Test]
+public async Task StoppedModel_HasNoSubscriptions()
 {
     var model = new Model(IsRunning: false);
 
     var sub = MyApp.Subscriptions(model);
 
-    Assert.IsType<Subscription.None>(sub);
+    await Assert.That(sub).IsTypeOf<Subscription.None>();
 }
 ```
 
 ### Test with Runtime
 
 ```csharp
-[Fact]
+[Test]
 public async Task Timer_DispatchesTickMessages()
 {
     var patches = new List<IReadOnlyList<Patch>>();
-    var runtime = await Runtime<ClockApp, Model, Unit>.Start(
-        apply: p => patches.Add(p));
+    using var runtime = await Runtime<ClockApp, Model, Unit>.Start(
+        apply: p => patches.Add(p),
+        interpreter: cmd => new ValueTask<Result<Message[], PipelineError>>(
+            Result<Message[], PipelineError>.Ok([])));
 
     // Start the timer by dispatching a Start message
     await runtime.Dispatch(new Start());
@@ -229,7 +231,7 @@ public async Task Timer_DispatchesTickMessages()
     await Task.Delay(3500);
 
     // Model should have received tick messages
-    Assert.True(runtime.Model.TickCount >= 3);
+    await Assert.That(runtime.Model.TickCount).IsGreaterThanOrEqualTo(3);
 }
 ```
 

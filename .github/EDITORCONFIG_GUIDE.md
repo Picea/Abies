@@ -1,6 +1,6 @@
 # EditorConfig Enforcement Guide
 
-This document explains how the `.editorconfig` file enforces the coding style rules from our instruction files ([csharp.instructions.md](.github/instructions/csharp.instructions.md) and [ddd.instructions.md](.github/instructions/ddd.instructions.md)).
+This document explains how the `.editorconfig` file enforces the coding style rules from our instruction files ([csharp.instructions.md](instructions/csharp.instructions.md) and [ddd.instructions.md](instructions/ddd.instructions.md)).
 
 ## Overview
 
@@ -321,7 +321,7 @@ private readonly IReadOnlyList<string> _tags = new List<string>().AsReadOnly();
 
 ## References
 
-- [csharp.instructions.md](.github/instructions/csharp.instructions.md) - C# coding guidelines
-- [ddd.instructions.md](.github/instructions/ddd.instructions.md) - Functional DDD guidelines
+- [csharp.instructions.md](instructions/csharp.instructions.md) - C# coding guidelines
+- [ddd.instructions.md](instructions/ddd.instructions.md) - Functional DDD guidelines
 - [EditorConfig documentation](https://editorconfig.org/)
 - [.NET code style rules](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/)

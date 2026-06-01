@@ -223,7 +223,7 @@ ASP.NET Core Kestrel integration. Provides:
 
 ```csharp
 var app = builder.Build();
-app.MapAbies<MyApp, MyModel, Unit>(
+app.MapAbies<MyApp, MyModel, Unit>("/",
     mode: new RenderMode.InteractiveServer(),
     interpreter: MyInterpreter.Interpret);
 app.Run();
@@ -243,7 +243,7 @@ Abies render modes map directly to Blazor's render modes, but the underlying arc
 | Server session | `Session` (MVU runtime) | Circuit (Blazor Hub) |
 | WASM payload | ~1.1 MB compressed | ~1.4 MB compressed |
 
-See the [Performance section](../README.md#performance-abies-browser-vs-blazor-wasm) in the README for detailed benchmark comparisons.
+See the [Performance section](../../README.md#performance-abies-browser-vs-blazor-wasm) in the README for detailed benchmark comparisons.
 
 ## Next
 

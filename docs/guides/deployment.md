@@ -197,7 +197,53 @@ location = /index.html {
 
 ## Security
 
-### Content Security Policy
+### In-framework security headers and WebSocket origin allowlist (server modes)
+
+For server-rendered / `InteractiveServer` hosting, the framework provides opt-in security
+hardening directly via `AbiesServerOptions`
+(`Picea.Abies.Server.Kestrel/AbiesServerOptions.cs`), passed to `MapAbies`. This is the
+preferred approach when you control the Kestrel host; the reverse-proxy configuration below is
+an alternative (or complement) for WASM hosting or when terminating in front of the app.
+
+```csharp
+app.MapAbies<App, Model, Args>(
+    "/",
+    new RenderMode.InteractiveServer(),
+    options: new AbiesServerOptions
+    {
+        // Security headers on the HTML page response.
+        // Defaults shown; the first three default ON, CSP is opt-in (null).
+        ContentTypeOptionsNoSniff = true,                       // X-Content-Type-Options: nosniff
+        FrameOptions = "DENY",                                  // X-Frame-Options (null to omit)
+        ReferrerPolicy = "strict-origin-when-cross-origin",     // Referrer-Policy (null to omit)
+        ContentSecurityPolicy =                                  // Content-Security-Policy (null = omitted)
+            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; "
+            + "style-src 'self' 'unsafe-inline'; "
+            + "connect-src 'self' wss://yourserver.com https://api.example.com;",
+
+        // Cross-Site WebSocket Hijacking protection for the interactive endpoint.
+        // When empty (default), only same-origin connections are accepted and a
+        // warning is logged. Set explicitly for production.
+        AllowedWebSocketOrigins = ["https://app.example.com"],
+    });
+```
+
+Behavior (from `ApplySecurityHeaders` / `IsWebSocketOriginAllowed` in
+`Picea.Abies.Server.Kestrel/Endpoints.cs`):
+
+- The HTML page response gets `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`
+  by default; `Content-Security-Policy` is emitted verbatim only when `ContentSecurityPolicy` is
+  set (it defaults to `null` because a too-strict default would block the bootstrap script). Set
+  any header property to `null` to omit that header.
+- WebSocket upgrades are not covered by the Same-Origin Policy or CORS. When
+  `AllowedWebSocketOrigins` is empty, only same-origin connections (Origin host == request host)
+  are accepted and a warning is logged; configure the allowlist explicitly for deployments behind
+  proxies or serving multiple origins.
+
+### Content Security Policy (reverse proxy alternative)
+
+If you terminate in front of the app (e.g. for WASM hosting), set CSP and other headers at the
+reverse proxy instead:
 
 ```nginx
 add_header Content-Security-Policy "
@@ -217,9 +263,10 @@ Note: `wss://` is needed for `InteractiveServer` WebSocket connections.
 Configure tracing export in the Aspire AppHost:
 
 ```csharp
-builder.AddOpenTelemetry()
+builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddSource("Abies")
+        // The runtime ActivitySource is named "Picea.Abies.Runtime".
+        .AddSource("Picea.Abies.Runtime")
         .AddOtlpExporter());
 ```
 

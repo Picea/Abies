@@ -49,7 +49,7 @@ Let's build a clock that updates every second.
 ```csharp
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 
@@ -120,6 +120,11 @@ SubscriptionModule.Every(
                     onclick(new ToggleClock())
                 ], [text(model.IsRunning ? "Pause" : "Resume")])
             ]));
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -286,39 +291,39 @@ public static Subscription Subscriptions(Model model) =>
 You can test the `Subscriptions` function like any other pure function — verify it returns the right subscription structure based on the model:
 
 ```csharp
-[Fact]
-public void Subscriptions_WhenRunning_ReturnsTimerSubscription()
+[Test]
+public async Task Subscriptions_WhenRunning_ReturnsTimerSubscription()
 {
     var model = new Model(DateTime.Now, IsRunning: true);
 
     var sub = Clock.Subscriptions(model);
 
-    Assert.IsType<Subscription.Source>(sub);
+    await Assert.That(sub).IsTypeOf<Subscription.Source>();
 }
 
-[Fact]
-public void Subscriptions_WhenPaused_ReturnsNone()
+[Test]
+public async Task Subscriptions_WhenPaused_ReturnsNone()
 {
     var model = new Model(DateTime.Now, IsRunning: false);
 
     var sub = Clock.Subscriptions(model);
 
-    Assert.IsType<Subscription.None>(sub);
+    await Assert.That(sub).IsTypeOf<Subscription.None>();
 }
 ```
 
 For integration tests, verify that subscription messages flow correctly through the `Transition` function:
 
 ```csharp
-[Fact]
-public void Tick_UpdatesCurrentTime()
+[Test]
+public async Task Tick_UpdatesCurrentTime()
 {
     var oldTime = DateTime.Now.AddMinutes(-5);
     var model = new Model(oldTime, IsRunning: true);
 
     var (newModel, _) = Clock.Transition(model, new Tick());
 
-    Assert.True(newModel.CurrentTime > oldTime);
+    await Assert.That(newModel.CurrentTime > oldTime).IsTrue();
 }
 ```
 

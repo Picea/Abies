@@ -48,7 +48,7 @@ await Picea.Abies.Browser.Runtime.Run<App, Model, Unit>(
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
+    <PackageReference Include="Picea.Abies.Browser" Version="2.1.*" />
   </ItemGroup>
 </Project>
 ```
@@ -90,7 +90,7 @@ app.Run();
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.0.*" />
+    <PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.1.*" />
   </ItemGroup>
 </Project>
 ```
@@ -186,13 +186,13 @@ MyApp.Testing.E2E/        ← End-to-end tests (Playwright)
 Because Transition and View are pure functions, unit testing is trivial:
 
 ```csharp
-[Fact]
-public void Increment_IncreasesCount()
+[Test]
+public async Task Increment_IncreasesCount()
 {
     var model = new Model(Count: 5);
     var (result, command) = Counter.Transition(model, new CounterMessage.Increment());
-    Assert.Equal(6, result.Count);
-    Assert.IsType<Command.None>(command);
+    await Assert.That(result.Count).IsEqualTo(6);
+    await Assert.That(command).IsTypeOf<Command.None>();
 }
 ```
 

@@ -147,7 +147,7 @@ Release builds strip the debugger entirely, so there is no security exposure.
 
 ## See Also
 
-- [ADR-025: Debugger Boundary Contract](ADR-025-debugger-boundary-contract.md) — Interface and semantics of debugger integration
+- [ADR-025: Debugger Boundary Contract](ADR-025-issue-160-debugger-boundary-contract-phase1.md) — Interface and semantics of debugger integration
 - [docs/guides/devtools.md](../guides/devtools.md) — User guide: Using the debugger
 - [docs/guides/debugging.md](../guides/debugging.md) — Debugging strategies for MVU applications
 ## Implementation Checklist

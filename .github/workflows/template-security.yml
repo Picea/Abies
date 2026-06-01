@@ -27,6 +27,9 @@ on:
     - cron: '15 2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   template-security:
     name: Template Security
@@ -115,7 +118,7 @@ jobs:
           done
 
       - name: Trivy scan scaffolded templates
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: fs
           scan-ref: template-security-out

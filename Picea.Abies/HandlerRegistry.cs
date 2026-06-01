@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Picea.Abies.DOM;
 #if DEBUG
 using Picea.Abies.Debugger;
@@ -7,7 +8,7 @@ namespace Picea.Abies;
 
 public sealed class HandlerRegistry
 {
-    private readonly Dictionary<string, Handler> _handlers = new();
+    private readonly ConcurrentDictionary<string, Handler> _handlers = new();
 
     internal Action<Message>? Dispatch { get; set; }
 
@@ -26,7 +27,7 @@ public sealed class HandlerRegistry
         if (Environment.GetEnvironmentVariable("ABIES_DEBUG_HANDLERS") == "1")
             System.Diagnostics.Debug.WriteLine($"[HandlerRegistry] Unregister: {commandId}");
 #endif
-        _handlers.Remove(commandId);
+        _handlers.TryRemove(commandId, out _);
     }
 
     public Message? CreateMessage(string commandId, string eventData)

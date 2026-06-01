@@ -1,11 +1,11 @@
 # DOM Types API
 
-The `Abies.DOM` namespace contains the virtual DOM types that Abies uses internally to represent UI trees, compute diffs, and apply patches.
+The `Picea.Abies.DOM` namespace contains the virtual DOM types that Abies uses internally to represent UI trees, compute diffs, and apply patches.
 
 ## Usage
 
-```csharp
-using Abies.DOM;
+```csharp compile
+using Picea.Abies.DOM;
 ```
 
 > **Note:** Most applications use `Html.Elements`, `Html.Attributes`, and `Html.Events` rather than these types directly. These types are documented for advanced use cases, testing, and framework understanding.
@@ -46,7 +46,7 @@ public interface HeadContent
 
     sealed record Meta(string Name, string Content) : HeadContent;
     sealed record MetaProperty(string Property, string Content) : HeadContent;
-    sealed record Link(string Rel, string Href, string? Type = null) : HeadContent;
+    sealed record Link(string Rel, string Href, string? As = null) : HeadContent;
     sealed record Script(string Type, string Content) : HeadContent;
     sealed record Base(string Href) : HeadContent;
 }
@@ -67,7 +67,7 @@ Managed elements are tagged with `data-abies-head` in the real DOM so they never
 The `Head` static class provides convenience factories:
 
 ```csharp
-using static Abies.Head;
+using static Picea.Abies.Head;
 
 Head.meta(name, content)      // <meta name="..." content="...">
 Head.og(property, content)    // <meta property="og:..." content="...">
@@ -76,7 +76,7 @@ Head.canonical(href)          // <link rel="canonical" href="...">
 Head.stylesheet(href)         // <link rel="stylesheet" href="...">
 Head.preload(href, asType)    // <link rel="preload" href="..." as="...">
 Head.jsonLd(data)             // <script type="application/ld+json">...</script>
-Head.link(rel, href, type?)   // <link rel="..." href="...">
+Head.link(rel, href)          // <link rel="..." href="...">
 Head.property(prop, content)  // <meta property="..." content="...">
 Head.@base(href)              // <base href="...">
 ```
@@ -85,7 +85,7 @@ Head.@base(href)              // <base href="...">
 
 Base type for all virtual DOM nodes:
 
-```csharp
+```csharp compile
 public record Node(string Id);
 ```
 

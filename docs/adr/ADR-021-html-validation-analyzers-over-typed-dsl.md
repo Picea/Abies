@@ -31,9 +31,19 @@ A full prototype of the type-safe DSL was built (~9,300 lines across 90+ files) 
 
 **Use Roslyn analyzers to validate HTML correctness at compile time, keeping the existing stringly-typed DSL unchanged.**
 
-The analyzer ships bundled inside the Picea.Abies NuGet package (`analyzers/dotnet/cs/`) so that all consumers — including template users — get HTML validation automatically with zero configuration.
+The analyzer lives in the standalone `Picea.Abies.Analyzers` project (netstandard2.0). It is built
+and exercised by its test project (`Picea.Abies.Analyzers.Tests` ProjectReferences it with
+`OutputItemType="Analyzer"`).
 
-### Initial diagnostic rules
+> **Known gap (as of this writing):** the analyzer is **not** currently packaged into the
+> `Picea.Abies` NuGet package, and `Picea.Abies/Picea.Abies.csproj` does **not** reference it as
+> an analyzer. The intent below — shipping it via the `analyzers/dotnet/cs/` NuGet convention so
+> consumers get validation automatically — is the target design, not the current build. Until that
+> packaging is added, the analyzer only runs for projects that take an explicit
+> `ProjectReference` to `Picea.Abies.Analyzers` (today, just the analyzer's own test project).
+> See [Distribution](#distribution).
+
+### Diagnostic rules
 
 | ID       | Severity | Rule                                                                         |
 | -------- | -------- | ---------------------------------------------------------------------------- |
@@ -42,13 +52,17 @@ The analyzer ships bundled inside the Picea.Abies NuGet package (`analyzers/dotn
 | ABIES003 | Info     | `a()` should include `href()`                                                |
 | ABIES004 | Info     | `button()` should include `type()`                                           |
 | ABIES005 | Info     | `input()` should include `type()`                                            |
+| ABIES006 | Warning  | Repeated interactive control should use an explicit handler id (`RepeatedHandlerMissingStableId`) |
+| ABIES007 | Warning  | Repeated helper invocation should use stable event handler ids (`RepeatedInteractiveHelperMissingStableIds`) |
+
+<a id="distribution"></a>
 
 ### Distribution
 
-| Consumer                       | Mechanism                                         | Configuration needed |
-| ------------------------------ | ------------------------------------------------- | -------------------- |
-| NuGet / template users         | analyzers/dotnet/cs/ convention in NuGet package  | None — automatic     |
-| ProjectReference (in solution) | Explicit ProjectReference to Picea.Abies.Analyzers      | One line per project |
+| Consumer                       | Mechanism                                                          | Status                 |
+| ------------------------------ | ----------------------------------------------------------------- | ---------------------- |
+| ProjectReference (in solution) | Explicit `ProjectReference` to `Picea.Abies.Analyzers` with `OutputItemType="Analyzer"` | **Implemented** — currently only the analyzer's test project does this |
+| NuGet / template users         | `analyzers/dotnet/cs/` convention in the `Picea.Abies` NuGet package | **Not yet implemented** — no analyzer packaging exists in `Picea.Abies.csproj` (target design / TODO) |
 
 ## Consequences
 
@@ -59,7 +73,7 @@ The analyzer ships bundled inside the Picea.Abies NuGet package (`analyzers/dotn
 - **Familiar developer experience** — warnings appear in the IDE like any other diagnostic
 - **Incrementally extensible** — new rules can be added without touching the core framework
 - **Low maintenance burden** — analyzer project is ~500 lines, self-contained, netstandard2.0
-- **Automatic for NuGet consumers** — template users get validation out of the box
+- **Automatic for NuGet consumers (target design)** — once the analyzer is packaged into the `Picea.Abies` NuGet (see [Distribution](#distribution)), template users would get validation out of the box; this packaging is not yet wired up
 - **Composability preserved** — `Node` remains a single type, so helper functions, `Select`, spread (`..`), and conditional rendering all work unchanged
 
 ### Negative
@@ -140,21 +154,41 @@ Validate HTML structure at runtime during rendering or in development mode.
 
 ```text
 Picea.Abies.Analyzers/                      # netstandard2.0, Roslyn 4.8.0
-├── DiagnosticDescriptors.cs          # ABIES001–ABIES005 definitions
-├── HtmlSpec.cs                       # HTML content model data
-├── AnalysisHelpers.cs                # Shared semantic model utilities
-├── MissingAttributeAnalyzer.cs       # ABIES001, ABIES003–ABIES005
-└── ContentModelAnalyzer.cs           # ABIES002
+├── DiagnosticDescriptors.cs              # ABIES001–ABIES007 definitions
+├── HtmlSpec.cs                           # HTML content model data
+├── AnalysisHelpers.cs                    # Shared semantic model utilities
+├── HandlerIdentityAnalysis.cs            # Shared handler-identity analysis used by ABIES006/007
+├── MissingAttributeAnalyzer.cs           # ABIES001, ABIES003–ABIES005
+├── ContentModelAnalyzer.cs               # ABIES002
+├── RepeatedHandlerIdentityAnalyzer.cs    # ABIES006
+├── RepeatedInteractiveHelperAnalyzer.cs  # ABIES007
+└── AbiesCodeFixProvider.cs               # Code fixes for the above diagnostics
 
-Picea.Abies.Analyzers.Tests/                # net10.0, xUnit
-├── AbiesStubs.cs                     # Minimal type stubs for testing
-├── MissingAttributeAnalyzerTests.cs  # 12 tests
-└── ContentModelAnalyzerTests.cs      # 5 tests
+Picea.Abies.Analyzers.Tests/                # net10.0, TUnit
+├── AbiesStubs.cs                              # Minimal type stubs for testing
+├── MissingAttributeAnalyzerTests.cs
+├── ContentModelAnalyzerTests.cs
+├── RepeatedHandlerIdentityAnalyzerTests.cs
+├── RepeatedInteractiveHelperAnalyzerTests.cs
+└── AbiesCodeFixProviderTests.cs
 ```
 
-### NuGet packaging (in `Picea.Abies.csproj`)
+A `CodeFixProvider` (`AbiesCodeFixProvider`) accompanies the analyzers and offers automated fixes
+for the diagnostics.
+
+### NuGet packaging (not yet wired up)
+
+> **Current state:** `Picea.Abies/Picea.Abies.csproj` does **not** reference or pack the analyzer.
+> There is no `OutputItemType="Analyzer"` ProjectReference and no `<None ... PackagePath="analyzers/dotnet/cs">`
+> entry in that csproj. As a result, NuGet/template consumers do **not** automatically receive the
+> analyzer today. The only project that references the analyzer is `Picea.Abies.Analyzers.Tests`.
+
+To actually ship the analyzer to consumers, `Picea.Abies.csproj` would need to add both a
+ProjectReference (to run the analyzer on the library itself) and a packaging `<None>` entry
+following the NuGet analyzer convention, for example:
 
 ```xml
+<!-- TODO: not currently present in Picea.Abies.csproj -->
 <!-- Run the analyzer on the Abies library itself -->
 <ProjectReference Include="..\Picea.Abies.Analyzers\Picea.Abies.Analyzers.csproj"
                   ReferenceOutputAssembly="false"

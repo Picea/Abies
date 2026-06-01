@@ -202,12 +202,14 @@ Interpreter<Command, Message> interpreter = async command =>
 
 A complete Abies application implements the `Program<TModel, TArgument>` interface:
 
-```csharp
-public interface Program<TModel, TArgument> : Automaton<TModel, Message, Command, TArgument>
+```csharp compile
+public interface Program<TModel, TArgument> : Decider<TModel, Message, Message, Command, Message, TArgument>
 {
-    // From Automaton:
+    // From the decider kernel:
     // static abstract (TModel, Command) Initialize(TArgument argument);
     // static abstract (TModel, Command) Transition(TModel model, Message message);
+    static abstract Result<Message[], Message> Decide(TModel state, Message command);
+    static abstract bool IsTerminal(TModel state);
 
     // MVU extensions:
     static abstract Document View(TModel model);
@@ -218,13 +220,13 @@ public interface Program<TModel, TArgument> : Automaton<TModel, Message, Command
 ### Example: Counter
 
 ```csharp
-using Abies;
-using Abies.DOM;
-using Abies.Subscriptions;
-using Automaton;
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using Picea;
+using Picea.Abies;
+using Picea.Abies.DOM;
+using Picea.Abies.Subscriptions;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 public record CounterModel(int Count);
 
@@ -250,9 +252,9 @@ public class Counter : Program<CounterModel, Unit>
     public static Document View(CounterModel model) =>
         new("Counter",
             div([], [
-                button([onclick(() => new CounterMessage.Decrement())], [text("-")]),
+                button([onclick(new CounterMessage.Decrement())], [text("-")]),
                 text(model.Count.ToString()),
-                button([onclick(() => new CounterMessage.Increment())], [text("+")])
+                button([onclick(new CounterMessage.Increment())], [text("+")])
             ]));
 
     public static Subscription Subscriptions(CounterModel model) =>
@@ -284,14 +286,14 @@ The Abies runtime orchestrates the MVU loop by composing the Picea kernel's `Aut
 
 The `Apply` delegate is the seam between the pure Abies core and platform-specific rendering:
 
-```csharp
+```csharp compile
 public delegate void Apply(IReadOnlyList<Patch> patches);
 ```
 
 | Platform | Apply Implementation |
 | -------- | -------------------- |
-| **Browser** (`Abies.Browser`) | Binary batch → JS interop → DOM mutations |
-| **Server** (`Abies.Server`) | Binary batch → WebSocket → client-side replay |
+| **Browser** (`Picea.Abies.Browser`) | Binary batch → JS interop → DOM mutations |
+| **Server** (`Picea.Abies.Server.Kestrel`) | Binary batch → WebSocket → client-side replay |
 | **Tests** | Captures patches for assertions |
 
 This architecture means the same `Program` runs identically across all platforms — the only difference is how patches reach the user's screen.
@@ -300,7 +302,7 @@ This architecture means the same `Program` runs identically across all platforms
 
 ```csharp
 // Entire Program.cs:
-await Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
 ```
 
 ### Running on the Server
@@ -308,7 +310,7 @@ await Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
 ```csharp
 // In server startup (e.g., Kestrel):
 app.MapAbies<Counter, CounterModel, Unit>("/counter",
-    renderMode: RenderMode.InteractiveServer("/ws/counter"),
+    mode: RenderMode.InteractiveServer("/ws/counter"),
     interpreter: myInterpreter);
 ```
 
@@ -336,17 +338,17 @@ State changes are explicit and traceable. Every state transition goes through Tr
 Pure functions are trivially testable:
 
 ```csharp
-[Fact]
-public void ArticlesLoaded_UpdatesModelAndClearsLoading()
+[Test]
+public async Task ArticlesLoaded_UpdatesModelAndClearsLoading()
 {
     var model = new Model(IsLoading: true, Articles: [], Error: null);
     var articles = new List<Article> { new("test", "Test Article") };
 
     var (newModel, command) = Transition(model, new ArticlesLoaded(articles));
 
-    Assert.False(newModel.IsLoading);
-    Assert.Equal(articles, newModel.Articles);
-    Assert.Equal(Commands.None, command);
+    await Assert.That(newModel.IsLoading).IsFalse();
+    await Assert.That(newModel.Articles).IsEqualTo(articles);
+    await Assert.That(command).IsEqualTo(Commands.None);
 }
 ```
 
@@ -357,7 +359,7 @@ With immutable state and explicit messages:
 - **Time-travel debugging** — Replay message history
 - **State snapshots** — Serialize any point in time
 - **Action logging** — Record all messages for analysis
-- **OpenTelemetry** — Built-in tracing with `Abies.Runtime` activity source
+- **OpenTelemetry** — Built-in tracing with `Picea.Abies.Runtime` activity source
 
 ### Simplicity
 
@@ -402,7 +404,7 @@ public record ProfileModel(UserProfile Profile) : PageModel;
 Organize messages by feature:
 
 ```csharp
-public interface Message : Abies.Message { }
+public interface Message : Picea.Abies.Message { }
 
 public interface HomeMessage : Message
 {

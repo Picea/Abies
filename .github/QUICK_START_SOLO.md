@@ -129,7 +129,7 @@ Copilot will automatically review every PR and provide:
 2. In the right sidebar, click **Reviewers**
 3. Select **Copilot** from the list
 
-See [.github/COPILOT_REVIEW.md](.github/COPILOT_REVIEW.md) for details.
+See [.github/COPILOT_REVIEW.md](COPILOT_REVIEW.md) for details.
 
 ## 📝 Daily Workflow
 
@@ -274,11 +274,11 @@ dotnet list package --vulnerable
 ## 📚 Full Documentation
 
 For complete details, see:
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) - Full contribution guide
-- [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) - Detailed protection rules
-- [.github/SETUP_BRANCH_PROTECTION.md](.github/SETUP_BRANCH_PROTECTION.md) - Step-by-step setup
-- [.github/COPILOT_REVIEW.md](.github/COPILOT_REVIEW.md) - Copilot review guide
-- [docs/adr/ADR-019-trunk-based-development.md](docs/adr/ADR-019-trunk-based-development.md) - Architecture decision
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - Full contribution guide
+- [.github/BRANCH_PROTECTION.md](BRANCH_PROTECTION.md) - Detailed protection rules
+- [.github/SETUP_BRANCH_PROTECTION.md](SETUP_BRANCH_PROTECTION.md) - Step-by-step setup
+- [.github/COPILOT_REVIEW.md](COPILOT_REVIEW.md) - Copilot review guide
+- [docs/adr/ADR-019-trunk-based-development.md](../docs/adr/ADR-019-trunk-based-development.md) - Architecture decision
 
 ## 🆘 Troubleshooting
 
