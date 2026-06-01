@@ -34,7 +34,7 @@ Let's build a user registration form with validation.
 ```csharp
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -246,8 +246,8 @@ public sealed class Registration : Program<Model, Unit>
             [
                 label([],
                 [
-                    input_([
-                        type_("checkbox"),
+                    input([
+                        type("checkbox"),
                         checked_(model.AgreeToTerms),
                         onclick(new AgreeChanged(!model.AgreeToTerms))
                     ]),
@@ -270,8 +270,8 @@ public sealed class Registration : Program<Model, Unit>
         div([class_("field")],
         [
             Elements.label([], [text(label)]),
-            input_([
-                type_(inputType),
+            input([
+                type(inputType),
                 value(currentValue),
                 oninput(onChange)
             ])
@@ -287,6 +287,11 @@ public sealed class Registration : Program<Model, Unit>
 
     public static Subscription Subscriptions(Model model) =>
         SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -348,8 +353,8 @@ public static class FormInterpreter
 ### Text Input
 
 ```csharp
-input_([
-    type_("text"),
+input([
+    type("text"),
     value(model.Name),
     placeholder("Enter your name"),
     oninput(data => new NameChanged(data?.Value ?? ""))
@@ -382,8 +387,8 @@ select([
 ### Checkbox
 
 ```csharp
-input_([
-    type_("checkbox"),
+input([
+    type("checkbox"),
     checked_(model.Subscribe),
     onclick(new SubscribeChanged(!model.Subscribe))
 ])
@@ -399,8 +404,8 @@ static Node RadioGroup(string name, string current, (string Value, string Label)
         options.Select(opt =>
             label([],
             [
-                input_([
-                    type_("radio"),
+                input([
+                    type("radio"),
                     Attributes.name(name),
                     value(opt.Value),
                     checked_(current == opt.Value),
@@ -448,8 +453,8 @@ SubmitForm =>
 Use `onblur` to validate when the user moves away from a field:
 
 ```csharp
-input_([
-    type_("email"),
+input([
+    type("email"),
     value(model.Email),
     oninput(data => new EmailChanged(data?.Value ?? "")),
     onblur(new ValidateEmail())
@@ -461,70 +466,70 @@ input_([
 ### Validation Tests
 
 ```csharp
-[Fact]
-public void Validate_EmptyUsername_ReturnsError()
+[Test]
+public async Task Validate_EmptyUsername_ReturnsError()
 {
     var model = CreateModel(username: "");
 
     var errors = Validation.Validate(model);
 
-    Assert.Contains(errors, e => e.Contains("Username is required"));
+    await Assert.That(errors.Any(e => e.Contains("Username is required"))).IsTrue();
 }
 
-[Fact]
-public void Validate_ShortPassword_ReturnsError()
+[Test]
+public async Task Validate_ShortPassword_ReturnsError()
 {
     var model = CreateModel(password: "abc");
 
     var errors = Validation.Validate(model);
 
-    Assert.Contains(errors, e => e.Contains("at least 8 characters"));
+    await Assert.That(errors.Any(e => e.Contains("at least 8 characters"))).IsTrue();
 }
 
-[Fact]
-public void Validate_MismatchedPasswords_ReturnsError()
+[Test]
+public async Task Validate_MismatchedPasswords_ReturnsError()
 {
     var model = CreateModel(password: "password1", passwordConfirm: "password2");
 
     var errors = Validation.Validate(model);
 
-    Assert.Contains(errors, e => e.Contains("do not match"));
+    await Assert.That(errors.Any(e => e.Contains("do not match"))).IsTrue();
 }
 
-[Fact]
-public void Validate_ValidModel_ReturnsNoErrors()
+[Test]
+public async Task Validate_ValidModel_ReturnsNoErrors()
 {
     var model = CreateModel();
 
     var errors = Validation.Validate(model);
 
-    Assert.Empty(errors);
+    await Assert.That(errors).IsEmpty();
 }
 ```
 
 ### Transition Tests
 
 ```csharp
-[Fact]
-public void SubmitForm_WithInvalidData_SetsValidationErrors()
+[Test]
+public async Task SubmitForm_WithInvalidData_SetsValidationErrors()
 {
     var model = CreateModel(username: "");
 
     var (newModel, command) = Registration.Transition(model, new SubmitForm());
 
-    Assert.NotEmpty(newModel.ValidationErrors);
-    Assert.Equal(Commands.None, command);  // no API call
+    await Assert.That(newModel.ValidationErrors).IsNotEmpty();
+    await Assert.That(command).IsEqualTo(Commands.None);  // no API call
 }
 
-[Fact]
-public void SubmitForm_WithValidData_ReturnsRegisterCommand()
+[Test]
+public async Task SubmitForm_WithValidData_ReturnsRegisterCommand()
 {
     var model = CreateModel();
 
     var (newModel, command) = Registration.Transition(model, new SubmitForm());
 
-    Assert.True(newModel.IsSubmitting);
-    Assert.IsType<RegisterUser>(command);
+    await Assert.That(newModel.IsSubmitting).IsTrue();
+    await Assert.That(command).IsTypeOf<RegisterUser>();
 }
 ```
 

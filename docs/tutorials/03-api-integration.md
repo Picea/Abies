@@ -39,7 +39,7 @@ Let's build an app that fetches random quotes from an API.
 ```csharp
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -152,6 +152,11 @@ public sealed class QuoteApp : Program<Model, Unit>
 
     public static Subscription Subscriptions(Model model) =>
         SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -305,8 +310,8 @@ public static async ValueTask<Result<Message[], PipelineError>> Interpret(
 The transition function requires no mocks:
 
 ```csharp
-[Fact]
-public void FetchNewQuote_SetsLoadingState_AndReturnsCommand()
+[Test]
+public async Task FetchNewQuote_SetsLoadingState_AndReturnsCommand()
 {
     var model = new Model(
         CurrentQuote: new Quote("old", "author"),
@@ -315,13 +320,13 @@ public void FetchNewQuote_SetsLoadingState_AndReturnsCommand()
 
     var (newModel, command) = QuoteApp.Transition(model, new FetchNewQuote());
 
-    Assert.True(newModel.IsLoading);
-    Assert.Null(newModel.Error);
-    Assert.IsType<FetchQuote>(command);
+    await Assert.That(newModel.IsLoading).IsTrue();
+    await Assert.That(newModel.Error).IsNull();
+    await Assert.That(command).IsTypeOf<FetchQuote>();
 }
 
-[Fact]
-public void QuoteLoaded_StoresQuote_AndClearsLoading()
+[Test]
+public async Task QuoteLoaded_StoresQuote_AndClearsLoading()
 {
     var model = new Model(null, true, null);
     var quote = new Quote("To be or not to be", "Shakespeare");
@@ -329,21 +334,21 @@ public void QuoteLoaded_StoresQuote_AndClearsLoading()
     var (newModel, command) = QuoteApp.Transition(
         model, new QuoteLoaded(quote));
 
-    Assert.Equal(quote, newModel.CurrentQuote);
-    Assert.False(newModel.IsLoading);
-    Assert.Equal(Commands.None, command);
+    await Assert.That(newModel.CurrentQuote).IsEqualTo(quote);
+    await Assert.That(newModel.IsLoading).IsFalse();
+    await Assert.That(command).IsEqualTo(Commands.None);
 }
 
-[Fact]
-public void QuoteFailed_StoresError_AndClearsLoading()
+[Test]
+public async Task QuoteFailed_StoresError_AndClearsLoading()
 {
     var model = new Model(null, true, null);
 
     var (newModel, _) = QuoteApp.Transition(
         model, new QuoteFailed("Network timeout"));
 
-    Assert.False(newModel.IsLoading);
-    Assert.Equal("Network timeout", newModel.Error);
+    await Assert.That(newModel.IsLoading).IsFalse();
+    await Assert.That(newModel.Error).IsEqualTo("Network timeout");
 }
 ```
 
@@ -352,7 +357,7 @@ public void QuoteFailed_StoresError_AndClearsLoading()
 Interpreter tests verify HTTP behavior using a fake handler:
 
 ```csharp
-[Fact]
+[Test]
 public async Task Interpret_FetchQuote_ReturnsQuoteLoaded()
 {
     // Arrange: mock HTTP response
@@ -365,9 +370,12 @@ public async Task Interpret_FetchQuote_ReturnsQuoteLoaded()
     var result = await interpreter(new FetchQuote());
 
     // Assert
-    var messages = result.Match(ok => ok, _ => []);
-    var loaded = Assert.IsType<QuoteLoaded>(Assert.Single(messages));
-    Assert.Equal("Shakespeare", loaded.Quote.Author);
+    var messages = result.Match(
+        ok => ok,
+        _ => Array.Empty<Message>());
+    await Assert.That(messages).HasSingleItem();
+    await Assert.That(messages[0]).IsTypeOf<QuoteLoaded>();
+    await Assert.That(((QuoteLoaded)messages[0]).Quote.Author).IsEqualTo("Shakespeare");
 }
 ```
 

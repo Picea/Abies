@@ -93,7 +93,7 @@ div([class_("container"), id("main")], [
 
 Plain text content:
 
-```csharp
+```csharp compile
 text("Hello, World!")
 ```
 
@@ -101,8 +101,8 @@ text("Hello, World!")
 
 Pre-rendered HTML strings (use carefully):
 
-```csharp
-rawHtml("<strong>Bold</strong>")
+```csharp compile
+raw("<strong>Bold</strong>")
 ```
 
 ### Memo Nodes
@@ -110,7 +110,7 @@ rawHtml("<strong>Bold</strong>")
 Cached nodes that skip diffing when the key hasn't changed:
 
 ```csharp
-memo(myKey, () => ExpensiveView(data))
+memo(myKey, ExpensiveView(data))
 ```
 
 ### Lazy Memo Nodes
@@ -294,12 +294,9 @@ Abies manages `<head>` content (title, meta tags, links) through the same diff/p
 ```csharp
 public static Document View(Model model)
     => new("My App",
-        body: div([], [...]),
-        head:
-        [
-            new MetaTag("description", "My Abies app"),
-            new LinkTag("stylesheet", "/css/app.css")
-        ]);
+        div([], [...]),
+        new HeadContent.Meta("description", "My Abies app"),
+        new HeadContent.Link("stylesheet", "/css/app.css"));
 ```
 
 Head patches (`AddHeadElement`, `UpdateHeadElement`, `RemoveHeadElement`) flow through the same binary batch as body patches — a single interop call per render cycle.
@@ -358,9 +355,12 @@ private static readonly string[] IndexStringCache = new string[256];
 
 ### Memo Diagnostics
 
-Abies tracks memo hits and misses:
+Abies tracks memo hits and misses internally. These counters
+(`Operations.MemoHits` / `Operations.MemoMisses`) are `internal` to the
+diffing engine and are not part of the public API — they exist for the
+framework's own tests and diagnostics:
 
-```csharp
+```text
 Operations.MemoHits    // Subtree diffs skipped (key matched)
 Operations.MemoMisses  // Subtree diffs performed (key changed)
 ```

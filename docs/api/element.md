@@ -9,9 +9,9 @@ This page covers how to build reusable UI in Abies.
 The simplest form of UI reuse is a plain function that returns a `Node`:
 
 ```csharp
-using static Abies.Html.Elements;
-using static Abies.Html.Attributes;
-using static Abies.Html.Events;
+using static Picea.Abies.Html.Elements;
+using static Picea.Abies.Html.Attributes;
+using static Picea.Abies.Html.Events;
 
 // A reusable avatar component — just a function
 public static Node Avatar(string imageUrl, string name, string size = "md") =>
@@ -49,7 +49,7 @@ This approach has several advantages over component models:
 
 For more complex reusable views, use functions with structured parameters:
 
-```csharp
+```csharp compile
 public record ArticlePreview(string Title, string Description, string Author, DateTime Date, string Slug);
 
 public static Node ArticleCard(ArticlePreview article) =>
@@ -76,7 +76,7 @@ Abies provides two memoization mechanisms to skip unnecessary re-renders of view
 ### lazy (Lazy Memoization)
 
 ```csharp
-using static Abies.Html.Elements;
+using static Picea.Abies.Html.Elements;
 
 Node subtree = lazy(model.SelectedArticle, () => ExpensiveArticleView(model.SelectedArticle));
 ```

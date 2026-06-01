@@ -58,7 +58,7 @@ A Program connects model, messages, and view:
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
@@ -86,6 +86,11 @@ public class Counter : Program<Model, Unit>
 
     public static Subscription Subscriptions(Model model)
         => SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -131,7 +136,7 @@ Update your `.csproj`:
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-      <PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
+      <PackageReference Include="Picea.Abies.Browser" Version="2.1.*" />
   </ItemGroup>
 </Project>
 ```
@@ -164,7 +169,7 @@ The Model, Messages, and Program are **identical** to the browser version:
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Events;
@@ -200,6 +205,11 @@ public class Counter : Program<Model, Unit>
 
     public static Subscription Subscriptions(Model model)
         => SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command)
+        => Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 

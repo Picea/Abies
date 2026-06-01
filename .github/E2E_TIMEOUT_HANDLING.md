@@ -371,7 +371,7 @@ Timeout patterns are checked first, then assertions.
 
 ## Related Documentation
 
-- [E2E Testing Guide](../../docs/guides/testing.md#e2e-tests)
+- [E2E Testing Guide](../docs/guides/testing.md#e2e-tests)
 - [Playwright Documentation](https://playwright.dev)
 
 ## Questions?

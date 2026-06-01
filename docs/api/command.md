@@ -4,7 +4,7 @@ Commands represent side effects in the Abies MVU architecture. They are returned
 
 ## Command Interface
 
-```csharp
+```csharp compile
 public interface Command
 {
     sealed record None : Command;
@@ -35,19 +35,19 @@ The `Commands` static class provides ergonomic factory methods:
 ```csharp
 public static class Commands
 {
-    public static readonly Command None;
+    public static Command None { get; }
     public static Command Batch(params Command[] commands);
-    public static Command Batch(IEnumerable<Command> commands);
+    public static Command Batch(IReadOnlyList<Command> commands);
 }
 ```
 
 ### Commands.None
 
 ```csharp
-public static readonly Command None
+public static Command None => new Command.None();
 ```
 
-A singleton instance of `Command.None`. Use this when a transition produces no side effects:
+A property that allocates a fresh `Command.None` instance on each access (it is **not** a cached singleton). Use this when a transition produces no side effects:
 
 ```csharp
 public static (Model, Command) Transition(Model model, Message message) =>
@@ -62,22 +62,25 @@ public static (Model, Command) Transition(Model model, Message message) =>
 
 ```csharp
 public static Command Batch(params Command[] commands)
-public static Command Batch(IEnumerable<Command> commands)
+public static Command Batch(IReadOnlyList<Command> commands)
 ```
 
-Combines multiple commands into a single command. Includes smart collapsing:
+Combines multiple commands into a single command. Both overloads always wrap the
+input in a `Command.Batch` — there is **no** collapsing of the zero-command or
+single-command cases (the runtime's interpreter flattens and handles empty/`None`
+batches when executing them):
 
 | Input | Output |
 |-------|--------|
-| Zero commands | `Commands.None` |
-| One command | The single command (unwrapped) |
+| Zero commands | `Command.Batch([])` |
+| One command | `Command.Batch([command])` |
 | N commands | `Command.Batch(commands)` |
 
 ```csharp
-// Returns Commands.None
+// Returns Command.Batch with an empty list
 Commands.Batch();
 
-// Returns the single command (not wrapped in Batch)
+// Returns Command.Batch wrapping the single command
 Commands.Batch(Navigation.PushUrl(someUrl));
 
 // Returns Command.Batch with both commands
@@ -91,7 +94,7 @@ Commands.Batch(
 
 Define application-specific commands by implementing the `Command` interface:
 
-```csharp
+```csharp compile
 public interface ArticleCommand : Command
 {
     record Fetch(string Slug) : ArticleCommand;
@@ -126,7 +129,7 @@ public static (Model, Command) Transition(Model model, Message message) =>
 
 Commands are executed by an `Interpreter<Command, Message>` delegate:
 
-```csharp
+```csharp compile
 public delegate ValueTask<Result<Message[], PipelineError>> Interpreter<TEffect, TEvent>(
     TEffect effect);
 ```
@@ -173,10 +176,10 @@ The interpreter is optional in both browser and server runtimes. When omitted, a
 
 ```csharp
 // No interpreter needed — Counter has no custom commands
-await Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
+await Picea.Abies.Browser.Runtime.Run<Counter, CounterModel, Unit>();
 
 // With interpreter — Conduit needs HTTP calls
-await Abies.Browser.Runtime.Run<ConduitProgram, ConduitModel, Unit>(
+await Picea.Abies.Browser.Runtime.Run<ConduitProgram, ConduitModel, Unit>(
     interpreter: MyInterpreter.Interpret);
 ```
 

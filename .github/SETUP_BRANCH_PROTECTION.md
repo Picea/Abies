@@ -224,7 +224,7 @@ After configuring:
 
 - [GitHub Branch Protection Docs](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
 - [Required Status Checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging)
-- [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [CONTRIBUTING.md](../CONTRIBUTING.md)
 - [ADR-019](../docs/adr/ADR-019-trunk-based-development.md)
 
 ---

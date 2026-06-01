@@ -83,14 +83,18 @@ public interface Program<TModel, TArgument>
 Application code is **identical** across render modes. The only difference is the hosting entry point:
 
 ```csharp
+// Type parameter order is <TProgram, TModel, TArgument>.
+
 // InteractiveWasm (browser)
-await Picea.Abies.Browser.Runtime.Run<App, Args, Model>(args, handler);
+await Picea.Abies.Browser.Runtime.Run<App, Model, Args>(args, interpreter);
 
-// InteractiveServer (Kestrel)
-app.MapAbies<App, Args, Model>("/", args, handler);
+// InteractiveServer (Kestrel) — the second positional argument is a RenderMode
+app.MapAbies<App, Model, Args>("/", new RenderMode.InteractiveServer(), interpreter, args);
 
-// Static (Kestrel)
-app.MapAbiesStatic<App, Args, Model>("/", args);
+// Static (Kestrel) — there is no MapAbiesStatic; select static rendering by
+// passing a RenderMode.Static to MapAbies
+app.MapAbies<App, Model, Args>("/", new RenderMode.Static(), argument: args);
+// (or render the HTML directly via Page.Render<App, Model, Args>(new RenderMode.Static(), args))
 ```
 
 ## Consequences

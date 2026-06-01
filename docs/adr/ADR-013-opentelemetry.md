@@ -34,16 +34,18 @@ We adopt **OpenTelemetry (OTEL)** as the observability standard for Abies applic
 
 ### Core Implementation
 
-Implementation in `Picea.Abies/Instrumentation.cs`:
+The runtime's `ActivitySource` is defined privately in `Picea.Abies/Runtime.cs`. There is no
+public `Instrumentation` class; the source is a private static field used internally by the
+runtime loop:
 
 ```csharp
-public static class Instrumentation
-{
-    public const string SourceName = "Abies";
-    public const string SourceVersion = "1.0.0";
-    public static readonly ActivitySource ActivitySource = new(SourceName, SourceVersion);
-}
+// Picea.Abies/Runtime.cs
+private static readonly ActivitySource _activitySource = new("Picea.Abies.Runtime");
 ```
+
+The activity source name is therefore **`"Picea.Abies.Runtime"`**. To collect these traces a
+consumer adds that source to its OpenTelemetry tracer provider (see
+[Enabling Tracing](#enabling-tracing) below).
 
 ### Instrumentation Points
 
@@ -74,34 +76,56 @@ Applications can add detailed tracing for their commands. Example from Conduit:
 | `LoadArticlesCommand` | `Articles: Load` | `articles.tag`, `articles.author`, `articles.limit`, `articles.offset`, `articles.count`, `articles.total` | Article list loading |
 | `ToggleFavoriteCommand` | `Article: Favorite/Unfavorite` | `article.slug`, `article.was_favorited`, `article.action`, `article.favorites_count` | Favorite toggle |
 
-### Console Tracing for Development
+<a id="enabling-tracing"></a>
 
-For WebAssembly applications, the `Telemetry` class provides a development-friendly way to observe traces in the browser console:
+### Enabling Tracing
+
+There is **no in-framework helper** for enabling tracing (no `Telemetry`/`EnableConsoleTracing`/
+`ConsoleTraceOptions` API exists). Tracing is enabled through the standard .NET OpenTelemetry
+configuration on whichever host process collects the traces.
+
+**Server / host process** — the host (e.g. the WASM bundle host, or the Conduit API) configures
+OpenTelemetry directly. The Abies project templates wire it up in `Program.cs`, adding the
+relevant sources and a console exporter for local development:
 
 ```csharp
-// Enable in Program.cs
-#if DEBUG
-Telemetry.EnableConsoleTracing(new ConsoleTraceOptions(
-    IncludeTimestamp: true,
-    IncludeDuration: true,
-    IncludeTags: true,
-    MinDurationMs: 0.5  // Filter out fast operations
-));
-#endif
-
-await Runtime.Run<MyApp, Args, Model>(args);
+// Picea.Abies.Templates/templates/abies-browser/AbiesApp.Host/Program.cs
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+    .WithTracing(tracing => tracing
+        .AddSource("Picea.Abies.Server.Kestrel.OtlpProxy")
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter());
 ```
 
-Output appears in the browser's developer console:
+For Aspire-hosted services, `Picea.Abies.Conduit.ServiceDefaults/Extensions.cs`
+(`AddServiceDefaults`) configures tracing, metrics and logs and exports via OTLP using the
+endpoint env vars that Aspire injects (`OTEL_EXPORTER_OTLP_*`). It registers the runtime/app
+sources explicitly:
 
-```text
-[Abies Telemetry] Console tracing enabled for source 'Abies'
-[10:30:45.123] ▶ Run
-[10:30:45.130] ▶ Message
-[10:30:45.135] ■ Message (5.12ms) [message.type=MyApp.ButtonClicked]
-[10:30:45.136] ▶ Dom.Diff
-[10:30:45.138] ■ Dom.Diff (1.89ms) [dom.patch_count=3, dom.is_initial_render=false]
+```csharp
+// Picea.Abies.Conduit.ServiceDefaults/Extensions.cs (AddServiceDefaults)
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(builder.Environment.ApplicationName))
+    .WithTracing(t => t
+        .AddSource("Picea.Abies")
+        .AddSource("Picea.Abies.Conduit.Api")
+        .AddSource("Picea.Abies.Conduit.ReadStore.PostgreSQL")
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
 ```
+
+> **Note:** the framework's runtime `ActivitySource` is named `"Picea.Abies.Runtime"`. A tracer
+> provider must `AddSource("Picea.Abies.Runtime")` to capture the runtime spans listed above.
+
+**Browser / WebAssembly** — there is no C# console-tracing API. Browser-side tracing is provided
+by an optional JavaScript OpenTelemetry module (`abies-otel.js`) that `abies.js` loads
+dynamically when configured via a `<meta>` tag, a URL parameter, or `window.__otel`. When loaded,
+it emits spans for UI events and DOM batches and forwards them over OTLP/HTTP to the proxy
+endpoint (see [Browser OTLP Proxy](#browser-otlp-proxy)); when not configured it stays a no-op
+shim and no traces are produced.
 
 ### JavaScript Tracing
 
@@ -152,7 +176,7 @@ OTLP proxy endpoint at `/otlp/v1/traces` that:
 
 Aspire 13.x OTLP/HTTP endpoint **only accepts `application/x-protobuf`** format, not JSON.
 Since browser JavaScript cannot easily generate protobuf binary data, the API proxy includes
-a converter (`OtlpJsonToProtobuf.cs`) that:
+a converter (in `Picea.Abies.Server.Kestrel/OtlpProxyEndpoint.cs`) that:
 
 1. Detects incoming `Content-Type: application/json` requests
 2. Parses the OTLP JSON structure using `System.Text.Json`
@@ -275,14 +299,12 @@ UI Event (Click Button: Sign In)
 
 ### Implementation Files
 
-- [`Picea.Abies/Instrumentation.cs`](../../Picea.Abies/Instrumentation.cs) - ActivitySource definition
-- [`Picea.Abies/Telemetry.cs`](../../Picea.Abies/Telemetry.cs) - Console tracing for development
-- [`Picea.Abies/Runtime.cs`](../../Picea.Abies/Runtime.cs) - Runtime loop instrumentation
+- [`Picea.Abies/Runtime.cs`](../../Picea.Abies/Runtime.cs) - `ActivitySource` definition and runtime loop instrumentation (the former standalone `Instrumentation.cs`/`Telemetry.cs` files were folded into the runtime during the Picea migration)
 - [`Picea.Abies/Diff.cs`](../../Picea.Abies/Diff.cs) - Virtual DOM instrumentation
-- [`Picea.Abies/Subscriptions/SubscriptionManager.cs`](../../Picea.Abies/Subscriptions/SubscriptionManager.cs) - Subscription instrumentation
+- [`Picea.Abies/Subscriptions/Manager.cs`](../../Picea.Abies/Subscriptions/Manager.cs) - Subscription instrumentation
 - [`Picea.Abies.Browser/wwwroot/abies.js`](../../Picea.Abies.Browser/wwwroot/abies.js) - JavaScript instrumentation
-- [`Picea.Abies.Conduit.Api/OtlpJsonToProtobuf.cs`](../../Picea.Abies.Conduit.Api/OtlpJsonToProtobuf.cs) - JSON to protobuf converter
-- [`Picea.Abies.Conduit.Api/Program.cs`](../../Picea.Abies.Conduit.Api/Program.cs) - OTLP proxy endpoint
+- [`Picea.Abies.Server.Kestrel/OtlpProxyEndpoint.cs`](../../Picea.Abies.Server.Kestrel/OtlpProxyEndpoint.cs) - OTLP proxy endpoint with JSON-to-protobuf conversion (the former `Picea.Abies.Conduit.Api/OtlpJsonToProtobuf.cs` converter now lives here)
+- [`Picea.Abies.Conduit.Api/Program.cs`](../../Picea.Abies.Conduit.Api/Program.cs) - Conduit API OTLP wiring
 
 ## Changelog
 
@@ -291,4 +313,6 @@ UI Event (Click Button: Sign In)
   - Updated `Abies/DOM/Operations.cs` → `Picea.Abies/Diff.cs` (file was renamed)
   - Updated `Abies/wwwroot/abies.js` → `Picea.Abies.Browser/wwwroot/abies.js`
   - Updated `Abies.Conduit.Api/*` → `Picea.Abies.Conduit.Api/*`
-  - Updated instrumentation code reference from `Abies/Instrumentation.cs` → `Picea.Abies/Instrumentation.cs`
+  - The former standalone `Abies/Instrumentation.cs` (and `Telemetry.cs`) were folded into
+    `Picea.Abies/Runtime.cs`; there is no longer a separate `Instrumentation.cs` file, and the
+    `ActivitySource` is now a private field named `"Picea.Abies.Runtime"`.

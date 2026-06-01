@@ -21,7 +21,7 @@ A todo app needs a list of items, each with a description and completion status,
 ```csharp
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -181,7 +181,7 @@ The view composes several helper functions:
     static Node InputSection(string input) =>
         div([class_("input-section")],
         [
-            input_([
+            input([
                 class_("new-todo"),
                 placeholder("What needs to be done?"),
                 value(input),
@@ -225,8 +225,8 @@ Without `lazy`, reordering a 100-item list would re-render all 100 items. With `
     static Node TodoItemView(TodoItem item) =>
         li([class_(item.Completed ? "todo completed" : "todo")],
         [
-            input_([
-                type_("checkbox"),
+            input([
+                type("checkbox"),
                 checked_(item.Completed),
                 onclick(new ToggleTodo(item.Id))
             ]),
@@ -263,6 +263,11 @@ Without `lazy`, reordering a 100-item list would re-render all 100 items. With `
 ```csharp
     public static Subscription Subscriptions(Model model) =>
         SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -307,32 +312,32 @@ For a list of 1,000 items where only one changed, this means:
 ## Testing
 
 ```csharp
-[Fact]
-public void AddTodo_AppendsItemToList()
+[Test]
+public async Task AddTodo_AppendsItemToList()
 {
     var model = new Model("", [], Filter.All)
         with { Input = "Buy groceries" };
 
     var (newModel, _) = TodoApp.Transition(model, new AddTodo());
 
-    Assert.Single(newModel.Items);
-    Assert.Equal("Buy groceries", newModel.Items[0].Text);
-    Assert.False(newModel.Items[0].Completed);
-    Assert.Empty(newModel.Input); // input cleared after add
+    await Assert.That(newModel.Items).HasSingleItem();
+    await Assert.That(newModel.Items[0].Text).IsEqualTo("Buy groceries");
+    await Assert.That(newModel.Items[0].Completed).IsFalse();
+    await Assert.That(newModel.Input).IsEmpty(); // input cleared after add
 }
 
-[Fact]
-public void AddTodo_WithEmptyInput_DoesNothing()
+[Test]
+public async Task AddTodo_WithEmptyInput_DoesNothing()
 {
     var model = new Model("", [], Filter.All);
 
     var (newModel, _) = TodoApp.Transition(model, new AddTodo());
 
-    Assert.Empty(newModel.Items);
+    await Assert.That(newModel.Items).IsEmpty();
 }
 
-[Fact]
-public void ToggleTodo_FlipsCompletedState()
+[Test]
+public async Task ToggleTodo_FlipsCompletedState()
 {
     var id = Guid.NewGuid();
     var items = new List<TodoItem> { new(id, "Test", false) };
@@ -340,11 +345,11 @@ public void ToggleTodo_FlipsCompletedState()
 
     var (newModel, _) = TodoApp.Transition(model, new ToggleTodo(id));
 
-    Assert.True(newModel.Items[0].Completed);
+    await Assert.That(newModel.Items[0].Completed).IsTrue();
 }
 
-[Fact]
-public void ClearCompleted_RemovesOnlyCompletedItems()
+[Test]
+public async Task ClearCompleted_RemovesOnlyCompletedItems()
 {
     var items = new List<TodoItem>
     {
@@ -356,8 +361,8 @@ public void ClearCompleted_RemovesOnlyCompletedItems()
 
     var (newModel, _) = TodoApp.Transition(model, new ClearCompleted());
 
-    Assert.Single(newModel.Items);
-    Assert.Equal("Not done", newModel.Items[0].Text);
+    await Assert.That(newModel.Items).HasSingleItem();
+    await Assert.That(newModel.Items[0].Text).IsEqualTo("Not done");
 }
 ```
 

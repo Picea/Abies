@@ -34,7 +34,7 @@ The **model** is the entire state of your application. For a counter, that's a s
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -141,8 +141,18 @@ Subscriptions connect your program to external event sources (timers, WebSockets
 ```csharp
     public static Subscription Subscriptions(Model model) =>
         SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
+
+**Key points:**
+
+- `Decide` validates an incoming message and returns the messages to apply — the default forwards the command unchanged
+- `IsTerminal` lets the runtime know when the program has reached a final state — return `false` for a long-running app
 
 ## The Complete Program
 
@@ -152,7 +162,7 @@ Here's the full counter in one file:
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -196,6 +206,11 @@ public sealed class Counter : Program<Model, Unit>
 
     public static Subscription Subscriptions(Model model) =>
         SubscriptionModule.None;
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -300,25 +315,25 @@ This cycle is the same for every Abies application, no matter how complex. The o
 Because `Transition` is a pure function, it's trivially testable:
 
 ```csharp
-[Fact]
-public void Increment_IncreasesCount()
+[Test]
+public async Task Increment_IncreasesCount()
 {
     var model = new Model(Count: 5);
 
     var (newModel, command) = Counter.Transition(model, new Increment());
 
-    Assert.Equal(6, newModel.Count);
-    Assert.Equal(Commands.None, command);
+    await Assert.That(newModel.Count).IsEqualTo(6);
+    await Assert.That(command).IsEqualTo(Commands.None);
 }
 
-[Fact]
-public void Reset_SetsCountToZero()
+[Test]
+public async Task Reset_SetsCountToZero()
 {
     var model = new Model(Count: 42);
 
     var (newModel, _) = Counter.Transition(model, new Reset());
 
-    Assert.Equal(0, newModel.Count);
+    await Assert.That(newModel.Count).IsEqualTo(0);
 }
 ```
 

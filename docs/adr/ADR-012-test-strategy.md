@@ -31,24 +31,24 @@ We adopt a **layered test strategy** with three distinct levels:
 Test `Transition`, `View`, routing, and domain logic as pure functions:
 
 ```csharp
-[Fact]
-public void Transition_Increment_IncreasesCount()
+[Test]
+public async Task Transition_Increment_IncreasesCount()
 {
     var model = new Model(Count: 0);
     var (newModel, command) = Program.Transition(new Increment(), model);
-    
-    Assert.Equal(1, newModel.Count);
-    Assert.IsType<Command.None>(command);
+
+    await Assert.That(newModel.Count).IsEqualTo(1);
+    await Assert.That(command).IsTypeOf<Command.None>();
 }
 
-[Fact]
-public void Route_Profile_ParsesUsername()
+[Test]
+public async Task Route_Profile_ParsesUsername()
 {
     var result = Route.Match.Parse("/profile/alice");
-    
-    Assert.True(result.Success);
-    Assert.IsType<Route.Profile>(result.Value);
-    Assert.Equal("alice", ((Route.Profile)result.Value).UserName.Value);
+
+    await Assert.That(result.Success).IsTrue();
+    await Assert.That(result.Value).IsTypeOf<Route.Profile>();
+    await Assert.That(((Route.Profile)result.Value).UserName.Value).IsEqualTo("alice");
 }
 ```
 
@@ -63,19 +63,19 @@ Characteristics:
 Test UI components and DOM rendering with fake services:
 
 ```csharp
-[Fact]
+[Test]
 public async Task HomePage_LoadsArticles()
 {
     // Arrange: fake HTTP responses
     var fakeHttp = new FakeHttpMessageHandler();
     fakeHttp.AddResponse("/api/articles", ArticleFixtures.SampleArticles);
-    
+
     // Act: simulate application flow
     var (model, _) = Program.Initialize(Url.Create("/"), new Arguments());
     await Program.Interpret(new LoadArticlesCommand(), Dispatch);
-    
+
     // Assert: verify model state
-    Assert.Equal(3, ((Page.Home)model.Page).Model.Articles.Count);
+    await Assert.That(((Page.Home)model.Page).Model.Articles.Count).IsEqualTo(3);
 }
 ```
 
@@ -90,7 +90,7 @@ Characteristics:
 Test full user journeys with Playwright:
 
 ```csharp
-[Fact]
+[Test]
 public async Task User_CanLogin_AndViewProfile()
 {
     await Page.GotoAsync("/");

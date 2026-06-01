@@ -4,7 +4,7 @@ The `Picea.Abies.Html.Attributes` static class provides functions for creating H
 
 ## Usage
 
-```csharp
+```csharp compile
 using Picea.Abies.Html;
 using static Picea.Abies.Html.Attributes;
 ```
@@ -249,7 +249,7 @@ data("user-id", "456")              // data-user-id="456"
 
 Creates a `data-key` attribute for explicit keyed DOM diffing. When present, the diff algorithm uses this as the element's key instead of its compile-time ID:
 
-```csharp
+```csharp compile
 key("user-42")                      // data-key="user-42"
 ```
 

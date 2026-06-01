@@ -30,7 +30,7 @@ Abies represents URLs with a structured `Url` record:
 
 ```csharp
 public record Url(
-    string[] Path,                              // ["article", "hello-world"]
+    IReadOnlyList<string> Path,                  // ["article", "hello-world"]
     IReadOnlyDictionary<string, string> Query,   // { "page": "2" }
     Option<string> Fragment);                    // Some("comments") or None
 ```
@@ -56,7 +56,7 @@ Let's build a simple app with Home, About, and User Profile pages.
 ```csharp
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;
-using Automaton;
+using Picea;
 using static Picea.Abies.Html.Attributes;
 using static Picea.Abies.Html.Elements;
 using static Picea.Abies.Html.Events;
@@ -225,6 +225,11 @@ To receive URL change notifications, subscribe to `Navigation.UrlChanges`:
 ```csharp
     public static Subscription Subscriptions(Model model) =>
         Navigation.UrlChanges(url => new UrlChanged(url));
+
+    public static Result<Message[], Message> Decide(Model state, Message command) =>
+        Result<Message[], Message>.Ok([command]);
+
+    public static bool IsTerminal(Model state) => false;
 }
 ```
 
@@ -282,7 +287,7 @@ OpenDocs =>
 Or simply use an `<a>` tag with a full URL — the runtime only intercepts same-origin links:
 
 ```csharp
-a([href("https://docs.example.com"), target_("_blank")],
+a([href("https://docs.example.com"), target("_blank")],
     [text("Documentation")])
 ```
 
@@ -336,34 +341,35 @@ Notice how route parameters (`slug`, `user`) are captured directly in the patter
 ## Testing
 
 ```csharp
-[Fact]
-public void FromUrl_Home_ReturnsHomePage()
+[Test]
+public async Task FromUrl_Home_ReturnsHomePage()
 {
     var url = new Url([], new Dictionary<string, string>(),
         Option<string>.None);
 
     var (page, command) = Route.FromUrl(url);
 
-    Assert.IsType<Page.Home>(page);
-    Assert.Equal(Commands.None, command);
+    await Assert.That(page).IsTypeOf<Page.Home>();
+    await Assert.That(command).IsEqualTo(Commands.None);
 }
 
-[Fact]
-public void FromUrl_UserProfile_ReturnsLoadingPage_AndFetchCommand()
+[Test]
+public async Task FromUrl_UserProfile_ReturnsLoadingPage_AndFetchCommand()
 {
     var url = new Url(["users", "alice"],
         new Dictionary<string, string>(), Option<string>.None);
 
     var (page, command) = Route.FromUrl(url);
 
-    var profile = Assert.IsType<Page.UserProfile>(page);
-    Assert.Equal("alice", profile.Username);
-    Assert.True(profile.IsLoading);
-    Assert.IsType<FetchUser>(command);
+    await Assert.That(page).IsTypeOf<Page.UserProfile>();
+    var profile = (Page.UserProfile)page;
+    await Assert.That(profile.Username).IsEqualTo("alice");
+    await Assert.That(profile.IsLoading).IsTrue();
+    await Assert.That(command).IsTypeOf<FetchUser>();
 }
 
-[Fact]
-public void UrlChanged_UpdatesPage()
+[Test]
+public async Task UrlChanged_UpdatesPage()
 {
     var model = new Model(new Page.Home());
     var url = new Url(["about"],
@@ -371,18 +377,18 @@ public void UrlChanged_UpdatesPage()
 
     var (newModel, _) = App.Transition(model, new UrlChanged(url));
 
-    Assert.IsType<Page.About>(newModel.CurrentPage);
+    await Assert.That(newModel.CurrentPage).IsTypeOf<Page.About>();
 }
 
-[Fact]
-public void FromUrl_UnknownPath_ReturnsNotFound()
+[Test]
+public async Task FromUrl_UnknownPath_ReturnsNotFound()
 {
     var url = new Url(["nonexistent", "path"],
         new Dictionary<string, string>(), Option<string>.None);
 
     var (page, _) = Route.FromUrl(url);
 
-    Assert.IsType<Page.NotFound>(page);
+    await Assert.That(page).IsTypeOf<Page.NotFound>();
 }
 ```
 

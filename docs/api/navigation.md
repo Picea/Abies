@@ -96,7 +96,7 @@ Navigation-related messages are regular `Message` types defined in the Abies fra
 
 ### UrlChanged
 
-```csharp
+```csharp compile
 public record UrlChanged(Url Url) : Message;
 ```
 

@@ -4,7 +4,7 @@ The `Program<TModel, TArgument>` interface is the compile-time contract for an A
 
 ## Type Signature
 
-```csharp
+```csharp compile
 public interface Program<TModel, TArgument> : Decider<TModel, Message, Message, Command, Message, TArgument>
 {
     static abstract Result<Message[], Message> Decide(TModel state, Message command);
@@ -124,7 +124,7 @@ Subscriptions are **declarative** — the runtime's `SubscriptionManager` handle
 
 ## Complete Example
 
-```csharp
+```csharp compile
 using Picea.Abies;
 using Picea.Abies.DOM;
 using Picea.Abies.Subscriptions;

@@ -77,14 +77,14 @@ public static (Model, Command) Transition(Model model, Message msg)
 Pure functions are trivially testable. No mocking, no setup, no teardown.
 
 ```csharp
-[Fact]
-public void Increment_IncreasesCount()
+[Test]
+public async Task Increment_IncreasesCount()
 {
     var model = new Model(Count: 5);
 
     var (result, _) = Transition(model, new Increment());
 
-    Assert.Equal(6, result.Count);
+    await Assert.That(result.Count).IsEqualTo(6);
 }
 ```
 
@@ -96,7 +96,7 @@ Given the same model, View always produces the same UI. Given the same message a
 // This is guaranteed to be true:
 var (result1, _) = Transition(model, new Increment());
 var (result2, _) = Transition(model, new Increment());
-Assert.Equal(result1, result2);
+await Assert.That(result1).IsEqualTo(result2);
 ```
 
 ### 3. Debuggability
@@ -197,7 +197,7 @@ case TimeReceived t:
 
 ```csharp
 public static Subscription Subscriptions(Model model)
-    => Every(TimeSpan.FromSeconds(1), now => new TimerTick(now));
+    => Every(TimeSpan.FromSeconds(1), () => new TimerTick());
 ```
 
 ## Common Mistakes

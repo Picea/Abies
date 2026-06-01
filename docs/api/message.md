@@ -4,7 +4,7 @@ Messages are the events that drive state changes in an Abies application. Every 
 
 ## Interface Definition
 
-```csharp
+```csharp compile
 public interface Message;
 ```
 
@@ -34,7 +34,7 @@ public record ArticleLoaded(Article Article, List<Comment> Comments) : Message;
 
 For events with no associated data:
 
-```csharp
+```csharp compile
 public record Increment : Message;
 public record Decrement : Message;
 public record Reset : Message;
@@ -235,25 +235,25 @@ public record struct MouseMoved(double X, double Y) : Message;
 ## Testing Messages
 
 ```csharp
-[Fact]
-public void Increment_IncreasesCount()
+[Test]
+public async Task Increment_IncreasesCount()
 {
     var model = new Model(Count: 5);
 
     var (result, cmd) = Counter.Transition(model, new Increment());
 
-    Assert.Equal(6, result.Count);
-    Assert.IsType<Command.None>(cmd);
+    await Assert.That(result.Count).IsEqualTo(6);
+    await Assert.That(cmd).IsTypeOf<Command.None>();
 }
 
-[Fact]
-public void TextChanged_UpdatesText()
+[Test]
+public async Task TextChanged_UpdatesText()
 {
     var model = new Model(Text: "");
 
     var (result, _) = MyApp.Transition(model, new TextChanged("hello"));
 
-    Assert.Equal("hello", result.Text);
+    await Assert.That(result.Text).IsEqualTo("hello");
 }
 ```
 

@@ -23,7 +23,7 @@ Owner: Squad
 
 ## 2. Current UX Review
 
-Current debugger implementation is in [Picea.Abies.Browser/wwwroot/debugger.js](Picea.Abies.Browser/wwwroot/debugger.js) with runtime integration in [Picea.Abies.Browser/Interop.cs](Picea.Abies.Browser/Interop.cs), [Picea.Abies.Browser/Runtime.cs](Picea.Abies.Browser/Runtime.cs), [Picea.Abies/Runtime.cs](Picea.Abies/Runtime.cs), and [Picea.Abies/Debugger/DebuggerMachine.cs](Picea.Abies/Debugger/DebuggerMachine.cs).
+Current debugger implementation is in [Picea.Abies.Browser/wwwroot/debugger.js](../../Picea.Abies.Browser/wwwroot/debugger.js) with runtime integration in [Picea.Abies.Browser/Interop.cs](../../Picea.Abies.Browser/Interop.cs), [Picea.Abies.Browser/Runtime.cs](../../Picea.Abies.Browser/Runtime.cs), [Picea.Abies/Runtime.cs](../../Picea.Abies/Runtime.cs), and [Picea.Abies/Debugger/DebuggerMachine.cs](../../Picea.Abies/Debugger/DebuggerMachine.cs).
 
 ### Highest-Impact Issues
 - High: No visual timeline scrubber. Users must parse text logs to reason about cursor position.
@@ -171,9 +171,9 @@ Current debugger implementation is in [Picea.Abies.Browser/wwwroot/debugger.js](
 - Add accessibility smoke checks for focus visibility and live region updates.
 
 Existing replay tests for reference:
-- [Picea.Abies.Templates.Testing.E2E/BrowserTemplateTests.cs](Picea.Abies.Templates.Testing.E2E/BrowserTemplateTests.cs)
-- [Picea.Abies.Templates.Testing.E2E/ServerTemplateTests.cs](Picea.Abies.Templates.Testing.E2E/ServerTemplateTests.cs)
-- [Picea.Abies.Tests/DebuggerRuntimeReplayApplicationTests.cs](Picea.Abies.Tests/DebuggerRuntimeReplayApplicationTests.cs)
+- [Picea.Abies.Templates.Testing.E2E/BrowserTemplateTests.cs](../../Picea.Abies.Templates.Testing.E2E/BrowserTemplateTests.cs)
+- [Picea.Abies.Templates.Testing.E2E/ServerTemplateTests.cs](../../Picea.Abies.Templates.Testing.E2E/ServerTemplateTests.cs)
+- [Picea.Abies.Tests/DebuggerRuntimeReplayApplicationTests.cs](../../Picea.Abies.Tests/DebuggerRuntimeReplayApplicationTests.cs)
 
 ## 7. Incremental Rollout Plan
 

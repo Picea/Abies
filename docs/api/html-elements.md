@@ -4,7 +4,7 @@ The `Picea.Abies.Html.Elements` static class provides functions for creating vir
 
 ## Usage
 
-```csharp
+```csharp compile
 using Picea.Abies.Html;
 using static Picea.Abies.Html.Elements;
 ```
@@ -125,7 +125,7 @@ memo(model.Count, div([], [text($"Count: {model.Count}")]))
 
 ### View Cache Management
 
-```csharp
+```csharp compile
 // Clear the lazy view cache (call on navigation or major view changes)
 Elements.ClearViewCache();
 
@@ -374,7 +374,7 @@ input([id("email"), type("email"), name("email")])
 
 ### fieldset / legend
 
-```csharp
+```csharp compile
 fieldset([], [
     legend([], [text("Personal Information")]),
     // Fields here
@@ -388,7 +388,7 @@ optgroup([label("Group")], [option([value("a")], [text("A")])])
 datalist([id("suggestions")], [option([value("Suggestion 1")], [])])
 output([], [text("Result")])
 progress([value("75"), max("100")], [])
-meter([value("75"), min("0"), max("100"), Attributes.low("25"), Attributes.high("75")], [])
+meter([value("75"), min("0"), max("100")], [])
 ```
 
 ## Tables

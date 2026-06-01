@@ -38,7 +38,7 @@ dotnet add package Picea.Abies.Browser
 Or in your `.csproj`:
 
 ```xml
-<PackageReference Include="Picea.Abies.Browser" Version="2.0.*" />
+<PackageReference Include="Picea.Abies.Browser" Version="2.1.*" />
 ```
 
 ### For Server-Rendered Apps
@@ -50,7 +50,7 @@ dotnet add package Picea.Abies.Server.Kestrel
 Or in your `.csproj`:
 
 ```xml
-<PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.0.*" />
+<PackageReference Include="Picea.Abies.Server.Kestrel" Version="2.1.*" />
 ```
 
 > Prefer `dotnet add package ...` when possible so NuGet resolves the latest compatible version for your feed configuration.

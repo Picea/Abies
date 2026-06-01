@@ -12,6 +12,12 @@ The MVU architecture enables three levels of testing:
 | DOM | View output, interactions | Fast | Test harness |
 | E2E | Full application | Slow | Browser |
 
+Abies' own test suites use [**TUnit**](https://tunit.dev/) on the Microsoft.Testing.Platform, and the
+examples below follow the same conventions: `[Test]` methods are `async Task`, parameterized cases use
+repeated `[Arguments(...)]`, and assertions use the awaitable `await Assert.That(x).IsEqualTo(y)` fluent
+API. TUnit registers its global usings automatically, so an explicit `using TUnit.Core;` is only needed
+when `ImplicitUsings` is disabled.
+
 ## Unit Testing
 
 ### Testing Transition Functions
@@ -19,29 +25,29 @@ The MVU architecture enables three levels of testing:
 Transition functions are pure and can be tested directly:
 
 ```csharp
-using Xunit;
+using TUnit.Core;
 
 public class CounterTests
 {
-    [Fact]
-    public void Increment_IncreasesCount()
+    [Test]
+    public async Task Increment_IncreasesCount()
     {
         var model = new Model(Count: 5);
 
         var (newModel, command) = Counter.Transition(model, new CounterMessage.Increment());
 
-        Assert.Equal(6, newModel.Count);
-        Assert.IsType<Command.None>(command);
+        await Assert.That(newModel.Count).IsEqualTo(6);
+        await Assert.That(command).IsTypeOf<Command.None>();
     }
 
-    [Fact]
-    public void Decrement_DecreasesCount()
+    [Test]
+    public async Task Decrement_DecreasesCount()
     {
         var model = new Model(Count: 5);
 
         var (newModel, _) = Counter.Transition(model, new CounterMessage.Decrement());
 
-        Assert.Equal(4, newModel.Count);
+        await Assert.That(newModel.Count).IsEqualTo(4);
     }
 }
 ```
@@ -51,8 +57,8 @@ public class CounterTests
 Verify that correct commands are returned:
 
 ```csharp
-[Fact]
-public void SubmitForm_ReturnsLoginCommand()
+[Test]
+public async Task SubmitForm_ReturnsLoginCommand()
 {
     var model = new Model(
         Email: "test@example.com",
@@ -61,11 +67,11 @@ public void SubmitForm_ReturnsLoginCommand()
 
     var (newModel, command) = Login.Transition(model, new SubmitForm());
 
-    Assert.True(newModel.IsSubmitting);
-    Assert.IsType<LoginCommand>(command);
+    await Assert.That(newModel.IsSubmitting).IsTrue();
+    await Assert.That(command).IsTypeOf<LoginCommand>();
 
     var loginCmd = (LoginCommand)command;
-    Assert.Equal("test@example.com", loginCmd.Email);
+    await Assert.That(loginCmd.Email).IsEqualTo("test@example.com");
 }
 ```
 
@@ -74,20 +80,20 @@ public void SubmitForm_ReturnsLoginCommand()
 ```csharp
 public class ArticleEditorTests
 {
-    [Theory]
-    [InlineData("", false)]
-    [InlineData("Hello", true)]
-    public void TitleChange_UpdatesValidity(string title, bool isValid)
+    [Test]
+    [Arguments("", false)]
+    [Arguments("Hello", true)]
+    public async Task TitleChange_UpdatesValidity(string title, bool isValid)
     {
         var model = new EditorModel(Title: "", Body: "content");
 
         var (newModel, _) = Editor.Transition(model, new TitleChanged(title));
 
-        Assert.Equal(isValid, newModel.IsValid);
+        await Assert.That(newModel.IsValid).IsEqualTo(isValid);
     }
 
-    [Fact]
-    public void AddTag_AppendsToTagList()
+    [Test]
+    public async Task AddTag_AppendsToTagList()
     {
         var model = new EditorModel(
             Title: "Test",
@@ -97,7 +103,7 @@ public class ArticleEditorTests
 
         var (newModel, _) = Editor.Transition(model, new AddTag("new-tag"));
 
-        Assert.Equal(["existing", "new-tag"], newModel.Tags);
+        await Assert.That(newModel.Tags).IsEquivalentTo(new[] { "existing", "new-tag" });
     }
 }
 ```
@@ -153,8 +159,8 @@ public static class MvuDomTestHarness
 ### Testing View Output
 
 ```csharp
-[Fact]
-public void View_ShowsCorrectCount()
+[Test]
+public async Task View_ShowsCorrectCount()
 {
     var model = new Model(Count: 42);
 
@@ -166,7 +172,7 @@ public void View_ShowsCorrectCount()
     );
 
     var text = countElement.Children.OfType<Text>().First();
-    Assert.Contains("42", text.Value);
+    await Assert.That(text.Value).Contains("42");
 }
 ```
 
@@ -175,11 +181,11 @@ public void View_ShowsCorrectCount()
 Test complete message flows using the actual runtime:
 
 ```csharp
-[Fact]
+[Test]
 public async Task Interpreter_DispatchesFeedbackMessage()
 {
     var patches = new List<IReadOnlyList<Patch>>();
-    var runtime = await Runtime<MyApp, Model, Unit>.Start(
+    using var runtime = await Runtime<MyApp, Model, Unit>.Start(
         apply: p => patches.Add(p),
         interpreter: async cmd =>
         {
@@ -191,15 +197,15 @@ public async Task Interpreter_DispatchesFeedbackMessage()
 
     await runtime.Dispatch(new FetchData());
 
-    Assert.False(runtime.Model.IsLoading);
-    Assert.NotEmpty(runtime.Model.Data);
+    await Assert.That(runtime.Model.IsLoading).IsFalse();
+    await Assert.That(runtime.Model.Data).IsNotEmpty();
 }
 ```
 
 ### Testing Interpreters in Isolation
 
 ```csharp
-[Fact]
+[Test]
 public async Task Interpreter_HandlesHttpErrors()
 {
     var fakeHandler = new FakeHttpMessageHandler();
@@ -225,38 +231,49 @@ public async Task Interpreter_HandlesHttpErrors()
 
     var result = await interpreter(new LoadArticles());
 
-    var messages = result.Match(msgs => msgs, _ => []);
-    Assert.Single(messages);
-    Assert.IsType<LoadFailed>(messages[0]);
+    var messages = result switch
+    {
+        Ok<Message[], PipelineError>(var msgs) => msgs,
+        _ => []
+    };
+    await Assert.That(messages).Count().IsEqualTo(1);
+    await Assert.That(messages[0]).IsTypeOf<LoadFailed>();
 }
 ```
 
 ## E2E Testing with Playwright
 
+TUnit uses `[Before(Test)]`/`[After(Test)]` for per-test setup and teardown:
+
 ```csharp
 using Microsoft.Playwright;
-using Xunit;
+using TUnit.Core;
 
-public class E2ETests : IAsyncLifetime
+public class E2ETests : IAsyncDisposable
 {
     private IPlaywright _playwright = null!;
     private IBrowser _browser = null!;
     private IPage _page = null!;
 
-    public async Task InitializeAsync()
+    [Before(Test)]
+    public async Task SetUp()
     {
         _playwright = await Playwright.CreateAsync();
         _browser = await _playwright.Chromium.LaunchAsync();
         _page = await _browser.NewPageAsync();
     }
 
-    public async Task DisposeAsync()
+    [After(Test)]
+    public async Task TearDown()
     {
-        await _browser.DisposeAsync();
-        _playwright.Dispose();
+        if (_browser is not null)
+            await _browser.DisposeAsync();
+        _playwright?.Dispose();
     }
 
-    [Fact]
+    public async ValueTask DisposeAsync() => GC.SuppressFinalize(this);
+
+    [Test]
     public async Task Counter_IncrementsOnClick()
     {
         await _page.GotoAsync("http://localhost:5000");
@@ -265,7 +282,7 @@ public class E2ETests : IAsyncLifetime
         await _page.ClickAsync("text=+");
 
         var count = await _page.TextContentAsync("[data-testid='count']");
-        Assert.Equal("2", count);
+        await Assert.That(count).IsEqualTo("2");
     }
 }
 ```
@@ -361,7 +378,7 @@ dotnet test
 1. **Test Transition first** — Most bugs are in logic, not rendering
 2. **Use `data-testid`** for stable DOM selectors
 3. **One journey per E2E test** — Keep focused
-4. **Test edge cases** with `[Theory]` and `[InlineData]`
+4. **Test edge cases** with `[Test]` plus repeated `[Arguments(...)]` (TUnit's data-driven tests)
 5. **Avoid testing framework internals** — Test behavior, not structure
 
 ## See Also

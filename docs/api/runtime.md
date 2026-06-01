@@ -140,8 +140,11 @@ public static async Task<Runtime<TProgram, TModel, TArgument>> Start(
     TArgument argument = default!,
     Action<string>? titleChanged = null,
     Action<NavigationCommand>? navigationExecutor = null,
+    Action<SubscriptionFault>? subscriptionFaulted = null,
     Url? initialUrl = null,
-    bool threadSafe = false);
+    bool threadSafe = false,
+    bool replay = false,
+    JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null);
 ```
 
 Starts the MVU runtime with a platform-specific `Apply` delegate. This is the low-level API — most applications use `Browser.Runtime.Run` or `MapAbies` instead.
