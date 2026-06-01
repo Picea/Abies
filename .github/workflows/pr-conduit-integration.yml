@@ -15,6 +15,9 @@ concurrency:
   group: pr-conduit-integration-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   conduit-tests:
     name: Conduit Tests (PR)

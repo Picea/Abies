@@ -7,6 +7,10 @@ on:
   push:
     branches: [ "main" ]
 
+# Build, test and image-scan only need to read the repo.
+permissions:
+  contents: read
+
 jobs:
   detect-changes:
     name: Detect Changes
@@ -22,12 +26,17 @@ jobs:
 
       - name: Check if docs-only change
         id: check
+        # Pass context values via env (never interpolate into the script body)
+        # to avoid shell/script injection.
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
         run: |
           # For push events prefer the exact before..after range from GitHub.
           # Fallback to HEAD~1..HEAD for first-commit/force-push edge cases.
-          BEFORE="${{ github.event.before }}"
+          BEFORE="$BEFORE_SHA"
           if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-            CHANGED=$(git diff --name-only "$BEFORE".."${{ github.sha }}" 2>/dev/null || echo "")
+            CHANGED=$(git diff --name-only "$BEFORE".."$AFTER_SHA" 2>/dev/null || echo "")
           else
             CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
           fi

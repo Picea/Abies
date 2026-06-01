@@ -1,9 +1,24 @@
 name: E2E
 
 on:
+  # The broad pull_request trigger is intentional: the `e2e` job below is a
+  # lightweight required-check gate that must report a status on every PR
+  # (the full suite runs on the nightly schedule, not per-PR). Narrowing with
+  # paths: would make the required check go missing on unrelated PRs.
   pull_request:
   schedule:
-    - cron: "0 2 * * *"
+    # 03:00 UTC — staggered off the 02:00 slot shared by the ZAP scans to
+    # avoid runner contention from three heavy nightly jobs starting at once.
+    - cron: "0 3 * * *"
+
+# PR gate and nightly E2E only read the repo and upload artifacts.
+permissions:
+  contents: read
+
+# Cancel superseded runs for the same ref (per-PR / per-branch).
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e:

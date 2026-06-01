@@ -9,6 +9,11 @@ on:
     # Run weekly on Monday at 9 AM UTC
     - cron: '0 9 * * 1'
 
+# Default read-only; the analyze job widens to security-events: write
+# for uploading CodeQL results.
+permissions:
+  contents: read
+
 jobs:
   detect-changes:
     name: Detect Changes
@@ -24,21 +29,28 @@ jobs:
 
       - name: Check if docs-only change
         id: check
+        # Pass context values via env (never interpolate into the script body)
+        # to avoid shell/script injection via branch names or refs.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
         run: |
           # Scheduled runs always include code — treat as non-docs-only
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$EVENT_NAME" = "schedule" ]; then
             echo "docs_only=false" >> $GITHUB_OUTPUT
             echo "📅 Scheduled run — treating as non-docs-only"
             exit 0
           fi
 
           # Determine changed files based on event type
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD")
           else
-            BEFORE="${{ github.event.before }}"
+            BEFORE="$BEFORE_SHA"
             if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-              CHANGED=$(git diff --name-only "$BEFORE".."${{ github.sha }}" 2>/dev/null || echo "")
+              CHANGED=$(git diff --name-only "$BEFORE".."$AFTER_SHA" 2>/dev/null || echo "")
             else
               CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
             fi

@@ -18,6 +18,9 @@ on:
       - '.github/instructions/**'
       - 'LICENSE'
 
+permissions:
+  contents: read
+
 jobs:
   semgrep:
     name: Semgrep
@@ -31,14 +34,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # returntocorp/semgrep-action is abandoned. Run the official Semgrep CLI
+      # (pip install) directly. `semgrep scan` keeps behavior equivalent and
+      # emits SARIF for upload. --error is intentionally omitted so SARIF is
+      # always produced; findings surface in the Security tab via the SARIF.
+      - name: Install Semgrep CLI
+        run: python3 -m pip install --user semgrep
+
       - name: Run Semgrep rules
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: |
-            .semgrep/rules/conduit-security.yml
-            .semgrep/rules/template-security.yml
-          generateSarif: "1"
-          sarifOutput: semgrep.sarif
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep scan \
+            --config .semgrep/rules/conduit-security.yml \
+            --config .semgrep/rules/template-security.yml \
+            --sarif --output semgrep.sarif
 
       - name: Upload SARIF results
         if: always() && hashFiles('semgrep.sarif') != ''

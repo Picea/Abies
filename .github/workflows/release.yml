@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Publishes to NuGet using a stored API key (not OIDC), so only read access
+# to the repo is required. No id-token needed.
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Build, Pack and Publish

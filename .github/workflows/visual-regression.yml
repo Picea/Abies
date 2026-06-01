@@ -13,6 +13,9 @@ concurrency:
   group: visual-regression-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   pixel-comparison:
     name: Pixel Snapshot Comparison

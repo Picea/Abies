@@ -75,7 +75,7 @@ jobs:
       perf-pr: ${{ steps.check-perf.outputs.is-perf }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         id: filter
         with:
           filters: |
@@ -90,9 +90,12 @@ jobs:
               - 'scripts/run-benchmarks.sh'
       - name: Check if performance PR
         id: check-perf
+        # PR title is attacker-controlled; pass via env to avoid script injection.
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            TITLE="${{ github.event.pull_request.title }}"
+            TITLE="$PR_TITLE"
             if [[ "$TITLE" == perf:* ]] || [[ "$TITLE" == perf\(* ]]; then
               echo "is-perf=true" >> $GITHUB_OUTPUT
             else
@@ -167,7 +170,7 @@ jobs:
           fi
 
       - name: Store throughput baseline
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         with:
           name: "2. Micro-Benchmarks: Throughput (BenchmarkDotNet)"
           tool: benchmarkdotnet
@@ -183,7 +186,7 @@ jobs:
           alert-comment-cc-users: '@MCGPPeters'
 
       - name: Store allocation baseline
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         with:
           name: "2. Micro-Benchmarks: Allocations (BenchmarkDotNet)"
           tool: customSmallerIsBetter
@@ -230,6 +233,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # CI depends on the js-framework-benchmark submodule; check it out so
+          # the benchmark infrastructure is available (the step below refreshes
+          # it from upstream when a newer revision is needed).
+          submodules: recursive
 
       - name: Decide whether to run benchmarks
         id: should-run
@@ -547,7 +554,7 @@ jobs:
           fi
 
       - name: Store E2E benchmark trends to gh-pages (main only)
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
           name: "1. E2E Benchmark (js-framework-benchmark)"
@@ -563,7 +570,7 @@ jobs:
           alert-comment-cc-users: '@MCGPPeters'
 
       - name: Store E2E memory benchmark trends to gh-pages (main only)
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.gh-pages-check.outputs.exists == 'true'
         with:
           name: "1. E2E Benchmark: Memory (js-framework-benchmark)"
@@ -597,7 +604,7 @@ jobs:
 
       - name: Create PR for README benchmark updates (main only)
         if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: update benchmark results in README"

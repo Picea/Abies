@@ -10,6 +10,12 @@ concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Least-privilege defaults. Jobs only read the repo and PR metadata
+# (title/body/files); none write comments, statuses, or contents.
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   detect-changes:
     name: Detect Changes
@@ -25,10 +31,14 @@ jobs:
 
       - name: Check if docs-only change
         id: check
+        # Pass context values via env to avoid script injection via refs.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # Determine changed files based on event type
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD")
           else
             CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
           fi
@@ -55,7 +65,7 @@ jobs:
 
     steps:
       - name: Validate PR title
-        uses: amannn/action-semantic-pull-request@v6
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -228,9 +238,12 @@ jobs:
 
       - name: Get changed C# files
         id: changed-files
+        # Pass the base ref via env to avoid script injection via branch names.
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # Get list of changed .cs files in the PR
-          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.cs$' || true)
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "origin/$BASE_REF...HEAD" | grep '\.cs$' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "has_cs_files=false" >> $GITHUB_OUTPUT
@@ -462,8 +475,11 @@ jobs:
 
       - name: Detect template-related changes
         id: template-changes
+        # Pass the base ref via env to avoid script injection via branch names.
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          CHANGED=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^Picea\.Abies\.Templates/' || true)
+          CHANGED=$(git diff --name-only --diff-filter=ACMRT "origin/$BASE_REF...HEAD" | grep '^Picea\.Abies\.Templates/' || true)
           if [ -n "$CHANGED" ]; then
             echo "has_template_changes=true" >> $GITHUB_OUTPUT
             echo "Detected template changes:"
@@ -770,8 +786,11 @@ jobs:
     steps:
       - name: Check if automated PR
         id: check-automated
+        # Pass the login via env to avoid script injection.
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          if [ "${{ github.event.pull_request.user.login }}" = "dependabot[bot]" ]; then
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
             echo "automated=true" >> $GITHUB_OUTPUT
           else
             echo "automated=false" >> $GITHUB_OUTPUT
