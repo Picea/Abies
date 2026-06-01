@@ -201,6 +201,39 @@ bash scripts/run-zap-authenticated.sh \
 
 Authenticated scan provisions a temporary user and checks protected endpoints with a valid token.
 
+### Documentation code samples
+
+C# code fences in the docs are compiled against the real Abies API in CI
+(`.github/workflows/docs-snippets.yml`) so that renamed APIs, wrong namespaces,
+or changed signatures can't silently rot the documentation.
+
+Because most snippets are illustrative fragments that reference example types
+defined in prose, the checker is **opt-in**: only fences you mark as
+self-contained are compiled. Mark a fence by adding `compile` to its info string:
+
+````markdown
+```csharp compile
+using Picea;
+using Picea.Abies;
+// a complete, self-contained example that compiles on its own
+```
+````
+
+or with an HTML comment on the line immediately before the fence
+(`<!-- doc-check: compile -->`). To force-skip a fence, use
+`<!-- doc-check: ignore [reason] -->` or `csharp ignore` in the info string.
+
+When you add or change a self-contained example, tag it `compile`. Run the
+checker locally before opening a PR:
+
+```bash
+# Compile the fences tagged `compile` (what CI runs):
+dotnet run --project tools/DocSnippetCheck
+
+# Audit every csharp fence in the docs (reports fragments too):
+dotnet run --project tools/DocSnippetCheck -- --all --list
+```
+
 ## 🚀 Workflow
 
 ### 1. Create a Feature Branch

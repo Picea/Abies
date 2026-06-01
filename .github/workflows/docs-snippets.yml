@@ -1,0 +1,49 @@
+name: Docs Snippets
+
+# Compiles the C# code fences in the documentation against the real Abies API so
+# doc/code drift (renamed APIs, wrong namespaces, changed signatures) cannot
+# silently rot. Only fences tagged `compile` (```csharp compile) or preceded by
+# <!-- doc-check: compile --> are checked — see tools/DocSnippetCheck and
+# CONTRIBUTING.md ("Documentation code samples").
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'tools/DocSnippetCheck/**'
+      - '.github/workflows/docs-snippets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-snippets-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-doc-snippets:
+    name: Compile documentation C# snippets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The checker references the built (non-WASM) Abies assemblies. WASM
+      # projects are intentionally not built here (they need the wasm-tools
+      # workload and are not referenced by the snippet checker).
+      - name: Build Abies assemblies referenced by the checker
+        run: |
+          dotnet build Picea.Abies/Picea.Abies.csproj -c Debug --nologo
+          dotnet build Picea.Abies.Server/Picea.Abies.Server.csproj -c Debug --nologo
+          dotnet build Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj -c Debug --nologo
+          dotnet build Picea.Abies.Browser/Picea.Abies.Browser.csproj -c Debug --nologo
+          dotnet build Picea.Abies.UI/Picea.Abies.UI.csproj -c Debug --nologo
+
+      - name: Compile tagged documentation snippets
+        run: dotnet run --project tools/DocSnippetCheck -c Debug
