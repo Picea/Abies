@@ -46,7 +46,7 @@ jobs:
       - name: Detect visual regression tests
         id: detect_visual_tests
         run: |
-          if rg -n "VisualRegression_" Picea.Abies.Conduit.Tests >/dev/null 2>&1; then
+          if grep -rqs "VisualRegression_" Picea.Abies.Conduit.Tests; then
             echo "has_visual_tests=true" >> "$GITHUB_OUTPUT"
             echo "✅ Visual regression tests detected"
           else
@@ -56,10 +56,13 @@ jobs:
 
       - name: Install Playwright browsers
         run: |
-          dotnet tool install --global Microsoft.Playwright.CLI || true
-          pwsh Picea.Abies.Conduit.Tests/bin/Debug/net10.0/playwright.ps1 install chromium --with-deps || \
-          dotnet run --project Picea.Abies.Conduit.Tests --no-build -- playwright install chromium --with-deps || \
-          npx playwright install chromium --with-deps || \
+          PW_DIR=Picea.Abies.Conduit.Tests/bin/Debug/net10.0
+          # Prefer the pwsh launcher (present on GitHub-hosted runners); fall back to
+          # the version-matched bundled Node CLI so the install also works on runners
+          # without PowerShell. Both install the browser revision the referenced
+          # Microsoft.Playwright package expects.
+          pwsh "$PW_DIR/playwright.ps1" install chromium --with-deps || \
+          node "$PW_DIR/.playwright/package/cli.js" install chromium --with-deps || \
           true
 
       # Run pixel snapshot tests — failures generate .actual.png + .diff.png artifacts
@@ -74,10 +77,9 @@ jobs:
           dotnet test \
             --project Picea.Abies.Conduit.Tests/Picea.Abies.Conduit.Tests.csproj \
             --no-build \
-            --verbosity normal \
-            --filter "FullyQualifiedName~VisualRegression" \
-            --logger "trx;LogFileName=visual-regression.trx" \
-            --results-directory TestResults/visual-regression
+            --results-directory TestResults/visual-regression \
+            -- --treenode-filter "/*/*/*/VisualRegression*" \
+            --report-trx --report-trx-filename visual-regression.trx
 
       # Upload baselines + actuals + diffs so GitHub's image compare works in the PR.
       # Reviewers can open the artifact and compare images side-by-side.
