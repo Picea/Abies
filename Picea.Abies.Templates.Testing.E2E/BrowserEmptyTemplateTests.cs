@@ -93,6 +93,25 @@ public class BrowserEmptyTemplateTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task InitialLoad_DebuggerEnabledByDefault_MountsAndTogglesPanel()
+    {
+        await _page.GotoAsync("/");
+
+        // The empty template enables the Time Travel Debugger by default (Debug builds),
+        // so its shell must mount and toggle its panel — same default as abies-browser.
+        var shell = _page.Locator("[data-abies-debugger-shell='1']");
+        var panel = _page.Locator("[data-abies-debugger-panel='1']");
+
+        await Assertions.Expect(shell).ToBeVisibleAsync(new() { Timeout = 30_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await shell.ClickAsync();
+        await Assertions.Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+    }
+
+    [Test]
     public async Task ReleasePublish_Succeeds()
     {
         var (exitCode, stdOut, stdErr) = await DotNetCli.RunAsync(
