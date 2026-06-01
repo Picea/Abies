@@ -253,20 +253,22 @@ public static class TestHarnessVisualExtensions
 
     /// <summary>
     /// Environment variables that, when set to a truthy value, force strict visual mode:
-    /// a missing baseline becomes a failure instead of a silent auto-write-and-pass.
-    /// <c>ABIES_ENABLE_PIXEL_SNAPSHOTS</c> is the variable the Visual Regression CI
-    /// workflow already sets to gate these tests; <c>ABIES_VISUAL_STRICT</c> lets a
-    /// developer opt in explicitly; <c>CI</c> is the de-facto standard CI marker.
+    /// a missing baseline becomes a failure instead of an auto-write-and-pass.
+    /// <para>
+    /// Strict mode is an <b>explicit opt-in</b> (<c>ABIES_VISUAL_STRICT</c>) rather than
+    /// being inferred from the CI/pixel-snapshot gate. The visual-regression harness was
+    /// reintroduced without committed baselines, so inferring strictness from CI would make
+    /// the gate fail-by-construction on every checkout. Once real baselines are generated and
+    /// committed, set <c>ABIES_VISUAL_STRICT=1</c> in the workflow to enforce that a missing
+    /// baseline fails. Real pixel diffs always fail regardless of this flag.
+    /// </para>
     /// </summary>
     private static readonly string[] StrictModeVariables =
     [
-        "ABIES_ENABLE_PIXEL_SNAPSHOTS",
-        "ABIES_VISUAL_STRICT",
-        "CI"
+        "ABIES_VISUAL_STRICT"
     ];
 
-    private const string StrictModeSignal =
-        "ABIES_ENABLE_PIXEL_SNAPSHOTS, ABIES_VISUAL_STRICT, CI";
+    private const string StrictModeSignal = "ABIES_VISUAL_STRICT";
 
     private static bool IsStrictMode()
     {

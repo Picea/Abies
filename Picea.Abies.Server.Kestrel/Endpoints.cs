@@ -303,11 +303,11 @@ public static class Endpoints
     /// Release builds this method compiles to a no-op (the debugger types do not
     /// exist), so the JIT removes it entirely.
     /// </summary>
-    [System.Diagnostics.Conditional("DEBUG")]
+    [Conditional("DEBUG")]
     private static void WarnIfDebuggerActiveOutsideDevelopment(IServiceProvider services)
     {
 #if DEBUG
-        if (!Picea.Abies.Debugger.DebuggerConfiguration.Default.Enabled)
+        if (!Debugger.DebuggerConfiguration.Default.Enabled)
             return;
 
         var environment = services.GetService<IHostEnvironment>();

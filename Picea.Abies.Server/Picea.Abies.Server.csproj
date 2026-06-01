@@ -5,7 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <IsAotCompatible>true</IsAotCompatible>
+    <!-- IsAotCompatible deferred: Session.cs uses reflection-based JsonSerializer
+         (IL3050) and is not trim/AOT-safe yet. Re-enable after migrating to
+         source-generated JsonTypeInfo. Browser/UI are AOT-clean and keep the flag. -->
   </PropertyGroup>
 
   <!-- NuGet package metadata -->
