@@ -270,6 +270,76 @@ public class E2ETests : IAsyncLifetime
 }
 ```
 
+## Visual Regression Testing
+
+`Picea.Abies.Testing` ships a screenshot-based visual harness (`TestHarnessVisualExtensions`) plus an
+`abies` baseline-management CLI (`Picea.Abies.Cli`). It renders a model with Playwright, captures a PNG,
+and compares it against a stored baseline.
+
+On the **first run** the baseline is created automatically (`BaselineCreated == true`) and the comparison
+passes. On later runs the screenshot is diffed against that baseline; on mismatch, `.actual.png` and
+`.diff.png` artifacts are written next to the baseline.
+
+```csharp
+using Picea.Abies.Testing;
+
+var harness = TestHarness<MyProgram, MyModel, Unit>.Create(Unit.Value);
+
+var options = new VisualComparisonOptions(
+    ViewportWidth: 1280,
+    ViewportHeight: 720,
+    FullPage: true,
+    Tolerance: VisualComparisonTolerance.Strict); // every pixel channel must match exactly
+
+// Render + screenshot via Playwright, then compare (creates the baseline on first run):
+var result = await harness.CompareVisual(page, "baselines/home.png", options);
+await Assert.That(result.IsMatch).IsTrue();
+
+// Or assert directly (throws on mismatch in strict mode):
+await harness.AssertVisualMatch(page, "baselines/home.png", options);
+```
+
+Use `VisualComparisonTolerance` to allow controlled drift (`MaxPixelErrorCount`, `MaxPixelErrorPercentage`,
+`MaxMeanError`, `MaxAbsoluteError`, `PerChannelThreshold`). A `byte[]` overload of `CompareVisual` exists for
+comparing a screenshot you already captured.
+
+> Visual tests require Playwright browsers. Install them before running (the
+> [`visual-regression.yml`](../../.github/workflows/visual-regression.yml) workflow does this in CI); without
+> them the Playwright-backed tests fail with an "install Playwright browsers" message.
+
+### Managing baselines with the `abies` CLI
+
+When a change is intentional, promote the pending `*.actual.png` artifacts to baselines instead of editing
+images by hand:
+
+```bash
+# Accept one pending snapshot
+dotnet run --project Picea.Abies.Cli -- visual accept home-page.png \
+  --artifacts artifacts/visual --baselines baselines/visual
+
+# Accept every pending snapshot
+dotnet run --project Picea.Abies.Cli -- visual accept --all \
+  --artifacts artifacts/visual --baselines baselines/visual
+
+# List pending mismatches
+dotnet run --project Picea.Abies.Cli -- visual status \
+  --artifacts artifacts/visual --baselines baselines/visual
+
+# Write a markdown mismatch report (visual-report.md)
+dotnet run --project Picea.Abies.Cli -- visual report --output reports \
+  --artifacts artifacts/visual --baselines baselines/visual
+```
+
+The CLI is also packed as a .NET tool (`ToolCommandName` = `abies`), so once installed the commands are
+available as `abies visual accept|status|report`.
+
+> **Seeding baselines.** Screenshots are environment-sensitive (fonts, anti-aliasing), so baselines must be
+> generated on the same OS as CI. The `VisualRegression_*` tests in `Picea.Abies.Conduit.Tests` create a
+> baseline on first run and pass; the Visual Regression workflow uploads the generated PNGs as the
+> `visual-regression-*` artifact. Download that artifact, commit the baselines under
+> `Picea.Abies.Conduit.Tests/Snapshots/visual/`, and subsequent runs diff against them. Do **not** commit
+> baselines captured on a developer machine — they will mismatch the CI runner.
+
 ## Running Tests
 
 ```bash
@@ -278,6 +348,9 @@ dotnet test MyApp.Tests
 
 # E2E tests (requires app running)
 dotnet test MyApp.Testing.E2E
+
+# Visual regression tests (requires Playwright browsers installed)
+dotnet test Picea.Abies.Testing.Tests
 
 # All tests
 dotnet test
@@ -296,3 +369,4 @@ dotnet test
 - [Pure Functions](../concepts/pure-functions.md) — Why pure functions are testable
 - [Commands and Effects](../concepts/commands-effects.md) — Testing interpreters
 - [Conduit E2E Fixture Architecture](./conduit-e2e-fixture-architecture.md) — Real project fixture, seeding, and user-journey coverage patterns
+- [`visual-regression.yml`](../../.github/workflows/visual-regression.yml) — CI workflow for the visual harness
