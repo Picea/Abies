@@ -32,6 +32,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Picea.Abies.Server.Kestrel;
 
@@ -78,6 +79,10 @@ public static class Endpoints
     /// <param name="debuggerModelJsonTypeInfo">
     /// Optional source-generated JSON metadata for debugger model snapshots.
     /// </param>
+    /// <param name="options">
+    /// Optional security/hosting options (security headers on the HTML host and
+    /// the WebSocket Origin allowlist). When null, safe defaults are applied.
+    /// </param>
     /// <returns>The endpoint route builder for further chaining.</returns>
     public static IEndpointRouteBuilder MapAbies<TProgram, TModel, TArgument>(
         this IEndpointRouteBuilder endpoints,
@@ -85,25 +90,27 @@ public static class Endpoints
         RenderMode mode,
         Interpreter<Command, Message>? interpreter = null,
         TArgument argument = default!,
-        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null)
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo = null,
+        AbiesServerOptions? options = null)
         where TProgram : Program<TModel, TArgument>
     {
         var effectiveInterpreter = interpreter ?? NoOpInterpreter;
+        var effectiveOptions = options ?? new AbiesServerOptions();
 
         // Always map the HTML page endpoint
-        MapPageEndpoint<TProgram, TModel, TArgument>(endpoints, path, mode, argument);
+        MapPageEndpoint<TProgram, TModel, TArgument>(endpoints, path, mode, argument, effectiveOptions);
 
         // Map WebSocket endpoint for interactive server modes
         switch (mode)
         {
             case RenderMode.InteractiveServer server:
                 MapWebSocketEndpoint<TProgram, TModel, TArgument>(
-                    endpoints, server.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo);
+                    endpoints, server.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo, effectiveOptions);
                 break;
 
             case RenderMode.InteractiveAuto auto:
                 MapWebSocketEndpoint<TProgram, TModel, TArgument>(
-                    endpoints, auto.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo);
+                    endpoints, auto.WebSocketPath, effectiveInterpreter, argument, debuggerModelJsonTypeInfo, effectiveOptions);
                 break;
         }
 
@@ -132,7 +139,8 @@ public static class Endpoints
         IEndpointRouteBuilder endpoints,
         string path,
         RenderMode mode,
-        TArgument argument)
+        TArgument argument,
+        AbiesServerOptions options)
         where TProgram : Program<TModel, TArgument>
     {
         // Handler shared by both MapGet and MapFallback
@@ -146,6 +154,11 @@ public static class Endpoints
             // Parse the request URL for route-aware rendering
             var requestUrl = Url.FromUri(new Uri(
                 $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}"));
+
+            // Apply security headers before writing the body. Header names/values
+            // mirror the Conduit API pattern (Conduit.Api/Program.cs). Low-risk
+            // headers default on; CSP is opt-in (null unless configured).
+            ApplySecurityHeaders(context.Response, options);
 
             // Render the full HTML page using the pure computation
             var html = Page.Render<TProgram, TModel, TArgument>(
@@ -174,9 +187,18 @@ public static class Endpoints
         string wsPath,
         Interpreter<Command, Message> interpreter,
         TArgument argument,
-        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo)
+        JsonTypeInfo<TModel>? debuggerModelJsonTypeInfo,
+        AbiesServerOptions options)
         where TProgram : Program<TModel, TArgument>
     {
+        // Defense-in-depth for the time-travel debugger. It is compiled out of
+        // Release builds entirely, but a DEBUG-configuration binary could still
+        // be deployed outside Development, where it would expose full model
+        // snapshots over this WebSocket with no authentication. Warn once at
+        // map time, using the real hosting environment (reachable here, unlike in
+        // the pure Session library).
+        WarnIfDebuggerActiveOutsideDevelopment(endpoints.ServiceProvider);
+
         endpoints.Map(wsPath, async (HttpContext context) =>
         {
             using var activity = _activitySource.StartActivity("Picea.Abies.Kestrel.WebSocketSession");
@@ -186,6 +208,16 @@ public static class Endpoints
             if (!context.WebSockets.IsWebSocketRequest)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
+            // Cross-Site WebSocket Hijacking protection: WebSocket upgrades are
+            // exempt from the Same-Origin Policy and CORS, so validate the Origin
+            // header BEFORE accepting the upgrade.
+            if (!IsWebSocketOriginAllowed(context, options))
+            {
+                activity?.SetTag("abies.ws.originRejected", true);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
 
@@ -241,6 +273,116 @@ public static class Endpoints
     /// </summary>
     private static ValueTask<Result<Message[], PipelineError>> NoOpInterpreter(Command _) =>
         new(Result<Message[], PipelineError>.Ok([]));
+
+    /// <summary>
+    /// Applies opt-in/default security headers to the HTML page response.
+    /// Uses <c>TryAdd</c> so an app that sets its own headers is not overridden.
+    /// </summary>
+    private static void ApplySecurityHeaders(HttpResponse response, AbiesServerOptions options)
+    {
+        var headers = response.Headers;
+
+        if (options.ContentTypeOptionsNoSniff)
+            headers.TryAdd("X-Content-Type-Options", "nosniff");
+
+        if (!string.IsNullOrEmpty(options.FrameOptions))
+            headers.TryAdd("X-Frame-Options", options.FrameOptions);
+
+        if (!string.IsNullOrEmpty(options.ReferrerPolicy))
+            headers.TryAdd("Referrer-Policy", options.ReferrerPolicy);
+
+        // CSP is opt-in: only emitted when explicitly configured, since a strict
+        // default would block the bootstrap script.
+        if (!string.IsNullOrEmpty(options.ContentSecurityPolicy))
+            headers.TryAdd("Content-Security-Policy", options.ContentSecurityPolicy);
+    }
+
+    /// <summary>
+    /// Logs a prominent warning when the time-travel debugger is active in a
+    /// DEBUG-configuration build hosted outside a Development environment. In
+    /// Release builds this method compiles to a no-op (the debugger types do not
+    /// exist), so the JIT removes it entirely.
+    /// </summary>
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void WarnIfDebuggerActiveOutsideDevelopment(IServiceProvider services)
+    {
+#if DEBUG
+        if (!Picea.Abies.Debugger.DebuggerConfiguration.Default.Enabled)
+            return;
+
+        var environment = services.GetService<IHostEnvironment>();
+        if (environment is null || environment.IsDevelopment())
+            return;
+
+        var logger = services
+            .GetService<ILoggerFactory>()
+            ?.CreateLogger("Picea.Abies.Server.Kestrel.Debugger");
+        logger?.LogWarning(
+            "The Abies time-travel debugger is ACTIVE in a non-Development environment ({Environment}). " +
+            "It exposes full model snapshots over the WebSocket with no authentication. " +
+            "Build in Release configuration or disable it via " +
+            "DebuggerConfiguration.ConfigureDebugger(new DebuggerOptions {{ Enabled = false }}).",
+            environment.EnvironmentName);
+#endif
+    }
+
+    /// <summary>
+    /// Validates the WebSocket <c>Origin</c> header against the configured
+    /// allowlist (Cross-Site WebSocket Hijacking protection).
+    /// </summary>
+    /// <remarks>
+    /// When an allowlist is configured, only those exact origins are accepted.
+    /// When no allowlist is configured, same-origin connections (Origin host ==
+    /// request host) are allowed and a warning is logged that no explicit
+    /// allowlist is set. A missing Origin header is allowed only in the
+    /// no-allowlist case (e.g. non-browser clients), to preserve dev/test flows.
+    /// </remarks>
+    private static bool IsWebSocketOriginAllowed(HttpContext context, AbiesServerOptions options)
+    {
+        var origin = context.Request.Headers.Origin.ToString();
+        var allowlist = options.AllowedWebSocketOrigins;
+
+        if (allowlist.Count > 0)
+        {
+            // Explicit allowlist configured — require an exact (case-insensitive) match.
+            foreach (var allowed in allowlist)
+            {
+                if (string.Equals(origin, allowed, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        // No allowlist configured: warn once-ish and fall back to same-origin.
+        var logger = context.RequestServices
+            .GetService<ILoggerFactory>()
+            ?.CreateLogger("Picea.Abies.Server.Kestrel.WebSocket");
+        logger?.LogWarning(
+            "No WebSocket Origin allowlist configured (AbiesServerOptions.AllowedWebSocketOrigins). " +
+            "Falling back to same-origin validation. Configure an explicit allowlist for production.");
+
+        // No Origin header (e.g. non-browser client) — allowed in the
+        // no-allowlist fallback to avoid breaking local/test flows.
+        if (string.IsNullOrEmpty(origin))
+            return true;
+
+        // Same-origin check: compare the Origin host:port to the request host.
+        if (Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+        {
+            var requestHost = context.Request.Host;
+            var originAuthority = originUri.IsDefaultPort
+                ? originUri.Host
+                : $"{originUri.Host}:{originUri.Port}";
+
+            // Compare against the request's Host header (covers host and optional port).
+            return string.Equals(originAuthority, requestHost.Value, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(originUri.Host, requestHost.Host, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Unparseable Origin header — reject.
+        return false;
+    }
 
     /// <summary>
     /// Serves the Abies static files (e.g., <c>abies-server.js</c>) from the
