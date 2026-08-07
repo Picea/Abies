@@ -239,10 +239,9 @@ would be an unhandled exception on the UI thread.
 **Phase 1 exit criterion met:** the sample is shown *running* on real WinUI 3, not
 merely compiling.
 
-**Not yet covered:** the snapshot proves first render. Nothing exercises *interaction*
-on either head — no click is simulated, so the event→dispatch→re-render loop is still
-only verified headlessly through `FakeBackend`. That belongs with the TaskTimer sample
-in Phase 3.
+**Interaction is now covered too** (#337): the TaskTimer sample's `ABIES_INTERACT` mode
+drives real native input on both heads and asserts the model round-trips back to the
+controls, including interval ticks arriving from a threadpool thread.
 
 #### Tooling divergence (new finding)
 
@@ -297,12 +296,19 @@ of them should not be rushed:
   implementation detail.
 - **Accessibility / automation-peer pass.** Needs a real audit against screen readers,
   not a plausible-looking API.
-- **TaskTimer sample.** The remaining *verification* gap: the render smoke check proves
-  first render on both heads, but nothing simulates a click, so the
-  event → dispatch → re-render loop is still only verified headlessly against
-  `FakeBackend`. A sample exercising an interval subscription (threadpool → dispatcher
-  marshaling) and keyed list reordering in a real window would close it. **This is the
-  highest-value item remaining.**
+- **TaskTimer sample ✅ done.** The verification gap is closed. `Picea.Abies.TaskTimer.Native`
+  exercises an interval subscription, subscriptions starting and stopping with the model,
+  a keyed list that genuinely re-sorts, and two-way text input. `ABIES_INTERACT` drives it
+  through real native input — text written to the actual `TextBox`, buttons invoked
+  through their automation peers — and asserts the row appears, the toggle re-renders,
+  and elapsed has advanced past zero. Both CI heads run it; both report
+  *"text input, click dispatch and 3 interval tick(s) all round-tripped"*.
+
+  It earned its keep immediately: the Windows head exposed a deadlock the Skia head
+  tolerated. The script runs on the dispatcher thread, and the snapshot blocked on
+  `RenderAsync` via `GetAwaiter().GetResult()` — but `RenderAsync` needs that same thread,
+  so it never completed. Same class of finding as the `dotnet format` divergence in Phase
+  1: **the two heads are not interchangeable, and only running both catches it.**
 - **Benchmarks against `microsoft-ui-reactor`.** Meaningful only once virtualization
   exists; benchmarking a non-virtualized list against a virtualized one measures nothing.
 
@@ -350,12 +356,14 @@ plan deliberately rather than followed by analogy.
 | 0 — Land the spike | ✅ #321–#324 |
 | 1 — Make the name true | ✅ #326, #327 (compiles, runs and renders on both heads) |
 | 2 — API freeze | ✅ #329–#331 (D1, D2, N4, N5; both breaking changes before packaging) |
-| 3 — Breadth and scale | ◐ vocabulary done (#332); virtualization, theming, accessibility, TaskTimer, benchmarks open |
+| 3 — Breadth and scale | ◐ vocabulary (#332) and TaskTimer (#337) done; virtualization, theming, accessibility, benchmarks open |
 | 4 — Ship | ✅ #333–#335 (packages, docs, `dotnet new abies-native`) |
 
 The renderer is usable end-to-end today: `dotnet new abies-native`, `dotnet build`, and a
-window with real WinUI controls driven by a program shared with the web host. What remains
-is depth — scale, polish and a real accessibility story — not viability.
+window with real WinUI controls driven by a program shared with the web host. Every layer
+is now verified on both heads in CI — it compiles, it renders, and it responds to real
+input including threadpool-originated subscription ticks. What remains is depth — scale,
+polish and a real accessibility story — not viability.
 
 ## 4. Recommendation
 
