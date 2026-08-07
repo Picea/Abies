@@ -46,6 +46,12 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
         "CheckBox" => new CheckBox(),
         "Slider" => new Slider(),
         "Image" => new Image(),
+        "ToggleSwitch" => new ToggleSwitch(),
+        "ComboBox" => new ComboBox(),
+        "ComboBoxItem" => new ComboBoxItem(),
+        "ProgressRing" => new ProgressRing(),
+        "ProgressBar" => new ProgressBar(),
+        "ContentControl" => new ContentControl(),
         _ => throw new NotSupportedException($"Unknown native tag '{tag}' (element '{elementId}')."),
     };
 
@@ -249,6 +255,61 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                         return;
                 }
                 break;
+            case ToggleSwitch ts:
+                switch (name)
+                {
+                    case "IsOn":
+                        ts.IsOn = value is not null && bool.Parse(value);
+                        return;
+                }
+                break;
+            case ComboBox combo:
+                switch (name)
+                {
+                    case "SelectedIndex":
+                        // Guard identical writes: re-selecting raises SelectionChanged.
+                        var index = value is null ? -1 : I(value);
+                        if (combo.SelectedIndex != index)
+                            combo.SelectedIndex = index;
+                        return;
+                    case "PlaceholderText":
+                        combo.PlaceholderText = value ?? "";
+                        return;
+                }
+                break;
+            case ComboBoxItem cbi:
+                switch (name)
+                {
+                    case "Content":
+                        cbi.Content = value;
+                        return;
+                }
+                break;
+            case ProgressRing pr:
+                switch (name)
+                {
+                    case "IsActive":
+                        pr.IsActive = value is null || bool.Parse(value);
+                        return;
+                }
+                break;
+            case ProgressBar pb:
+                switch (name)
+                {
+                    case "Minimum":
+                        pb.Minimum = value is null ? 0 : D(value);
+                        return;
+                    case "Maximum":
+                        pb.Maximum = value is null ? 100 : D(value);
+                        return;
+                    case "Value":
+                        pb.Value = value is null ? 0 : D(value);
+                        return;
+                    case "IsIndeterminate":
+                        pb.IsIndeterminate = value is not null && bool.Parse(value);
+                        return;
+                }
+                break;
             case Button btn:
                 switch (name)
                 {
@@ -301,6 +362,11 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
             case Border b:
                 b.Child = child;
                 return;
+            // ItemsControl before ContentControl: ComboBox derives from both,
+            // and its children are items, not content.
+            case ItemsControl ic:
+                ic.Items.Add(child);
+                return;
             case ContentControl cc:
                 cc.Content = child;
                 return;
@@ -317,6 +383,9 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                 return;
             case Border b:
                 b.Child = newChild;
+                return;
+            case ItemsControl ic:
+                ic.Items[ic.Items.IndexOf(oldChild)] = newChild;
                 return;
             case ContentControl cc:
                 cc.Content = newChild;
@@ -335,6 +404,9 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
             case Border b when ReferenceEquals(b.Child, child):
                 b.Child = null;
                 return;
+            case ItemsControl ic:
+                ic.Items.Remove(child);
+                return;
             case ContentControl cc when ReferenceEquals(cc.Content, child):
                 cc.Content = null;
                 return;
@@ -343,13 +415,25 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
 
     public void MoveChild(FrameworkElement parent, string parentTag, FrameworkElement child, FrameworkElement? before)
     {
-        if (parent is not Panel p)
-            return; // single-child hosts have nothing to reorder
-        p.Children.Remove(child);
-        if (before is null)
-            p.Children.Add(child);
-        else
-            p.Children.Insert(p.Children.IndexOf(before), child);
+        switch (parent)
+        {
+            case Panel p:
+                p.Children.Remove(child);
+                if (before is null)
+                    p.Children.Add(child);
+                else
+                    p.Children.Insert(p.Children.IndexOf(before), child);
+                return;
+            case ItemsControl ic:
+                ic.Items.Remove(child);
+                if (before is null)
+                    ic.Items.Add(child);
+                else
+                    ic.Items.Insert(ic.Items.IndexOf(before), child);
+                return;
+            default:
+                return; // single-child hosts have nothing to reorder
+        }
     }
 
     public void ClearChildren(FrameworkElement parent, string parentTag)
@@ -361,6 +445,9 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                 return;
             case Border b:
                 b.Child = null;
+                return;
+            case ItemsControl ic:
+                ic.Items.Clear();
                 return;
             case ContentControl cc:
                 cc.Content = null;
@@ -461,6 +548,28 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                     checkBox.Checked -= handler;
                     checkBox.Unchecked -= handler;
                 };
+                return;
+            }
+            case (ToggleSwitch toggle, "Toggled"):
+            {
+                RoutedEventHandler handler = (s, _) =>
+                {
+                    if (!sink.IsApplying)
+                        sink.OnNativeEvent(elementId, "Toggled", new ToggledData(((ToggleSwitch)s).IsOn));
+                };
+                toggle.Toggled += handler;
+                _detachers[(control, eventName)] = () => toggle.Toggled -= handler;
+                return;
+            }
+            case (ComboBox combo, "SelectionChanged"):
+            {
+                SelectionChangedEventHandler handler = (s, _) =>
+                {
+                    if (!sink.IsApplying)
+                        sink.OnNativeEvent(elementId, "SelectionChanged", new SelectionChangedData(((ComboBox)s).SelectedIndex));
+                };
+                combo.SelectionChanged += handler;
+                _detachers[(control, eventName)] = () => combo.SelectionChanged -= handler;
                 return;
             }
             case (Slider slider, "ValueChanged"):

@@ -22,3 +22,7 @@ public sealed record ToggledData(bool IsChecked);
 /// <param name="NewValue">The new value.</param>
 /// <param name="OldValue">The previous value.</param>
 public sealed record ValueChangedData(double NewValue, double OldValue);
+
+/// <summary>Payload for selection changes (ComboBox.SelectionChanged).</summary>
+/// <param name="SelectedIndex">The newly selected index, or -1 when nothing is selected.</param>
+public sealed record SelectionChangedData(int SelectedIndex);
