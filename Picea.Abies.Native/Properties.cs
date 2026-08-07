@@ -199,4 +199,20 @@ public static class Properties
     /// <summary>Image source URI.</summary>
     public static DOM.Attribute Source(string uri, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Source", uri, id);
+
+    /// <summary>ToggleSwitch state (pair with OnToggled).</summary>
+    public static DOM.Attribute IsOn(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("IsOn", value ? "True" : "False", id);
+
+    /// <summary>ComboBox selected index; -1 for no selection (pair with OnSelectionChanged).</summary>
+    public static DOM.Attribute SelectedIndex(int value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("SelectedIndex", value.ToString(CultureInfo.InvariantCulture), id);
+
+    /// <summary>Whether a ProgressRing is spinning.</summary>
+    public static DOM.Attribute IsActive(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("IsActive", value ? "True" : "False", id);
+
+    /// <summary>Whether a ProgressBar shows indeterminate progress.</summary>
+    public static DOM.Attribute IsIndeterminate(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("IsIndeterminate", value ? "True" : "False", id);
 }

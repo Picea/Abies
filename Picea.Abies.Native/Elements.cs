@@ -88,4 +88,45 @@ public static class Elements
     /// <summary>Range slider. Set via Properties.Minimum/Maximum/Value, listen via Events.OnValueChanged.</summary>
     public static Node Slider(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => element("Slider", attributes, [], id);
+
+    /// <summary>Two-state switch. Set via Properties.IsOn, listen via Events.OnToggled.</summary>
+    public static Node ToggleSwitch(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ToggleSwitch", attributes, [], id);
+
+    /// <summary>
+    /// Drop-down list. Children must be <see cref="ComboBoxItem"/>; select via
+    /// Properties.SelectedIndex and listen via Events.OnSelectionChanged.
+    /// </summary>
+    public static Node ComboBox(DOM.Attribute[] attributes, Node[] items, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ComboBox", attributes, items, id);
+
+    /// <summary>An entry in a <see cref="ComboBox"/>; content is carried as a "Content" attribute.</summary>
+    public static Node ComboBoxItem(DOM.Attribute[] attributes, string content, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ComboBoxItem", [.. attributes, new DOM.Attribute(id ?? string.Empty, "Content", content)], [], id);
+
+    // =========================================================================
+    // Progress
+    // =========================================================================
+
+    /// <summary>Indeterminate-by-default spinner; control with Properties.IsActive.</summary>
+    public static Node ProgressRing(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ProgressRing", attributes, [], id);
+
+    /// <summary>Determinate bar via Properties.Minimum/Maximum/Value, or Properties.IsIndeterminate.</summary>
+    public static Node ProgressBar(DOM.Attribute[] attributes, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ProgressBar", attributes, [], id);
+
+    // =========================================================================
+    // Element content
+    // =========================================================================
+    // The string-content overloads above cover the common case. These take a
+    // Node instead, for controls whose content is itself a tree.
+
+    /// <summary>Button whose content is an element tree rather than a string.</summary>
+    public static Node Button(DOM.Attribute[] attributes, Node content, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("Button", attributes, [content], id);
+
+    /// <summary>Bare content host, for wrapping a subtree without adding layout.</summary>
+    public static Node ContentControl(DOM.Attribute[] attributes, Node content, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => element("ContentControl", attributes, [content], id);
 }

@@ -68,4 +68,8 @@ public static class Events
     /// <summary>Slider value change.</summary>
     public static Handler OnValueChanged(Func<ValueChangedData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => On("ValueChanged", factory, id);
+
+    /// <summary>ComboBox selection change.</summary>
+    public static Handler OnSelectionChanged(Func<SelectionChangedData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => On("SelectionChanged", factory, id);
 }
