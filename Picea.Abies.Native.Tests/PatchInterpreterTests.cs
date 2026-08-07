@@ -142,6 +142,100 @@ public class PatchInterpreterTests
     public record Echo(string Text) : Message;
 
     // =========================================================================
+    // Dispatch faults
+    // =========================================================================
+    // Dispatch is fire-and-forget, so without an explicit hook a failing update
+    // is invisible: the UI just stops responding.
+
+    private static Element ClickableButton() =>
+        new("b1", "Button", [new Handler("Click", "c1", new Ping(), "h1")]);
+
+    [Test]
+    public async Task DispatchFaultingAsynchronously_IsReported()
+    {
+        var (interpreter, _) = Create();
+        interpreter.Apply(Operations.Diff(null, ClickableButton()));
+
+        Exception? reported = null;
+        interpreter.Faulted = ex => reported = ex;
+        interpreter.Dispatch = async _ =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("update blew up");
+        };
+
+        interpreter.OnNativeEvent("b1", "Click", null);
+        await Task.Delay(50);
+
+        await Assert.That(reported).IsTypeOf<InvalidOperationException>();
+        await Assert.That(reported!.Message).IsEqualTo("update blew up");
+    }
+
+    [Test]
+    public async Task DispatchThrowingSynchronously_IsReported()
+    {
+        var (interpreter, _) = Create();
+        interpreter.Apply(Operations.Diff(null, ClickableButton()));
+
+        Exception? reported = null;
+        interpreter.Faulted = ex => reported = ex;
+        interpreter.Dispatch = _ => throw new InvalidOperationException("threw before awaiting");
+
+        interpreter.OnNativeEvent("b1", "Click", null);
+
+        await Assert.That(reported).IsTypeOf<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task SuccessfulDispatch_ReportsNothing()
+    {
+        var (interpreter, _) = Create();
+        interpreter.Apply(Operations.Diff(null, ClickableButton()));
+
+        Exception? reported = null;
+        interpreter.Faulted = ex => reported = ex;
+        interpreter.Dispatch = _ => ValueTask.CompletedTask;
+
+        interpreter.OnNativeEvent("b1", "Click", null);
+        await Task.Delay(50);
+
+        await Assert.That(reported).IsNull();
+    }
+
+    /// <summary>
+    /// A throwing fault handler must not escalate — inside the async observer
+    /// that would be an unhandled exception on the UI thread.
+    /// </summary>
+    [Test]
+    public async Task FaultHandlerThatThrows_DoesNotEscalate()
+    {
+        var (interpreter, _) = Create();
+        interpreter.Apply(Operations.Diff(null, ClickableButton()));
+
+        interpreter.Faulted = _ => throw new InvalidOperationException("handler is broken too");
+        interpreter.Dispatch = _ => throw new InvalidOperationException("dispatch failed");
+
+        interpreter.OnNativeEvent("b1", "Click", null);
+        await Task.Delay(50);
+
+        // Reaching here without an unhandled exception is the assertion.
+        await Assert.That(interpreter.ControlCount).IsEqualTo(1);
+    }
+
+    /// <summary>Dispatch failures must not leave IsApplying stuck on.</summary>
+    [Test]
+    public async Task ApplyThatThrows_ResetsIsApplying()
+    {
+        var (interpreter, _) = Create();
+        var parent = new Element("p", "StackPanel", []);
+        interpreter.Apply(Operations.Diff(null, parent));
+
+        await Assert.That(() => interpreter.Apply([new AddText(parent, new Text("t", "boom"))]))
+            .Throws<NotSupportedException>();
+        await Assert.That(interpreter.IsApplying).IsFalse();
+    }
+
+    // =========================================================================
     // Children: keyed reorder, removal
     // =========================================================================
 

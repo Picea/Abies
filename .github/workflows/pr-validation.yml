@@ -807,6 +807,81 @@ jobs:
       - name: Test Picea.Abies.Native.Tests
         run: dotnet test --project Picea.Abies.Native.Tests/Picea.Abies.Native.Tests.csproj
 
+      # Proves the Windows App SDK head actually rasterizes controls, not just
+      # that it compiles. Exits non-zero on a blank or empty render target.
+      - name: Render smoke check (Windows App SDK head)
+        shell: pwsh
+        timeout-minutes: 6
+        env:
+          ABIES_SNAPSHOT: ${{ github.workspace }}\snapshot-winappsdk.png
+          ABIES_SNAPSHOT_DELAY_MS: '8000'
+        run: |
+          dotnet run --project Picea.Abies.Counter.Native/Picea.Abies.Counter.Native.csproj `
+            -c Release -f net10.0-windows10.0.26100
+          if (-not (Test-Path $env:ABIES_SNAPSHOT)) { throw "No snapshot produced at $env:ABIES_SNAPSHOT" }
+          Get-Item $env:ABIES_SNAPSHOT | Select-Object Name, Length
+
+      - name: Upload Windows render snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-render-snapshot-winappsdk
+          path: snapshot-winappsdk.png
+          if-no-files-found: ignore
+
+  # Proves the Uno Skia desktop head rasterizes controls under a virtual
+  # display. Kept out of the required `build` job so a GUI hiccup cannot block
+  # merges on its own.
+  native-render-smoke:
+    name: Native Render Smoke (Skia)
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Install virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libfontconfig1
+
+      - name: Render smoke check (Skia desktop head)
+        timeout-minutes: 8
+        env:
+          ABIES_SNAPSHOT: ${{ github.workspace }}/snapshot-skia.png
+          ABIES_SNAPSHOT_DELAY_MS: '8000'
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+            dotnet run --project Picea.Abies.Counter.Native/Picea.Abies.Counter.Native.csproj \
+              -c Release -f net10.0-desktop
+          test -s "$ABIES_SNAPSHOT" || { echo "❌ No snapshot produced at $ABIES_SNAPSHOT"; exit 1; }
+          ls -l "$ABIES_SNAPSHOT"
+
+      - name: Upload Skia render snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-render-snapshot-skia
+          path: snapshot-skia.png
+          if-no-files-found: ignore
+
   # Check for TODO/FIXME without issues
   check-todos:
     name: Check TODOs

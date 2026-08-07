@@ -40,6 +40,15 @@ public sealed class PatchInterpreter<T> : INativeEventSink where T : class
     /// </summary>
     public Func<Message, ValueTask>? Dispatch { get; set; }
 
+    /// <summary>
+    /// Receives faults that would otherwise be lost. Dispatch is
+    /// fire-and-forget — a native event hands a message to the runtime and
+    /// returns, matching the browser renderer — so without this hook a failing
+    /// update or command interpreter fails silently and the UI simply stops
+    /// responding. Set during bootstrap, before the first event can fire.
+    /// </summary>
+    public Action<Exception>? Faulted { get; set; }
+
     /// <inheritdoc />
     public bool IsApplying { get; private set; }
 
@@ -75,7 +84,57 @@ public sealed class PatchInterpreter<T> : INativeEventSink where T : class
 
         var dispatch = Dispatch
             ?? throw new InvalidOperationException("PatchInterpreter.Dispatch is not wired to a runtime.");
-        _ = dispatch(message);
+
+        ValueTask pending;
+        try
+        {
+            pending = dispatch(message);
+        }
+        catch (Exception ex)
+        {
+            // Dispatch threw before returning a task (synchronous failure).
+            Report(ex);
+            return;
+        }
+
+        if (pending.IsCompletedSuccessfully)
+            return;
+
+        Observe(pending);
+    }
+
+    /// <summary>
+    /// Awaits a dispatch that did not complete synchronously, so its failure
+    /// reaches <see cref="Faulted"/> rather than becoming an unobserved
+    /// exception. Never throws: the whole body is guarded.
+    /// </summary>
+    private async void Observe(ValueTask pending)
+    {
+        try
+        {
+            await pending;
+        }
+        catch (Exception ex)
+        {
+            Report(ex);
+        }
+    }
+
+    /// <summary>Reports a fault, never letting the reporter itself throw.</summary>
+    private void Report(Exception exception)
+    {
+        var faulted = Faulted;
+        if (faulted is null)
+            return;
+        try
+        {
+            faulted(exception);
+        }
+        catch
+        {
+            // A throwing fault handler must not escalate into the caller —
+            // for Observe that would be an unhandled exception on the UI thread.
+        }
     }
 
     private void ApplyPatch(Patch patch)
