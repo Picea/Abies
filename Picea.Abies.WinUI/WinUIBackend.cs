@@ -147,7 +147,7 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                         sp.Padding = value is null ? default : ParseThickness(value);
                         return;
                     case "Background":
-                        SetBrush(sp, FrameworkElement.BackgroundProperty, value);
+                        SetBrush(sp, Panel.BackgroundProperty, value);
                         return;
                 }
                 break;
@@ -168,7 +168,7 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                         g.Padding = value is null ? default : ParseThickness(value);
                         return;
                     case "Background":
-                        SetBrush(g, FrameworkElement.BackgroundProperty, value);
+                        SetBrush(g, Panel.BackgroundProperty, value);
                         return;
                 }
                 break;
@@ -188,7 +188,7 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                         SetBrush(b, Border.BorderBrushProperty, value);
                         return;
                     case "Background":
-                        SetBrush(b, FrameworkElement.BackgroundProperty, value);
+                        SetBrush(b, Border.BackgroundProperty, value);
                         return;
                 }
                 break;
@@ -266,7 +266,7 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                         SetBrush(btn, Control.ForegroundProperty, value);
                         return;
                     case "Background":
-                        SetBrush(btn, FrameworkElement.BackgroundProperty, value);
+                        SetBrush(btn, Control.BackgroundProperty, value);
                         return;
                 }
                 break;

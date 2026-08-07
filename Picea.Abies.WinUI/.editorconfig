@@ -1,0 +1,14 @@
+# Picea.Abies.WinUI targets two heads with different type hierarchies:
+# the Uno Skia desktop head and the Windows App SDK (real WinUI 3) head.
+#
+# Uno declares the Background dependency property on FrameworkElement, while
+# WinUI 3 declares it separately on Panel, Border and Control. IDE0002
+# ("simplify member access") is evaluated against whichever head the tooling
+# happens to load — on Linux that is always Uno — and rewrites
+# `Panel.BackgroundProperty` to `FrameworkElement.BackgroundProperty`, which
+# does not exist in WinUI 3 and fails the Windows build.
+#
+# Access through the derived type is valid on both heads, so it is the portable
+# spelling; this disables the rule that would rewrite it into the Uno-only one.
+[*.cs]
+dotnet_diagnostic.IDE0002.severity = none
