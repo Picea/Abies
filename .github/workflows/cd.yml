@@ -81,7 +81,12 @@ jobs:
         echo "🔍 Scanning for vulnerable packages..."
         dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
 
-        if grep -qi "critical\|high" vulnerability-report.txt; then
+        # `dotnet list package` runs an implicit restore, and NuGetAuditMode=all
+        # (Directory.Build.props) makes that restore emit NU1902/NU1903 warnings
+        # whose text contains "high". Grepping the whole file therefore tripped
+        # this gate on restore noise rather than on the report. Match only the
+        # report's package rows, which are indented and start with ">".
+        if grep -E '^[[:space:]]*>' vulnerability-report.txt | grep -qiE "critical|high"; then
           echo "❌ Critical or High severity vulnerabilities detected!"
 
           if [ -n "${ALLOW_TRANSITIVE_VULNS:-}" ]; then
