@@ -1,0 +1,346 @@
+// =============================================================================
+// Patch Interpreter
+// =============================================================================
+// Interprets the Abies patch stream against an INativeBackend. This is the
+// native counterpart of abies.js's applyPatch: it owns the elementId →
+// control map, the (elementId, eventName) → Handler map, and child → parent
+// tracking (needed because ReplaceChild patches carry no parent).
+//
+// Threading: Apply must be called on the backend's UI thread. The hosting
+// adapter (e.g., Picea.Abies.WinUI) is responsible for marshaling — the
+// Abies runtime invokes its Apply delegate on whatever thread dispatched the
+// message.
+//
+// Native trees contain only Element nodes (see Elements.cs). The Text and
+// RawHtml patch families therefore throw here as a tripwire: if one fires,
+// a view produced a Text/RawHtml child and the diff took an HTML fallback.
+// =============================================================================
+
+using Picea.Abies;
+using Picea.Abies.DOM;
+
+namespace Picea.Abies.Native.Rendering;
+
+/// <summary>
+/// Applies Abies patches to native controls via an <see cref="INativeBackend{T}"/>.
+/// </summary>
+/// <typeparam name="T">The framework's control base type.</typeparam>
+public sealed class PatchInterpreter<T> : INativeEventSink where T : class
+{
+    private readonly INativeBackend<T> _backend;
+    private readonly Dictionary<string, T> _controls = [];
+    private readonly Dictionary<string, string> _tags = [];
+    private readonly Dictionary<string, string> _parents = [];
+    private readonly Dictionary<(string ElementId, string EventName), Handler> _handlers = [];
+
+    public PatchInterpreter(INativeBackend<T> backend) => _backend = backend;
+
+    /// <summary>
+    /// Dispatches messages produced by native events into the Abies runtime.
+    /// Set once during bootstrap, before the first event can fire.
+    /// </summary>
+    public Func<Message, ValueTask>? Dispatch { get; set; }
+
+    /// <inheritdoc />
+    public bool IsApplying { get; private set; }
+
+    /// <summary>Number of live tracked controls (diagnostics/tests).</summary>
+    public int ControlCount => _controls.Count;
+
+    /// <summary>
+    /// Applies a patch batch. Must run on the backend's UI thread.
+    /// </summary>
+    public void Apply(IReadOnlyList<Patch> patches)
+    {
+        IsApplying = true;
+        try
+        {
+            foreach (var patch in patches)
+                ApplyPatch(patch);
+        }
+        finally
+        {
+            IsApplying = false;
+        }
+    }
+
+    /// <inheritdoc />
+    public void OnNativeEvent(string elementId, string eventName, object? data)
+    {
+        if (!_handlers.TryGetValue((elementId, eventName), out var handler))
+            return;
+
+        var message = handler.Command ?? handler.WithData?.Invoke(data);
+        if (message is null)
+            return;
+
+        var dispatch = Dispatch
+            ?? throw new InvalidOperationException("PatchInterpreter.Dispatch is not wired to a runtime.");
+        _ = dispatch(message);
+    }
+
+    private void ApplyPatch(Patch patch)
+    {
+        switch (patch)
+        {
+            case AddRoot p:
+                Reset();
+                _backend.SetRoot(BuildSubtree(p.Element, parentId: null));
+                break;
+
+            case ReplaceChild p:
+            {
+                var oldControl = Control(p.OldElement.Id);
+                var parentId = _parents[p.OldElement.Id];
+                var parentControl = Control(parentId);
+                var parentTag = _tags[parentId];
+                // Unregister BEFORE building: old and new subtrees may share
+                // element ids (same view call sites), and building first would
+                // let the unregistration wipe the fresh registrations.
+                UnregisterSubtree(p.OldElement);
+                var newControl = BuildSubtree(p.NewElement, parentId);
+                _backend.ReplaceChild(parentControl, parentTag, oldControl, newControl);
+                break;
+            }
+
+            case AddChild p:
+                _backend.AppendChild(Control(p.Parent.Id), p.Parent.Tag,
+                    BuildSubtree(p.Child, p.Parent.Id));
+                break;
+
+            case RemoveChild p:
+                _backend.RemoveChild(Control(p.Parent.Id), p.Parent.Tag, Control(p.Child.Id));
+                UnregisterSubtree(p.Child);
+                break;
+
+            case ClearChildren p:
+                _backend.ClearChildren(Control(p.Parent.Id), p.Parent.Tag);
+                foreach (var child in p.OldChildren)
+                    UnregisterSubtree(child);
+                break;
+
+            case SetChildrenHtml p:
+            {
+                // 0→N children fast path; clear defensively in case the diff
+                // ever uses it as a full replacement.
+                var parentControl = Control(p.Parent.Id);
+                _backend.ClearChildren(parentControl, p.Parent.Tag);
+                UnregisterChildrenOf(p.Parent.Id);
+                AppendMaterialized(parentControl, p.Parent, p.Children);
+                break;
+            }
+
+            case AppendChildrenHtml p:
+                AppendMaterialized(Control(p.Parent.Id), p.Parent, p.Children);
+                break;
+
+            case MoveChild p:
+                _backend.MoveChild(Control(p.Parent.Id), p.Parent.Tag, Control(p.Child.Id),
+                    p.BeforeId is null ? null : Control(p.BeforeId));
+                break;
+
+            case UpdateAttribute p:
+                SetProperty(p.Element, p.Attribute.Name, p.Value);
+                break;
+
+            case AddAttribute p:
+                if (p.Attribute is Handler addedHandler)
+                    AddHandlerToLiveControl(p.Element, addedHandler);
+                else
+                    SetProperty(p.Element, p.Attribute.Name, p.Attribute.Value);
+                break;
+
+            case RemoveAttribute p:
+                if (p.Attribute is Handler removedHandler)
+                    RemoveHandlerFromLiveControl(p.Element, removedHandler.EventName);
+                else
+                    SetProperty(p.Element, p.Attribute.Name, null);
+                break;
+
+            case AddHandler p:
+                AddHandlerToLiveControl(p.Element, p.Handler);
+                break;
+
+            case RemoveHandler p:
+                RemoveHandlerFromLiveControl(p.Element, p.Handler.EventName);
+                break;
+
+            case UpdateHandler p:
+                // Same CommandId, fresh closure: swap the stored handler only —
+                // the native event subscription stays in place.
+                _handlers[(p.Element.Id, p.NewHandler.EventName)] = p.NewHandler;
+                break;
+
+            case UpdateText or AddText or RemoveText or AddRaw or RemoveRaw or ReplaceRaw or UpdateRaw:
+                throw new NotSupportedException(
+                    $"Patch {patch.GetType().Name} is not supported in native trees: " +
+                    "Text and RawHtml nodes must not appear in native views. " +
+                    "Use TextBlock(...) or a Content-bearing control instead.");
+
+            case AddHeadElement or UpdateHeadElement or RemoveHeadElement:
+                break; // no document head natively
+
+            default:
+                throw new NotSupportedException($"Unknown patch type: {patch.GetType().Name}");
+        }
+    }
+
+    // =========================================================================
+    // Tree construction
+    // =========================================================================
+
+    private T BuildSubtree(Element element, string? parentId)
+    {
+        var control = _backend.CreateControl(element.Tag, element.Id);
+        _controls[element.Id] = control;
+        _tags[element.Id] = element.Tag;
+        if (parentId is not null)
+            _parents[element.Id] = parentId;
+        else
+            _parents.Remove(element.Id);
+
+        foreach (var attribute in element.Attributes)
+        {
+            if (attribute is Handler handler)
+            {
+                // Fresh control: always attach, even if a same-id entry
+                // lingers from a subtree that is about to be unregistered.
+                _handlers[(element.Id, handler.EventName)] = handler;
+                _backend.AttachEvent(control, element.Tag, handler.EventName, element.Id, this);
+            }
+            else if (!IsVirtualAttribute(attribute.Name))
+            {
+                _backend.SetProperty(control, element.Tag, attribute.Name, attribute.Value);
+            }
+        }
+
+        foreach (var child in element.Children)
+        {
+            if (Resolve(child) is Element childElement)
+                _backend.AppendChild(control, element.Tag, BuildSubtree(childElement, element.Id));
+        }
+
+        return control;
+    }
+
+    private void AppendMaterialized(T parentControl, Element parent, Node[] children)
+    {
+        foreach (var child in children)
+        {
+            if (Resolve(child) is Element childElement)
+                _backend.AppendChild(parentControl, parent.Tag, BuildSubtree(childElement, parent.Id));
+        }
+    }
+
+    /// <summary>
+    /// Unwraps Memo/LazyMemo wrappers and rejects node kinds that native
+    /// trees must not contain. Empty resolves to itself and is skipped by
+    /// callers; Text/RawHtml throw the same tripwire as their patches.
+    /// </summary>
+    private static Node Resolve(Node node) => node switch
+    {
+        MemoNode memo => Resolve(memo.CachedNode),
+        LazyMemoNode lazy => Resolve(lazy.CachedNode ?? lazy.Evaluate()),
+        Text or RawHtml => throw new NotSupportedException(
+            "Text and RawHtml nodes are not supported in native trees. " +
+            "Use TextBlock(...) or a Content-bearing control instead."),
+        _ => node,
+    };
+
+    // =========================================================================
+    // Bookkeeping
+    // =========================================================================
+
+    private T Control(string elementId) =>
+        _controls.TryGetValue(elementId, out var control)
+            ? control
+            : throw new InvalidOperationException($"No native control tracked for element id '{elementId}'.");
+
+    private void SetProperty(Element element, string name, string? value)
+    {
+        if (IsVirtualAttribute(name))
+            return;
+        _backend.SetProperty(Control(element.Id), element.Tag, name, value);
+    }
+
+    private static bool IsVirtualAttribute(string name) =>
+        name is "key" or "data-key" or "id";
+
+    /// <summary>A live control gains a handler for an event it had none for.</summary>
+    private void AddHandlerToLiveControl(Element element, Handler handler)
+    {
+        var key = (element.Id, handler.EventName);
+        var alreadyAttached = _handlers.ContainsKey(key);
+        _handlers[key] = handler;
+        if (!alreadyAttached)
+            _backend.AttachEvent(Control(element.Id), element.Tag, handler.EventName, element.Id, this);
+    }
+
+    private void RemoveHandlerFromLiveControl(Element element, string eventName)
+    {
+        if (_handlers.Remove((element.Id, eventName)))
+            _backend.DetachEvent(Control(element.Id), element.Tag, eventName);
+    }
+
+    /// <summary>Drops all tracking for a removed subtree.</summary>
+    private void UnregisterSubtree(Node node)
+    {
+        if (Resolve(node) is not Element element)
+            return;
+
+        foreach (var child in element.Children)
+            UnregisterSubtree(child);
+
+        foreach (var attribute in element.Attributes)
+        {
+            if (attribute is Handler handler)
+                _handlers.Remove((element.Id, handler.EventName));
+        }
+
+        _controls.Remove(element.Id);
+        _tags.Remove(element.Id);
+        _parents.Remove(element.Id);
+    }
+
+    private void UnregisterChildrenOf(string parentId)
+    {
+        List<string>? doomed = null;
+        foreach (var (childId, pid) in _parents)
+        {
+            if (pid == parentId)
+                (doomed ??= []).Add(childId);
+        }
+        if (doomed is null)
+            return;
+        foreach (var childId in doomed)
+        {
+            UnregisterChildrenOf(childId);
+            _controls.Remove(childId);
+            _tags.Remove(childId);
+            _parents.Remove(childId);
+            RemoveHandlersFor(childId);
+        }
+    }
+
+    private void RemoveHandlersFor(string elementId)
+    {
+        List<(string, string)>? doomed = null;
+        foreach (var key in _handlers.Keys)
+        {
+            if (key.ElementId == elementId)
+                (doomed ??= []).Add(key);
+        }
+        if (doomed is null)
+            return;
+        foreach (var key in doomed)
+            _handlers.Remove(key);
+    }
+
+    private void Reset()
+    {
+        _controls.Clear();
+        _tags.Clear();
+        _parents.Clear();
+        _handlers.Clear();
+    }
+}
