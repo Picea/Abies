@@ -286,11 +286,25 @@ before packaging, which was the whole point of sequencing the freeze ahead of Ph
   marshaling) plus keyed list reordering in a real app, not just the fake backend.
 - Benchmarks against `microsoft-ui-reactor` for scroll-heavy scenarios.
 
-### Phase 4 — Ship (~1 week)
+### Phase 4 — Ship
 
-- NuGet packages for `Picea.Abies.Native` and `Picea.Abies.WinUI`; add both to
-  `release.yml`'s pack list (currently absent).
-- An `Abies.Native` metapackage alongside `Abies.Browser` / `Abies.Server`.
+**Packaging: done.** `Picea.Abies.WinUI` gained package metadata and both projects
+are packed in `release.yml`.
+
+`Picea.Abies.WinUI` is packed on **`windows-latest`**, not with the rest. Its
+`net10.0-windows10.0.26100` TFM is guarded by `IsOSPlatform('Windows')`, so packing on
+the Linux release runner would silently produce a package containing only the Uno Skia
+head — it would install fine and then fail to resolve for every Windows consumer. The
+Windows job packs it, asserts `lib/net10.0-windows10.0.26100` is actually present in
+the `.nupkg`, and hands it to the release job as an artifact.
+
+**No `Abies.Native` metapackage.** The existing `Abies` / `Abies.Browser` /
+`Abies.Server` metapackages are deprecation shims from the ADR-023 rename, redirecting
+consumers of the old names. There is no historic `Abies.Native` to redirect, so a
+metapackage would create a deprecated package that never had users. Dropped from the
+plan deliberately rather than followed by analogy.
+
+Remaining:
 - `abies-native` template + a smoke-test matrix entry in `pr-validation.yml`
   (note: this adds a Uno restore to the template job — budget for it).
 - Docs: getting-started guide, vocabulary reference, "sharing a program across web
