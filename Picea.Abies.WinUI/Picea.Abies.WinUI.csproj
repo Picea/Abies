@@ -1,8 +1,10 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <!-- Spike: desktop (Skia) head only. Add net10.0-windows10.0.26100 on a
-         Windows machine to target Windows App SDK / real WinUI 3. -->
+    <!-- The Uno Skia desktop head builds everywhere. The Windows App SDK head
+         is the real WinUI 3 target, and can only be built on Windows — adding
+         it unconditionally would break restore and build on Linux/macOS. -->
     <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
     <GenerateLibraryLayout>true</GenerateLibraryLayout>

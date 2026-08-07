@@ -766,6 +766,47 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+  # Real WinUI 3 via Windows App SDK. Every other job runs on Linux, where
+  # Picea.Abies.WinUI resolves to the Uno Skia desktop head only — this is the
+  # sole job that compiles the WinUI 3 target the renderer is named for.
+  winui-windows:
+    name: WinUI (Windows App SDK)
+    runs-on: windows-latest
+    needs: [detect-changes]
+    if: github.event.pull_request.draft == false && needs.detect-changes.outputs.docs_only == 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # Both projects resolve two TFMs here: net10.0-desktop (Skia) and
+      # net10.0-windows10.0.26100 (Windows App SDK). Building the project files
+      # directly keeps this job off the rest of the solution, which is already
+      # covered on Linux.
+      - name: Build Picea.Abies.WinUI (Skia + Windows App SDK heads)
+        run: dotnet build Picea.Abies.WinUI/Picea.Abies.WinUI.csproj -c Release
+
+      - name: Build native Counter sample (Skia + Windows App SDK heads)
+        run: dotnet build Picea.Abies.Counter.Native/Picea.Abies.Counter.Native.csproj -c Release
+
+      - name: Test Picea.Abies.Native.Tests
+        run: dotnet test --project Picea.Abies.Native.Tests/Picea.Abies.Native.Tests.csproj
+
   # Check for TODO/FIXME without issues
   check-todos:
     name: Check TODOs
