@@ -124,6 +124,8 @@ jobs:
       run: dotnet test --project Picea.Abies.Conduit.Api.Tests/Picea.Abies.Conduit.Api.Tests.csproj --no-build --verbosity normal
     - name: Test Picea.Abies.Analyzers.Tests
       run: dotnet test --project Picea.Abies.Analyzers.Tests/Picea.Abies.Analyzers.Tests.csproj --no-build --verbosity normal
+    - name: Test Picea.Abies.Native.Tests
+      run: dotnet test --project Picea.Abies.Native.Tests/Picea.Abies.Native.Tests.csproj --no-build --verbosity normal
     - name: Test Picea.Abies.Templates.Testing (build-smoke only)
       run: dotnet test --project Picea.Abies.Templates.Testing/Picea.Abies.Templates.Testing.csproj --no-build --verbosity normal -- --treenode-filter "/*/*/*/*[Category!=E2E]"
 
