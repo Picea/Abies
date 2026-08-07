@@ -262,11 +262,33 @@ jobs:
 
       - name: Clone js-framework-benchmark
         if: steps.should-run.outputs.run == 'true'
+        env:
+          # Pinned deliberately. Two reasons:
+          #
+          #  1. Benchmark numbers are only comparable across runs if the harness
+          #     is identical. Tracking upstream HEAD silently changes the thing
+          #     doing the measuring.
+          #  2. Upstream HEAD is currently unbuildable: 89c1c5c1 bumped the root
+          #     package.json to eslint ^10.7.0, but eslint-plugin-react@7.37.5
+          #     peer-supports eslint <= 9, so `npm ci` fails with ERESOLVE. That
+          #     broke every PR here, through no change of ours.
+          #
+          # This is the commit immediately before that bump; `npm ci` and
+          # `webdriver-ts` compile cleanly on it. Bump deliberately after
+          # checking `npm ci` still works, and re-baseline benchmark results
+          # when you do.
+          JFB_COMMIT: 4fbccf556c7c445f414019bc7c15bee0a1860e47
         run: |
           # Remove uninitialized submodule placeholder directory
           rm -rf js-framework-benchmark
-          # Clone upstream benchmark infrastructure (shallow for speed)
-          git clone --depth 1 https://github.com/krausest/js-framework-benchmark.git js-framework-benchmark
+          # Fetch just the pinned commit rather than cloning history.
+          mkdir js-framework-benchmark
+          cd js-framework-benchmark
+          git init -q
+          git remote add origin https://github.com/krausest/js-framework-benchmark.git
+          git fetch --depth 1 origin "$JFB_COMMIT"
+          git checkout -q FETCH_HEAD
+          echo "js-framework-benchmark pinned at $(git rev-parse --short HEAD)"
 
       - name: Setup .NET
         if: steps.should-run.outputs.run == 'true'
