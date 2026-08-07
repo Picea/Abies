@@ -1,0 +1,18 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <!-- Spike: desktop (Skia) head only. Add net10.0-windows10.0.26100 on a
+         Windows machine to target Windows App SDK / real WinUI 3. -->
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+    <UnoSingleProject>true</UnoSingleProject>
+    <OutputType>Library</OutputType>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Native\Picea.Abies.Native.csproj" />
+  </ItemGroup>
+</Project>
