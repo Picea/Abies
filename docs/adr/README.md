@@ -34,6 +34,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-024](./ADR-024-four-render-modes.md) | Four Render Modes | Accepted | Static, InteractiveServer, InteractiveWasm, InteractiveAuto |
 | [ADR-025](./ADR-025-issue-160-debugger-boundary-contract-phase1.md) | Issue #160 Debugger Boundary Contract (Phase 1) | Accepted | Defines debugger boundary contract for phase 1 integration |
 | [ADR-026](./ADR-026-debugger-auto-mount-with-csharp-api.md) | Debugger Auto-Mount with C# API | Accepted | Adds automatic debugger mount behavior with the C# API |
+| [ADR-027](./ADR-027-native-winui-renderer.md) | Native WinUI Renderer via Patch-Stream Interpretation | Accepted | Native controls as a third `Apply` implementation; zero core changes |
 
 > **Note:** There are two files numbered ADR-005: [ADR-005-webassembly-runtime.md](./ADR-005-webassembly-runtime.md) (indexed above) and [ADR-005-security-scanning-sast-dast-sca.md](./ADR-005-security-scanning-sast-dast-sca.md) (security scanning). The security scanning ADR was created separately and retains its number for historical reasons.
 
