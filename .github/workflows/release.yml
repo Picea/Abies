@@ -12,9 +12,67 @@ permissions:
   contents: read
 
 jobs:
+  # Picea.Abies.WinUI resolves net10.0-windows10.0.26100 only on Windows (the
+  # TFM is guarded by IsOSPlatform). Packing it on Linux would silently ship a
+  # package with the Uno Skia head alone and no Windows App SDK target, so it is
+  # packed here and handed to the release job as an artifact.
+  pack-winui:
+    name: Pack Picea.Abies.WinUI (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install GitVersioning
+        run: dotnet tool install --global nbgv
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION=$(nbgv get-version -v NuGetPackageVersion)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Packing Picea.Abies.WinUI as $VERSION"
+
+      - name: Pack Picea.Abies.WinUI (Skia + Windows App SDK heads)
+        run: dotnet pack ./Picea.Abies.WinUI/Picea.Abies.WinUI.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Verify both target frameworks are in the package
+        shell: bash
+        run: |
+          PKG=$(ls ./nupkg/Picea.Abies.WinUI.*.nupkg | head -1)
+          echo "Inspecting $PKG"
+          unzip -l "$PKG" | tee /tmp/pkg-listing.txt
+
+          # A package missing the Windows head would still install and then fail
+          # to resolve for Windows consumers, so fail loudly here instead.
+          grep -q "lib/net10.0-windows10.0.26100" /tmp/pkg-listing.txt \
+            || { echo "❌ Package is missing the Windows App SDK head"; exit 1; }
+          echo "✅ Windows App SDK head present"
+
+      - name: Upload WinUI package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-winui
+          path: ./nupkg/*.nupkg
+          if-no-files-found: error
+
   release:
     name: Build, Pack and Publish
     runs-on: ubuntu-latest
+    needs: [pack-winui]
 
     steps:
       - name: Checkout
@@ -89,6 +147,9 @@ jobs:
       - name: Pack Picea.Abies.Server.Kestrel
         run: dotnet pack ./Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
+      - name: Pack Picea.Abies.Native
+        run: dotnet pack ./Picea.Abies.Native/Picea.Abies.Native.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
       - name: Pack Picea.Abies.Templates
         run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
@@ -100,6 +161,15 @@ jobs:
 
       - name: Pack Abies.Server (redirect metapackage)
         run: dotnet pack ./Metapackages/Abies.Server/Abies.Server.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Download the Windows-built WinUI package
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg-winui
+          path: ./nupkg
+
+      - name: List packages to publish
+        run: ls -l ./nupkg
 
       - name: Publish to NuGet
         if: startsWith(github.ref, 'refs/tags/v')

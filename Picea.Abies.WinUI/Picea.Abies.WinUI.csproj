@@ -14,6 +14,19 @@
     </UnoFeatures>
   </PropertyGroup>
 
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.WinUI</PackageId>
+    <Title>Picea.Abies.WinUI</Title>
+    <Description>Native WinUI 3 renderer for the Abies MVU framework. Applies the Abies patch stream to real WinUI controls and provides a one-line bootstrap that marshals rendering to the window's DispatcherQueue. Built with the Uno.Sdk, so the same code targets Windows App SDK on Windows and Uno Platform's Skia heads elsewhere.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;winui;uno;native;desktop;mvu;elm;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Native\Picea.Abies.Native.csproj" />
   </ItemGroup>
