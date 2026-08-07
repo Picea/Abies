@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778091888245,
+  "lastUpdate": 1786140994543,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13786,6 +13786,84 @@ window.BENCHMARK_DATA = {
             "value": 58.8,
             "unit": "ms",
             "extra": "mean: 58.6ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "f4260a7446fd8aa6592c5a5d03c1152cb4bffbcd",
+          "message": "fix(ci): Pin js-framework-benchmark instead of tracking upstream HEAD\n\nThe benchmark job has been failing on every PR that touches a perf path, with\nnpm ERESOLVE and nothing to do with our code:\n\n    Could not resolve dependency:\n    peer eslint@\"^3 || ... || ^9.7\" from eslint-plugin-react@7.37.5\n    Conflicting peer dependency: eslint@9.39.5\n\nUpstream commit 89c1c5c1 (2026-07-22) bumped the benchmark repo's root\npackage.json to eslint ^10.7.0, but eslint-plugin-react@7.37.5 peer-supports\neslint 9 at most, so their dependency tree does not install. We were cloning\ntheir HEAD unpinned, so we inherited it the moment they pushed it.\n\nThe workflow now fetches a pinned commit — 4fbccf55, immediately before that\nbump — rather than whatever HEAD happens to be. Verified locally: `npm ci` at\nthe root, `npm ci` in webdriver-ts, and `npm run compile` all succeed there,\nand the pinned package.json has eslint ^9.17.0.\n\nPinning is the right fix rather than a workaround. Benchmark numbers are only\ncomparable across runs if the harness is identical, so tracking a moving HEAD\nwas already changing the thing doing the measuring. `--legacy-peer-deps` would\nhave silenced this particular error while leaving us exposed to the next\nupstream change.\n\nThe pin is commented with why it exists and what to check before bumping it.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T00:05:17+02:00",
+          "tree_id": "adff58a87ee9e65a40f281c8665c6b6e9c1162c3",
+          "url": "https://github.com/Picea/Abies/commit/f4260a7446fd8aa6592c5a5d03c1152cb4bffbcd"
+        },
+        "date": 1786140994147,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 288.4,
+            "unit": "ms",
+            "extra": "mean: 289.7ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 300.1,
+            "unit": "ms",
+            "extra": "mean: 299.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16",
+            "value": 147,
+            "unit": "ms",
+            "extra": "mean: 147.5ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 27.5,
+            "unit": "ms",
+            "extra": "mean: 28.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 82.8,
+            "unit": "ms",
+            "extra": "mean: 84.1ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 55.7,
+            "unit": "ms",
+            "extra": "mean: 56.1ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2868.6,
+            "unit": "ms",
+            "extra": "mean: 2869.9ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 327.2,
+            "unit": "ms",
+            "extra": "mean: 325.7ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8",
+            "value": 57.1,
+            "unit": "ms",
+            "extra": "mean: 57.3ms, samples: 15"
           }
         ]
       }
