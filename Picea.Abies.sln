@@ -97,6 +97,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Native.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.WinUI", "Picea.Abies.WinUI\Picea.Abies.WinUI.csproj", "{E07BCB75-1CD0-47AC-AFED-0609AA5F6CCE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Counter.Native", "Picea.Abies.Counter.Native\Picea.Abies.Counter.Native.csproj", "{722F1166-E66E-45B4-89B9-BB6C59DD0768}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -671,6 +673,18 @@ Global
 		{E07BCB75-1CD0-47AC-AFED-0609AA5F6CCE}.Release|x64.Build.0 = Release|Any CPU
 		{E07BCB75-1CD0-47AC-AFED-0609AA5F6CCE}.Release|x86.ActiveCfg = Release|Any CPU
 		{E07BCB75-1CD0-47AC-AFED-0609AA5F6CCE}.Release|x86.Build.0 = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|x64.Build.0 = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Debug|x86.Build.0 = Debug|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|Any CPU.Build.0 = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|x64.ActiveCfg = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|x64.Build.0 = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|x86.ActiveCfg = Release|Any CPU
+		{722F1166-E66E-45B4-89B9-BB6C59DD0768}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
