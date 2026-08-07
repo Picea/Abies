@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786140994543,
+  "lastUpdate": 1786140996207,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15160,6 +15160,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "22_run-memory (run memory)",
             "value": 36.98382377624512,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "f4260a7446fd8aa6592c5a5d03c1152cb4bffbcd",
+          "message": "fix(ci): Pin js-framework-benchmark instead of tracking upstream HEAD\n\nThe benchmark job has been failing on every PR that touches a perf path, with\nnpm ERESOLVE and nothing to do with our code:\n\n    Could not resolve dependency:\n    peer eslint@\"^3 || ... || ^9.7\" from eslint-plugin-react@7.37.5\n    Conflicting peer dependency: eslint@9.39.5\n\nUpstream commit 89c1c5c1 (2026-07-22) bumped the benchmark repo's root\npackage.json to eslint ^10.7.0, but eslint-plugin-react@7.37.5 peer-supports\neslint 9 at most, so their dependency tree does not install. We were cloning\ntheir HEAD unpinned, so we inherited it the moment they pushed it.\n\nThe workflow now fetches a pinned commit — 4fbccf55, immediately before that\nbump — rather than whatever HEAD happens to be. Verified locally: `npm ci` at\nthe root, `npm ci` in webdriver-ts, and `npm run compile` all succeed there,\nand the pinned package.json has eslint ^9.17.0.\n\nPinning is the right fix rather than a workaround. Benchmark numbers are only\ncomparable across runs if the harness is identical, so tracking a moving HEAD\nwas already changing the thing doing the measuring. `--legacy-peer-deps` would\nhave silenced this particular error while leaving us exposed to the next\nupstream change.\n\nThe pin is commented with why it exists and what to check before bumping it.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T00:05:17+02:00",
+          "tree_id": "adff58a87ee9e65a40f281c8665c6b6e9c1162c3",
+          "url": "https://github.com/Picea/Abies/commit/f4260a7446fd8aa6592c5a5d03c1152cb4bffbcd"
+        },
+        "date": 1786140995861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.153265953063965,
+            "unit": "MB",
+            "extra": "mean: 35.2MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.0206184387207,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
           }
