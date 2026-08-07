@@ -28,17 +28,28 @@ public static class Runtime
     /// <param name="argument">The program's initialization argument.</param>
     /// <param name="interpreter">Command interpreter for the program's effects; defaults to a no-op.</param>
     /// <param name="subscriptionFaulted">Callback for subscription failures.</param>
+    /// <param name="renderFaulted">
+    /// Receives rendering and dispatch failures: a patch batch that threw, a
+    /// batch dropped because the dispatcher queue is shutting down, or a
+    /// message dispatch that faulted. Defaults to writing to standard error —
+    /// these failures are otherwise invisible, and the symptom is a window that
+    /// silently stops updating.
+    /// </param>
     public static async Task<Runtime<TProgram, TModel, TArgument>> Run<TProgram, TModel, TArgument>(
         Panel rootHost,
         Window window,
         TArgument argument = default!,
         Interpreter<Command, Message>? interpreter = null,
-        Action<SubscriptionFault>? subscriptionFaulted = null)
+        Action<SubscriptionFault>? subscriptionFaulted = null,
+        Action<Exception>? renderFaulted = null)
         where TProgram : Program<TModel, TArgument>
     {
         var dispatcherQueue = rootHost.DispatcherQueue;
         var backend = new WinUIBackend(rootHost);
         var patchInterpreter = new PatchInterpreter<FrameworkElement>(backend);
+
+        void Report(Exception exception) =>
+            (renderFaulted ?? DefaultRenderFaulted).Invoke(exception);
 
         Runtime<TProgram, TModel, TArgument>? runtime = null;
         patchInterpreter.Dispatch = async message =>
@@ -46,21 +57,47 @@ public static class Runtime
             if (runtime is not null)
                 await runtime.Dispatch(message);
         };
+        patchInterpreter.Faulted = Report;
+
+        // A patch batch that throws leaves the control tree out of sync with
+        // the model, but letting it escape would take down the UI thread with
+        // no diagnostic at all. Report and keep the window alive.
+        void ApplyGuarded(IReadOnlyList<Patch> patches)
+        {
+            try
+            {
+                patchInterpreter.Apply(patches);
+            }
+            catch (Exception ex)
+            {
+                Report(new NativeRenderException(
+                    "Applying a patch batch failed; the native view no longer reflects the model.", ex));
+            }
+        }
 
         void Apply(IReadOnlyList<Patch> patches)
         {
             if (dispatcherQueue.HasThreadAccess)
-                patchInterpreter.Apply(patches);
-            else
-                dispatcherQueue.TryEnqueue(() => patchInterpreter.Apply(patches));
+            {
+                ApplyGuarded(patches);
+                return;
+            }
+
+            // TryEnqueue returns false once the queue is shutting down. Ignoring
+            // it silently drops the batch and desyncs the view.
+            if (!dispatcherQueue.TryEnqueue(() => ApplyGuarded(patches)))
+            {
+                Report(new NativeRenderException(
+                    $"Dropped a batch of {patches.Count} patch(es): the dispatcher queue is shutting down."));
+            }
         }
 
         void TitleChanged(string title)
         {
             if (dispatcherQueue.HasThreadAccess)
                 window.Title = title;
-            else
-                dispatcherQueue.TryEnqueue(() => window.Title = title);
+            else if (!dispatcherQueue.TryEnqueue(() => window.Title = title))
+                Report(new NativeRenderException("Dropped a title update: the dispatcher queue is shutting down."));
         }
 
         runtime = await Runtime<TProgram, TModel, TArgument>.Start(
@@ -76,4 +113,21 @@ public static class Runtime
 
     private static ValueTask<Result<Message[], PipelineError>> NoOpInterpreter(Command _) =>
         ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
+
+    private static void DefaultRenderFaulted(Exception exception) =>
+        Console.Error.WriteLine($"Abies native render fault: {exception}");
+}
+
+/// <summary>
+/// A failure in the native rendering path: applying a patch batch threw, or a
+/// batch could not be delivered to the UI thread.
+/// </summary>
+public sealed class NativeRenderException : Exception
+{
+    /// <param name="message">Description of the failure.</param>
+    public NativeRenderException(string message) : base(message) { }
+
+    /// <param name="message">Description of the failure.</param>
+    /// <param name="innerException">The underlying failure.</param>
+    public NativeRenderException(string message, Exception innerException) : base(message, innerException) { }
 }
