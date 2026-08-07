@@ -46,6 +46,20 @@ var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveWasm());
 var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveAuto());
 ```
 
+### Native (WinUI 3)
+
+The same program also renders to **real native controls**. `Picea.Abies.Native` interprets
+the existing patch stream against a control tree, and `Picea.Abies.WinUI` binds that to
+WinUI 3 — running on Windows App SDK, and cross-platform via Uno Platform's Skia heads.
+
+```csharp
+// Share the core; supply only a native View.
+await Picea.Abies.WinUI.Runtime.RunWithView<CounterProgram, CounterView, CounterModel, Unit>(
+    rootHost, window, Unit.Value);
+```
+
+See the [native apps guide](./docs/guides/native-apps.md).
+
 ## Quick Start
 
 ### Using Templates (Recommended)
@@ -308,6 +322,7 @@ See the [docs](./docs/) folder for comprehensive documentation:
 
 - [MVU Architecture](./docs/concepts/mvu-architecture.md)
 - [Render Modes](./docs/concepts/render-modes.md) — Static, Server, WASM, Auto
+- [Native Apps](./docs/guides/native-apps.md) — rendering to WinUI 3 controls
 - [Virtual DOM](./docs/concepts/virtual-dom.md)
 - [Commands & Effects](./docs/concepts/commands-effects.md)
 - [Subscriptions](./docs/concepts/subscriptions.md)
