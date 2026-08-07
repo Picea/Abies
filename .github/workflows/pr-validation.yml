@@ -352,7 +352,13 @@ jobs:
           echo "🔍 Scanning direct packages for vulnerabilities..."
           dotnet list package --vulnerable 2>&1 | tee direct-vulnerability-report.txt
 
-          if grep -qi "critical\|high" direct-vulnerability-report.txt; then
+          # `dotnet list package` runs an implicit restore, and NuGetAuditMode=all
+          # (Directory.Build.props) makes that restore emit NU1902/NU1903 warnings
+          # for TRANSITIVE packages. Those lines contain the word "high", so
+          # grepping the whole file made this gate fail on transitive advisories
+          # while reporting them as direct ones. Match only the report's package
+          # rows, which are indented and start with ">".
+          if grep -E '^[[:space:]]*>' direct-vulnerability-report.txt | grep -qiE "critical|high"; then
             echo "❌ Critical or High severity vulnerabilities detected in direct dependencies!"
             echo "Please update the affected packages before merging."
             exit 1
@@ -365,7 +371,9 @@ jobs:
           echo "🔍 Scanning transitive packages for vulnerabilities..."
           dotnet list package --vulnerable --include-transitive 2>&1 | tee transitive-vulnerability-report.txt
 
-          if grep -qi "critical\|high" transitive-vulnerability-report.txt; then
+          # Match only the report's package rows — see the note on the direct
+          # scan above for why the raw restore output must not be grepped.
+          if grep -E '^[[:space:]]*>' transitive-vulnerability-report.txt | grep -qiE "critical|high"; then
             echo "❌ Critical or High severity vulnerabilities detected in transitive dependencies!"
             echo "These usually require updating one or more direct package versions."
             echo "Review the report above for details."

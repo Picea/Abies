@@ -172,6 +172,66 @@ function installFetchWrapper() {
 // Event Instrumentation — creates spans for DOM events
 // =============================================================================
 
+// =============================================================================
+// Element Label Resolution — extracts a human-readable label from a DOM element
+// =============================================================================
+
+/**
+ * Resolves a human-readable label for a DOM element.
+ * Priority: aria-label > data-testid > text content (buttons/anchors) >
+ *           placeholder (inputs) > id > tag[type] fallback.
+ *
+ * @param {Element} el - The DOM element that triggered the event.
+ * @returns {string} A short, human-readable label.
+ */
+function resolveElementLabel(el) {
+    if (!el) return "";
+
+    // 1. Explicit accessibility label
+    const ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) return ariaLabel.trim().substring(0, 80);
+
+    // 2. Test id
+    const testId = el.getAttribute("data-testid") || el.getAttribute("data-test-id");
+    if (testId) return testId.trim().substring(0, 80);
+
+    const tag = el.tagName?.toLowerCase() || "";
+
+    // 3. Button / anchor — use visible text content
+    if (tag === "button" || tag === "a") {
+        const text = el.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+        if (text) return text;
+    }
+
+    // 4. Input / select / textarea — use placeholder or associated label
+    if (tag === "input" || tag === "select" || tag === "textarea") {
+        const placeholder = el.getAttribute("placeholder");
+        if (placeholder) return placeholder.trim().substring(0, 60);
+
+        // Look for an associated <label> element via id
+        const id = el.id;
+        if (id) {
+            try {
+                const label = document.querySelector(`label[for="${id}"]`);
+                const labelText = label?.textContent?.trim().replace(/\s+/g, " ").substring(0, 60);
+                if (labelText) return labelText;
+            } catch {
+                // Ignore selector errors
+            }
+        }
+
+        // Fall back to type attribute
+        const type = el.getAttribute("type");
+        return type ? `${tag}[${type}]` : tag;
+    }
+
+    // 5. Element id
+    if (el.id) return `#${el.id}`;
+
+    // 6. Tag fallback
+    return tag || "unknown";
+}
+
 /**
  * Creates a span for a dispatched DOM event.
  * Called by abies.js's event delegation when OTel is active.
@@ -179,9 +239,10 @@ function installFetchWrapper() {
  * @param {string} commandId - The Abies command ID.
  * @param {string} eventType - The DOM event type (e.g., "click").
  * @param {object} eventData - Parsed event data.
+ * @param {Element} [element] - The DOM element that triggered the event.
  * @returns {{ span: object, traceparent: string }|null}
  */
-export function traceEvent(commandId, eventType, eventData) {
+export function traceEvent(commandId, eventType, eventData, element) {
     if (!tracer) return null;
 
     // In "user" mode, only trace interactive events
@@ -193,9 +254,23 @@ export function traceEvent(commandId, eventType, eventData) {
         if (!interactiveEvents.includes(eventType)) return null;
     }
 
-    const span = tracer.startSpan(`UI: ${eventType}`);
+    const elementLabel = resolveElementLabel(element);
+    const spanName = elementLabel
+        ? `UI: ${eventType} [${elementLabel}]`
+        : `UI: ${eventType}`;
+
+    const span = tracer.startSpan(spanName);
     span.setAttribute("dom.event.type", eventType);
     span.setAttribute("abies.command.id", commandId);
+
+    if (element) {
+        const tag = element.tagName?.toLowerCase();
+        if (tag) span.setAttribute("ui.element.tag", tag);
+        if (elementLabel) span.setAttribute("ui.element.label", elementLabel);
+        const elType = element.getAttribute("type");
+        if (elType) span.setAttribute("ui.element.type", elType);
+        if (element.id) span.setAttribute("ui.element.id", element.id);
+    }
 
     if (eventData) {
         try {
