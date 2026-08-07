@@ -177,20 +177,42 @@ The 2,893-line branch exceeds the PR size limit, so split it:
 **Exit:** `main` builds and tests green; native tests run in CI; no new required-check
 failures.
 
-### Phase 1 — Make the name true (~1 week)
+### Phase 1 — Make the name true
 
-Goal: real WinUI 3 on Windows.
+**Compilation: done (#326).** `Picea.Abies.WinUI` and the sample now resolve
+`net10.0-windows10.0.26100` under an `IsOSPlatform('Windows')` guard, and a
+`winui-windows` job on `windows-latest` builds both heads plus the native tests
+(~5 min). B2 is closed: the WinUI 3 target has been compiled and is now covered on
+every PR.
 
-- Add `net10.0-windows10.0.26100` to `Picea.Abies.WinUI` and the sample (B2).
-- Add a `windows-latest` CI job building both heads. This is the only new required
-  platform in CI; keep it a separate job so Linux jobs stay fast.
-- Run the sample on Windows; fix whatever the Windows App SDK surfaces (expect
-  divergence in `RenderTargetBitmap`, `Colors`, and theme resources).
-- Wire the `ABIES_SNAPSHOT` PNG path into CI as a smoke check on both heads.
+That job earned its place immediately by catching a real divergence — see
+"Tooling divergence" below.
+
+**Still open in this phase:**
+
+- Run the sample *on* Windows and wire the `ABIES_SNAPSHOT` PNG path into CI as a
+  smoke check for both heads. Compilation is verified; **runtime behaviour on
+  Windows App SDK is not.** Expect further divergence in `RenderTargetBitmap`,
+  `Colors`, and theme resources.
 - Address N3: error boundary around `Apply`, honour `TryEnqueue`'s return, surface
-  dispatch failures through the existing `subscriptionFaulted`-style callback.
+  dispatch failures.
 
-**Exit:** ADR-027's headline claim is demonstrably true on Windows and verified in CI.
+**Exit:** the sample is shown running on real WinUI 3, not merely compiling.
+
+#### Tooling divergence (new finding)
+
+`dotnet format` runs against whichever head the tooling loads — on Linux always Uno —
+so it can emit code that does not compile for the other head. IDE0002 rewrote
+`Panel.BackgroundProperty` to `FrameworkElement.BackgroundProperty`: correct for Uno,
+which declares Background on `FrameworkElement`, and nonexistent in WinUI 3, which
+declares it on `Panel`/`Border`/`Control`. It did this *before the code was first
+committed*, so the defect shipped in #322 and sat undetected until Windows CI existed.
+
+Access through the derived type is valid on both heads and is therefore the portable
+spelling; `Picea.Abies.WinUI/.editorconfig` disables IDE0002 to stop the rewrite.
+Only Background diverges today — BorderBrush and Foreground agree — but the general
+lesson stands: **a Linux-only lint cannot be trusted to keep multi-head code portable,
+and the Windows job is the thing that makes it visible.**
 
 ### Phase 2 — API shape freeze (~1 week)
 
@@ -236,12 +258,15 @@ Everything here is breaking, so it must precede packaging.
 Phase 0 is done: B1, B3, D3, N1 and N2 are fixed and covered by tests, and the CI
 cost of the Uno toolchain is measured and cached rather than assumed.
 
-**Phase 1 is now the critical path.** B2 — no Windows App SDK head — is the only
-remaining blocker, and it is the one that decides whether ADR-027's headline claim
-is true. Note that `dotnet format` removed the explicit `Microsoft.UI.Xaml` and
-`Microsoft.UI.Xaml.Controls` usings from the backend as redundant under the Uno
-desktop head's implicit usings; **re-check those when the Windows head is added**,
-since its implicit-using set may differ.
+**B2 is closed (#326):** the Windows App SDK head compiles and is covered by CI on
+every PR, so ADR-027's headline claim now holds for compilation. The implicit-usings
+worry flagged here earlier turned out to be a non-issue — Uno's
+`Uno.Implicit.Namespaces.targets` declares `Microsoft.UI.Xaml` and friends with no TFM
+guard, so both heads agree. A different tooling divergence did bite, and is documented
+under Phase 1.
+
+**The remaining Phase 1 work is runtime, not compilation.** Nothing has yet *run* on
+Windows App SDK; the `ABIES_SNAPSHOT` smoke check is how to prove it.
 
 Do **not** ship packages before Phase 2: D1 (enum shadowing) and D2 (`Program`
 Core/View split) are both breaking, and shipping them post-1.0 costs far more than

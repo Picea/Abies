@@ -41,7 +41,8 @@ that everything a renderer needs is public. See
    (case-insensitive), which `HtmlSpec.VoidElements` would silently skip child-diffing for.
 3. **`Picea.Abies.WinUI` codes against the WinUI 3 API surface** (`Microsoft.UI.Xaml`) and is built with the
    Uno.Sdk so the same code runs on Windows App SDK (real WinUI 3) and, via Uno Platform's Skia heads, on
-   macOS/Linux/WebAssembly. It contains the `WinUIBackend` (control factory, string→native property parsing,
+   macOS/Linux/WebAssembly. Both heads are built in CI: `net10.0-desktop` on Linux and, guarded by
+   `IsOSPlatform('Windows')`, `net10.0-windows10.0.26100` on `windows-latest`. It contains the `WinUIBackend` (control factory, string→native property parsing,
    event wiring with `IsApplying` echo suppression) and a one-line `Runtime.Run` bootstrap that marshals
    `Apply` to the `DispatcherQueue`.
 4. **Vocabulary and renderer are separate projects** so shared app code references only `Picea.Abies.Native`
@@ -61,10 +62,14 @@ that everything a renderer needs is public. See
 
 ### Negative
 
-- **Only the Uno Skia head (`net10.0-desktop`) is validated.** `Picea.Abies.WinUI` codes against the
-  WinUI 3 API surface but has not yet been compiled or run against Windows App SDK; the
-  `net10.0-windows10.0.26100` head and a `windows-latest` CI job are the immediate follow-up. Until
-  then this is an Uno Skia renderer with a WinUI-shaped API, and should be described that way.
+- The vocabulary is deliberately small and string-encodes typed properties, so the backend parses
+  at apply time rather than the compiler checking at call sites.
+- Maintaining two heads means tooling run on one can produce code that breaks the other. This is not
+  hypothetical: `dotnet format`'s IDE0002 rewrote `Panel.BackgroundProperty` to
+  `FrameworkElement.BackgroundProperty` — correct for Uno, nonexistent in WinUI 3 — before the code
+  was first committed. Access through the derived type is portable, and a project-level
+  `.editorconfig` disables IDE0002 to keep it that way. The `windows-latest` CI job is what makes
+  this class of divergence visible.
 - `View` is per-platform: a native program must delegate to a shared program class (boilerplate) until the
   `Program` contract is split into Core + View interfaces.
 - The native vocabulary starts small (10 controls) and string-encodes typed properties; breadth, styling,
@@ -100,7 +105,9 @@ objects, which `Apply` already provides in-process.
 
 Landed on `main` as four PRs: the platform-neutral vocabulary and interpreter (#321), the WinUI
 backend and Uno desktop head (#322), the native Counter sample (#323), and this record (#324).
-Remaining work is tracked in
+The Windows App SDK head and its `windows-latest` CI job followed in #326 — the first time the real
+WinUI 3 target was compiled, which is what allows this ADR to describe the renderer as WinUI rather
+than Uno Skia. Remaining work is tracked in
 [the production-readiness plan](../investigations/winui-native-production-readiness.md).
 
 ## Related Decisions
