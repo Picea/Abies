@@ -10,6 +10,7 @@ internal static class DiagnosticDescriptors
     private const string _category = "Picea.Abies.Html";
     private const string _accessibilityCategory = "Picea.Abies.Html.Accessibility";
     private const string _contentModelCategory = "Picea.Abies.Html.ContentModel";
+    private const string _nativeCategory = "Picea.Abies.Native";
 
     // =========================================================================
     // ABIES001: img() missing alt attribute
@@ -101,4 +102,30 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Helpers that render interactive controls can hide event handlers from the immediate call site. When those helpers are invoked in repeated paths, handlers inside the helper should use explicit ids to preserve per-instance identity.",
         helpLinkUri: "https://github.com/Picea/Abies/blob/main/docs/api/html-events.md");
+
+    // =========================================================================
+    // ABIES008: Native tag collides with an HTML void element name
+    // =========================================================================
+    public static readonly DiagnosticDescriptor NativeReservedTagName = new(
+        id: "ABIES008",
+        title: "Native element tag collides with an HTML void element name",
+        messageFormat: "Native tag '{0}' collides with an HTML void element name; children of this element will silently never be diffed",
+        category: _nativeCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The diff skips child diffing for tags in HtmlSpec.VoidElements, matched case-insensitively. A native element using one of those names (area, base, br, col, embed, hr, img, input, link, meta, param, source, track, wbr) would render once and then never update its children, with no error. Choose a different tag name.",
+        helpLinkUri: "https://github.com/Picea/Abies/blob/main/docs/adr/ADR-027-native-winui-renderer.md");
+
+    // =========================================================================
+    // ABIES009: Text or RawHtml node inside a native element tree
+    // =========================================================================
+    public static readonly DiagnosticDescriptor NativeNonElementChild = new(
+        id: "ABIES009",
+        title: "Text or raw HTML node inside a native element tree",
+        messageFormat: "'{0}()' produces a non-Element node, which is not supported inside a native element tree",
+        category: _nativeCategory,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Native trees contain only Element nodes; text is carried as a Text or Content attribute. A Text or RawHtml child makes the diff take an HTML fallback path, which the native patch interpreter rejects at runtime. Use TextBlock(...) or a Content-bearing control instead.",
+        helpLinkUri: "https://github.com/Picea/Abies/blob/main/docs/adr/ADR-027-native-winui-renderer.md");
 }

@@ -162,7 +162,17 @@ public static class Properties
     public static DOM.Attribute IsEnabled(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("IsEnabled", value ? "True" : "False", id);
 
-    /// <summary>TextBox text (two-way: pair with OnTextChanged).</summary>
+    /// <summary>
+    /// TextBox text (two-way: pair with <c>Events.OnTextChanged</c>).
+    /// <para>
+    /// The backend skips writes that would not change the text, so ordinary
+    /// typing never disturbs the caret. When the model transforms the input
+    /// (upper-casing, trimming) the write does happen, and the backend restores
+    /// the selection around it, clamped to the new length. A model that
+    /// rewrites the whole string will still move the caret — there is no
+    /// general answer for where it should land after an arbitrary rewrite.
+    /// </para>
+    /// </summary>
     public static DOM.Attribute Text(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Text", value, id);
 

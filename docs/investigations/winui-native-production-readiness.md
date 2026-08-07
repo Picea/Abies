@@ -135,10 +135,26 @@ Same echo/jitter class of problem.
 `_ = dispatch(message)` swallows dispatch failures.
 
 **N4 — Unresolved TextBox controlled-input strategy.** Caret can jump if a patch
-rewrites `Text` mid-typing. Documented, not solved.
+rewrites `Text` mid-typing.
+
+**Resolved.** The strategy is deliberately narrow and now documented on
+`Properties.Text`: identical writes are skipped, so ordinary typing never touches the
+caret; when the model genuinely transforms the input the write happens and the
+selection is captured and restored around it, clamped to the new length. It does not
+try to map a caret through an arbitrary transformation — a model that rewrites the
+whole string still moves the cursor, which is the honest outcome, because there is no
+general answer to where the caret belongs after an arbitrary rewrite.
 
 **N5 — Reserved-tag and element-only-tree rules are runtime tripwires only.** The
 ADR-021 analyzer that would make them compile-time errors is unwritten.
+
+**Resolved.** `NativeElementAnalyzer` adds two error-severity rules: **ABIES008** for a
+native tag colliding with an HTML void element name (the diff would silently skip child
+diffing, so the subtree renders once and never updates), and **ABIES009** for a
+`text()`/`raw()` node inside a native tree. ABIES009 reports at the offending node
+rather than at each enclosing element, so nesting yields exactly one diagnostic, and it
+walks out to the nearest enclosing element factory so `text()` in an ordinary HTML tree
+is untouched.
 
 ### Scope gaps
 
@@ -251,11 +267,13 @@ Everything here is breaking, so it must precede packaging.
   workarounds deleted from the sample.
 - **D2 ✅ done** (ADR-028): `ProgramCore` + `ProgramView` + `WithView`. Backward
   compatible; browser/server/WASM/Conduit programs unchanged.
-- **N5**: ADR-021 Roslyn analyzer for reserved void-element tag names and the
-  element-only-tree rule, promoting both runtime tripwires to compile-time errors.
-- **N4**: pick and document a controlled-input strategy for `TextBox`.
+- **N5 ✅ done**: `NativeElementAnalyzer` (ABIES008, ABIES009), 11 tests.
+- **N4 ✅ done**: caret-preserving controlled-input strategy, documented on
+  `Properties.Text`.
 
 **Exit:** public API reviewed and frozen; no known breaking changes pending.
+**Reached** — D1, D2, N4 and N5 are all done. The two breaking changes (D1, D2) landed
+before packaging, which was the whole point of sequencing the freeze ahead of Phase 4.
 
 ### Phase 3 — Breadth and scale (~2–3 weeks)
 
