@@ -94,9 +94,15 @@ must be made deliberate: SDK pin, NuGet caching, and an explicit test step.
 
 **D1 — `Properties` method names shadow the identically-named enums** under
 `using static`, forcing `NativeOrientation` / `NativeFontWeight` / `NativeAlignment`
-aliases at every use site. This is visible in the sample and is the first thing a
-user will hit. Rename one side (suggestion: enums move to a `Values` static class,
-or become `OrientationValue`) **before** the package ships.
+aliases at every use site.
+
+**Fixed.** The enums are now `StackOrientation` and `TextWeight`, so the factories
+(`Orientation(...)`, `FontWeight(...)`) keep their WinUI-faithful names and nothing is
+hidden. Only those two ever collided — `Alignment` is fine, because the factories are
+`HorizontalAlignment`/`VerticalAlignment`, which is why the sample's `NativeAlignment`
+alias was never actually needed. The sample now reads
+`Orientation(StackOrientation.Horizontal)` with no aliases at all, which is the proof
+the friction is gone.
 
 **D2 — `Program` contract is not split into Core + View.** Every native program
 must hand-delegate `Initialize`/`Transition`/`Decide`/`IsTerminal`/`Subscriptions`
@@ -235,8 +241,8 @@ and the Windows job is the thing that makes it visible.**
 
 Everything here is breaking, so it must precede packaging.
 
-- **D1**: resolve the `Properties`-vs-enum shadowing. Delete the alias workaround
-  from the sample — the sample is the proof the fix worked.
+- **D1 ✅ done**: enums renamed to `StackOrientation` / `TextWeight`; all three alias
+  workarounds deleted from the sample.
 - **D2**: split `Program` into Core + View interfaces; remove native delegation
   boilerplate. This touches the core, so it needs its own ADR and a compatibility
   review against browser/server programs.
