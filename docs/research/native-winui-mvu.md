@@ -138,15 +138,16 @@ The spike was landed with three fixes, all covered by new tests:
   controlled-input strategy is future work).
 - Praefixum ids are per call site: elements created in loops must set `Properties.Id`/`Properties.Key`
   (same rule as the HTML DSL).
-- DSL friction: `Properties` method names (`Orientation`, `FontWeight`) shadow the identically-named enums
-  under `using static`, forcing aliases at use sites — rename either side before packaging.
+- ~~DSL friction: `Properties` method names shadow the identically-named enums under `using static`~~ —
+  fixed: the enums are now `StackOrientation` and `TextWeight`, so no aliases are needed.
+  (`Alignment` never collided; the factories are `HorizontalAlignment`/`VerticalAlignment`.)
 - Fire-and-forget dispatch from native events (matches browser behavior); dispatch failures are dropped.
 
 **Roadmap**
 
 1. **Phase 2 — vocabulary & ergonomics**: broaden controls (ItemsView, NavigationView, ContentDialog),
    element-content `Button`/`ContentControl` children, styling/theming story (map to XAML theme resources
-   rather than reinventing), fix the enum/method naming collision, Roslyn analyzer (per ADR-021) for the
+   rather than reinventing), Roslyn analyzer (per ADR-021) for the
    reserved-void-tag and Element-only-trees rules, split the `Program` contract into Core + View interfaces
    to remove native-program delegation boilerplate.
 2. **Phase 3 — scale & platform**: virtualized lists via an `ItemsRepeater` escape hatch (Reactor's

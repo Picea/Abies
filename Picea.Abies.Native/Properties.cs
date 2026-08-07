@@ -19,8 +19,14 @@ using Praefixum;
 
 namespace Picea.Abies.Native;
 
-/// <summary>Layout orientation for stack-like panels.</summary>
-public enum Orientation { Vertical, Horizontal }
+/// <summary>
+/// Layout orientation for stack-like panels. Named <c>StackOrientation</c>
+/// rather than <c>Orientation</c> so it does not collide with the
+/// <see cref="Properties.Orientation"/> factory when both this namespace and
+/// <c>Properties</c> are imported with <c>using static</c> — the method would
+/// otherwise hide the type and force an alias at every use site.
+/// </summary>
+public enum StackOrientation { Vertical, Horizontal }
 
 /// <summary>
 /// Platform-neutral alignment. The backend maps Start/End onto
@@ -28,8 +34,12 @@ public enum Orientation { Vertical, Horizontal }
 /// </summary>
 public enum Alignment { Start, Center, End, Stretch }
 
-/// <summary>Font weight for text-bearing controls.</summary>
-public enum FontWeight { Normal, SemiBold, Bold }
+/// <summary>
+/// Font weight for text-bearing controls. Named <c>TextWeight</c> to avoid
+/// colliding with the <see cref="Properties.FontWeight"/> factory; see
+/// <see cref="StackOrientation"/>.
+/// </summary>
+public enum TextWeight { Normal, SemiBold, Bold }
 
 /// <summary>
 /// Factory functions for native control property attributes.
@@ -64,7 +74,7 @@ public static class Properties
     // Layout
     // =========================================================================
 
-    public static DOM.Attribute Orientation(Orientation value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+    public static DOM.Attribute Orientation(StackOrientation value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Orientation", value.ToString(), id);
 
     public static DOM.Attribute Spacing(double value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
@@ -121,7 +131,7 @@ public static class Properties
     public static DOM.Attribute FontSize(double value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("FontSize", Num(value), id);
 
-    public static DOM.Attribute FontWeight(FontWeight value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+    public static DOM.Attribute FontWeight(TextWeight value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("FontWeight", value.ToString(), id);
 
     /// <summary>Foreground color: "#RRGGBB", "#AARRGGBB", or a named color.</summary>
