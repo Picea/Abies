@@ -847,12 +847,30 @@ jobs:
           if (-not (Test-Path $env:ABIES_SNAPSHOT)) { throw "No snapshot produced at $env:ABIES_SNAPSHOT" }
           Get-Item $env:ABIES_SNAPSHOT | Select-Object Name, Length
 
-      - name: Upload Windows render snapshot
+      # The render check proves the app draws. This proves it *responds*: text
+      # is typed into the real TextBox and buttons are invoked through their
+      # automation peers, so a pass exercises the whole loop —
+      # native event → handler → dispatch → update → diff → patch → control —
+      # including interval ticks arriving from a threadpool thread.
+      - name: Interaction check (Windows App SDK head)
+        shell: pwsh
+        timeout-minutes: 8
+        env:
+          ABIES_INTERACT: ${{ github.workspace }}\interaction-winappsdk.png
+          ABIES_INTERACT_STARTUP_MS: '10000'
+        run: |
+          dotnet run --project Picea.Abies.TaskTimer.Native/Picea.Abies.TaskTimer.Native.csproj `
+            -c Release -f net10.0-windows10.0.26100
+          if (-not (Test-Path $env:ABIES_INTERACT)) { throw "No interaction snapshot produced" }
+
+      - name: Upload Windows snapshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-render-snapshot-winappsdk
-          path: snapshot-winappsdk.png
+          path: |
+            snapshot-winappsdk.png
+            interaction-winappsdk.png
           if-no-files-found: ignore
 
   # Proves the Uno Skia desktop head rasterizes controls under a virtual
@@ -900,12 +918,25 @@ jobs:
           test -s "$ABIES_SNAPSHOT" || { echo "❌ No snapshot produced at $ABIES_SNAPSHOT"; exit 1; }
           ls -l "$ABIES_SNAPSHOT"
 
-      - name: Upload Skia render snapshot
+      - name: Interaction check (Skia desktop head)
+        timeout-minutes: 10
+        env:
+          ABIES_INTERACT: ${{ github.workspace }}/interaction-skia.png
+          ABIES_INTERACT_STARTUP_MS: '10000'
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+            dotnet run --project Picea.Abies.TaskTimer.Native/Picea.Abies.TaskTimer.Native.csproj \
+              -c Release -f net10.0-desktop
+          test -s "$ABIES_INTERACT" || { echo "❌ No interaction snapshot produced"; exit 1; }
+
+      - name: Upload Skia snapshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-render-snapshot-skia
-          path: snapshot-skia.png
+          path: |
+            snapshot-skia.png
+            interaction-skia.png
           if-no-files-found: ignore
 
   # Check for TODO/FIXME without issues

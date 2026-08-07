@@ -1,0 +1,32 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <!-- Skia desktop head runs on Linux/macOS/Windows; the Windows App SDK
+         head is real WinUI 3 and is only buildable on Windows. -->
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <IsPackable>false</IsPackable>
+
+    <ApplicationTitle>Abies TaskTimer (Native)</ApplicationTitle>
+    <ApplicationId>com.picea.abies.tasktimer.native</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationPublisher>Picea</ApplicationPublisher>
+    <Description>Exercises interval subscriptions, keyed list reordering and two-way text input on real native controls.</Description>
+
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    
+    <ProjectReference Include="..\Picea.Abies.Native\Picea.Abies.Native.csproj" />
+    <ProjectReference Include="..\Picea.Abies.WinUI\Picea.Abies.WinUI.csproj" />
+    <PackageReference Include="Praefixum" Version="2.0.1" />
+  </ItemGroup>
+</Project>
