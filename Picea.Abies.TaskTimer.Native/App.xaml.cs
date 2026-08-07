@@ -76,14 +76,21 @@ public partial class App : Application
             try
             {
                 await RunScriptAsync(root, tickWindow);
-                Snapshot(root, snapshotPath);
+                await SnapshotAsync(root, snapshotPath);
                 Console.Out.WriteLine("Interaction script passed.");
                 Environment.Exit(0);
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"❌ Interaction script failed: {ex.Message}");
-                TrySnapshot(root, snapshotPath);
+                try
+                {
+                    await SnapshotAsync(root, snapshotPath);
+                }
+                catch (Exception snapshotError)
+                {
+                    Console.Error.WriteLine($"(could not capture failure snapshot: {snapshotError.Message})");
+                }
                 Environment.Exit(1);
             }
         });
@@ -186,23 +193,18 @@ public partial class App : Application
     // Snapshot
     // =========================================================================
 
-    private static void TrySnapshot(FrameworkElement root, string path)
-    {
-        try
-        {
-            Snapshot(root, path);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"(could not capture failure snapshot: {ex.Message})");
-        }
-    }
-
-    private static void Snapshot(FrameworkElement root, string path)
+    /// <summary>
+    /// Must be awaited, never blocked on. This runs on the dispatcher thread and
+    /// RenderAsync needs that same thread to complete, so calling
+    /// GetAwaiter().GetResult() here deadlocks on Windows App SDK — the Uno Skia
+    /// head happens to tolerate it, which is exactly the kind of difference the
+    /// Windows CI head exists to catch.
+    /// </summary>
+    private static async Task SnapshotAsync(FrameworkElement root, string path)
     {
         var bitmap = new RenderTargetBitmap();
-        bitmap.RenderAsync(root).AsTask().GetAwaiter().GetResult();
-        var pixels = bitmap.GetPixelsAsync().AsTask().GetAwaiter().GetResult().ToArray();
+        await bitmap.RenderAsync(root);
+        var pixels = (await bitmap.GetPixelsAsync()).ToArray();
 
         if (bitmap.PixelWidth <= 0 || bitmap.PixelHeight <= 0 || pixels.Length == 0)
             throw new InvalidOperationException("Empty render target.");
@@ -212,8 +214,10 @@ public partial class App : Application
         Marshal.Copy(pixels, 0, skBitmap.GetPixels(), pixels.Length);
         using var image = SKImage.FromBitmap(skBitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        using var stream = File.OpenWrite(path);
-        data.SaveTo(stream);
+        await using (var stream = File.OpenWrite(path))
+        {
+            data.SaveTo(stream);
+        }
 
         Console.Out.WriteLine($"Snapshot written: {path} ({bitmap.PixelWidth}x{bitmap.PixelHeight})");
     }
