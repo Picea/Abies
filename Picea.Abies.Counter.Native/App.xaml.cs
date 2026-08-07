@@ -118,7 +118,9 @@ public partial class App : Application
     {
         try
         {
-            await WinUI.Runtime.Run<NativeCounterProgram, CounterModel, Unit>(
+            // Shared core + native view. Nothing about CounterProgram is
+            // redeclared here — it is the same class the WASM and server hosts use.
+            await WinUI.Runtime.RunWithView<CounterProgram, NativeCounterView, CounterModel, Unit>(
                 rootHost, window, Unit.Value);
         }
         catch (Exception ex)
