@@ -213,22 +213,18 @@ public sealed class PatchInterpreter<T> : INativeEventSink where T : class
             }
         }
 
-        foreach (var child in element.Children)
-        {
-            if (Resolve(child) is Element childElement)
-                _backend.AppendChild(control, element.Tag, BuildSubtree(childElement, element.Id));
-        }
+        // Resolve unwraps memo nodes and throws on Text/RawHtml; OfType then
+        // skips Empty, which is the only other kind a native tree may contain.
+        foreach (var childElement in element.Children.Select(Resolve).OfType<Element>())
+            _backend.AppendChild(control, element.Tag, BuildSubtree(childElement, element.Id));
 
         return control;
     }
 
     private void AppendMaterialized(T parentControl, Element parent, Node[] children)
     {
-        foreach (var child in children)
-        {
-            if (Resolve(child) is Element childElement)
-                _backend.AppendChild(parentControl, parent.Tag, BuildSubtree(childElement, parent.Id));
-        }
+        foreach (var childElement in children.Select(Resolve).OfType<Element>())
+            _backend.AppendChild(parentControl, parent.Tag, BuildSubtree(childElement, parent.Id));
     }
 
     /// <summary>
@@ -295,14 +291,12 @@ public sealed class PatchInterpreter<T> : INativeEventSink where T : class
 
     private void UnregisterChildrenOf(string parentId)
     {
-        List<string>? doomed = null;
-        foreach (var (childId, pid) in _parents)
-        {
-            if (pid == parentId)
-                (doomed ??= []).Add(childId);
-        }
-        if (doomed is null)
-            return;
+        // Materialized before the loop: DropControl mutates _parents.
+        var doomed = _parents
+            .Where(entry => entry.Value == parentId)
+            .Select(entry => entry.Key)
+            .ToList();
+
         foreach (var childId in doomed)
         {
             UnregisterChildrenOf(childId);
@@ -331,13 +325,12 @@ public sealed class PatchInterpreter<T> : INativeEventSink where T : class
     /// </summary>
     private void DetachHandlersFor(string elementId)
     {
-        List<string>? doomed = null;
-        foreach (var key in _handlers.Keys)
-        {
-            if (key.ElementId == elementId)
-                (doomed ??= []).Add(key.EventName);
-        }
-        if (doomed is null)
+        // Materialized before the loop: the loop mutates _handlers.
+        var doomed = _handlers.Keys
+            .Where(key => key.ElementId == elementId)
+            .Select(key => key.EventName)
+            .ToList();
+        if (doomed.Count == 0)
             return;
 
         _controls.TryGetValue(elementId, out var control);

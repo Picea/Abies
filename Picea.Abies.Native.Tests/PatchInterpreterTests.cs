@@ -93,7 +93,7 @@ public class PatchInterpreterTests
     [Test]
     public async Task StaticHandler_DispatchesCommand()
     {
-        var (interpreter, backend) = Create();
+        var (interpreter, _) = Create();
         var view = new Element("b1", "Button", [new Handler("Click", "c1", new Ping(), "h1")]);
         interpreter.Apply(Operations.Diff(null, view));
 
