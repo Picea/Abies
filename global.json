@@ -4,6 +4,9 @@
     "rollForward": "latestMajor",
     "allowPrerelease": false
   },
+  "msbuild-sdks": {
+    "Uno.Sdk": "6.6.33"
+  },
   "test": {
     "runner": "Microsoft.Testing.Platform"
   }

@@ -747,6 +747,17 @@ jobs:
       - name: Install WASM workloads
         run: dotnet workload install wasm-experimental wasm-tools
 
+      # The solution includes Uno.Sdk projects (Picea.Abies.WinUI), whose SDK
+      # and package graph are resolved on restore. Caching keeps that off the
+      # critical path for every PR.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
       - name: Restore
         run: dotnet restore
         env:
