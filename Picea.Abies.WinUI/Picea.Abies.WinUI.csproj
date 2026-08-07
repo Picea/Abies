@@ -5,7 +5,12 @@
          it unconditionally would break restore and build on Linux/macOS. -->
     <TargetFrameworks>net10.0-desktop</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
+    <!-- UnoSingleProject is what makes the net10.0-desktop TFM alias resolve, but
+         the Uno.Sdk assumes single-project means "app" and turns packing off.
+         This is a library, so packing is turned back on explicitly — without
+         this, `dotnet pack` silently produces no package at all. -->
     <UnoSingleProject>true</UnoSingleProject>
+    <IsPackable>true</IsPackable>
     <OutputType>Library</OutputType>
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

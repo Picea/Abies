@@ -304,9 +304,18 @@ consumers of the old names. There is no historic `Abies.Native` to redirect, so 
 metapackage would create a deprecated package that never had users. Dropped from the
 plan deliberately rather than followed by analogy.
 
-Remaining:
-- `abies-native` template + a smoke-test matrix entry in `pr-validation.yml`
-  (note: this adds a Uno restore to the template job — budget for it).
+- **Template ✅ done**: `dotnet new abies-native` scaffolds an Uno single-project app
+  with a `ProgramCore` + `ProgramView` counter, its own `global.json` pinning
+  `Uno.Sdk`, and a `windows10.0.26100` head guarded by `IsOSPlatform`. A smoke-test
+  matrix entry scaffolds and builds it, then greps the generated source to confirm the
+  core/view split survived scaffolding.
+
+  Two things this surfaced. `Uno.Sdk` sets `IsPackable=false` whenever
+  `UnoSingleProject` is on — it assumes single-project means *app* — so
+  `Picea.Abies.WinUI` produced **no package at all**, silently, and had to opt back in
+  explicitly. And a scaffolded project has none of the repo's global usings, so the
+  template ships its own `global using Picea;` for `Unit`. Both were found by building
+  a scaffolded app rather than by reading the template.
 - **Docs ✅ done**: [native apps guide](../guides/native-apps.md) covering the
   vocabulary, sharing a core across web and native, two-way input, fault handling,
   testing and platform support; linked from the README's render-mode section and the

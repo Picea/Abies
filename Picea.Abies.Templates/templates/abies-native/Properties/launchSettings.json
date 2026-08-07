@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AbiesApp (Desktop)": {
+      "commandName": "Project",
+      "compatibleTargetFramework": "desktop"
+    }
+  }
+}
