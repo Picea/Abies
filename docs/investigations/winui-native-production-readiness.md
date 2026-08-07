@@ -307,9 +307,10 @@ plan deliberately rather than followed by analogy.
 Remaining:
 - `abies-native` template + a smoke-test matrix entry in `pr-validation.yml`
   (note: this adds a Uno restore to the template job — budget for it).
-- Docs: getting-started guide, vocabulary reference, "sharing a program across web
-  and native" guide.
-- README: add native to the render-mode story.
+- **Docs ✅ done**: [native apps guide](../guides/native-apps.md) covering the
+  vocabulary, sharing a core across web and native, two-way input, fault handling,
+  testing and platform support; linked from the README's render-mode section and the
+  docs index.
 
 ---
 

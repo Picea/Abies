@@ -106,6 +106,7 @@ Practical how-to guides for specific tasks.
 | --- | --- |
 | [Choosing a Render Mode](./guides/render-mode-selection.md) | When to use Static, Server, WASM, or Auto |
 | [InteractiveServer and InteractiveAuto Lifecycle](./guides/interactive-lifecycle.md) | Session transport lifecycle and WASM handoff behavior |
+| [Building Native Apps](./guides/native-apps.md) | Rendering to native WinUI 3 controls; sharing a program across web and native |
 | [Testing](./guides/testing.md) | Testing strategies for Abies apps |
 | [Conduit E2E Fixture Architecture](./guides/conduit-e2e-fixture-architecture.md) | Fixture patterns, API seeding, and user-journey test expansion |
 | [Debugging](./guides/debugging.md) | Debugging techniques and tools |
