@@ -438,11 +438,15 @@ jobs:
           # Pack framework projects in dependency order.
           # -p:Version overrides Nerdbank.GitVersioning so ProjectReference
           # dependencies also resolve as 1.0.0-ci in the local feed.
+          # Picea.Abies.WinUI packs its Skia desktop head here; the Windows App
+          # SDK head only exists on Windows, which is fine for a Linux smoke build.
           for project in \
             Picea.Abies/Picea.Abies.csproj \
             Picea.Abies.Browser/Picea.Abies.Browser.csproj \
             Picea.Abies.Server/Picea.Abies.Server.csproj \
-            Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj; do
+            Picea.Abies.Server.Kestrel/Picea.Abies.Server.Kestrel.csproj \
+            Picea.Abies.Native/Picea.Abies.Native.csproj \
+            Picea.Abies.WinUI/Picea.Abies.WinUI.csproj; do
             echo "📦 Packing $project as $PACK_VERSION..."
             dotnet pack "$project" -c Release -o "$LOCAL_FEED" \
               -p:Version="$PACK_VERSION" \
@@ -537,6 +541,28 @@ jobs:
           fi
 
           echo "✅ abies-browser-empty template compiles successfully"
+          rm -rf "$TEMP_DIR"
+
+      - name: Smoke test — abies-native (${{ matrix.configuration }})
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          echo "🧪 Scaffolding abies-native into $TEMP_DIR..."
+          dotnet new abies-native -o "$TEMP_DIR" -n NativeSmoke
+
+          echo "🔨 Restoring scaffolded project..."
+          dotnet restore "$TEMP_DIR" --configfile /tmp/template-nuget.config
+
+          echo "🔨 Building scaffolded project..."
+          dotnet build "$TEMP_DIR" --no-restore -c ${{ matrix.configuration }}
+
+          if [ "${{ matrix.configuration }}" = "Debug" ]; then
+            echo "🔍 Verifying the generated app shares a core with a native view..."
+            grep -q "RunWithView<CounterProgram, CounterView" "$TEMP_DIR/App.xaml.cs"
+            grep -q "ProgramCore<CounterModel, Unit>" "$TEMP_DIR/Counter.cs"
+            grep -q "ProgramView<CounterModel>" "$TEMP_DIR/Counter.cs"
+          fi
+
+          echo "✅ abies-native template compiles successfully"
           rm -rf "$TEMP_DIR"
 
       - name: Smoke test — abies-server (${{ matrix.configuration }})

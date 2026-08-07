@@ -1,0 +1,32 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <!-- The Skia desktop head runs on Windows, macOS and Linux. The Windows App
+         SDK head is real WinUI 3 and can only be built on Windows, so it is
+         added conditionally. -->
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(TargetFrameworks);net10.0-windows10.0.26100</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+
+    <ApplicationTitle>AbiesApp</ApplicationTitle>
+    <ApplicationId>com.example.abiesapp</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Picea.Abies.WinUI" Version="1.0.*-*" />
+    <PackageReference Include="Praefixum" Version="2.0.1" />
+  </ItemGroup>
+</Project>
