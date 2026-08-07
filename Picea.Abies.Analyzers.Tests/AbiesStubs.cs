@@ -21,6 +21,7 @@ internal static class AbiesStubs
             public record Node(string Id);
             public record Element(string Id, string Tag, Attribute[] Attributes, params Node[] Children) : Node(Id);
             public record Text(string Id, string Value) : Node(Id);
+            public record RawHtml(string Id, string Html) : Node(Id);
             public record Attribute(string Id, string Name, string Value);
             public abstract record Message;
         }
@@ -79,6 +80,9 @@ internal static class AbiesStubs
                 // Text factory: (value, id?) → Node
                 public static Node text(string value, string? id = null)
                     => new Text(id ?? "", value);
+
+                public static Node raw(string html, string? id = null)
+                    => new RawHtml(id ?? "", html);
             }
         }
         
@@ -126,6 +130,27 @@ internal static class AbiesStubs
 
                 public static Handler oninput(System.Func<object?, Message> factory, string? id = null)
                     => new(id ?? "", "data-event-input", id ?? "auto");
+            }
+        }
+
+        // ── Picea.Abies.Native stubs ───────────────────────────────────────
+        namespace Picea.Abies.Native
+        {
+            using Picea.Abies.DOM;
+
+            public static class Elements
+            {
+                public static Element element(string tag, DOM.Attribute[] attributes, Node[] children, string? id = null)
+                    => new(id ?? "", tag, attributes, children);
+
+                public static Node StackPanel(DOM.Attribute[] attributes, Node[] children, string? id = null)
+                    => element("StackPanel", attributes, children, id);
+
+                public static Node Border(DOM.Attribute[] attributes, Node child, string? id = null)
+                    => element("Border", attributes, new[] { child }, id);
+
+                public static Node TextBlock(DOM.Attribute[] attributes, string text, string? id = null)
+                    => element("TextBlock", attributes, new Node[0], id);
             }
         }
         """;

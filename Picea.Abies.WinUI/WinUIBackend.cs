@@ -210,11 +210,7 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                 switch (name)
                 {
                     case "Text":
-                        // Only write on real change: rewriting identical text
-                        // still resets the caret on some platforms.
-                        var newText = value ?? "";
-                        if (tx.Text != newText)
-                            tx.Text = newText;
+                        SetTextPreservingCaret(tx, value ?? "");
                         return;
                     case "PlaceholderText":
                         tx.PlaceholderText = value ?? "";
@@ -376,6 +372,50 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
     {
         _rootHost.Children.Clear();
         _rootHost.Children.Add(root);
+    }
+
+    /// <summary>
+    /// Writes <paramref name="newText"/> to a TextBox without destroying the
+    /// user's caret position.
+    /// </summary>
+    /// <remarks>
+    /// Controlled inputs are the awkward case in any MVU renderer: the model is
+    /// the source of truth, but the control also holds cursor state the model
+    /// knows nothing about. Abies-native's strategy is deliberately narrow:
+    /// <list type="number">
+    /// <item>
+    /// Identical writes are skipped entirely. This is the common case — the
+    /// model echoes back exactly what the user typed — and skipping it means
+    /// ordinary typing never touches the caret at all.
+    /// </item>
+    /// <item>
+    /// When the text genuinely differs, the model has transformed the input
+    /// (upper-casing, trimming, formatting). The write must happen, so the
+    /// selection is captured and restored around it, clamped to the new length
+    /// because the transformation may have shortened the text.
+    /// </item>
+    /// </list>
+    /// This keeps the caret stable for edits at or before the cursor. It does
+    /// not attempt to map a caret through an arbitrary transformation — a
+    /// model that rewrites the whole string will still move the cursor, which
+    /// is the honest outcome, since there is no general answer to "where should
+    /// the caret be" after an arbitrary rewrite.
+    /// </remarks>
+    private static void SetTextPreservingCaret(TextBox textBox, string newText)
+    {
+        if (textBox.Text == newText)
+        {
+            return;
+        }
+
+        var selectionStart = textBox.SelectionStart;
+        var selectionLength = textBox.SelectionLength;
+
+        textBox.Text = newText;
+
+        var start = Math.Min(selectionStart, newText.Length);
+        textBox.SelectionStart = start;
+        textBox.SelectionLength = Math.Min(selectionLength, newText.Length - start);
     }
 
     private static NotSupportedException ChildrenNotSupported(string parentTag) =>

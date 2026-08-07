@@ -134,8 +134,8 @@ The spike was landed with three fixes, all covered by new tests:
 **Spike-accepted limitations**
 
 - Vocabulary is 10 controls with a pragmatic property set; unknown tags/properties throw by design.
-- `TextBox` caret can jump if a patch rewrites `Text` mid-typing (identical-text writes are skipped; a
-  controlled-input strategy is future work).
+- ~~`TextBox` caret can jump if a patch rewrites `Text` mid-typing~~ — resolved: identical writes are
+  skipped and the selection is restored around genuine rewrites. See `Properties.Text`.
 - Praefixum ids are per call site: elements created in loops must set `Properties.Id`/`Properties.Key`
   (same rule as the HTML DSL).
 - ~~DSL friction: `Properties` method names shadow the identically-named enums under `using static`~~ —
@@ -147,8 +147,7 @@ The spike was landed with three fixes, all covered by new tests:
 
 1. **Phase 2 — vocabulary & ergonomics**: broaden controls (ItemsView, NavigationView, ContentDialog),
    element-content `Button`/`ContentControl` children, styling/theming story (map to XAML theme resources
-   rather than reinventing), Roslyn analyzer (per ADR-021) for the
-   reserved-void-tag and Element-only-trees rules, split the `Program` contract into Core + View interfaces
+   rather than reinventing), split the `Program` contract into Core + View interfaces
    to remove native-program delegation boilerplate.
 2. **Phase 3 — scale & platform**: virtualized lists via an `ItemsRepeater` escape hatch (Reactor's
    recycling is the benchmark), accessibility/automation-peer pass, `net10.0-windows10.0.26100` head
