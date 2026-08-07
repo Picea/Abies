@@ -70,8 +70,9 @@ that everything a renderer needs is public. See
   was first committed. Access through the derived type is portable, and a project-level
   `.editorconfig` disables IDE0002 to keep it that way. The `windows-latest` CI job is what makes
   this class of divergence visible.
-- `View` is per-platform: a native program must delegate to a shared program class (boilerplate) until the
-  `Program` contract is split into Core + View interfaces.
+- ~~`View` is per-platform: a native program must delegate to a shared program class (boilerplate)~~ —
+  resolved by [ADR-028](./ADR-028-program-core-view-split.md): a native app now supplies a
+  `ProgramView` and pairs it with the shared core via `WithView`, with no forwarding members.
 - The native vocabulary starts small (10 controls) and string-encodes typed properties; breadth, styling,
   and virtualized lists are roadmap work.
 - Uno.Sdk enters the toolchain (`msbuild-sdks` pin in `global.json`), so every root `dotnet restore`

@@ -1,34 +1,27 @@
 // =============================================================================
-// NativeCounterProgram — Shared Model/Update, Native View
+// NativeCounterView — Native View over the Shared Counter Program
 // =============================================================================
-// Delegates Initialize/Transition/Decide/IsTerminal/Subscriptions to the
-// existing CounterProgram (shared with the WASM and server hosts) and
-// supplies only a native-vocabulary View. This is the whole point of the
-// spike: one pure program, three renderers (browser DOM, server, native
-// WinUI controls).
+// This file is the whole native app: a View, and nothing else. Model, update,
+// decisions, termination and subscriptions all come from the existing
+// CounterProgram, shared verbatim with the WASM and server hosts.
+//
+// The pairing happens at the bootstrap call site via
+// WithView<CounterProgram, NativeCounterView, ...> — see App.xaml.cs. Before
+// the Program contract was split into ProgramCore + ProgramView, this class
+// also had to hand-forward five members to CounterProgram, because C# cannot
+// inherit static abstract implementations.
 // =============================================================================
 
 using Picea.Abies.DOM;
 using Picea.Abies.Native;
-using Picea.Abies.Subscriptions;
 using static Picea.Abies.Native.Elements;
 using static Picea.Abies.Native.Events;
 using static Picea.Abies.Native.Properties;
 
 namespace Picea.Abies.Counter.Native;
 
-public sealed class NativeCounterProgram : Program<CounterModel, Unit>
+public sealed class NativeCounterView : ProgramView<CounterModel>
 {
-    public static (CounterModel, Command) Initialize(Unit argument) => CounterProgram.Initialize(argument);
-
-    public static (CounterModel, Command) Transition(CounterModel model, Message message) => CounterProgram.Transition(model, message);
-
-    public static Result<Message[], Message> Decide(CounterModel model, Message command) => CounterProgram.Decide(model, command);
-
-    public static bool IsTerminal(CounterModel model) => CounterProgram.IsTerminal(model);
-
-    public static Subscription Subscriptions(CounterModel model) => CounterProgram.Subscriptions(model);
-
     public static Document View(CounterModel model) =>
         new("Abies Counter",
             StackPanel([Spacing(16), HorizontalAlignment(Alignment.Center), VerticalAlignment(Alignment.Center)],

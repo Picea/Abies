@@ -111,6 +111,34 @@ public static class Runtime
         return runtime;
     }
 
+    /// <summary>
+    /// Starts a program assembled from a shared core and a native view, which is
+    /// the normal shape for a native app: the model and update logic are shared
+    /// with the web and server hosts, and only <c>View</c> is platform-specific.
+    /// </summary>
+    /// <typeparam name="TCore">The shared program core.</typeparam>
+    /// <typeparam name="TView">The native view.</typeparam>
+    /// <typeparam name="TModel">The model type.</typeparam>
+    /// <typeparam name="TArgument">The initialization argument type.</typeparam>
+    /// <param name="rootHost">The panel that receives the root control.</param>
+    /// <param name="window">The hosting window; receives Document.Title updates.</param>
+    /// <param name="argument">The program's initialization argument.</param>
+    /// <param name="interpreter">Command interpreter for the program's effects; defaults to a no-op.</param>
+    /// <param name="subscriptionFaulted">Callback for subscription failures.</param>
+    /// <param name="renderFaulted">Callback for rendering and dispatch failures.</param>
+    public static Task<Runtime<WithView<TCore, TView, TModel, TArgument>, TModel, TArgument>>
+        RunWithView<TCore, TView, TModel, TArgument>(
+            Panel rootHost,
+            Window window,
+            TArgument argument = default!,
+            Interpreter<Command, Message>? interpreter = null,
+            Action<SubscriptionFault>? subscriptionFaulted = null,
+            Action<Exception>? renderFaulted = null)
+        where TCore : ProgramCore<TModel, TArgument>
+        where TView : ProgramView<TModel>
+        => Run<WithView<TCore, TView, TModel, TArgument>, TModel, TArgument>(
+            rootHost, window, argument, interpreter, subscriptionFaulted, renderFaulted);
+
     private static ValueTask<Result<Message[], PipelineError>> NoOpInterpreter(Command _) =>
         ValueTask.FromResult(Result<Message[], PipelineError>.Ok([]));
 

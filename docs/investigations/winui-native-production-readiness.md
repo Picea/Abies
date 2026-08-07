@@ -108,6 +108,12 @@ the friction is gone.
 must hand-delegate `Initialize`/`Transition`/`Decide`/`IsTerminal`/`Subscriptions`
 to a shared class. Fine for a spike, unacceptable as the documented pattern.
 
+**Fixed** — see [ADR-028](../adr/ADR-028-program-core-view-split.md). `Program` now
+composes `ProgramCore` + `ProgramView`, and `WithView<TCore, TView, ...>` does the
+forwarding once in the framework. The sample is a view and nothing else; the native
+host uses `CounterProgram` directly. Fully backward compatible — 496 tests and a full
+solution build pass with no source changes outside the native sample.
+
 **D3 — `INativeBackend.InsertBefore` is dead API.** Declared, implemented twice,
 never called — the interpreter always appends on `AddChild` and relies on
 subsequent `MoveChild` patches for ordering. Either wire it up or delete it before
@@ -243,9 +249,8 @@ Everything here is breaking, so it must precede packaging.
 
 - **D1 ✅ done**: enums renamed to `StackOrientation` / `TextWeight`; all three alias
   workarounds deleted from the sample.
-- **D2**: split `Program` into Core + View interfaces; remove native delegation
-  boilerplate. This touches the core, so it needs its own ADR and a compatibility
-  review against browser/server programs.
+- **D2 ✅ done** (ADR-028): `ProgramCore` + `ProgramView` + `WithView`. Backward
+  compatible; browser/server/WASM/Conduit programs unchanged.
 - **N5**: ADR-021 Roslyn analyzer for reserved void-element tag names and the
   element-only-tree rule, promoting both runtime tripwires to compile-time errors.
 - **N4**: pick and document a controlled-input strategy for `TextBox`.
