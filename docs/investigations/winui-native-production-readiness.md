@@ -188,16 +188,33 @@ every PR.
 That job earned its place immediately by catching a real divergence — see
 "Tooling divergence" below.
 
-**Still open in this phase:**
+**Rendering: done (#327).** `ABIES_SNAPSHOT` now fails on an empty render target and
+on a uniform image, so "the window opened but nothing drew" is a failure rather than a
+pass. CI runs it on both heads and uploads the PNG: the Windows App SDK head inside
+`winui-windows` (187x134 — WinUI sizes the render target to the content), and the Skia
+head under Xvfb in `native-render-smoke` (1024x640, full window). Both produce the
+Counter UI — title, −/0/+ row, Reset — from the same `NativeCounterProgram`.
 
-- Run the sample *on* Windows and wire the `ABIES_SNAPSHOT` PNG path into CI as a
-  smoke check for both heads. Compilation is verified; **runtime behaviour on
-  Windows App SDK is not.** Expect further divergence in `RenderTargetBitmap`,
-  `Colors`, and theme resources.
-- Address N3: error boundary around `Apply`, honour `TryEnqueue`'s return, surface
-  dispatch failures.
+`native-render-smoke` sits outside the required `build` job on purpose: a
+GUI-under-virtual-display check is the kind that flakes, and it should not be able to
+block merges on its own.
 
-**Exit:** the sample is shown running on real WinUI 3, not merely compiling.
+**N3: done (#327).** Three silent failure modes now report. An exception inside a patch
+batch is caught rather than killing the UI thread; a batch dropped because `TryEnqueue`
+returned false is reported instead of vanishing; and dispatch, which was
+fire-and-forget, is observed so a failing update surfaces instead of appearing as a
+window that stopped responding. `PatchInterpreter.Faulted` and `Runtime.Run`'s
+`renderFaulted` carry these, defaulting to standard error so nothing is silent by
+omission. The reporter is itself guarded — in the async observer a throwing handler
+would be an unhandled exception on the UI thread.
+
+**Phase 1 exit criterion met:** the sample is shown *running* on real WinUI 3, not
+merely compiling.
+
+**Not yet covered:** the snapshot proves first render. Nothing exercises *interaction*
+on either head — no click is simulated, so the event→dispatch→re-render loop is still
+only verified headlessly through `FakeBackend`. That belongs with the TaskTimer sample
+in Phase 3.
 
 #### Tooling divergence (new finding)
 
@@ -265,8 +282,11 @@ worry flagged here earlier turned out to be a non-issue — Uno's
 guard, so both heads agree. A different tooling divergence did bite, and is documented
 under Phase 1.
 
-**The remaining Phase 1 work is runtime, not compilation.** Nothing has yet *run* on
-Windows App SDK; the `ABIES_SNAPSHOT` smoke check is how to prove it.
+**Phase 1 is complete (#326, #327).** The Windows App SDK head compiles, runs, and
+renders the Counter UI in CI, and the silent-failure paths now report. Phase 2 — the
+API freeze — is the critical path, and it is the last chance to make breaking changes
+cheaply: D1 (enum shadowing) and D2 (`Program` Core/View split) both alter the public
+surface, and shipping them after packaging costs far more than the week they take now.
 
 Do **not** ship packages before Phase 2: D1 (enum shadowing) and D2 (`Program`
 Core/View split) are both breaking, and shipping them post-1.0 costs far more than
