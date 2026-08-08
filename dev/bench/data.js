@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786177184917,
+  "lastUpdate": 1786177187762,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15276,6 +15276,48 @@ window.BENCHMARK_DATA = {
             "value": 37.0206184387207,
             "unit": "MB",
             "extra": "mean: 37.0MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "52d4d468487e6e0f6d26bfe0158a8b20c861a990",
+          "message": "fix(ci): Raise the threshold to clear the noisiest metric, fix stale messages\n\nThe first run against the median baseline went from 6 regressions to 1, and\nthat one — 03_update10th1k_x16 at +20.5% — was half a percent over the line.\n\nThat metric is the noisiest of the set: observed 126.1-189.0ms, a 50% spread,\nor roughly +/-21% around its median. A single global threshold has to clear the\nworst metric, so 03 sets the floor; 25% covers it with a little margin.\n\nAlso corrects two places that still announced \">5%\" after the threshold moved,\nincluding the failure message operators actually read.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T10:08:19+02:00",
+          "tree_id": "016af51d24c7727ddff450aed3678f70368fd227",
+          "url": "https://github.com/Picea/Abies/commit/52d4d468487e6e0f6d26bfe0158a8b20c861a990"
+        },
+        "date": 1786177187080,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.1385612487793,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.012529373168945,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.3661470413208,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
           }
         ]
       }
