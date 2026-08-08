@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786185862283,
+  "lastUpdate": 1786185972810,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8268,6 +8268,192 @@ window.BENCHMARK_DATA = {
             "value": 7036.437919616699,
             "unit": "ns",
             "range": "± 28.73865976157303"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "d01ca817c23469ac2b2acef81360881507e6f8ac",
+          "message": "fix(ci): Give Micro-Benchmarks the full history Nerdbank.GitVersioning needs\n\nThe job failed on main with:\n\n    Nerdbank.GitVersioning.GitException: Shallow clone lacks the objects\n    required to calculate version height. Use full clones or clones with a\n    history at least as deep as the last version height resetting change.\n    ---> An commit object with SHA f4260a7446... could not be found.\n\nIts checkout was the only one in the repo without fetch-depth: 0 — the other 23\nalready set it, including the e2e benchmark job in this same file. NBGV walks\nhistory to compute version height, so the default shallow clone cannot work.\n\nThe project itself is healthy: it builds clean locally, where history is\ncomplete.\n\nNote this job only runs on pushes to main, so a PR cannot exercise it; the fix\nis confirmed by the next main run.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T12:33:05+02:00",
+          "tree_id": "56f5dae9e53909445ade071b48639ed0ee62cb4b",
+          "url": "https://github.com/Picea/Abies/commit/d01ca817c23469ac2b2acef81360881507e6f8ac"
+        },
+        "date": 1786185972240,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 341.41092850367227,
+            "unit": "ns",
+            "range": "± 1.2206171567268824"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2070.50170694987,
+            "unit": "ns",
+            "range": "± 19.26032197619067"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 440.73781042832593,
+            "unit": "ns",
+            "range": "± 0.5057631587367984"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 633.6584302266439,
+            "unit": "ns",
+            "range": "± 1.45365990239805"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 451.06702105204266,
+            "unit": "ns",
+            "range": "± 1.3349857082663537"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 443.34875310262044,
+            "unit": "ns",
+            "range": "± 1.300336006689821"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 481.05195395151776,
+            "unit": "ns",
+            "range": "± 1.8493633505911153"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 232.29643383820851,
+            "unit": "ns",
+            "range": "± 2.2374052564514377"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 806.6806403477987,
+            "unit": "ns",
+            "range": "± 6.76953753777985"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 441.9948898633321,
+            "unit": "ns",
+            "range": "± 4.241032855286007"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 735.2505736351013,
+            "unit": "ns",
+            "range": "± 8.570328334418084"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5763.912697347006,
+            "unit": "ns",
+            "range": "± 72.83554646742677"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 39126.87864332933,
+            "unit": "ns",
+            "range": "± 265.8755050901247"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 820.2288010915121,
+            "unit": "ns",
+            "range": "± 5.080696170399618"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 6064.120901489257,
+            "unit": "ns",
+            "range": "± 63.48005079223918"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2773.7875035603843,
+            "unit": "ns",
+            "range": "± 35.59126080920915"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRows",
+            "value": 917119.1525472006,
+            "unit": "ns",
+            "range": "± 23268.165300330096"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 768615.4570100204,
+            "unit": "ns",
+            "range": "± 70389.94544585298"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 42.775446661313374,
+            "unit": "ns",
+            "range": "± 0.5321049637772883"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 67.24573590074267,
+            "unit": "ns",
+            "range": "± 1.2274104557214784"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 626.930328432719,
+            "unit": "ns",
+            "range": "± 7.795316864745718"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2784.715279505803,
+            "unit": "ns",
+            "range": "± 24.858756840347382"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4414.620703379313,
+            "unit": "ns",
+            "range": "± 91.0805167746856"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 106.40274357795715,
+            "unit": "ns",
+            "range": "± 1.466595455501476"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 303.6020798365275,
+            "unit": "ns",
+            "range": "± 5.152575184860452"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 754.9691753387451,
+            "unit": "ns",
+            "range": "± 11.583898591436459"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7759.563861592611,
+            "unit": "ns",
+            "range": "± 90.12310535308009"
           }
         ]
       }
