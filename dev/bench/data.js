@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786185972810,
+  "lastUpdate": 1786185975402,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -10892,6 +10892,192 @@ window.BENCHMARK_DATA = {
             "value": 24240,
             "unit": "bytes",
             "extra": "Gen0: 189.0000, Gen1: 14.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "d01ca817c23469ac2b2acef81360881507e6f8ac",
+          "message": "fix(ci): Give Micro-Benchmarks the full history Nerdbank.GitVersioning needs\n\nThe job failed on main with:\n\n    Nerdbank.GitVersioning.GitException: Shallow clone lacks the objects\n    required to calculate version height. Use full clones or clones with a\n    history at least as deep as the last version height resetting change.\n    ---> An commit object with SHA f4260a7446... could not be found.\n\nIts checkout was the only one in the repo without fetch-depth: 0 — the other 23\nalready set it, including the e2e benchmark job in this same file. NBGV walks\nhistory to compute version height, so the default shallow clone cannot work.\n\nThe project itself is healthy: it builds clean locally, where history is\ncomplete.\n\nNote this job only runs on pushes to main, so a PR cannot exercise it; the fix\nis confirmed by the next main run.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T12:33:05+02:00",
+          "tree_id": "56f5dae9e53909445ade071b48639ed0ee62cb4b",
+          "url": "https://github.com/Picea/Abies/commit/d01ca817c23469ac2b2acef81360881507e6f8ac"
+        },
+        "date": 1786185974933,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 784,
+            "unit": "bytes",
+            "extra": "Gen0: 12.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 40.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 328,
+            "unit": "bytes",
+            "extra": "Gen0: 41.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 23.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1448,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 808,
+            "unit": "bytes",
+            "extra": "Gen0: 101.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 10304,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 71280,
+            "unit": "bytes",
+            "extra": "Gen0: 69.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1264,
+            "unit": "bytes",
+            "extra": "Gen0: 79.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9720,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000, Gen1: 2.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4816,
+            "unit": "bytes",
+            "extra": "Gen0: 75.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRows",
+            "value": 1154240,
+            "unit": "bytes",
+            "extra": "Gen0: 195.0000, Gen1: 195.0000, Gen2: 195.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 1051825,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 146.0000, Gen2: 146.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 184,
+            "unit": "bytes",
+            "extra": "Gen0: 184.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 272,
+            "unit": "bytes",
+            "extra": "Gen0: 136.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 2320,
+            "unit": "bytes",
+            "extra": "Gen0: 145.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 11504,
+            "unit": "bytes",
+            "extra": "Gen0: 180.0000, Gen1: 7.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 19224,
+            "unit": "bytes",
+            "extra": "Gen0: 150.0000, Gen1: 10.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 464,
+            "unit": "bytes",
+            "extra": "Gen0: 232.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 1240,
+            "unit": "bytes",
+            "extra": "Gen0: 155.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2808,
+            "unit": "bytes",
+            "extra": "Gen0: 176.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 26160,
+            "unit": "bytes",
+            "extra": "Gen0: 204.0000, Gen1: 17.0000"
           }
         ]
       }
