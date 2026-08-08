@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Picea.Abies.Cli\Picea.Abies.Cli.csproj" />
     <ProjectReference Include="..\Picea.Abies.Testing\Picea.Abies.Testing.csproj" />
+    <ProjectReference Include="..\Picea.Abies.Testing.Visual\Picea.Abies.Testing.Visual.csproj" />
     <ProjectReference Include="..\Picea.Abies\Picea.Abies.csproj" />
   </ItemGroup>
 

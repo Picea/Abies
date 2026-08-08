@@ -1,11 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>Picea.Abies.UI</PackageId>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Praefixum</InterceptorsNamespaces>
     <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.UI</PackageId>
+    <Title>Picea.Abies.UI</Title>
+    <Description>Component library for the Abies MVU framework. Ships composable HTML components plus a design-token stylesheet and companion script, copied into the consuming app's wwwroot at build time.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;ui;components;design-tokens;mvu;elm;functional</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

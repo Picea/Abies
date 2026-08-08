@@ -150,6 +150,19 @@ jobs:
       - name: Pack Picea.Abies.Native
         run: dotnet pack ./Picea.Abies.Native/Picea.Abies.Native.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
+      - name: Pack Picea.Abies.Testing
+        run: dotnet pack ./Picea.Abies.Testing/Picea.Abies.Testing.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Pack Picea.Abies.Testing.Visual
+        run: dotnet pack ./Picea.Abies.Testing.Visual/Picea.Abies.Testing.Visual.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Pack Picea.Abies.UI
+        run: dotnet pack ./Picea.Abies.UI/Picea.Abies.UI.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
+      # Packed as a dotnet global tool (`abies`), not a library.
+      - name: Pack Picea.Abies.Cli
+        run: dotnet pack ./Picea.Abies.Cli/Picea.Abies.Cli.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
+
       - name: Pack Picea.Abies.Templates
         run: dotnet pack ./Picea.Abies.Templates/Picea.Abies.Templates.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 

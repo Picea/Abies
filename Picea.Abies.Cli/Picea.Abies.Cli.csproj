@@ -1,14 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>Picea.Abies.Cli</PackageId>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <!-- Packed as a global tool: `dotnet tool install -g Picea.Abies.Cli`, then `abies`. -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Cli</PackageId>
+    <Title>Picea.Abies.Cli</Title>
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>abies</ToolCommandName>
-    <PackageTags>testing;visual-regression;playwright;snapshot</PackageTags>
-    <Description>CLI tooling for Abies visual baseline workflows.</Description>
+    <Description>Command-line tooling for the Abies MVU framework. Manages visual regression baselines — reviewing, accepting and pruning snapshots produced by Picea.Abies.Testing.Visual. Installs the `abies` command.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;cli;dotnet-tool;testing;visual-regression;snapshot</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
