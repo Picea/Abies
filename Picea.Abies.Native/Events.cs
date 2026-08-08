@@ -72,4 +72,11 @@ public static class Events
     /// <summary>ComboBox selection change.</summary>
     public static Handler OnSelectionChanged(Func<SelectionChangedData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => On("SelectionChanged", factory, id);
+
+    /// <summary>
+    /// ScrollViewer position change. Pair with a model that slices its data to
+    /// the visible range — see the list windowing guidance on Elements.ScrollViewer.
+    /// </summary>
+    public static Handler OnScrollChanged(Func<ScrollChangedData?, Message> factory, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => On("ScrollChanged", factory, id);
 }

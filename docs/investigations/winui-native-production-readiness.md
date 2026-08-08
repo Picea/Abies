@@ -286,9 +286,20 @@ same branch, so keyed reordering works for items as it does for panels.
 **Still open, deliberately.** Each of the remaining items is genuinely multi-week, and two
 of them should not be rushed:
 
-- **Virtualized list recycling.** Large lists currently build one control per item.
-  Reactor's element pooling is the benchmark to beat, and matching it is a project, not a
-  patch.
+- **Virtualized lists — windowing done, recycling open.** `Virtualization.Window` bounds
+  the control count by the viewport rather than the data: the model tracks the scroll
+  offset, the view emits only visible rows plus spacers that keep the scrollbar
+  proportional. That is the difference between a 50,000-row list being impossible and
+  being usable, and it needed no change to `INativeBackend` — which matters now that the
+  interface is published.
+
+  Container *recycling* (a WinUI `ItemsRepeater` reusing row controls) is still open, and
+  it is the part that is a project rather than a patch. The obstacle is not the control:
+  it is that the diff produces patches for the whole list while only some rows exist, so
+  a patch aimed at an off-screen row would be dropped and the row would be stale when it
+  scrolled back in. Doing it correctly means the interpreter keeping a shadow of
+  unrealized rows and replaying it on realization — a real design change to the core, and
+  one that deserves its own ADR. Reactor's element pooling remains the benchmark.
 - **Styling/theming.** This would *add public API*, immediately after Phase 2 froze it.
   Designing a theming surface under time pressure is the fastest way to acquire the kind
   of API debt Phase 2 just paid off. It deserves its own ADR: mapping onto XAML theme
