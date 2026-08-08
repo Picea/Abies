@@ -121,6 +121,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Nerdbank.GitVersioning walks history to compute version height, so a
+          # shallow clone fails the build outright with "Shallow clone lacks the
+          # objects required to calculate version height". Every other checkout
+          # in this repo already sets this.
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
