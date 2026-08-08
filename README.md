@@ -171,6 +171,13 @@ Latest same-session validation (2026-04-02, AC power, local main baseline):
 
 Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigations/render-stringbuilder-pool-cap-validation-2026-04-02.md)
 
+> **These tables are updated by hand, from a local same-session run.** Both
+> frameworks must be measured on the same machine in the same sitting, or the
+> Delta column compares machines rather than frameworks. CI tracks Abies over
+> time instead — see the [benchmark trends](https://picea.github.io/Abies/) —
+> and deliberately does not touch these tables. To refresh them, run both suites
+> locally and then `scripts/update-readme-benchmarks.py`.
+
 <!-- BENCHMARK:DURATION:START -->
 | Benchmark | Abies 2.1 | Blazor 10.0 | Delta |
 | --- | --- | --- | --- |

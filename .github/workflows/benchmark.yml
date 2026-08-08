@@ -637,76 +637,20 @@ jobs:
       # Opens a PR instead of pushing directly to main to avoid triggering other
       # on:push workflows (CD, E2E, etc.).
       # ============================================================================
-      - name: Update README benchmark tables (main only)
-        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          python3 scripts/update-readme-benchmarks.py \
-            --results-dir js-framework-benchmark/webdriver-ts/results \
-            --blazor-baseline benchmark-results/blazor-baseline.json \
-            --readme README.md \
-            --framework abies
-
-      # This deliberately pushes a branch rather than opening a PR. Creating PRs
-      # from Actions requires "Allow GitHub Actions to create and approve pull
-      # requests", which is disabled here on purpose; pushing a branch needs only
-      # the contents: write this workflow already uses for gh-pages. The result is
-      # a ready-to-review diff plus a one-click link, with a human opening the PR.
-      - name: Push README benchmark updates to a branch (main only)
-        id: readme-branch
-        continue-on-error: true
-        if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          README_BRANCH: benchmark/readme-auto-update
-        run: |
-          if git diff --quiet -- README.md; then
-            echo "README benchmark tables are already up to date; nothing to push."
-            echo "readme_changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "readme_changed=true" >> "$GITHUB_OUTPUT"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Commit only README.md — the workspace also holds benchmark artifacts.
-          git checkout -b "$README_BRANCH"
-          git add README.md
-          git commit -m "docs: update benchmark results in README"
-
-          # Force-push: this branch is regenerated from main on every run and is
-          # not meant to be worked on by hand.
-          git push --force origin "$README_BRANCH"
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Report README branch status
-        if: always() && steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          README_BRANCH: benchmark/readme-auto-update
-        run: |
-          if [ "${{ steps.readme-branch.outputs.readme_changed }}" != "true" ]; then
-            echo "### README benchmark tables unchanged" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          COMPARE="${{ github.server_url }}/${{ github.repository }}/compare/main...${README_BRANCH}?expand=1"
-
-          if [ "${{ steps.readme-branch.outputs.pushed }}" = "true" ]; then
-            echo "::notice::README benchmark tables changed — open a PR from ${README_BRANCH}: ${COMPARE}"
-            {
-              echo "### README benchmark tables updated"
-              echo ""
-              echo "Pushed to \`${README_BRANCH}\`. Actions cannot open PRs in this repository, so review and merge it here:"
-              echo ""
-              echo "[Open pull request]($COMPARE)"
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::README benchmark tables changed but the branch could not be pushed; update README.md by hand."
-            {
-              echo "### README branch could not be pushed"
-              echo ""
-              echo "Benchmarks ran and compared successfully; only publishing the README diff failed."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+      # The README's benchmark tables are maintained by hand, on purpose.
+      #
+      # That table is a *same-session* comparison — Abies and Blazor measured on
+      # the same machine in the same sitting — which is the only reason its
+      # Delta column means anything. Blazor is not run in CI, so an automated
+      # update could only replace the Abies column with numbers from a shared
+      # runner while leaving Blazor's local numbers in place. It did exactly
+      # that once: Create 1,000 rows went from 119.5ms (+34% vs Blazor) to
+      # 331.8ms (+291%), which measured the gap between a CI runner and a
+      # laptop and attributed it to the framework.
+      #
+      # CI's valid contribution is the Abies-over-time trend, which is published
+      # to gh-pages above and is unaffected by this. Refresh the README with a
+      # local same-session run using scripts/update-readme-benchmarks.py.
 
       - name: Copy results to workspace for upload
         if: always() && steps.should-run.outputs.run == 'true'
