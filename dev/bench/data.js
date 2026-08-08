@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786199025226,
+  "lastUpdate": 1786199028294,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12008,6 +12008,192 @@ window.BENCHMARK_DATA = {
             "value": 26024,
             "unit": "bytes",
             "extra": "Gen0: 203.0000, Gen1: 16.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b4a3d762f262fef926180626a8b96b12b408a423",
+          "message": "feat(packaging): Publish Testing, Testing.Visual, UI and Cli\n\nThese four projects carried PackageId metadata but were never in release.yml,\nso they were never published — while docs/guides/testing.md documented\nPicea.Abies.Testing's API as if it were installable.\n\nTesting is split before publishing rather than after. Playwright and\nSixLabors.ImageSharp were used by exactly one file,\nTestHarnessVisualExtensions.cs; TestHarness itself needs only System.Text.Json.\nShipping them together would have put a browser automation library and an\nimaging library into every headless program test, and ImageSharp 3.x is under\nthe Six Labors Split License — free for open source and small organisations,\npaid above a revenue threshold — which consumers would have inherited under an\nApache-2.0 package without it being visible on the package page.\n\nSo:\n\n  Picea.Abies.Testing         -> Picea.Abies only\n  Picea.Abies.Testing.Visual  -> Testing + Playwright + ImageSharp\n\nThe types keep the Picea.Abies.Testing namespace, so the split is\nsource-compatible: consumers add a package reference, they do not edit code.\nThe licence obligation is stated in the Visual package's own Description and in\nthe testing guide, where someone deciding whether to take the dependency will\nsee it.\n\nA first publish is the cheapest moment to get a dependency graph right; after\nit, removing a dependency breaks anyone who relied on it.\n\nAll four gained the metadata the other packages already have — title,\ndescription, authors, tags, licence, repository. Cli's tags claimed\n\"testing;visual-regression;playwright;snapshot\" for what is a baseline\nmanagement tool, and its description did not mention that it installs an\n`abies` command.\n\nVerified by packing each locally:\n\n  Testing        lib/net10.0 + XML docs, one dependency\n  Testing.Visual three dependencies as intended\n  UI             lib + contentFiles wwwroot assets\n  Cli            tools/net10.0/any/ with DotnetToolSettings.xml\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T16:09:40+02:00",
+          "tree_id": "a5dc8ad9c4e29c073c33e3306efddc7cd7f97de9",
+          "url": "https://github.com/Picea/Abies/commit/b4a3d762f262fef926180626a8b96b12b408a423"
+        },
+        "date": 1786199027508,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 784,
+            "unit": "bytes",
+            "extra": "Gen0: 12.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 40.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 328,
+            "unit": "bytes",
+            "extra": "Gen0: 41.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 23.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 45.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1448,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 808,
+            "unit": "bytes",
+            "extra": "Gen0: 101.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 10304,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 71280,
+            "unit": "bytes",
+            "extra": "Gen0: 69.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1264,
+            "unit": "bytes",
+            "extra": "Gen0: 79.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9720,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000, Gen1: 2.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4816,
+            "unit": "bytes",
+            "extra": "Gen0: 75.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRows",
+            "value": 1154031,
+            "unit": "bytes",
+            "extra": "Gen0: 171.0000, Gen1: 171.0000, Gen2: 171.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 1051825,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 146.0000, Gen2: 146.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 184,
+            "unit": "bytes",
+            "extra": "Gen0: 184.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 272,
+            "unit": "bytes",
+            "extra": "Gen0: 136.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 2320,
+            "unit": "bytes",
+            "extra": "Gen0: 145.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 11504,
+            "unit": "bytes",
+            "extra": "Gen0: 180.0000, Gen1: 7.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 19224,
+            "unit": "bytes",
+            "extra": "Gen0: 150.0000, Gen1: 10.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 464,
+            "unit": "bytes",
+            "extra": "Gen0: 232.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 1240,
+            "unit": "bytes",
+            "extra": "Gen0: 155.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2808,
+            "unit": "bytes",
+            "extra": "Gen0: 176.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 26024,
+            "unit": "bytes",
+            "extra": "Gen0: 101.0000, Gen1: 8.0000"
           }
         ]
       }
