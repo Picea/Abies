@@ -123,19 +123,19 @@ def convert_to_benchmark_format(results: list[dict], memory_only: bool = False) 
         # CPU benchmarks (01-09)
         "01_run1k": "create 1000 rows",
         "02_replace1k": "replace all 1000 rows",
-        "03_update10th1k": "update every 10th row",
+        "03_update10th1k_x16": "update every 10th row",
         "04_select1k": "select row",
         "05_swap1k": "swap two rows",
         "06_remove-one-1k": "remove one row",
         "07_create10k": "create 10,000 rows",
         "08_create1k-after1k_x2": "append 1000 rows",
-        "09_clear1k": "clear all rows",
+        "09_clear1k_x8": "clear all rows",
         # Memory benchmarks (21-26)
         "21_ready-memory": "ready memory",
         "22_run-memory": "run memory",
         "23_update5-memory": "update5 memory",
         "24_replace5-memory": "replace5 memory",
-        "25_clear-memory": "clear memory",
+        "25_run-clear-memory": "clear memory",
         "26_run-clear-memory": "run-clear memory",
         # Startup benchmarks (31-34)
         "31_startup-ci": "startup time",

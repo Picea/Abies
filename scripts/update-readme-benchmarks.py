@@ -32,19 +32,19 @@ from pathlib import Path
 DURATION_BENCHMARKS = [
     ("01_run1k", "Create 1,000 rows"),
     ("02_replace1k", "Replace 1,000 rows"),
-    ("03_update10th1k", "Update every 10th row ×16"),
+    ("03_update10th1k_x16", "Update every 10th row ×16"),
     ("04_select1k", "Select row"),
     ("05_swap1k", "Swap rows"),
     ("06_remove-one-1k", "Remove row"),
     ("07_create10k", "Create 10,000 rows"),
     ("08_create1k-after1k_x2", "Append 1,000 rows"),
-    ("09_clear1k", "Clear 1,000 rows ×8"),
+    ("09_clear1k_x8", "Clear 1,000 rows ×8"),
 ]
 
 MEMORY_BENCHMARKS = [
     ("21_ready-memory", "Ready memory"),
     ("22_run-memory", "Run memory"),
-    ("25_clear-memory", "Clear memory"),
+    ("25_run-clear-memory", "Clear memory"),
 ]
 
 
