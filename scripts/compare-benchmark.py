@@ -156,23 +156,59 @@ def load_baseline(baseline_path: Path) -> dict[str, float]:
         return {}
 
 
-def save_baseline(baseline_path: Path, results: dict[str, BenchmarkResult]) -> None:
-    """Save current results as new baseline."""
+# Weight given to the newest run when folding it into the baseline. Shared CI
+# runners are noisy enough that a single run is a poor estimate of true
+# performance: across four consecutive runs of identical framework code,
+# 01_run1k ranged 249.6-334.1ms (34%) and 07_create10k 2341.5-3335.2ms (42%).
+# Overwriting the baseline with one run therefore latched onto whichever sample
+# happened to be fastest, and every subsequent run looked like a regression.
+# Blending converges on the central tendency over a few runs while still
+# tracking genuine changes.
+BASELINE_SMOOTHING = 0.3
+
+
+def save_baseline(
+    baseline_path: Path,
+    results: dict[str, BenchmarkResult],
+    previous: dict[str, float] | None = None,
+) -> None:
+    """
+    Fold the current results into the baseline as an exponential moving average,
+    so the stored value is an estimate rather than the last sample.
+    """
     baseline_path.parent.mkdir(parents=True, exist_ok=True)
+    previous = previous or {}
+
+    benchmarks: dict[str, float] = {}
+    for name, result in results.items():
+        prior = previous.get(name)
+        if prior is None:
+            # First sighting of this benchmark — nothing to blend with.
+            benchmarks[name] = result.median
+        else:
+            benchmarks[name] = round(
+                BASELINE_SMOOTHING * result.median + (1 - BASELINE_SMOOTHING) * prior, 1
+            )
+
+    # Keep benchmarks that this run did not measure, so a partial run cannot
+    # silently drop metrics from the baseline.
+    for name, value in previous.items():
+        benchmarks.setdefault(name, value)
 
     data = {
         "version": "1.0",
         "framework": "abies",
-        "benchmarks": {
-            name: result.median
-            for name, result in results.items()
-        }
+        "smoothing": BASELINE_SMOOTHING,
+        "benchmarks": benchmarks,
     }
 
     with open(baseline_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    print(f"✅ Baseline saved to {baseline_path}")
+    blended = sum(1 for n in results if n in previous)
+    print(f"✅ Baseline saved to {baseline_path} "
+          f"({blended} value(s) blended at {BASELINE_SMOOTHING:.0%}, "
+          f"{len(benchmarks) - blended} carried or new)")
 
 
 def compare_results(
@@ -285,7 +321,7 @@ def main():
 
     # Update baseline mode
     if args.update_baseline:
-        save_baseline(args.baseline, results)
+        save_baseline(args.baseline, results, previous=load_baseline(args.baseline))
         return
 
     # Compare mode
