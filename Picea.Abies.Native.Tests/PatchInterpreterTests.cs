@@ -156,8 +156,10 @@ public class PatchInterpreterTests
         var (interpreter, _) = Create();
         interpreter.Apply(Operations.Diff(null, ClickableButton()));
 
-        Exception? reported = null;
-        interpreter.Faulted = ex => reported = ex;
+        // Signalled rather than slept on: the fault arrives on another thread,
+        // and a fixed delay is a race that a loaded CI runner loses.
+        var reported = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        interpreter.Faulted = ex => reported.TrySetResult(ex);
         interpreter.Dispatch = async _ =>
         {
             await Task.Yield();
@@ -165,10 +167,10 @@ public class PatchInterpreterTests
         };
 
         interpreter.OnNativeEvent("b1", "Click", null);
-        await Task.Delay(50);
+        var fault = await reported.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        await Assert.That(reported).IsTypeOf<InvalidOperationException>();
-        await Assert.That(reported!.Message).IsEqualTo("update blew up");
+        await Assert.That(fault).IsTypeOf<InvalidOperationException>();
+        await Assert.That(fault.Message).IsEqualTo("update blew up");
     }
 
     [Test]
@@ -194,10 +196,18 @@ public class PatchInterpreterTests
 
         Exception? reported = null;
         interpreter.Faulted = ex => reported = ex;
-        interpreter.Dispatch = _ => ValueTask.CompletedTask;
+
+        // Wait on the dispatch itself rather than on the clock, so the assertion
+        // runs after the work it is about.
+        var dispatched = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        interpreter.Dispatch = _ =>
+        {
+            dispatched.TrySetResult();
+            return ValueTask.CompletedTask;
+        };
 
         interpreter.OnNativeEvent("b1", "Click", null);
-        await Task.Delay(50);
+        await dispatched.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         await Assert.That(reported).IsNull();
     }
@@ -212,11 +222,16 @@ public class PatchInterpreterTests
         var (interpreter, _) = Create();
         interpreter.Apply(Operations.Diff(null, ClickableButton()));
 
-        interpreter.Faulted = _ => throw new InvalidOperationException("handler is broken too");
+        var handlerRan = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        interpreter.Faulted = _ =>
+        {
+            handlerRan.TrySetResult();
+            throw new InvalidOperationException("handler is broken too");
+        };
         interpreter.Dispatch = _ => throw new InvalidOperationException("dispatch failed");
 
         interpreter.OnNativeEvent("b1", "Click", null);
-        await Task.Delay(50);
+        await handlerRan.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         // Reaching here without an unhandled exception is the assertion.
         await Assert.That(interpreter.ControlCount).IsEqualTo(1);
