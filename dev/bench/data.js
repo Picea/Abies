@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786198840005,
+  "lastUpdate": 1786199025226,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8826,6 +8826,192 @@ window.BENCHMARK_DATA = {
             "value": 7472.828686523438,
             "unit": "ns",
             "range": "± 103.52022335414942"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b4a3d762f262fef926180626a8b96b12b408a423",
+          "message": "feat(packaging): Publish Testing, Testing.Visual, UI and Cli\n\nThese four projects carried PackageId metadata but were never in release.yml,\nso they were never published — while docs/guides/testing.md documented\nPicea.Abies.Testing's API as if it were installable.\n\nTesting is split before publishing rather than after. Playwright and\nSixLabors.ImageSharp were used by exactly one file,\nTestHarnessVisualExtensions.cs; TestHarness itself needs only System.Text.Json.\nShipping them together would have put a browser automation library and an\nimaging library into every headless program test, and ImageSharp 3.x is under\nthe Six Labors Split License — free for open source and small organisations,\npaid above a revenue threshold — which consumers would have inherited under an\nApache-2.0 package without it being visible on the package page.\n\nSo:\n\n  Picea.Abies.Testing         -> Picea.Abies only\n  Picea.Abies.Testing.Visual  -> Testing + Playwright + ImageSharp\n\nThe types keep the Picea.Abies.Testing namespace, so the split is\nsource-compatible: consumers add a package reference, they do not edit code.\nThe licence obligation is stated in the Visual package's own Description and in\nthe testing guide, where someone deciding whether to take the dependency will\nsee it.\n\nA first publish is the cheapest moment to get a dependency graph right; after\nit, removing a dependency breaks anyone who relied on it.\n\nAll four gained the metadata the other packages already have — title,\ndescription, authors, tags, licence, repository. Cli's tags claimed\n\"testing;visual-regression;playwright;snapshot\" for what is a baseline\nmanagement tool, and its description did not mention that it installs an\n`abies` command.\n\nVerified by packing each locally:\n\n  Testing        lib/net10.0 + XML docs, one dependency\n  Testing.Visual three dependencies as intended\n  UI             lib + contentFiles wwwroot assets\n  Cli            tools/net10.0/any/ with DotnetToolSettings.xml\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T16:09:40+02:00",
+          "tree_id": "a5dc8ad9c4e29c073c33e3306efddc7cd7f97de9",
+          "url": "https://github.com/Picea/Abies/commit/b4a3d762f262fef926180626a8b96b12b408a423"
+        },
+        "date": 1786199024297,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 328.82050075531004,
+            "unit": "ns",
+            "range": "± 1.0456172198221254"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2134.599395479475,
+            "unit": "ns",
+            "range": "± 5.4783044231648"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 457.163882459913,
+            "unit": "ns",
+            "range": "± 0.8435766634128644"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 621.0903241084172,
+            "unit": "ns",
+            "range": "± 0.6308777842651493"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 432.25503999846325,
+            "unit": "ns",
+            "range": "± 0.6588510326665634"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 486.13888160999005,
+            "unit": "ns",
+            "range": "± 0.5055836441061813"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 466.67027184168495,
+            "unit": "ns",
+            "range": "± 0.9812974357611232"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 244.71257468632288,
+            "unit": "ns",
+            "range": "± 0.6519188931466899"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 842.0418024698894,
+            "unit": "ns",
+            "range": "± 2.0238067054660878"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 440.2470725695292,
+            "unit": "ns",
+            "range": "± 2.0268264137373015"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 753.5697269439697,
+            "unit": "ns",
+            "range": "± 3.9793862623967926"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5934.890855516706,
+            "unit": "ns",
+            "range": "± 38.96397580827483"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 41260.20388997396,
+            "unit": "ns",
+            "range": "± 159.02566896985064"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 848.9092487607684,
+            "unit": "ns",
+            "range": "± 1.888535921579474"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 6024.133848571777,
+            "unit": "ns",
+            "range": "± 14.315090068341359"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2899.697295633952,
+            "unit": "ns",
+            "range": "± 7.92300901344334"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRows",
+            "value": 885866.3764343262,
+            "unit": "ns",
+            "range": "± 62587.72910140685"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 794783.2451757812,
+            "unit": "ns",
+            "range": "± 47406.28114354383"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 45.37598257064819,
+            "unit": "ns",
+            "range": "± 0.44841384579353166"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 71.30801400343577,
+            "unit": "ns",
+            "range": "± 0.685033195784491"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 672.2739656448364,
+            "unit": "ns",
+            "range": "± 10.34671228709548"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2996.1440488179524,
+            "unit": "ns",
+            "range": "± 28.785343020254075"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4723.8996925354,
+            "unit": "ns",
+            "range": "± 44.25919835687441"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 114.57279597520828,
+            "unit": "ns",
+            "range": "± 1.07921323765755"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 326.5537913322449,
+            "unit": "ns",
+            "range": "± 5.712662163337779"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 810.2303438822429,
+            "unit": "ns",
+            "range": "± 6.786833798068382"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 8202.222248331705,
+            "unit": "ns",
+            "range": "± 74.21387831488"
           }
         ]
       }
