@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786178685576,
+  "lastUpdate": 1786185860469,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14020,6 +14020,84 @@ window.BENCHMARK_DATA = {
             "value": 53.4,
             "unit": "ms",
             "extra": "mean: 54.7ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "d01ca817c23469ac2b2acef81360881507e6f8ac",
+          "message": "fix(ci): Give Micro-Benchmarks the full history Nerdbank.GitVersioning needs\n\nThe job failed on main with:\n\n    Nerdbank.GitVersioning.GitException: Shallow clone lacks the objects\n    required to calculate version height. Use full clones or clones with a\n    history at least as deep as the last version height resetting change.\n    ---> An commit object with SHA f4260a7446... could not be found.\n\nIts checkout was the only one in the repo without fetch-depth: 0 — the other 23\nalready set it, including the e2e benchmark job in this same file. NBGV walks\nhistory to compute version height, so the default shallow clone cannot work.\n\nThe project itself is healthy: it builds clean locally, where history is\ncomplete.\n\nNote this job only runs on pushes to main, so a PR cannot exercise it; the fix\nis confirmed by the next main run.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T12:33:05+02:00",
+          "tree_id": "56f5dae9e53909445ade071b48639ed0ee62cb4b",
+          "url": "https://github.com/Picea/Abies/commit/d01ca817c23469ac2b2acef81360881507e6f8ac"
+        },
+        "date": 1786185860091,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 290.3,
+            "unit": "ms",
+            "extra": "mean: 291.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 296.6,
+            "unit": "ms",
+            "extra": "mean: 296.6ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 148,
+            "unit": "ms",
+            "extra": "mean: 147.4ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 28.3,
+            "unit": "ms",
+            "extra": "mean: 28.5ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 86.3,
+            "unit": "ms",
+            "extra": "mean: 89.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 59.5,
+            "unit": "ms",
+            "extra": "mean: 58.9ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2894.6,
+            "unit": "ms",
+            "extra": "mean: 2904.2ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 330.6,
+            "unit": "ms",
+            "extra": "mean: 332.8ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 58.5,
+            "unit": "ms",
+            "extra": "mean: 58.7ms, samples: 15"
           }
         ]
       }
