@@ -1,6 +1,6 @@
 # Abies (/ˈa.bi.eːs/)
 
-A full-stack **Model-View-Update (MVU)** framework for .NET — build interactive web applications with pure functions, from server-rendered HTML to client-side WebAssembly.
+A full-stack **Model-View-Update (MVU)** framework for .NET — build interactive applications with pure functions, from server-rendered HTML to client-side WebAssembly to native desktop controls.
 
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -11,17 +11,18 @@ A full-stack **Model-View-Update (MVU)** framework for .NET — build interactiv
 
 ## Why Abies?
 
-Abies brings the [Elm Architecture](https://guide.elm-lang.org/architecture/) to .NET with a twist: **one codebase, four render modes**. Write your UI as pure functions and deploy it however you need — static HTML, interactive server, client-side WASM, or auto (server-first with WASM handoff).
+Abies brings the [Elm Architecture](https://guide.elm-lang.org/architecture/) to .NET with a twist: **one codebase, web and native**. Write your model and update logic as pure functions, then render them as static HTML, over a server WebSocket, in client-side WASM — or against real WinUI 3 controls on the desktop.
 
 - **Pure functional architecture** — no side effects in your domain logic
 - **Virtual DOM** with efficient keyed diffing and binary batch patching
+- **Web and native from one core** — the same program drives the browser DOM and native controls; only `View` differs
 - **Type-safe routing** with C# pattern matching on URL segments
 - **Full-stack tracing** with OpenTelemetry (browser → server)
 - **Built on [Picea](https://github.com/Picea/Picea)** — the Mealy machine kernel that powers MVU, Event Sourcing, and Actor runtimes
 
 ## Render Modes
 
-Abies supports four render modes — the same spectrum as Blazor, but built on pure MVU:
+For the web, Abies supports four render modes — the same spectrum as Blazor, but built on pure MVU. ([Native](#native-winui-3) is a separate target, covered below.)
 
 | Mode | Initial HTML | Interactivity | Use Case |
 | --- | --- | --- | --- |
@@ -46,19 +47,37 @@ var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveWasm());
 var html = Page.Render<MyApp, MyModel, Unit>(new RenderMode.InteractiveAuto());
 ```
 
-### Native (WinUI 3)
+## Native (WinUI 3)
 
-The same program also renders to **real native controls**. `Picea.Abies.Native` interprets
-the existing patch stream against a control tree, and `Picea.Abies.WinUI` binds that to
-WinUI 3 — running on Windows App SDK, and cross-platform via Uno Platform's Skia heads.
+The same program also renders to **real native controls** — not a web view. `Picea.Abies.Native`
+interprets the existing patch stream against a control tree, and `Picea.Abies.WinUI` binds that
+to WinUI 3, running on Windows App SDK and cross-platform via Uno Platform's Skia heads.
+
+The core is shared verbatim. A native app supplies a `ProgramView` and pairs it with a
+`ProgramCore` you already have — the same class your web host uses:
 
 ```csharp
-// Share the core; supply only a native View.
+// Model, update, decisions and subscriptions come from CounterProgram;
+// only the View is platform-specific.
+public sealed class CounterView : ProgramView<CounterModel>
+{
+    public static Document View(CounterModel model) =>
+        new("Counter",
+            StackPanel([Spacing(12)],
+            [
+                TextBlock([FontSize(24)], model.Count.ToString()),
+                Button([OnClick(new Increment())], "+"),
+            ]));
+}
+
 await Picea.Abies.WinUI.Runtime.RunWithView<CounterProgram, CounterView, CounterModel, Unit>(
     rootHost, window, Unit.Value);
 ```
 
-See the [native apps guide](./docs/guides/native-apps.md).
+Both heads are built and render-smoke-tested in CI. See the
+[native apps guide](./docs/guides/native-apps.md), [ADR-027](./docs/adr/ADR-027-native-winui-renderer.md)
+for why it interprets patches rather than mapping HTML, and
+[ADR-028](./docs/adr/ADR-028-program-core-view-split.md) for the Core/View split.
 
 ## Quick Start
 
@@ -74,6 +93,16 @@ dotnet new abies-browser -n MyApp
 cd MyApp
 dotnet run
 ```
+
+```bash
+# Or a native desktop app (WinUI 3 via Uno Platform)
+dotnet new abies-native -n MyNativeApp
+
+cd MyNativeApp
+dotnet run
+```
+
+Available templates: `abies-browser`, `abies-browser-empty`, `abies-server`, `abies-native`.
 
 ### Counter Example
 
@@ -141,7 +170,11 @@ The `Apply` delegate is the seam between pure Abies core and platform-specific r
 | --- | --- |
 | **Browser** (`Picea.Abies.Browser`) | JS interop → mutate real DOM |
 | **Server** (`Picea.Abies.Server`) | Binary batch → WebSocket → client-side JS |
+| **Native** (`Picea.Abies.Native` + `Picea.Abies.WinUI`) | Interpret patches → mutate WinUI controls |
 | **Tests** | Capture patches for assertions |
+
+Native is a third implementation of that same delegate, which is why the core needed no
+changes to support it.
 
 ## Subscriptions
 
@@ -171,9 +204,10 @@ Latest same-session validation (2026-04-02, AC power, local main baseline):
 
 Details: [Render StringBuilder Pool Cap Validation (2026-04-02)](docs/investigations/render-stringbuilder-pool-cap-validation-2026-04-02.md)
 
-> **These tables are updated by hand, from a local same-session run.** Both
-> frameworks must be measured on the same machine in the same sitting, or the
-> Delta column compares machines rather than frameworks. CI tracks Abies over
+> **These tables are updated by hand, from a local same-session run**, and show the
+> Abies version they were measured against — which may lag the current release. Both
+> frameworks must be measured on the same machine in the same sitting, or the Delta
+> column compares machines rather than frameworks. CI tracks Abies over
 > time instead — see the [benchmark trends](https://picea.github.io/Abies/) —
 > and deliberately does not touch these tables. To refresh them, run both suites
 > locally and then `scripts/update-readme-benchmarks.py`.
@@ -254,8 +288,11 @@ dotnet run --project Picea.Abies.Conduit.Wasm.Host
 | `Picea.Abies.Browser` | Browser runtime — WASM host, JS interop, real DOM patching |
 | `Picea.Abies.Server` | Server runtime — SSR, websocket patch transport |
 | `Picea.Abies.Server.Kestrel` | Kestrel integration — WebSocket endpoints, static files |
-| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`, `abies-server`) |
-| `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time HTML checks |
+| `Picea.Abies.Native` | Native control vocabulary and platform-neutral patch interpreter — no UI framework dependency |
+| `Picea.Abies.WinUI` | WinUI 3 backend and bootstrap; Windows App SDK plus Uno Skia heads |
+| `Picea.Abies.Testing` | Headless test harness — drives programs with no renderer, replays sessions |
+| `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`, `abies-server`, `abies-native`) |
+| `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time HTML and native-tree checks |
 
 ### Sample Applications
 
@@ -264,6 +301,8 @@ dotnet run --project Picea.Abies.Conduit.Wasm.Host
 | `Picea.Abies.Counter` | Minimal counter example (shared logic) |
 | `Picea.Abies.Counter.Wasm` | Counter — WASM hosting |
 | `Picea.Abies.Counter.Server` | Counter — server-side hosting |
+| `Picea.Abies.Counter.Native` | Counter — native WinUI hosting, same core as the WASM and server apps |
+| `Picea.Abies.TaskTimer.Native` | Native sample exercising interval subscriptions, keyed list reordering and two-way input |
 | `Picea.Abies.Conduit` | RealWorld app — domain model |
 | `Picea.Abies.Conduit.App` | RealWorld app — MVU frontend |
 | `Picea.Abies.Conduit.Wasm.Host` | RealWorld app — WASM hosting |
@@ -280,6 +319,8 @@ dotnet run --project Picea.Abies.Conduit.Wasm.Host
 | `Picea.Abies.Benchmarks` | BenchmarkDotNet micro-benchmarks |
 | `contrib/js-framework-benchmark` | js-framework-benchmark entry point |
 | `Picea.Abies.Tests` | Unit tests |
+| `Picea.Abies.Native.Tests` | Native vocabulary and patch-interpreter tests (headless, no UI framework) |
+| `Picea.Abies.Analyzers.Tests` | Analyzer rule tests |
 | `Picea.Abies.Server.Tests` | Server runtime tests |
 | `Picea.Abies.Server.Kestrel.Tests` | Kestrel integration tests |
 | `Picea.Abies.Conduit.Testing.E2E` | End-to-end Playwright tests |
@@ -306,6 +347,9 @@ See [Tutorial 8: Tracing](./docs/tutorials/08-tracing.md) for a full walkthrough
 
 - .NET 10 SDK or later
 - A modern browser with WebAssembly support (for WASM mode)
+- For native apps: nothing extra to install — the Uno SDK is restored on first build.
+  The Uno Skia desktop head builds on Windows, macOS and Linux; the **Windows App SDK
+  head (real WinUI 3) only builds on Windows**, and is added automatically there.
 
 ## Building
 
@@ -329,7 +373,6 @@ See the [docs](./docs/) folder for comprehensive documentation:
 
 - [MVU Architecture](./docs/concepts/mvu-architecture.md)
 - [Render Modes](./docs/concepts/render-modes.md) — Static, Server, WASM, Auto
-- [Native Apps](./docs/guides/native-apps.md) — rendering to WinUI 3 controls
 - [Virtual DOM](./docs/concepts/virtual-dom.md)
 - [Commands & Effects](./docs/concepts/commands-effects.md)
 - [Subscriptions](./docs/concepts/subscriptions.md)
@@ -348,6 +391,7 @@ See the [docs](./docs/) folder for comprehensive documentation:
 
 ### Guides
 
+- [Building Native Apps](./docs/guides/native-apps.md) — WinUI 3 controls, sharing a core across web and native
 - [Testing](./docs/guides/testing.md)
 - [Debugging](./docs/guides/debugging.md)
 - [Performance](./docs/guides/performance.md)
