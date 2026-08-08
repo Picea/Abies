@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786178683427,
+  "lastUpdate": 1786178685576,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15394,6 +15394,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "25_run-clear-memory (clear memory)",
             "value": 59.3661470413208,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "f7fc0349647d040c416fba41d1ea18ec4473e8d8",
+          "message": "fix(ci): Don't fail the benchmark job when the README PR can't be opened\n\nThe benchmark pipeline now runs clean end to end — install, run, compare (no\nregressions), baseline refresh — and then failed the job on this:\n\n    GitHub Actions is not permitted to create or approve pull requests.\n\nThat is the repository setting \"Allow GitHub Actions to create and approve pull\nrequests\", not anything about performance. Failing the benchmark check over it\nreports a permissions gap as a performance problem, which is exactly the kind\nof misattribution that teaches people to ignore a red benchmark.\n\nOpening the README PR is a convenience step after the measuring is done, so it\nis now continue-on-error, followed by a step that says plainly what to enable —\nas a workflow warning and in the job summary — so the gap stays visible instead\nof being silently swallowed.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T10:33:40+02:00",
+          "tree_id": "1583927b84735bc84f61d07cb760421fe469514f",
+          "url": "https://github.com/Picea/Abies/commit/f7fc0349647d040c416fba41d1ea18ec4473e8d8"
+        },
+        "date": 1786178685251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.1286039352417,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.020721435546875,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.352638244628906,
             "unit": "MB",
             "extra": "mean: 59.4MB, samples: 1"
           }
