@@ -6,6 +6,9 @@
 // including the boundaries where off-by-one errors show up as blank rows.
 // =============================================================================
 
+using Picea.Abies.DOM;
+using Picea.Abies.Native.Rendering;
+
 namespace Picea.Abies.Native.Tests;
 
 public class VirtualizationTests
@@ -127,6 +130,38 @@ public class VirtualizationTests
         var zero = Virtualization.Window(10_000, RowHeight, 100 * RowHeight, 400, overscan: 0);
 
         await Assert.That(negative).IsEqualTo(zero);
+    }
+
+    /// <summary>
+    /// Scrolling by one row should recycle the overlap: only the row entering
+    /// the window is created. If this regresses, windowing degrades into
+    /// rebuilding the whole visible list on every scroll event.
+    /// </summary>
+    [Test]
+    public async Task ScrollingOneRow_OnlyCreatesTheEnteringRow()
+    {
+        var backend = new FakeBackend();
+        var interpreter = new PatchInterpreter<FakeControl>(backend);
+
+        static Element Rows(ListWindow w) =>
+            (Element)Elements.StackPanel([Properties.Id("list")],
+            [
+                .. Enumerable.Range(w.StartIndex, w.Count).Select(i =>
+                    Elements.TextBlock([Properties.Id($"row-{i}"), Properties.Key($"k{i}")], $"item {i}")),
+            ]);
+
+        var before = Rows(Virtualization.Window(10_000, RowHeight, 0, 400, overscan: 0));
+        var after = Rows(Virtualization.Window(10_000, RowHeight, RowHeight, 400, overscan: 0));
+
+        interpreter.Apply(Operations.Diff(null, before));
+        var createdAfterFirstRender = backend.AllCreated.Count;
+
+        interpreter.Apply(Operations.Diff(before, after));
+        var createdByScrolling = backend.AllCreated.Count - createdAfterFirstRender;
+
+        // One row leaves the top, one enters the bottom; everything between is reused.
+        await Assert.That(createdByScrolling).IsEqualTo(1)
+            .Because("scrolling one row should build one row, not rebuild the window");
     }
 
     /// <summary>The point of the exercise: control count tracks the viewport, not the data.</summary>

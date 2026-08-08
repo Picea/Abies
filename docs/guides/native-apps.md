@@ -175,17 +175,59 @@ The two spacers are what keep the scrollbar honest — without them it would siz
 the handful of rendered rows. Keys still matter: rows entering and leaving the window are
 reconciled by key, so scrolling moves controls rather than rebuilding them.
 
-**What this is and isn't.** This is *windowing*: the control count is bounded by the
-viewport, which is the difference between a 50,000-row list being impossible and being
-usable. It is not *container recycling* — rows are created and destroyed as they scroll in
-and out rather than reused, so scrolling does more work than a WinUI `ItemsRepeater`
-would. Recycling needs the patch interpreter to keep a shadow of unrealized rows so
-patches aimed at off-screen items are not lost, which is a larger change; see the
-[production-readiness plan](../investigations/winui-native-production-readiness.md).
+**Keys do most of what recycling would.** Because rows are keyed, scrolling reuses the
+overlap: scroll by one row and the diff creates exactly one control and destroys one,
+moving the other nineteen. Churn is proportional to rows *scrolled*, not to window size —
+there is a test asserting precisely that. A WinUI `ItemsRepeater` would go one step
+further and reuse the container itself, saving that single construction, but the large win
+— thousands of controls down to a viewport's worth — is already here.
 
 `Properties.VerticalOffset` scrolls the control programmatically, for cases like jumping
 to a search result. It skips identical writes so a scroll-driven model does not fight the
 user mid-gesture.
+
+## Theming
+
+A literal colour is wrong in one of the two themes. WinUI already ships semantic brushes
+that follow light and dark, so the theme story is "use the platform's":
+
+```csharp
+TextBlock([Foreground(ThemeColor.TextSecondary)], "Last updated 3m ago")
+Border([Background(ThemeColor.SurfaceCard), BorderBrush(ThemeColor.Stroke)], content)
+Button([Background(ThemeColor.Critical), OnClick(new Delete())], "Delete")
+```
+
+Roles: `TextPrimary`, `TextSecondary`, `TextDisabled`, `Accent`, `SurfaceBase`,
+`SurfaceCard`, `Stroke`, `Success`, `Caution`, `Critical`. The string overloads still take
+literal colours where you genuinely want one.
+
+A theme key the platform does not define leaves the property at its default and reports
+through `renderFaulted` rather than throwing — a missing brush is a styling problem, not a
+reason to lose a window.
+
+## Accessibility
+
+Controls with visible text — `Button`, `CheckBox`, `TextBlock` — already expose it to
+assistive technology. The ones that need help are those without: an icon-only button, a
+`TextBox` with no adjacent label, a `Slider`.
+
+```csharp
+Button([AutomationName("Delete item"), AutomationHelpText("Removes this row"),
+        OnClick(new Delete(id))], "🗑")
+
+TextBox([AutomationName("Search"), PlaceholderText("Search…"),
+         OnTextChanged(d => new QueryChanged(d!.Text))])
+```
+
+`AccessibilityHidden(true)` removes a control from the accessibility tree — for decoration
+only, never for something the user must reach.
+
+Automation peers work: the TaskTimer sample's CI interaction check drives buttons through
+`IInvokeProvider`, which is the same tree a screen reader reads.
+
+> **Not yet done:** there has been no audit against a real screen reader. These properties
+> make correct names *possible*; they do not prove any particular view is usable. Treat
+> that as open work.
 
 ## Handling failures
 
@@ -226,6 +268,6 @@ sees the desktop head alone. Both are built and render-smoke-tested in CI.
 
 - Long lists are handled by windowing (`Virtualization.Window`), not container recycling —
   rows are created and destroyed as they scroll rather than reused.
-- Styling is direct property assignment; there is no theme-resource mapping yet.
-- No accessibility/automation-peer pass.
+- Accessibility: automation names are supported, but no audit against a real screen
+  reader has been done.
 - `Document.Head` is a no-op; `Document.Title` maps to the window title.

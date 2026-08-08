@@ -45,11 +45,12 @@ public static class Runtime
         where TProgram : Program<TModel, TArgument>
     {
         var dispatcherQueue = rootHost.DispatcherQueue;
-        var backend = new WinUIBackend(rootHost);
-        var patchInterpreter = new PatchInterpreter<FrameworkElement>(backend);
 
         void Report(Exception exception) =>
             (renderFaulted ?? DefaultRenderFaulted).Invoke(exception);
+
+        var backend = new WinUIBackend(rootHost, brushFaulted: Report);
+        var patchInterpreter = new PatchInterpreter<FrameworkElement>(backend);
 
         Runtime<TProgram, TModel, TArgument>? runtime = null;
         patchInterpreter.Dispatch = async message =>

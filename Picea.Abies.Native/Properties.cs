@@ -138,9 +138,20 @@ public static class Properties
     public static DOM.Attribute Foreground(string color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Foreground", color, id);
 
+    /// <summary>
+    /// Foreground from the platform theme, so it follows light and dark.
+    /// Prefer this over a literal colour, which is necessarily wrong in one theme.
+    /// </summary>
+    public static DOM.Attribute Foreground(ThemeColor color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("Foreground", Theme.Encode(color), id);
+
     /// <summary>Background color: "#RRGGBB", "#AARRGGBB", or a named color.</summary>
     public static DOM.Attribute Background(string color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Background", color, id);
+
+    /// <summary>Background from the platform theme, so it follows light and dark.</summary>
+    public static DOM.Attribute Background(ThemeColor color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("Background", Theme.Encode(color), id);
 
     public static DOM.Attribute CornerRadius(double uniform, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("CornerRadius", Num(uniform), id);
@@ -151,6 +162,10 @@ public static class Properties
     /// <summary>Border brush color: "#RRGGBB", "#AARRGGBB", or a named color.</summary>
     public static DOM.Attribute BorderBrush(string color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("BorderBrush", color, id);
+
+    /// <summary>Border brush from the platform theme, so it follows light and dark.</summary>
+    public static DOM.Attribute BorderBrush(ThemeColor color, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("BorderBrush", Theme.Encode(color), id);
 
     public static DOM.Attribute Opacity(double value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Opacity", Num(value), id);
@@ -207,6 +222,34 @@ public static class Properties
     /// </summary>
     public static DOM.Attribute VerticalOffset(double value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("VerticalOffset", Num(value), id);
+
+    // =========================================================================
+    // Accessibility
+    // =========================================================================
+    // Controls with visible text — Button, CheckBox, TextBlock — already expose
+    // that text to assistive technology. These are for the ones that do not: an
+    // icon-only button, a TextBox with no adjacent label, a Slider.
+
+    /// <summary>
+    /// The name assistive technology announces for this control. Required for
+    /// controls with no visible text of their own.
+    /// </summary>
+    public static DOM.Attribute AutomationName(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("AutomationName", value, id);
+
+    /// <summary>
+    /// Supplementary description announced after the name — the equivalent of a
+    /// tooltip for assistive technology. Use for hints, not for the name itself.
+    /// </summary>
+    public static DOM.Attribute AutomationHelpText(string value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("AutomationHelpText", value, id);
+
+    /// <summary>
+    /// Hides a control from assistive technology. For decoration only — never
+    /// for something the user must be able to reach.
+    /// </summary>
+    public static DOM.Attribute AccessibilityHidden(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("AccessibilityHidden", value ? "True" : "False", id);
 
     /// <summary>ToggleSwitch state (pair with OnToggled).</summary>
     public static DOM.Attribute IsOn(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
