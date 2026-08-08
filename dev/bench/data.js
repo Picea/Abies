@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786193359756,
+  "lastUpdate": 1786193486829,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8640,6 +8640,192 @@ window.BENCHMARK_DATA = {
             "value": 8496.40782063802,
             "unit": "ns",
             "range": "± 43.75916376902074"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "5cd4b60fac40fc8e61f65567d984f13fc89e69cb",
+          "message": "ci(benchmark): Stop auto-updating the README comparison tables\n\nThe README's benchmark tables are a same-session comparison — Abies and Blazor\nmeasured on the same machine in the same sitting — and that is the only reason\nthe Delta column means anything. The README says so, and so does\nblazor-baseline.json (\"Blazor is not run in CI\").\n\nCI cannot produce a comparable figure. Blazor is not run there, so the automated\nupdate could only replace the Abies column with shared-runner numbers while\nleaving Blazor's local numbers in place. On its first successful run it did\nexactly that: Create 1,000 rows went from 119.5ms (+34% vs Blazor) to 331.8ms\n(+291%), and Create 10,000 rows from +47% to +336%. Those deltas are the gap\nbetween a CI runner and a laptop, reported as if the framework had regressed by\n4x. Publishing them would have been worse than publishing nothing.\n\nThe three README steps are removed, with the reasoning left in the workflow so\nnobody re-adds them. CI's valid contribution is unaffected: the Abies-over-time\ntrend still publishes to gh-pages, and the regression gate still compares\nCI against CI.\n\nupdate-readme-benchmarks.py stays as a local tool and now says loudly that it\nmust not be run against CI results. The README gains a note explaining that the\ntables are maintained by hand and why.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T14:39:31+02:00",
+          "tree_id": "e02fad1009bc4fbd170dd68eb1f378b123eae13e",
+          "url": "https://github.com/Picea/Abies/commit/5cd4b60fac40fc8e61f65567d984f13fc89e69cb"
+        },
+        "date": 1786193486012,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 341.98369574546814,
+            "unit": "ns",
+            "range": "± 0.6443373281838682"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2042.815628345196,
+            "unit": "ns",
+            "range": "± 3.3478668171264543"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 440.0532489189735,
+            "unit": "ns",
+            "range": "± 1.5307654579934575"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 618.6644180615743,
+            "unit": "ns",
+            "range": "± 0.9562272566080896"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 428.37771253585817,
+            "unit": "ns",
+            "range": "± 1.1848198843269084"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 428.2179352215358,
+            "unit": "ns",
+            "range": "± 1.2772294569159766"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 452.6260716574533,
+            "unit": "ns",
+            "range": "± 1.437182814645147"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 224.69886735280355,
+            "unit": "ns",
+            "range": "± 1.7511866194543664"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 787.0609966278076,
+            "unit": "ns",
+            "range": "± 6.684620263133768"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 419.4392176946004,
+            "unit": "ns",
+            "range": "± 4.609376301094191"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 704.5446696599324,
+            "unit": "ns",
+            "range": "± 6.9116847652681725"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5710.356349945068,
+            "unit": "ns",
+            "range": "± 65.11644092646543"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 38799.68967081706,
+            "unit": "ns",
+            "range": "± 293.45378662883525"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 830.2541794410118,
+            "unit": "ns",
+            "range": "± 6.392218410772753"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5758.257920485276,
+            "unit": "ns",
+            "range": "± 17.206522987629693"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 3184.1645111083985,
+            "unit": "ns",
+            "range": "± 11.97925715068669"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRows",
+            "value": 926562.83984375,
+            "unit": "ns",
+            "range": "± 7225.413846755649"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 695421.7729867789,
+            "unit": "ns",
+            "range": "± 2947.548206244258"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 41.49501801956268,
+            "unit": "ns",
+            "range": "± 1.02462614638561"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 63.78380998770396,
+            "unit": "ns",
+            "range": "± 0.814129685896308"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 623.3696085082161,
+            "unit": "ns",
+            "range": "± 13.048128719737342"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2654.2834881373815,
+            "unit": "ns",
+            "range": "± 26.08110576333847"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4683.051882062639,
+            "unit": "ns",
+            "range": "± 38.205871204409064"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 103.09030980723244,
+            "unit": "ns",
+            "range": "± 0.9632524632200345"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 294.14571290545996,
+            "unit": "ns",
+            "range": "± 6.000005347595456"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 732.8587218693325,
+            "unit": "ns",
+            "range": "± 8.838200195662074"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7472.828686523438,
+            "unit": "ns",
+            "range": "± 103.52022335414942"
           }
         ]
       }
