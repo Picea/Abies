@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786190927689,
+  "lastUpdate": 1786191059089,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -8454,6 +8454,192 @@ window.BENCHMARK_DATA = {
             "value": 7759.563861592611,
             "unit": "ns",
             "range": "± 90.12310535308009"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "732e528ea7c24b62434e977872c2276f820b9406",
+          "message": "ci(benchmark): Publish README updates as a branch, not a PR\n\nCreating pull requests from Actions is disabled in this repository, and staying\nthat way is a reasonable posture — so the workflow should not depend on it.\npeter-evans/create-pull-request is replaced with a plain branch push.\n\nPushing a branch needs only the contents: write this workflow already uses to\npublish baselines and trends to gh-pages, so no new permission is involved and\nnothing has to be turned on. The maintainer gets a ready-to-review diff on\nbenchmark/readme-auto-update plus a one-click compare link in the job summary,\nand opens the PR themselves — which is where the human review was going to\nhappen anyway.\n\nDetails worth noting:\n\n  - Only README.md is committed. The workspace also holds benchmark artifacts at\n    that point, and they must not be swept into the commit.\n  - The push is forced. That branch is regenerated from main on every run and is\n    not intended to be worked on by hand.\n  - An unchanged README skips the push entirely rather than creating an empty\n    branch, and says so in the summary.\n  - Publishing stays continue-on-error with an explicit warning. The job's\n    purpose is measuring; a failure to publish a docs diff should not be\n    reported as a performance regression.\n\npull-requests: write is left in place — comment-on-alert may still need it, and\ntrimming it is not worth a speculative regression.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T13:57:37+02:00",
+          "tree_id": "56a071fed67c00b7cfa94cf597b8995b46a93f34",
+          "url": "https://github.com/Picea/Abies/commit/732e528ea7c24b62434e977872c2276f820b9406"
+        },
+        "date": 1786191058449,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 345.32660245895386,
+            "unit": "ns",
+            "range": "± 0.763927236169634"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2231.459383646647,
+            "unit": "ns",
+            "range": "± 4.872404694528256"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 455.45867048899333,
+            "unit": "ns",
+            "range": "± 0.5295914086814467"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 630.3794560750325,
+            "unit": "ns",
+            "range": "± 0.6829328381162156"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 474.24898074223444,
+            "unit": "ns",
+            "range": "± 0.3809667230765012"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 482.8280037244161,
+            "unit": "ns",
+            "range": "± 0.666313872083838"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 482.0744389216105,
+            "unit": "ns",
+            "range": "± 1.0544257769796128"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 225.1404299225126,
+            "unit": "ns",
+            "range": "± 0.5579822117170171"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 722.8737276622227,
+            "unit": "ns",
+            "range": "± 4.02382151393503"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 403.9769692738851,
+            "unit": "ns",
+            "range": "± 3.5899500036470724"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 645.7334909439087,
+            "unit": "ns",
+            "range": "± 4.105023646999956"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 4751.502769978842,
+            "unit": "ns",
+            "range": "± 41.321236253497624"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 34955.1423055013,
+            "unit": "ns",
+            "range": "± 369.13982046389395"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 813.1562126704624,
+            "unit": "ns",
+            "range": "± 1.665223388970904"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5067.668100629534,
+            "unit": "ns",
+            "range": "± 17.517428137306293"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2386.059735979353,
+            "unit": "ns",
+            "range": "± 9.147634894196148"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRows",
+            "value": 841285.5181640625,
+            "unit": "ns",
+            "range": "± 82606.20664151142"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 742946.2362788037,
+            "unit": "ns",
+            "range": "± 53165.73503142684"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 48.31217925945918,
+            "unit": "ns",
+            "range": "± 0.6220193960540564"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 75.68539154529572,
+            "unit": "ns",
+            "range": "± 0.6883319976364588"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 716.166849899292,
+            "unit": "ns",
+            "range": "± 8.99076994214461"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 3393.020620981852,
+            "unit": "ns",
+            "range": "± 16.775063945315846"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 5300.341266087124,
+            "unit": "ns",
+            "range": "± 34.91308615710811"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 120.42046616872152,
+            "unit": "ns",
+            "range": "± 0.6955193162745523"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 351.19518585205077,
+            "unit": "ns",
+            "range": "± 2.1827082695965174"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 850.5504165013631,
+            "unit": "ns",
+            "range": "± 7.987458623811356"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 8496.40782063802,
+            "unit": "ns",
+            "range": "± 43.75916376902074"
           }
         ]
       }
