@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786185975402,
+  "lastUpdate": 1786190925347,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14470,6 +14470,84 @@ window.BENCHMARK_DATA = {
             "value": 58.5,
             "unit": "ms",
             "extra": "mean: 58.7ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "732e528ea7c24b62434e977872c2276f820b9406",
+          "message": "ci(benchmark): Publish README updates as a branch, not a PR\n\nCreating pull requests from Actions is disabled in this repository, and staying\nthat way is a reasonable posture — so the workflow should not depend on it.\npeter-evans/create-pull-request is replaced with a plain branch push.\n\nPushing a branch needs only the contents: write this workflow already uses to\npublish baselines and trends to gh-pages, so no new permission is involved and\nnothing has to be turned on. The maintainer gets a ready-to-review diff on\nbenchmark/readme-auto-update plus a one-click compare link in the job summary,\nand opens the PR themselves — which is where the human review was going to\nhappen anyway.\n\nDetails worth noting:\n\n  - Only README.md is committed. The workspace also holds benchmark artifacts at\n    that point, and they must not be swept into the commit.\n  - The push is forced. That branch is regenerated from main on every run and is\n    not intended to be worked on by hand.\n  - An unchanged README skips the push entirely rather than creating an empty\n    branch, and says so in the summary.\n  - Publishing stays continue-on-error with an explicit warning. The job's\n    purpose is measuring; a failure to publish a docs diff should not be\n    reported as a performance regression.\n\npull-requests: write is left in place — comment-on-alert may still need it, and\ntrimming it is not worth a speculative regression.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T13:57:37+02:00",
+          "tree_id": "56a071fed67c00b7cfa94cf597b8995b46a93f34",
+          "url": "https://github.com/Picea/Abies/commit/732e528ea7c24b62434e977872c2276f820b9406"
+        },
+        "date": 1786190924987,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 331.8,
+            "unit": "ms",
+            "extra": "mean: 333.4ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 340.6,
+            "unit": "ms",
+            "extra": "mean: 340.4ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 170,
+            "unit": "ms",
+            "extra": "mean: 170.2ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29,
+            "unit": "ms",
+            "extra": "mean: 28.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 75,
+            "unit": "ms",
+            "extra": "mean: 75.2ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 53.9,
+            "unit": "ms",
+            "extra": "mean: 54.2ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3342.4,
+            "unit": "ms",
+            "extra": "mean: 3340.5ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 367,
+            "unit": "ms",
+            "extra": "mean: 368.4ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 49.2,
+            "unit": "ms",
+            "extra": "mean: 51.0ms, samples: 15"
           }
         ]
       }
