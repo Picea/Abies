@@ -448,13 +448,13 @@ jobs:
           cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 01_run1k
           npm run bench -- --headless --framework keyed/abies --benchmark 02_replace1k
-          npm run bench -- --headless --framework keyed/abies --benchmark 03_update10th1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 03_update10th1k_x16
           npm run bench -- --headless --framework keyed/abies --benchmark 04_select1k
           npm run bench -- --headless --framework keyed/abies --benchmark 05_swap1k
           npm run bench -- --headless --framework keyed/abies --benchmark 06_remove-one-1k
           npm run bench -- --headless --framework keyed/abies --benchmark 07_create10k
           npm run bench -- --headless --framework keyed/abies --benchmark 08_create1k-after1k_x2
-          npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k
+          npm run bench -- --headless --framework keyed/abies --benchmark 09_clear1k_x8
 
       - name: Run Memory benchmarks
         if: steps.should-run.outputs.run == 'true'
@@ -462,7 +462,7 @@ jobs:
           cd js-framework-benchmark/webdriver-ts
           npm run bench -- --headless --framework keyed/abies --benchmark 21_ready-memory
           npm run bench -- --headless --framework keyed/abies --benchmark 22_run-memory
-          npm run bench -- --headless --framework keyed/abies --benchmark 25_clear-memory
+          npm run bench -- --headless --framework keyed/abies --benchmark 25_run-clear-memory
 
       - name: Refresh baseline from gh-pages
         if: steps.should-run.outputs.run == 'true'
