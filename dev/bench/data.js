@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786191061601,
+  "lastUpdate": 1786193357484,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -14920,6 +14920,84 @@ window.BENCHMARK_DATA = {
             "value": 49.2,
             "unit": "ms",
             "extra": "mean: 51.0ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "5cd4b60fac40fc8e61f65567d984f13fc89e69cb",
+          "message": "ci(benchmark): Stop auto-updating the README comparison tables\n\nThe README's benchmark tables are a same-session comparison — Abies and Blazor\nmeasured on the same machine in the same sitting — and that is the only reason\nthe Delta column means anything. The README says so, and so does\nblazor-baseline.json (\"Blazor is not run in CI\").\n\nCI cannot produce a comparable figure. Blazor is not run there, so the automated\nupdate could only replace the Abies column with shared-runner numbers while\nleaving Blazor's local numbers in place. On its first successful run it did\nexactly that: Create 1,000 rows went from 119.5ms (+34% vs Blazor) to 331.8ms\n(+291%), and Create 10,000 rows from +47% to +336%. Those deltas are the gap\nbetween a CI runner and a laptop, reported as if the framework had regressed by\n4x. Publishing them would have been worse than publishing nothing.\n\nThe three README steps are removed, with the reasoning left in the workflow so\nnobody re-adds them. CI's valid contribution is unaffected: the Abies-over-time\ntrend still publishes to gh-pages, and the regression gate still compares\nCI against CI.\n\nupdate-readme-benchmarks.py stays as a local tool and now says loudly that it\nmust not be run against CI results. The README gains a note explaining that the\ntables are maintained by hand and why.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T14:39:31+02:00",
+          "tree_id": "e02fad1009bc4fbd170dd68eb1f378b123eae13e",
+          "url": "https://github.com/Picea/Abies/commit/5cd4b60fac40fc8e61f65567d984f13fc89e69cb"
+        },
+        "date": 1786193356717,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 229.6,
+            "unit": "ms",
+            "extra": "mean: 235.4ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 234.7,
+            "unit": "ms",
+            "extra": "mean: 235.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 115.6,
+            "unit": "ms",
+            "extra": "mean: 115.7ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 21.8,
+            "unit": "ms",
+            "extra": "mean: 21.8ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 65.6,
+            "unit": "ms",
+            "extra": "mean: 65.6ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 45.5,
+            "unit": "ms",
+            "extra": "mean: 45.7ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2213.1,
+            "unit": "ms",
+            "extra": "mean: 2215.5ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 250.9,
+            "unit": "ms",
+            "extra": "mean: 250.4ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 42.6,
+            "unit": "ms",
+            "extra": "mean: 42.9ms, samples: 15"
           }
         ]
       }
