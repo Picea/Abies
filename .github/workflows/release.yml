@@ -74,6 +74,15 @@ jobs:
           # This job packs on a different runner from the rest of the release, so
           # its version has to be checked rather than assumed — a mismatch here
           # publishes one package at a different version from all the others.
+          #
+          # Only meaningful on a tag. On other refs nothing is published, and
+          # NuGetVersion legitimately carries a -g<hash> suffix that SimpleVersion
+          # does not, so comparing them would fail every dry run.
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo "ℹ️  Not a tag ref — skipping the version assertion (nothing is published)."
+            exit 0
+          fi
+
           case "$(basename "$PKG")" in
             "Picea.Abies.WinUI.${EXPECTED_VERSION}.nupkg")
               echo "✅ Package version matches the release ($EXPECTED_VERSION)" ;;
