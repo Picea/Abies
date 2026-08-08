@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786198837632,
+  "lastUpdate": 1786198840005,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -16990,6 +16990,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "25_run-clear-memory (clear memory)",
             "value": 59.35239791870117,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b4a3d762f262fef926180626a8b96b12b408a423",
+          "message": "feat(packaging): Publish Testing, Testing.Visual, UI and Cli\n\nThese four projects carried PackageId metadata but were never in release.yml,\nso they were never published — while docs/guides/testing.md documented\nPicea.Abies.Testing's API as if it were installable.\n\nTesting is split before publishing rather than after. Playwright and\nSixLabors.ImageSharp were used by exactly one file,\nTestHarnessVisualExtensions.cs; TestHarness itself needs only System.Text.Json.\nShipping them together would have put a browser automation library and an\nimaging library into every headless program test, and ImageSharp 3.x is under\nthe Six Labors Split License — free for open source and small organisations,\npaid above a revenue threshold — which consumers would have inherited under an\nApache-2.0 package without it being visible on the package page.\n\nSo:\n\n  Picea.Abies.Testing         -> Picea.Abies only\n  Picea.Abies.Testing.Visual  -> Testing + Playwright + ImageSharp\n\nThe types keep the Picea.Abies.Testing namespace, so the split is\nsource-compatible: consumers add a package reference, they do not edit code.\nThe licence obligation is stated in the Visual package's own Description and in\nthe testing guide, where someone deciding whether to take the dependency will\nsee it.\n\nA first publish is the cheapest moment to get a dependency graph right; after\nit, removing a dependency breaks anyone who relied on it.\n\nAll four gained the metadata the other packages already have — title,\ndescription, authors, tags, licence, repository. Cli's tags claimed\n\"testing;visual-regression;playwright;snapshot\" for what is a baseline\nmanagement tool, and its description did not mention that it installs an\n`abies` command.\n\nVerified by packing each locally:\n\n  Testing        lib/net10.0 + XML docs, one dependency\n  Testing.Visual three dependencies as intended\n  UI             lib + contentFiles wwwroot assets\n  Cli            tools/net10.0/any/ with DotnetToolSettings.xml\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T16:09:40+02:00",
+          "tree_id": "a5dc8ad9c4e29c073c33e3306efddc7cd7f97de9",
+          "url": "https://github.com/Picea/Abies/commit/b4a3d762f262fef926180626a8b96b12b408a423"
+        },
+        "date": 1786198839646,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.128971099853516,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.020790100097656,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.36630344390869,
             "unit": "MB",
             "extra": "mean: 59.4MB, samples: 1"
           }
