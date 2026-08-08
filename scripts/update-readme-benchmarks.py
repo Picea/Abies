@@ -1,13 +1,28 @@
 #!/usr/bin/env python3
 """
-Update README.md benchmark tables with latest CI results.
+Update README.md benchmark tables from a local same-session benchmark run.
 
 Reads js-framework-benchmark result files and a static Blazor baseline,
 then regenerates the benchmark comparison tables in README.md between
 HTML comment markers.
 
+RUN THIS LOCALLY, NOT IN CI.
+
+The README table is a same-session comparison: Abies and Blazor measured on the
+same machine in the same sitting. That is the only reason its Delta column means
+anything. Blazor is not run in CI, so running this against CI results replaces
+the Abies column with shared-runner numbers while leaving Blazor's local numbers
+in place, and the Delta then reports the difference between two machines as if it
+were a difference between two frameworks. It was briefly wired into the benchmark
+workflow and did exactly that: Create 1,000 rows went from 119.5ms (+34% vs
+Blazor) to 331.8ms (+291%).
+
+So: measure Abies and Blazor in one local session, then run this. CI's valid
+contribution is the Abies-over-time trend published to gh-pages, which does not
+involve this script.
+
 Only updates Duration (01-09) and Memory (21, 22, 25) tables.
-Startup/Size is not measured in CI and stays static.
+Startup/Size is not measured here and stays static.
 
 Usage:
     python scripts/update-readme-benchmarks.py \\
