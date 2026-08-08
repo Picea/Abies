@@ -640,7 +640,16 @@ jobs:
             --readme README.md \
             --framework abies
 
+      # Opening the README PR is a convenience, not part of measuring anything.
+      # It needs "Allow GitHub Actions to create and approve pull requests"
+      # (Settings → Actions → General); without it the action fails with
+      # "GitHub Actions is not permitted to create or approve pull requests".
+      # That is a repository setting, so failing the benchmark job over it would
+      # report a permissions gap as a performance problem. The next step says
+      # plainly what to enable if it is skipped.
       - name: Create PR for README benchmark updates (main only)
+        id: readme-pr
+        continue-on-error: true
         if: steps.should-run.outputs.run == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
@@ -655,6 +664,18 @@ jobs:
           base: main
           add-paths: |
             README.md
+
+      - name: Note if the README PR could not be opened
+        if: steps.readme-pr.outcome == 'failure'
+        run: |
+          echo "::warning::Benchmarks ran and compared fine, but the README update PR could not be opened."
+          echo "::warning::Enable Settings → Actions → General → 'Allow GitHub Actions to create and approve pull requests', or update README.md by hand."
+          {
+            echo "### README update PR not created"
+            echo ""
+            echo "Benchmarks ran and compared successfully; only the follow-up PR was blocked."
+            echo "Enable **Settings → Actions → General → Allow GitHub Actions to create and approve pull requests** to restore it."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Copy results to workspace for upload
         if: always() && steps.should-run.outputs.run == 'true'
