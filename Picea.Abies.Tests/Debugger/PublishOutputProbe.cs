@@ -1,10 +1,42 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 
 namespace Picea.Abies.Tests.Debugger;
 
+/// <summary>
+/// Publishes a project once per test run so release-output assertions can
+/// inspect the result.
+/// </summary>
+/// <remarks>
+/// Two things here are load-bearing, and both exist because this probe caused a
+/// recurring CI failure:
+///
+/// <para>
+/// <b>One publish per project.</b> Several tests assert against the same
+/// published output and the runner executes them in parallel. Each call used to
+/// start its own <c>dotnet publish</c>, so two MSBuild processes wrote the same
+/// files concurrently and one lost:
+/// <c>The process cannot access the file 'Picea.Abies.deps.json' because it is
+/// being used by another process</c>. Results are now memoized per project, so
+/// the publish happens once however many tests ask for it — which is also
+/// faster.
+/// </para>
+///
+/// <para>
+/// <b>Why not also redirect bin/obj.</b> Sending intermediates elsewhere with
+/// <c>BaseIntermediateOutputPath</c> looks tidier but breaks the build: the SDK
+/// excludes the *configured* intermediate directory from source globs, so the
+/// repository's own <c>obj/</c> stops being excluded and its generated
+/// <c>Picea.Abies.Version.cs</c> gets compiled a second time (CS0579, duplicate
+/// assembly attributes). Serializing the publish is enough on its own.
+/// </para>
+/// </remarks>
 internal static class PublishOutputProbe
 {
+    private static readonly ConcurrentDictionary<string, Lazy<Task<string>>> _publishes =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public static string ResolveRepositoryRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -22,7 +54,22 @@ internal static class PublishOutputProbe
         throw new InvalidOperationException("Could not resolve repository root for publish probe.");
     }
 
-    public static async Task<string> PublishReleaseProject(string projectRelativePath, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Publishes <paramref name="projectRelativePath"/> in Release and returns the
+    /// output directory. Concurrent callers share a single publish.
+    /// </summary>
+    public static Task<string> PublishReleaseProject(string projectRelativePath, CancellationToken cancellationToken = default)
+    {
+        // LazyThreadSafetyMode is the default for Lazy<T>, so only the first
+        // caller starts the process; the rest await the same task.
+        var publish = _publishes.GetOrAdd(
+            projectRelativePath,
+            key => new Lazy<Task<string>>(() => PublishOnce(key, cancellationToken)));
+
+        return publish.Value;
+    }
+
+    private static async Task<string> PublishOnce(string projectRelativePath, CancellationToken cancellationToken)
     {
         var repositoryRoot = ResolveRepositoryRoot();
         var projectPath = Path.Combine(repositoryRoot, projectRelativePath);
