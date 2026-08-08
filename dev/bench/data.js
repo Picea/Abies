@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786191059089,
+  "lastUpdate": 1786191061601,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11264,6 +11264,192 @@ window.BENCHMARK_DATA = {
             "value": 26160,
             "unit": "bytes",
             "extra": "Gen0: 204.0000, Gen1: 17.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "732e528ea7c24b62434e977872c2276f820b9406",
+          "message": "ci(benchmark): Publish README updates as a branch, not a PR\n\nCreating pull requests from Actions is disabled in this repository, and staying\nthat way is a reasonable posture — so the workflow should not depend on it.\npeter-evans/create-pull-request is replaced with a plain branch push.\n\nPushing a branch needs only the contents: write this workflow already uses to\npublish baselines and trends to gh-pages, so no new permission is involved and\nnothing has to be turned on. The maintainer gets a ready-to-review diff on\nbenchmark/readme-auto-update plus a one-click compare link in the job summary,\nand opens the PR themselves — which is where the human review was going to\nhappen anyway.\n\nDetails worth noting:\n\n  - Only README.md is committed. The workspace also holds benchmark artifacts at\n    that point, and they must not be swept into the commit.\n  - The push is forced. That branch is regenerated from main on every run and is\n    not intended to be worked on by hand.\n  - An unchanged README skips the push entirely rather than creating an empty\n    branch, and says so in the summary.\n  - Publishing stays continue-on-error with an explicit warning. The job's\n    purpose is measuring; a failure to publish a docs diff should not be\n    reported as a performance regression.\n\npull-requests: write is left in place — comment-on-alert may still need it, and\ntrimming it is not worth a speculative regression.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T13:57:37+02:00",
+          "tree_id": "56a071fed67c00b7cfa94cf597b8995b46a93f34",
+          "url": "https://github.com/Picea/Abies/commit/732e528ea7c24b62434e977872c2276f820b9406"
+        },
+        "date": 1786191061132,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 21.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 784,
+            "unit": "bytes",
+            "extra": "Gen0: 8.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 26.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 13.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 328,
+            "unit": "bytes",
+            "extra": "Gen0: 13.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 15.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 60.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1448,
+            "unit": "bytes",
+            "extra": "Gen0: 60.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 808,
+            "unit": "bytes",
+            "extra": "Gen0: 67.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 51.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 10304,
+            "unit": "bytes",
+            "extra": "Gen0: 53.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 71280,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1264,
+            "unit": "bytes",
+            "extra": "Gen0: 52.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9720,
+            "unit": "bytes",
+            "extra": "Gen0: 50.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4816,
+            "unit": "bytes",
+            "extra": "Gen0: 50.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRows",
+            "value": 1154040,
+            "unit": "bytes",
+            "extra": "Gen0: 172.0000, Gen1: 172.0000, Gen2: 172.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 1051825,
+            "unit": "bytes",
+            "extra": "Gen0: 146.0000, Gen1: 146.0000, Gen2: 146.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 184,
+            "unit": "bytes",
+            "extra": "Gen0: 123.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 272,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 2320,
+            "unit": "bytes",
+            "extra": "Gen0: 96.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 11504,
+            "unit": "bytes",
+            "extra": "Gen0: 120.0000, Gen1: 4.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 19224,
+            "unit": "bytes",
+            "extra": "Gen0: 100.0000, Gen1: 6.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 464,
+            "unit": "bytes",
+            "extra": "Gen0: 77.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 1240,
+            "unit": "bytes",
+            "extra": "Gen0: 103.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2808,
+            "unit": "bytes",
+            "extra": "Gen0: 117.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 26024,
+            "unit": "bytes",
+            "extra": "Gen0: 67.0000, Gen1: 5.0000"
           }
         ]
       }
