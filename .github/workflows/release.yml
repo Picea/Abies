@@ -34,14 +34,21 @@ jobs:
       - name: Install GitVersioning
         run: dotnet tool install --global nbgv
 
+      # Must mirror the release job exactly. Passing /p:Version alone is not
+      # enough: Nerdbank.GitVersioning overrides it and stamps a dev version, so
+      # v2.3.0 produced Picea.Abies.WinUI 2.3.1-gbb31d7ec9b while every other
+      # package was 2.3.0. `nbgv set-version` plus PublicRelease=true is what
+      # makes the tag version stick and drops the -g<hash> suffix.
       - name: Set version
         id: version
         shell: bash
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
+            nbgv set-version "$VERSION"
+            echo "PublicRelease=true" >> "$GITHUB_ENV"
           else
-            VERSION=$(nbgv get-version -v NuGetPackageVersion)
+            VERSION=$(nbgv get-version -v SimpleVersion)
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Packing Picea.Abies.WinUI as $VERSION"
@@ -49,8 +56,10 @@ jobs:
       - name: Pack Picea.Abies.WinUI (Skia + Windows App SDK heads)
         run: dotnet pack ./Picea.Abies.WinUI/Picea.Abies.WinUI.csproj --configuration Release --output ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
 
-      - name: Verify both target frameworks are in the package
+      - name: Verify the package version and target frameworks
         shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           PKG=$(ls ./nupkg/Picea.Abies.WinUI.*.nupkg | head -1)
           echo "Inspecting $PKG"
@@ -61,6 +70,17 @@ jobs:
           grep -q "lib/net10.0-windows10.0.26100" /tmp/pkg-listing.txt \
             || { echo "❌ Package is missing the Windows App SDK head"; exit 1; }
           echo "✅ Windows App SDK head present"
+
+          # This job packs on a different runner from the rest of the release, so
+          # its version has to be checked rather than assumed — a mismatch here
+          # publishes one package at a different version from all the others.
+          case "$(basename "$PKG")" in
+            "Picea.Abies.WinUI.${EXPECTED_VERSION}.nupkg")
+              echo "✅ Package version matches the release ($EXPECTED_VERSION)" ;;
+            *)
+              echo "❌ Expected Picea.Abies.WinUI.${EXPECTED_VERSION}.nupkg, got $(basename "$PKG")"
+              exit 1 ;;
+          esac
 
       - name: Upload WinUI package
         uses: actions/upload-artifact@v4
