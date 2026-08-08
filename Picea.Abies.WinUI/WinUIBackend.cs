@@ -11,6 +11,7 @@
 // =============================================================================
 
 using System.Globalization;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Picea.Abies.Native;
@@ -25,10 +26,17 @@ namespace Picea.Abies.WinUI;
 public sealed class WinUIBackend : INativeBackend<FrameworkElement>
 {
     private readonly Panel _rootHost;
+    private readonly Action<Exception>? _brushFaulted;
     private readonly Dictionary<(FrameworkElement Control, string EventName), Action> _detachers = [];
 
     /// <param name="rootHost">The panel that receives the root control (e.g., the window's content grid).</param>
-    public WinUIBackend(Panel rootHost) => _rootHost = rootHost;
+    /// <param name="brushFaulted">
+    /// Receives styling failures that are recoverable — currently a theme brush
+    /// key the platform does not define. Optional; when null such failures are
+    /// silent and the property keeps its default.
+    /// </param>
+    public WinUIBackend(Panel rootHost, Action<Exception>? brushFaulted = null)
+        => (_rootHost, _brushFaulted) = (rootHost, brushFaulted);
 
     // =========================================================================
     // Control factory
@@ -126,6 +134,25 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                     cFs.ClearValue(Control.FontSizeProperty);
                 else
                     cFs.FontSize = D(value);
+                return;
+            case "AutomationName":
+                if (value is null)
+                    control.ClearValue(AutomationProperties.NameProperty);
+                else
+                    AutomationProperties.SetName(control, value);
+                return;
+            case "AutomationHelpText":
+                if (value is null)
+                    control.ClearValue(AutomationProperties.HelpTextProperty);
+                else
+                    AutomationProperties.SetHelpText(control, value);
+                return;
+            case "AccessibilityHidden":
+                AutomationProperties.SetAccessibilityView(
+                    control,
+                    value is not null && bool.Parse(value)
+                        ? Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw
+                        : Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Content);
                 return;
             case "Grid.Row":
                 Grid.SetRow(control, I(value ?? "0"));
@@ -655,12 +682,37 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
     /// Sets a brush property, or clears it back to its theme default when
     /// <paramref name="value"/> is null (i.e. the attribute was removed).
     /// </summary>
-    private static void SetBrush(DependencyObject target, DependencyProperty property, string? value)
+    private void SetBrush(DependencyObject target, DependencyProperty property, string? value)
     {
         if (value is null)
+        {
             target.ClearValue(property);
-        else
-            target.SetValue(property, new SolidColorBrush(ParseColor(value)));
+            return;
+        }
+
+        if (Theme.TryDecode(value) is { } resourceKey)
+        {
+            // A theme key that does not resolve on this platform leaves the
+            // property at its default and reports, rather than throwing. A
+            // missing brush is a styling problem, not a reason to lose a window.
+            if (Application.Current?.Resources is { } resources &&
+                resources.TryGetValue(resourceKey, out var resource) &&
+                resource is Brush themeBrush)
+            {
+                target.SetValue(property, themeBrush);
+            }
+            else
+            {
+                target.ClearValue(property);
+                _brushFaulted?.Invoke(new KeyNotFoundException(
+                    $"Theme brush '{resourceKey}' is not defined by the current platform theme; " +
+                    "the property was left at its default."));
+            }
+
+            return;
+        }
+
+        target.SetValue(property, new SolidColorBrush(ParseColor(value)));
     }
 
     private static Color ParseColor(string value)

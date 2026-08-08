@@ -36,6 +36,7 @@ ADRs document significant architectural decisions, their context, and consequenc
 | [ADR-026](./ADR-026-debugger-auto-mount-with-csharp-api.md) | Debugger Auto-Mount with C# API | Accepted | Adds automatic debugger mount behavior with the C# API |
 | [ADR-027](./ADR-027-native-winui-renderer.md) | Native WinUI Renderer via Patch-Stream Interpretation | Accepted | Native controls as a third `Apply` implementation; zero core changes |
 | [ADR-028](./ADR-028-program-core-view-split.md) | Program Core/View Split | Accepted | `ProgramCore` + `ProgramView` + `WithView`; share a core across renderers |
+| [ADR-029](./ADR-029-native-theming-via-platform-brushes.md) | Native Theming via Platform Brushes | Accepted | Semantic roles mapped to WinUI theme brushes; light/dark for free |
 
 > **Note:** There are two files numbered ADR-005: [ADR-005-webassembly-runtime.md](./ADR-005-webassembly-runtime.md) (indexed above) and [ADR-005-security-scanning-sast-dast-sca.md](./ADR-005-security-scanning-sast-dast-sca.md) (security scanning). The security scanning ADR was created separately and retains its number for historical reasons.
 

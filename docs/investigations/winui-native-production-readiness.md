@@ -293,20 +293,33 @@ of them should not be rushed:
   being usable, and it needed no change to `INativeBackend` — which matters now that the
   interface is published.
 
-  Container *recycling* (a WinUI `ItemsRepeater` reusing row controls) is still open, and
-  it is the part that is a project rather than a patch. The obstacle is not the control:
-  it is that the diff produces patches for the whole list while only some rows exist, so
-  a patch aimed at an off-screen row would be dropped and the row would be stale when it
-  scrolled back in. Doing it correctly means the interpreter keeping a shadow of
-  unrealized rows and replaying it on realization — a real design change to the core, and
-  one that deserves its own ADR. Reactor's element pooling remains the benchmark.
-- **Styling/theming.** This would *add public API*, immediately after Phase 2 froze it.
-  Designing a theming surface under time pressure is the fastest way to acquire the kind
-  of API debt Phase 2 just paid off. It deserves its own ADR: mapping onto XAML theme
-  resources versus a framework-level abstraction is a real decision, not an
-  implementation detail.
-- **Accessibility / automation-peer pass.** Needs a real audit against screen readers,
-  not a plausible-looking API.
+  Container *recycling* turned out to be a much smaller prize than this plan assumed, and
+  the assumption is worth correcting. Because rows are keyed, scrolling already reuses the
+  overlap: scrolling by one row creates exactly one control and destroys one, moving the
+  rest. Churn is proportional to rows scrolled, not to window size — pinned by a test. A
+  WinUI `ItemsRepeater` would additionally reuse the container, saving that one
+  construction per scrolled row; worthwhile for sustained flings, but a micro-optimization
+  next to the thousands-to-a-viewport reduction that windowing already delivers.
+
+  It is also the expensive option: the diff emits patches for the whole list while only
+  some rows exist, so an `ItemsRepeater` design needs the interpreter to keep a shadow of
+  unrealized rows, and `INativeBackend` is now published so the capability would have to
+  be added as a separate optional interface. **Reclassified from a gap to a future
+  optimization**, to be revisited if profiling shows scroll construction actually hurting.
+- **Styling/theming ✅ done** ([ADR-029](../adr/ADR-029-native-theming-via-platform-brushes.md)).
+  Semantic roles (`ThemeColor.TextPrimary`, `SurfaceCard`, `Critical`, …) map onto WinUI's
+  own theme brushes, so light, dark and high-contrast follow the OS with no per-app work.
+  Additive: `INativeBackend` is unchanged, literal colours still work, and the value rides
+  as an ordinary string attribute. A key the platform does not define leaves the property
+  at its default and reports, rather than throwing.
+- **Accessibility — partially done.** `AutomationName`, `AutomationHelpText` and
+  `AccessibilityHidden` map onto `AutomationProperties`, which is what controls without
+  visible text need. Automation peers are known to work: the TaskTimer CI check drives
+  buttons through `IInvokeProvider`, the same tree a screen reader reads.
+
+  **Still open, and deliberately not claimed:** no audit against an actual screen reader.
+  These properties make correct names *possible*; they do not prove any given view is
+  usable. That audit needs a person with NVDA or Narrator, not more code.
 - **TaskTimer sample ✅ done.** The verification gap is closed. `Picea.Abies.TaskTimer.Native`
   exercises an interval subscription, subscriptions starting and stopping with the model,
   a keyed list that genuinely re-sorts, and two-way text input. `ABIES_INTERACT` drives it
