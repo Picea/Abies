@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786193357484,
+  "lastUpdate": 1786193359756,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -16498,6 +16498,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "25_run-clear-memory (clear memory)",
             "value": 59.36302661895752,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "5cd4b60fac40fc8e61f65567d984f13fc89e69cb",
+          "message": "ci(benchmark): Stop auto-updating the README comparison tables\n\nThe README's benchmark tables are a same-session comparison — Abies and Blazor\nmeasured on the same machine in the same sitting — and that is the only reason\nthe Delta column means anything. The README says so, and so does\nblazor-baseline.json (\"Blazor is not run in CI\").\n\nCI cannot produce a comparable figure. Blazor is not run there, so the automated\nupdate could only replace the Abies column with shared-runner numbers while\nleaving Blazor's local numbers in place. On its first successful run it did\nexactly that: Create 1,000 rows went from 119.5ms (+34% vs Blazor) to 331.8ms\n(+291%), and Create 10,000 rows from +47% to +336%. Those deltas are the gap\nbetween a CI runner and a laptop, reported as if the framework had regressed by\n4x. Publishing them would have been worse than publishing nothing.\n\nThe three README steps are removed, with the reasoning left in the workflow so\nnobody re-adds them. CI's valid contribution is unaffected: the Abies-over-time\ntrend still publishes to gh-pages, and the regression gate still compares\nCI against CI.\n\nupdate-readme-benchmarks.py stays as a local tool and now says loudly that it\nmust not be run against CI results. The README gains a note explaining that the\ntables are maintained by hand and why.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T14:39:31+02:00",
+          "tree_id": "e02fad1009bc4fbd170dd68eb1f378b123eae13e",
+          "url": "https://github.com/Picea/Abies/commit/5cd4b60fac40fc8e61f65567d984f13fc89e69cb"
+        },
+        "date": 1786193359069,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.12054252624512,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.00738048553467,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.35239791870117,
             "unit": "MB",
             "extra": "mean: 59.4MB, samples: 1"
           }
