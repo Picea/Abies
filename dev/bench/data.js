@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786177187762,
+  "lastUpdate": 1786178683427,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13942,6 +13942,84 @@ window.BENCHMARK_DATA = {
             "value": 50.4,
             "unit": "ms",
             "extra": "mean: 50.1ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "f7fc0349647d040c416fba41d1ea18ec4473e8d8",
+          "message": "fix(ci): Don't fail the benchmark job when the README PR can't be opened\n\nThe benchmark pipeline now runs clean end to end — install, run, compare (no\nregressions), baseline refresh — and then failed the job on this:\n\n    GitHub Actions is not permitted to create or approve pull requests.\n\nThat is the repository setting \"Allow GitHub Actions to create and approve pull\nrequests\", not anything about performance. Failing the benchmark check over it\nreports a permissions gap as a performance problem, which is exactly the kind\nof misattribution that teaches people to ignore a red benchmark.\n\nOpening the README PR is a convenience step after the measuring is done, so it\nis now continue-on-error, followed by a step that says plainly what to enable —\nas a workflow warning and in the job summary — so the gap stays visible instead\nof being silently swallowed.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T10:33:40+02:00",
+          "tree_id": "1583927b84735bc84f61d07cb760421fe469514f",
+          "url": "https://github.com/Picea/Abies/commit/f7fc0349647d040c416fba41d1ea18ec4473e8d8"
+        },
+        "date": 1786178683093,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 340.2,
+            "unit": "ms",
+            "extra": "mean: 340.4ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 347.9,
+            "unit": "ms",
+            "extra": "mean: 349.9ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 177.6,
+            "unit": "ms",
+            "extra": "mean: 178.0ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 31.2,
+            "unit": "ms",
+            "extra": "mean: 30.6ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 84.4,
+            "unit": "ms",
+            "extra": "mean: 84.3ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 58.8,
+            "unit": "ms",
+            "extra": "mean: 59.1ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3368.3,
+            "unit": "ms",
+            "extra": "mean: 3364.8ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 372.1,
+            "unit": "ms",
+            "extra": "mean: 372.5ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 53.4,
+            "unit": "ms",
+            "extra": "mean: 54.7ms, samples: 15"
           }
         ]
       }
