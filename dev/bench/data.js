@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786140996207,
+  "lastUpdate": 1786177184917,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -13864,6 +13864,84 @@ window.BENCHMARK_DATA = {
             "value": 57.1,
             "unit": "ms",
             "extra": "mean: 57.3ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "52d4d468487e6e0f6d26bfe0158a8b20c861a990",
+          "message": "fix(ci): Raise the threshold to clear the noisiest metric, fix stale messages\n\nThe first run against the median baseline went from 6 regressions to 1, and\nthat one — 03_update10th1k_x16 at +20.5% — was half a percent over the line.\n\nThat metric is the noisiest of the set: observed 126.1-189.0ms, a 50% spread,\nor roughly +/-21% around its median. A single global threshold has to clear the\nworst metric, so 03 sets the floor; 25% covers it with a little margin.\n\nAlso corrects two places that still announced \">5%\" after the threshold moved,\nincluding the failure message operators actually read.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T10:08:19+02:00",
+          "tree_id": "016af51d24c7727ddff450aed3678f70368fd227",
+          "url": "https://github.com/Picea/Abies/commit/52d4d468487e6e0f6d26bfe0158a8b20c861a990"
+        },
+        "date": 1786177184165,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 331.5,
+            "unit": "ms",
+            "extra": "mean: 334.6ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 339.5,
+            "unit": "ms",
+            "extra": "mean: 339.3ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 162.3,
+            "unit": "ms",
+            "extra": "mean: 163.3ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 28.3,
+            "unit": "ms",
+            "extra": "mean: 28.4ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 75.2,
+            "unit": "ms",
+            "extra": "mean: 75.1ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 52.5,
+            "unit": "ms",
+            "extra": "mean: 53.0ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3318.4,
+            "unit": "ms",
+            "extra": "mean: 3311.2ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 363.3,
+            "unit": "ms",
+            "extra": "mean: 366.2ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 50.4,
+            "unit": "ms",
+            "extra": "mean: 50.1ms, samples: 15"
           }
         ]
       }
