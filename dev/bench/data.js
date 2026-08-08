@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786185860469,
+  "lastUpdate": 1786185862283,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15514,6 +15514,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "25_run-clear-memory (clear memory)",
             "value": 59.352638244628906,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "d01ca817c23469ac2b2acef81360881507e6f8ac",
+          "message": "fix(ci): Give Micro-Benchmarks the full history Nerdbank.GitVersioning needs\n\nThe job failed on main with:\n\n    Nerdbank.GitVersioning.GitException: Shallow clone lacks the objects\n    required to calculate version height. Use full clones or clones with a\n    history at least as deep as the last version height resetting change.\n    ---> An commit object with SHA f4260a7446... could not be found.\n\nIts checkout was the only one in the repo without fetch-depth: 0 — the other 23\nalready set it, including the e2e benchmark job in this same file. NBGV walks\nhistory to compute version height, so the default shallow clone cannot work.\n\nThe project itself is healthy: it builds clean locally, where history is\ncomplete.\n\nNote this job only runs on pushes to main, so a PR cannot exercise it; the fix\nis confirmed by the next main run.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T12:33:05+02:00",
+          "tree_id": "56f5dae9e53909445ade071b48639ed0ee62cb4b",
+          "url": "https://github.com/Picea/Abies/commit/d01ca817c23469ac2b2acef81360881507e6f8ac"
+        },
+        "date": 1786185861915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.14421081542969,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.01979064941406,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.367268562316895,
             "unit": "MB",
             "extra": "mean: 59.4MB, samples: 1"
           }
