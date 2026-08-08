@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786190925347,
+  "lastUpdate": 1786190927689,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -16006,6 +16006,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "25_run-clear-memory (clear memory)",
             "value": 59.367268562316895,
+            "unit": "MB",
+            "extra": "mean: 59.4MB, samples: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "732e528ea7c24b62434e977872c2276f820b9406",
+          "message": "ci(benchmark): Publish README updates as a branch, not a PR\n\nCreating pull requests from Actions is disabled in this repository, and staying\nthat way is a reasonable posture — so the workflow should not depend on it.\npeter-evans/create-pull-request is replaced with a plain branch push.\n\nPushing a branch needs only the contents: write this workflow already uses to\npublish baselines and trends to gh-pages, so no new permission is involved and\nnothing has to be turned on. The maintainer gets a ready-to-review diff on\nbenchmark/readme-auto-update plus a one-click compare link in the job summary,\nand opens the PR themselves — which is where the human review was going to\nhappen anyway.\n\nDetails worth noting:\n\n  - Only README.md is committed. The workspace also holds benchmark artifacts at\n    that point, and they must not be swept into the commit.\n  - The push is forced. That branch is regenerated from main on every run and is\n    not intended to be worked on by hand.\n  - An unchanged README skips the push entirely rather than creating an empty\n    branch, and says so in the summary.\n  - Publishing stays continue-on-error with an explicit warning. The job's\n    purpose is measuring; a failure to publish a docs diff should not be\n    reported as a performance regression.\n\npull-requests: write is left in place — comment-on-alert may still need it, and\ntrimming it is not worth a speculative regression.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T13:57:37+02:00",
+          "tree_id": "56a071fed67c00b7cfa94cf597b8995b46a93f34",
+          "url": "https://github.com/Picea/Abies/commit/732e528ea7c24b62434e977872c2276f820b9406"
+        },
+        "date": 1786190927376,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "21_ready-memory (ready memory)",
+            "value": 35.11528396606445,
+            "unit": "MB",
+            "extra": "mean: 35.1MB, samples: 1"
+          },
+          {
+            "name": "22_run-memory (run memory)",
+            "value": 37.02055740356445,
+            "unit": "MB",
+            "extra": "mean: 37.0MB, samples: 1"
+          },
+          {
+            "name": "25_run-clear-memory (clear memory)",
+            "value": 59.36302661895752,
             "unit": "MB",
             "extra": "mean: 59.4MB, samples: 1"
           }
