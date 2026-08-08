@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786193489676,
+  "lastUpdate": 1786198837632,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15370,6 +15370,84 @@ window.BENCHMARK_DATA = {
             "value": 42.6,
             "unit": "ms",
             "extra": "mean: 42.9ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "b4a3d762f262fef926180626a8b96b12b408a423",
+          "message": "feat(packaging): Publish Testing, Testing.Visual, UI and Cli\n\nThese four projects carried PackageId metadata but were never in release.yml,\nso they were never published — while docs/guides/testing.md documented\nPicea.Abies.Testing's API as if it were installable.\n\nTesting is split before publishing rather than after. Playwright and\nSixLabors.ImageSharp were used by exactly one file,\nTestHarnessVisualExtensions.cs; TestHarness itself needs only System.Text.Json.\nShipping them together would have put a browser automation library and an\nimaging library into every headless program test, and ImageSharp 3.x is under\nthe Six Labors Split License — free for open source and small organisations,\npaid above a revenue threshold — which consumers would have inherited under an\nApache-2.0 package without it being visible on the package page.\n\nSo:\n\n  Picea.Abies.Testing         -> Picea.Abies only\n  Picea.Abies.Testing.Visual  -> Testing + Playwright + ImageSharp\n\nThe types keep the Picea.Abies.Testing namespace, so the split is\nsource-compatible: consumers add a package reference, they do not edit code.\nThe licence obligation is stated in the Visual package's own Description and in\nthe testing guide, where someone deciding whether to take the dependency will\nsee it.\n\nA first publish is the cheapest moment to get a dependency graph right; after\nit, removing a dependency breaks anyone who relied on it.\n\nAll four gained the metadata the other packages already have — title,\ndescription, authors, tags, licence, repository. Cli's tags claimed\n\"testing;visual-regression;playwright;snapshot\" for what is a baseline\nmanagement tool, and its description did not mention that it installs an\n`abies` command.\n\nVerified by packing each locally:\n\n  Testing        lib/net10.0 + XML docs, one dependency\n  Testing.Visual three dependencies as intended\n  UI             lib + contentFiles wwwroot assets\n  Cli            tools/net10.0/any/ with DotnetToolSettings.xml\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T16:09:40+02:00",
+          "tree_id": "a5dc8ad9c4e29c073c33e3306efddc7cd7f97de9",
+          "url": "https://github.com/Picea/Abies/commit/b4a3d762f262fef926180626a8b96b12b408a423"
+        },
+        "date": 1786198837228,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 289.9,
+            "unit": "ms",
+            "extra": "mean: 295.2ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 297.2,
+            "unit": "ms",
+            "extra": "mean: 297.4ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 151.8,
+            "unit": "ms",
+            "extra": "mean: 152.4ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.1,
+            "unit": "ms",
+            "extra": "mean: 29.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 85.2,
+            "unit": "ms",
+            "extra": "mean: 86.4ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 58.3,
+            "unit": "ms",
+            "extra": "mean: 59.1ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 2888,
+            "unit": "ms",
+            "extra": "mean: 2894.5ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 327.4,
+            "unit": "ms",
+            "extra": "mean: 326.8ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 57.2,
+            "unit": "ms",
+            "extra": "mean: 57.3ms, samples: 15"
           }
         ]
       }
