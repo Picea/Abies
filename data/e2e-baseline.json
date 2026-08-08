@@ -3,17 +3,17 @@
   "framework": "abies",
   "smoothing": 0.3,
   "benchmarks": {
-    "01_run1k": 315.8,
-    "02_replace1k": 326.4,
-    "03_update10th1k_x16": 158.5,
-    "04_select1k": 28.2,
-    "05_swap1k": 77.9,
-    "06_remove-one-1k": 54.8,
-    "07_create10k": 3164.0,
-    "08_create1k-after1k_x2": 352.2,
+    "01_run1k": 323.1,
+    "02_replace1k": 332.8,
+    "03_update10th1k_x16": 164.2,
+    "04_select1k": 29.1,
+    "05_swap1k": 79.8,
+    "06_remove-one-1k": 56.0,
+    "07_create10k": 3225.3,
+    "08_create1k-after1k_x2": 358.2,
     "09_clear1k_x8": 53.3,
     "21_ready-memory": 35.1,
     "22_run-memory": 37.0,
-    "25_run-clear-memory": 59.3661470413208
+    "25_run-clear-memory": 59.4
   }
 }
