@@ -211,7 +211,8 @@ jobs:
 
   # ============================================================================
   # E2E BENCHMARKS (js-framework-benchmark) - Source of Truth
-  # REQUIRED STATUS CHECK - Fails on >5% performance regression
+  # REQUIRED STATUS CHECK - Fails on a performance regression beyond the
+  # threshold set in the "Compare against baseline" step
   # ============================================================================
   # Clones the upstream js-framework-benchmark for benchmark infrastructure
   # (server, webdriver-ts, CSS) and builds Picea.Abies.Benchmark.Wasm from
@@ -220,7 +221,8 @@ jobs:
   benchmark-check:
     name: Benchmark (js-framework-benchmark)
     # NOTE: This job provides the "Benchmark (js-framework-benchmark)" status check
-    # required for merging PRs. It fails if perf regressions >5% are detected.
+    # required for merging PRs. It fails if perf regressions beyond the
+    # configured threshold are detected.
     runs-on: ubuntu-latest
     needs: changes
     if: >
@@ -498,10 +500,15 @@ jobs:
           # observed noise while still catching the size of regression that
           # actually matters. Tighten it if the runners ever get quieter, or if
           # the harness is given more iterations per benchmark.
+          #
+          # 25 rather than 20 because 03_update10th1k_x16 is the noisiest metric
+          # of the set — observed 126.1-189.0ms, a 50% spread, or +/-21% around
+          # its median. A single global threshold has to clear the worst metric,
+          # so that one sets the floor.
           python3 scripts/compare-benchmark.py \
             --results-dir js-framework-benchmark/webdriver-ts/results \
             --baseline benchmark-results/baseline.json \
-            --threshold 20.0 \
+            --threshold 25.0 \
             --framework abies | tee benchmark-results/e2e-compare.log
           EXIT_CODE=${PIPESTATUS[0]}
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
@@ -536,7 +543,7 @@ jobs:
         if: always() && steps.should-run.outputs.run == 'true'
         run: |
           if [[ "${{ steps.regression-check.outcome }}" == "failure" ]]; then
-            echo "❌ Performance regression detected (>5%)"
+            echo "❌ Performance regression detected (see threshold in the comparison step)"
             exit 1
           else
             echo "✅ Benchmark check passed"
