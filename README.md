@@ -291,6 +291,9 @@ dotnet run --project Picea.Abies.Conduit.Wasm.Host
 | `Picea.Abies.Native` | Native control vocabulary and platform-neutral patch interpreter — no UI framework dependency |
 | `Picea.Abies.WinUI` | WinUI 3 backend and bootstrap; Windows App SDK plus Uno Skia heads |
 | `Picea.Abies.Testing` | Headless test harness — drives programs with no renderer, replays sessions |
+| `Picea.Abies.Testing.Visual` | Screenshot-based visual regression testing (Playwright + image diffing) |
+| `Picea.Abies.UI` | Component library — composable HTML components and design tokens |
+| `Picea.Abies.Cli` | `abies` dotnet global tool — visual baseline management |
 | `Picea.Abies.Templates` | `dotnet new` project templates (`abies-browser`, `abies-browser-empty`, `abies-server`, `abies-native`) |
 | `Picea.Abies.Analyzers` | Roslyn analyzers for compile-time HTML and native-tree checks |
 

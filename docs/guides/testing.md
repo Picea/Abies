@@ -289,9 +289,26 @@ public class E2ETests : IAsyncDisposable
 
 ## Visual Regression Testing
 
-`Picea.Abies.Testing` ships a screenshot-based visual harness (`TestHarnessVisualExtensions`) plus an
-`abies` baseline-management CLI (`Picea.Abies.Cli`). It renders a model with Playwright, captures a PNG,
-and compares it against a stored baseline.
+The screenshot-based visual harness (`TestHarnessVisualExtensions`) lives in a **separate package**:
+
+```bash
+dotnet add package Picea.Abies.Testing.Visual
+dotnet tool install -g Picea.Abies.Cli   # the `abies` baseline-management command
+```
+
+It is separate so that headless program tests — the majority — do not pull in browser automation or
+imaging dependencies. `Picea.Abies.Testing` on its own depends only on `Picea.Abies`.
+
+> **Licensing:** `Picea.Abies.Testing.Visual` depends on `SixLabors.ImageSharp`, which uses the
+> [Six Labors Split License](https://github.com/SixLabors/ImageSharp/blob/main/LICENSE) rather than a
+> permissive OSI licence. It is free for open-source projects and for organisations below Six Labors'
+> revenue threshold; commercial use above it needs a paid licence. If that is a problem, use
+> `Picea.Abies.Testing` alone.
+
+The types stay in the `Picea.Abies.Testing` namespace, so existing `using` statements do not change —
+only the package reference.
+
+It renders a model with Playwright, captures a PNG, and compares it against a stored baseline.
 
 On the **first run** the baseline is created automatically (`BaselineCreated == true`) and the comparison
 passes. On later runs the screenshot is diffed against that baseline; on mismatch, `.actual.png` and

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>Picea.Abies.Testing.Visual</PackageId>
+    <Title>Picea.Abies.Testing.Visual</Title>
+    <Description>Screenshot-based visual regression testing for the Abies MVU framework. Extends the Picea.Abies.Testing harness with browser capture and image comparison. Separate from Picea.Abies.Testing so headless program tests do not pull in browser automation or imaging dependencies.
+
+NOTE ON LICENSING: this package depends on SixLabors.ImageSharp, which is distributed under the Six Labors Split License rather than a permissive OSI licence. It is free for open-source projects and for organisations below Six Labors' revenue threshold; commercial use above it requires a paid licence from Six Labors. If that is a problem, use Picea.Abies.Testing on its own — it has no such dependency.</Description>
+    <Authors>Maurice Peters</Authors>
+    <PackageTags>picea;abies;testing;visual-regression;screenshot;playwright;mvu</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/picea/abies</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/picea/abies</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Picea.Abies.Testing\Picea.Abies.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

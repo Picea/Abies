@@ -101,6 +101,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Counter.Native"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.TaskTimer.Native", "Picea.Abies.TaskTimer.Native\Picea.Abies.TaskTimer.Native.csproj", "{EF3FDCCB-3D07-4D00-A698-4175202697CF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picea.Abies.Testing.Visual", "Picea.Abies.Testing.Visual\Picea.Abies.Testing.Visual.csproj", "{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -699,6 +701,18 @@ Global
 		{EF3FDCCB-3D07-4D00-A698-4175202697CF}.Release|x64.Build.0 = Release|Any CPU
 		{EF3FDCCB-3D07-4D00-A698-4175202697CF}.Release|x86.ActiveCfg = Release|Any CPU
 		{EF3FDCCB-3D07-4D00-A698-4175202697CF}.Release|x86.Build.0 = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|x64.Build.0 = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Debug|x86.Build.0 = Debug|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|x64.ActiveCfg = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|x64.Build.0 = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|x86.ActiveCfg = Release|Any CPU
+		{125959EB-5F46-4F3E-B6B4-1981F9B55ABC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
