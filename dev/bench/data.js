@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786193486829,
+  "lastUpdate": 1786193489676,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -11636,6 +11636,192 @@ window.BENCHMARK_DATA = {
             "value": 26024,
             "unit": "bytes",
             "extra": "Gen0: 67.0000, Gen1: 5.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@mauricepeters.dev",
+            "name": "Maurice Cornelius Gerardus Petrus Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "distinct": true,
+          "id": "5cd4b60fac40fc8e61f65567d984f13fc89e69cb",
+          "message": "ci(benchmark): Stop auto-updating the README comparison tables\n\nThe README's benchmark tables are a same-session comparison — Abies and Blazor\nmeasured on the same machine in the same sitting — and that is the only reason\nthe Delta column means anything. The README says so, and so does\nblazor-baseline.json (\"Blazor is not run in CI\").\n\nCI cannot produce a comparable figure. Blazor is not run there, so the automated\nupdate could only replace the Abies column with shared-runner numbers while\nleaving Blazor's local numbers in place. On its first successful run it did\nexactly that: Create 1,000 rows went from 119.5ms (+34% vs Blazor) to 331.8ms\n(+291%), and Create 10,000 rows from +47% to +336%. Those deltas are the gap\nbetween a CI runner and a laptop, reported as if the framework had regressed by\n4x. Publishing them would have been worse than publishing nothing.\n\nThe three README steps are removed, with the reasoning left in the workflow so\nnobody re-adds them. CI's valid contribution is unaffected: the Abies-over-time\ntrend still publishes to gh-pages, and the regression gate still compares\nCI against CI.\n\nupdate-readme-benchmarks.py stays as a local tool and now says loudly that it\nmust not be run against CI results. The README gains a note explaining that the\ntables are maintained by hand and why.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-08-08T14:39:31+02:00",
+          "tree_id": "e02fad1009bc4fbd170dd68eb1f378b123eae13e",
+          "url": "https://github.com/Picea/Abies/commit/5cd4b60fac40fc8e61f65567d984f13fc89e69cb"
+        },
+        "date": 1786193489023,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 784,
+            "unit": "bytes",
+            "extra": "Gen0: 12.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 40.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 328,
+            "unit": "bytes",
+            "extra": "Gen0: 41.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1448,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 808,
+            "unit": "bytes",
+            "extra": "Gen0: 101.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 10304,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 71280,
+            "unit": "bytes",
+            "extra": "Gen0: 69.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1264,
+            "unit": "bytes",
+            "extra": "Gen0: 79.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9720,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000, Gen1: 2.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4816,
+            "unit": "bytes",
+            "extra": "Gen0: 75.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRows",
+            "value": 1154310,
+            "unit": "bytes",
+            "extra": "Gen0: 203.0000, Gen1: 203.0000, Gen2: 203.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 1051929,
+            "unit": "bytes",
+            "extra": "Gen0: 158.0000, Gen1: 158.0000, Gen2: 158.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 184,
+            "unit": "bytes",
+            "extra": "Gen0: 184.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 272,
+            "unit": "bytes",
+            "extra": "Gen0: 136.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 2320,
+            "unit": "bytes",
+            "extra": "Gen0: 145.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 11504,
+            "unit": "bytes",
+            "extra": "Gen0: 180.0000, Gen1: 7.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 19224,
+            "unit": "bytes",
+            "extra": "Gen0: 150.0000, Gen1: 10.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 464,
+            "unit": "bytes",
+            "extra": "Gen0: 232.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 1240,
+            "unit": "bytes",
+            "extra": "Gen0: 155.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2808,
+            "unit": "bytes",
+            "extra": "Gen0: 176.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 26024,
+            "unit": "bytes",
+            "extra": "Gen0: 203.0000, Gen1: 16.0000"
           }
         ]
       }
