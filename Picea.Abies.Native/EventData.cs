@@ -26,3 +26,16 @@ public sealed record ValueChangedData(double NewValue, double OldValue);
 /// <summary>Payload for selection changes (ComboBox.SelectionChanged).</summary>
 /// <param name="SelectedIndex">The newly selected index, or -1 when nothing is selected.</param>
 public sealed record SelectionChangedData(int SelectedIndex);
+
+/// <summary>
+/// Payload for scroll position changes (ScrollViewer.ViewChanged).
+/// <para>
+/// This is what makes large lists workable: the model derives which slice of
+/// the data is on screen and the view emits only those rows, so the control
+/// count is bounded by the viewport rather than the data.
+/// </para>
+/// </summary>
+/// <param name="VerticalOffset">Distance scrolled from the top, in pixels.</param>
+/// <param name="ViewportHeight">Height of the visible region, in pixels.</param>
+/// <param name="ExtentHeight">Total scrollable height, in pixels.</param>
+public sealed record ScrollChangedData(double VerticalOffset, double ViewportHeight, double ExtentHeight);

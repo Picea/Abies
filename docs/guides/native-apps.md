@@ -122,6 +122,71 @@ it should land after an arbitrary rewrite.
 `Slider.Value` and `ComboBox.SelectedIndex` guard identical writes for the same reason:
 re-setting them would re-raise their change events.
 
+## Long lists
+
+A row per item stops being viable somewhere in the low thousands: every row is a real
+native control that must be created, measured and arranged. The fix is to let the model
+track the scroll position and have the view emit only the rows on screen, so the control
+count is bounded by the viewport rather than the data.
+
+`Virtualization.Window` does the arithmetic — which slice is visible, and how much empty
+space to leave above and below so the scrollbar still reflects the whole list:
+
+```csharp
+public record Model(IReadOnlyList<Row> Rows, double ScrollOffset, double ViewportHeight);
+public record Scrolled(double Offset, double Viewport) : Message;
+
+// Transition
+Scrolled m => model with { ScrollOffset = m.Offset, ViewportHeight = m.Viewport },
+
+// View
+private const double RowHeight = 40;
+
+public static Document View(Model model)
+{
+    var window = Virtualization.Window(
+        itemCount: model.Rows.Count,
+        rowHeight: RowHeight,
+        scrollOffset: model.ScrollOffset,
+        viewportHeight: model.ViewportHeight);
+
+    return new("Big list",
+        ScrollViewer([OnScrollChanged(d => new Scrolled(d!.VerticalOffset, d.ViewportHeight))],
+            StackPanel([],
+            [
+                // Empty space standing in for the rows above the viewport.
+                Border([Id("pad-top"), Height(window.TopPadding)], TextBlock([Id("pad-top-x")], "")),
+
+                .. model.Rows
+                    .Skip(window.StartIndex)
+                    .Take(window.Count)
+                    .Select((row, i) =>
+                    {
+                        var index = window.StartIndex + i;
+                        return TextBlock([Id($"row-{index}"), Key(row.Id), Height(RowHeight)], row.Label);
+                    }),
+
+                Border([Id("pad-bottom"), Height(window.BottomPadding)], TextBlock([Id("pad-bottom-x")], "")),
+            ])));
+}
+```
+
+The two spacers are what keep the scrollbar honest — without them it would size itself to
+the handful of rendered rows. Keys still matter: rows entering and leaving the window are
+reconciled by key, so scrolling moves controls rather than rebuilding them.
+
+**What this is and isn't.** This is *windowing*: the control count is bounded by the
+viewport, which is the difference between a 50,000-row list being impossible and being
+usable. It is not *container recycling* — rows are created and destroyed as they scroll in
+and out rather than reused, so scrolling does more work than a WinUI `ItemsRepeater`
+would. Recycling needs the patch interpreter to keep a shadow of unrealized rows so
+patches aimed at off-screen items are not lost, which is a larger change; see the
+[production-readiness plan](../investigations/winui-native-production-readiness.md).
+
+`Properties.VerticalOffset` scrolls the control programmatically, for cases like jumping
+to a search result. It skips identical writes so a scroll-driven model does not fight the
+user mid-gesture.
+
 ## Handling failures
 
 Rendering and dispatch failures are reported rather than silent. Pass `renderFaulted` to
@@ -159,7 +224,8 @@ sees the desktop head alone. Both are built and render-smoke-tested in CI.
 
 ## Known limitations
 
-- No virtualized list recycling yet — large lists build one control per item.
+- Long lists are handled by windowing (`Virtualization.Window`), not container recycling —
+  rows are created and destroyed as they scroll rather than reused.
 - Styling is direct property assignment; there is no theme-resource mapping yet.
 - No accessibility/automation-peer pass.
 - `Document.Head` is a no-op; `Document.Title` maps to the window title.

@@ -330,6 +330,16 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
             case ScrollViewer sv:
                 switch (name)
                 {
+                    case "VerticalOffset":
+                        // Programmatic scroll. Guarded because ChangeView raises
+                        // ViewChanged, which would echo straight back as a message.
+                        if (value is not null)
+                        {
+                            var target = D(value);
+                            if (Math.Abs(sv.VerticalOffset - target) > 0.5)
+                                sv.ChangeView(null, target, null, true);
+                        }
+                        return;
                     case "Padding":
                         sv.Padding = value is null ? default : ParseThickness(value);
                         return;
@@ -548,6 +558,20 @@ public sealed class WinUIBackend : INativeBackend<FrameworkElement>
                     checkBox.Checked -= handler;
                     checkBox.Unchecked -= handler;
                 };
+                return;
+            }
+            case (ScrollViewer scrollViewer, "ScrollChanged"):
+            {
+                EventHandler<ScrollViewerViewChangedEventArgs> handler = (s, _) =>
+                {
+                    if (sink.IsApplying)
+                        return;
+                    var view = (ScrollViewer)s!;
+                    sink.OnNativeEvent(elementId, "ScrollChanged",
+                        new ScrollChangedData(view.VerticalOffset, view.ViewportHeight, view.ExtentHeight));
+                };
+                scrollViewer.ViewChanged += handler;
+                _detachers[(control, eventName)] = () => scrollViewer.ViewChanged -= handler;
                 return;
             }
             case (ToggleSwitch toggle, "Toggled"):

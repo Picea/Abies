@@ -200,6 +200,14 @@ public static class Properties
     public static DOM.Attribute Source(string uri, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("Source", uri, id);
 
+    /// <summary>
+    /// ScrollViewer vertical scroll position. Writing it scrolls the control;
+    /// identical writes are skipped so a scroll-driven model does not fight the
+    /// user. Pair with <c>Events.OnScrollChanged</c>.
+    /// </summary>
+    public static DOM.Attribute VerticalOffset(double value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
+        => Attr("VerticalOffset", Num(value), id);
+
     /// <summary>ToggleSwitch state (pair with OnToggled).</summary>
     public static DOM.Attribute IsOn(bool value, [UniqueId(UniqueIdFormat.HtmlId)] string? id = null)
         => Attr("IsOn", value ? "True" : "False", id);
