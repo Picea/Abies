@@ -78,7 +78,7 @@ gh pr merge <num> --squash --delete-branch
 gh pr merge <num> --squash --auto
 ```
 
-**Squad rule:** never `--admin` merge. The `block-direct-commits-to-main.sh` hook is the local guard; admin-merging on the remote bypasses it. If a required check is broken, fix the check rather than bypassing it.
+**Squad rule:** never `--admin` merge. `main` is protected by the `protectmainbranch` ruleset, which enforces required status checks (`build`, `Validate PR Title`, `Validate PR Description`, `e2e`, `Analyze C# Code`) and the pull-request rule with no bypass actors configured (`current_user_can_bypass: never`) — so `--admin` does not actually skip those checks on this repo. Don't rely on that as a safety net, though: fix the check rather than reaching for `--admin` in the first place, since a differently configured ruleset (or a future change to this one) could make the bypass real.
 
 ## Workflow runs
 

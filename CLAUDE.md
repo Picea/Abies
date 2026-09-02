@@ -98,7 +98,7 @@ When a request mentions specific files or patterns, this is the default owner. F
 - No k6/NBomber load-test tooling exists in this repo yet — if load testing is needed, that's a new-dependency decision through the standard approval flow, not an assumed convention
 
 **Infrastructure & CI/CD** → `devops`
-- `.github/workflows/**` (17 workflows, including the squad-automation ones: `squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml` — these reference GitHub issue labels for agent assignment and should be audited for old agent-name labels, see decisions.md migration entry)
+- `.github/workflows/**` (the label-driven squad-automation workflows — `squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml` — were removed in the `.claude/`-based agent migration rather than updated, since they targeted the old `squad:<agent>` issue-label scheme; see `.claude/docs/tech-stack.md` for the current workflow inventory)
 - Container registry, deployment config, release automation — **no Dockerfile exists in this repo as of the current migration**; don't assume a container deployment path without verifying first
 - `dotnet new` template CI/CD scaffolding
 

@@ -1,5 +1,12 @@
 # Squad: union merge for append-only team state files
-.squad/decisions.md merge=union
-.squad/agents/*/history.md merge=union
+#
+# .squad/decisions.md and .squad/agents/*/history.md were removed by the
+# .claude/ framework migration (see .claude/docs/decisions.md, "Migrated
+# the squad framework from the old layout" entry): the decision ledger now
+# lives at .claude/docs/decisions.md, and there is no current single
+# append-only history.md per agent (cross-session agent memory now lives
+# under .claude/agent-memory/<name>/*.md as separate files, a different
+# shape that doesn't need this same merge strategy).
+.claude/docs/decisions.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union

@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 #
-# Regression + coverage tests for .claude/hooks/scribe-decision-merger.sh.
+# Regression + coverage tests for .claude/hooks/scribe-decision-merger.sh,
+# plus (see the "GIT COMMIT DETECTION" section near the end) the shared
+# lib/git-commit-detect.sh helper and the four commit-time PreToolUse hooks
+# that source it (enforce-conventional-commits.sh, enforce-gpg-signing.sh,
+# enforce-no-secrets.sh, block-large-files.sh).
 #
 # Run:
 #   bash .claude/hooks/tests/run.sh
 #
 # No dependencies beyond bash 4+ (this suite uses `declare -A`; the hook
 # itself only needs bash 3) and python3 (already required by the hook
-# itself). No git history requirement: the two pre-fix hook revisions used
-# by the regression checks are vendored as fixtures (see
+# itself). No git history requirement: the three pre-fix hook revisions
+# used by the regression checks are vendored as fixtures (see
 # fixtures-pre-fix/), not read from the commit graph.
 #
 # agent_identity.py, colocated in this directory, is imported by
@@ -78,6 +82,42 @@
 #      `created` selection, neither of which the corpus/whitelist sections
 #      exercise.
 #
+#   6. The forgeable-verdict regression (PR #355 review, blocker #4): the
+#      nested-key-promotion bug (search GUARDED_TOPLEVEL_FIELDS in the
+#      hook) let a drop declare a mundane real identity at column 0 and
+#      then bury a nested `meta:` block that silently overwrote
+#      agent/verdict/blockers, forging a `reviewer · PASS` archive entry
+#      and a `PASS` write to `.last-review-verdict` for a drop no reviewer
+#      ever produced. Two rounds:
+#        - Round 1: checked against
+#          fixtures-pre-fix/scribe-decision-merger.pre-column0-guard-fix.sh
+#          (the revision before ANY guard) and
+#          fixtures/19-nested-agent-verdict-forgery.md (the reviewer's
+#          exact forged drop, reconstructed with the id/scope/created
+#          boilerplate the original PR-review snippet omitted for
+#          brevity). Landed with two gaps a re-review caught: the guard
+#          counted ASCII spaces only, and `blockers` wasn't in the guarded
+#          set.
+#        - Round 2: checked against
+#          fixtures-pre-fix/scribe-decision-merger.pre-whitespace-guard-fix.sh
+#          (round 1's hook -- HAS the guard, still bypassable) and six new
+#          fixtures, one per non-space whitespace character the reviewer
+#          verified bypasses round 1 (tab, NBSP, ideographic space,
+#          vertical tab, form feed, em space -- fixtures
+#          20-nested-forgery-tab.md through 25-nested-forgery-em-space.md),
+#          plus fixtures/26-blockers-nested-shadow.md for the
+#          unguarded-`blockers` exploit. Fixed by whitespace-aware
+#          indentation (`line.lstrip()`), a strict `\r\n|\r|\n` line
+#          splitter (vertical tab and form feed are themselves line
+#          terminators under plain `str.splitlines()`, which no indent fix
+#          alone can compensate for), and adding `blockers` to
+#          GUARDED_TOPLEVEL_FIELDS.
+#      The guard now covers six field NAMES (id, agent, verdict, scope,
+#      created, blockers) -- the broader nested-key-promotion bug for every
+#      OTHER key, and the list-item acceptance branch generally, remain
+#      open; see https://github.com/MCGPPeters/squad-template/issues/8 and
+#      the TODO(#8) comments in the hook itself.
+#
 # Exit code: 0 if every case matches its expected outcome, 1 otherwise, with
 # a per-case report on stdout.
 
@@ -95,6 +135,8 @@ AGENTS_DIR="$REPO_ROOT/.claude/agents"
 # fixtures rather than `git show <ref>:<path>` against a commit SHA.
 NESTED_MAPPING_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-nested-mapping-fix.sh"  # mis-parsed nested-mapping list items
 STALE_WHITELIST_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-whitelist-fix.sh"      # has the parser fix, still missing the 6 phase agents
+COLUMN0_GUARD_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-column0-guard-fix.sh"    # nested key promotion forges reviewer/PASS, no guard at all
+WHITESPACE_GUARD_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-whitespace-guard-fix.sh"  # HAS the column-0 guard (space-only) but non-space whitespace and the unguarded blockers key still forge it
 
 pass=0
 fail=0
@@ -149,6 +191,14 @@ verify_fixture_sha256 \
   "pre-whitelist-fix.sh" \
   "$PRE_FIX/scribe-decision-merger.pre-whitelist-fix.sh" \
   "c0f0f14c86ed736c189f486329c5622793d86927a9994f40ba7445cbc98b6c0d"
+verify_fixture_sha256 \
+  "pre-column0-guard-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-column0-guard-fix.sh" \
+  "b2366e5e7105500ab70c8581e1627769ab6903b28a99f4190b2e1d53ed342cda"
+verify_fixture_sha256 \
+  "pre-whitespace-guard-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-whitespace-guard-fix.sh" \
+  "5f997f5024a7284cc624324af9a862e3fd70b8f52bd121c1ac85a90f2675128f"
 
 # ---------------------------------------------------------------------------
 # Sandbox helper: builds a throwaway project dir with a given hook script and
@@ -199,6 +249,123 @@ reason_of() {
 # staleness mode the failure message at the top of this file warns about:
 # vendoring only makes drift loud, not meaningful, without this check) and
 # the CURRENT hook ARCHIVEs it (proving the fix).
+# $1 = human label, $2 = vendored pre-fix hook script (must reproduce the
+# forgery), $3 = fixture path, $4 = the exact drop id inside that fixture
+# (used to locate its heading line in decisions.md), $5 = expected CURRENT
+# outcome (ARCHIVED or QUARANTINED), $6 = for ARCHIVED, a substring
+# expected in the drop's TRUE (non-forged) heading (e.g.
+# "[csharp-dev · NEEDS-CHANGES]"); for QUARANTINED, a substring expected in
+# the .reason file.
+#
+# Inverted polarity from check_regression above, same as before: the bug
+# made the pre-fix hook wrongly ARCHIVE the forged drop as a false
+# `reviewer · PASS` and forge `.last-review-verdict`. What "fixed" looks
+# like now has TWO shapes depending on the fixture, both asserted here:
+#   - identity-forgery shape (fixtures 19-25): once agent/verdict/blockers
+#     can no longer be overwritten by a nested block, the drop's real,
+#     internally-consistent content is honoured and it archives under its
+#     TRUE identity -- NOT quarantined, and specifically NOT archived as
+#     `[reviewer · PASS]`.
+#   - blockers-only shape (fixture 26): a genuine top-level
+#     `agent: reviewer` / `verdict: PASS` whose real non-empty `blockers`
+#     was covertly zeroed by an unguarded nested key now correctly fails
+#     the verdict<->blockers consistency check it was trying to dodge --
+#     QUARANTINED for that real inconsistency.
+# Either way, the property that actually matters is asserted unconditionally
+# at the end: `.last-review-verdict` is never written for this drop.
+check_forgery_regression() {
+  local label="$1" before_hook="$2" fixture="$3" drop_id="$4" expected_after_outcome="$5" expected_after_detail="$6" base
+  base="$(basename "$fixture")"
+
+  if [ -f "$before_hook" ]; then
+    local before_sandbox before_outcome before_heading before_cache
+    before_sandbox="$(run_hook_sandbox "$before_hook" "$fixture")"
+    before_outcome="$(outcome_of "$before_sandbox" "$base")"
+    if [ "$before_outcome" = "ARCHIVED" ]; then
+      report "regression: $label -- vendored pre-fix hook reproduces the forgery (archives, does not reject)" 1
+    else
+      report "regression: $label -- vendored pre-fix hook reproduces the forgery (archives, does not reject)" 0 \
+        "expected ARCHIVED, got $before_outcome -- $before_hook may no longer represent the pre-fix state"
+    fi
+
+    before_heading="$(grep -F "$drop_id" "$before_sandbox/.claude/docs/decisions.md" 2>/dev/null | head -n1)"
+    case "$before_heading" in
+      *"[reviewer · PASS]"*)
+        report "regression: $label -- vendored pre-fix hook forges it specifically as [reviewer · PASS]" 1
+        ;;
+      *)
+        report "regression: $label -- vendored pre-fix hook forges it specifically as [reviewer · PASS]" 0 \
+          "heading was: ${before_heading:-<none>}"
+        ;;
+    esac
+
+    before_cache="$(cat "$before_sandbox/.squad/.last-review-verdict" 2>/dev/null || echo "<missing>")"
+    if [ "$before_cache" = "PASS" ]; then
+      report "regression: $label -- vendored pre-fix hook forges PASS into .last-review-verdict" 1
+    else
+      report "regression: $label -- vendored pre-fix hook forges PASS into .last-review-verdict" 0 \
+        "expected PASS, got $before_cache"
+    fi
+    rm -rf "$before_sandbox"
+  else
+    report "regression: $label -- missing vendored pre-fix hook" 0 "$before_hook not found"
+    report "regression: $label -- vendored pre-fix hook forges it specifically as [reviewer · PASS]" 0 \
+      "skipped -- $before_hook not found"
+    report "regression: $label -- vendored pre-fix hook forges PASS into .last-review-verdict" 0 \
+      "skipped -- $before_hook not found"
+  fi
+
+  local after_sandbox after_outcome after_cache
+  after_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$fixture")"
+  after_outcome="$(outcome_of "$after_sandbox" "$base")"
+  if [ "$after_outcome" = "$expected_after_outcome" ]; then
+    report "regression: $label -- current hook outcome is $expected_after_outcome, not a forged archive" 1
+  else
+    report "regression: $label -- current hook outcome is $expected_after_outcome, not a forged archive" 0 \
+      "expected $expected_after_outcome, got $after_outcome"
+  fi
+
+  if [ "$expected_after_outcome" = "ARCHIVED" ]; then
+    local after_heading
+    after_heading="$(grep -F "$drop_id" "$after_sandbox/.claude/docs/decisions.md" 2>/dev/null | head -n1)"
+    case "$after_heading" in
+      *"[reviewer · PASS]"*)
+        report "regression: $label -- current hook does not forge [reviewer · PASS] (archives under true identity instead)" 0 \
+          "heading was: $after_heading"
+        ;;
+      *"$expected_after_detail"*)
+        report "regression: $label -- current hook does not forge [reviewer · PASS] (archives under true identity instead)" 1
+        ;;
+      *)
+        report "regression: $label -- current hook does not forge [reviewer · PASS] (archives under true identity instead)" 0 \
+          "expected heading containing '$expected_after_detail', got '${after_heading:-<none>}'"
+        ;;
+    esac
+  else
+    local after_reason
+    after_reason="$(reason_of "$after_sandbox" "$base")"
+    case "$after_reason" in
+      *"$expected_after_detail"*)
+        report "regression: $label -- current hook rejects for the expected reason" 1
+        ;;
+      *)
+        report "regression: $label -- current hook rejects for the expected reason" 0 \
+          "expected reason containing '$expected_after_detail', got '${after_reason:-<none>}'"
+        ;;
+    esac
+  fi
+
+  local after_cache
+  after_cache="$(cat "$after_sandbox/.squad/.last-review-verdict" 2>/dev/null || echo "<missing>")"
+  if [ "$after_cache" = "<missing>" ]; then
+    report "regression: $label -- current hook does NOT write PASS to .last-review-verdict for this drop" 1
+  else
+    report "regression: $label -- current hook does NOT write PASS to .last-review-verdict for this drop" 0 \
+      "expected no write (fresh sandbox, file should not exist), got: $after_cache"
+  fi
+  rm -rf "$after_sandbox"
+}
+
 check_regression() {
   local label="$1" before_hook="$2" fixture="$3" expected_reason="$4" base
   base="$(basename "$fixture")"
@@ -290,8 +457,74 @@ check_regression \
   "$whitelist_dir/critic.md" \
   "unknown agent: critic"
 
+check_forgery_regression \
+  "forgeable verdict (PR #355 review blocker #4: nested meta: block impersonates reviewer/PASS, spaces, no guard at all)" \
+  "$COLUMN0_GUARD_BUG_HOOK" \
+  "$FIXTURES/19-nested-agent-verdict-forgery.md" \
+  "csharpdev-20260821T000000Z-forged-verdict-poc" \
+  "ARCHIVED" \
+  "[csharp-dev · NEEDS-CHANGES]"
+
+# ---------------------------------------------------------------------------
+# Re-review round 2 (PR #355, blocker #4 not closed): the column-0 guard
+# above counted ASCII spaces only (`line.lstrip(" ")`), and only guarded
+# the five schema-required field names. Two independent bypasses, both
+# reviewer-verified end-to-end against the round-1 "fixed" hook (vendored
+# as $WHITESPACE_GUARD_BUG_HOOK, the "current broken hook" these checks
+# target -- NOT the original no-guard-at-all hook, which was already known
+# broken):
+#   1. Indenting the nested block with a tab, NBSP (U+00A0), ideographic
+#      space (U+3000), vertical tab, form feed, or em space (U+2003)
+#      instead of spaces measures as indent 0 under the space-only
+#      calculation, so the guard never fires. Worse for two of the six:
+#      vertical tab and form feed are themselves treated as LINE
+#      separators by `str.splitlines()`, so the "nested" line isn't merely
+#      miscounted -- it becomes a genuinely separate, truly-zero-indent
+#      line that no indent guard could ever distinguish from a real
+#      column-0 declaration. Fixed by switching to `re.split(r"\r\n|\r|\n",
+#      fm)` for line splitting (so only real newlines end a line) plus
+#      `line.lstrip()` (whitespace-aware, no args) for indent counting.
+#   2. `blockers` was never in the guarded set, so a genuine top-level
+#      `agent: reviewer` / `verdict: PASS` with a real non-empty top-level
+#      `blockers` list could still have that list covertly zeroed by a
+#      nested nested `blockers: []` under an unrelated key, defeating the
+#      verdict<->blockers consistency check the space-indented fixture's
+#      rejection was resting on. Fixed by adding `blockers` to
+#      GUARDED_TOPLEVEL_FIELDS.
+# One fixture per named character (all archive under their TRUE identity,
+# csharp-dev/NEEDS-CHANGES, once fixed -- see the check_forgery_regression
+# header comment for why that's the correct "closed" shape here) plus one
+# for the blockers-only exploit (quarantined for a genuine, no-longer-
+# maskable inconsistency).
+# ---------------------------------------------------------------------------
+declare -A whitespace_forgery_fixtures=(
+  ["20-nested-forgery-tab.md"]="csharpdev-20260821T000001Z-forged-tab"
+  ["21-nested-forgery-nbsp.md"]="csharpdev-20260821T000002Z-forged-nbsp"
+  ["22-nested-forgery-ideographic-space.md"]="csharpdev-20260821T000003Z-forged-ideospace"
+  ["23-nested-forgery-vertical-tab.md"]="csharpdev-20260821T000004Z-forged-vtab"
+  ["24-nested-forgery-form-feed.md"]="csharpdev-20260821T000005Z-forged-formfeed"
+  ["25-nested-forgery-em-space.md"]="csharpdev-20260821T000006Z-forged-emspace"
+)
+for wf_name in "${!whitespace_forgery_fixtures[@]}"; do
+  check_forgery_regression \
+    "forgeable verdict, non-space indentation ($wf_name)" \
+    "$WHITESPACE_GUARD_BUG_HOOK" \
+    "$FIXTURES/$wf_name" \
+    "${whitespace_forgery_fixtures[$wf_name]}" \
+    "ARCHIVED" \
+    "[csharp-dev · NEEDS-CHANGES]"
+done
+
+check_forgery_regression \
+  "forgeable verdict, unguarded blockers key (spaces only, exploit 2)" \
+  "$WHITESPACE_GUARD_BUG_HOOK" \
+  "$FIXTURES/26-blockers-nested-shadow.md" \
+  "reviewer-20260821T000007Z-blockers-nested-shadow-poc" \
+  "QUARANTINED" \
+  "verdict PASS but blockers list is non-empty"
+
 # ===========================================================================
-# 2. Corpus coverage -- 18 cases, cross-checked against PyYAML 6.0.3.
+# 2. Corpus coverage -- 26 cases, cross-checked against PyYAML 6.0.3.
 # ===========================================================================
 declare -A EXPECTED=(
   ["01-schema-nested-2blockers.md"]="ARCHIVED"
@@ -300,7 +533,22 @@ declare -A EXPECTED=(
   ["04-orphan-list-item.md"]="QUARANTINED"
   ["05-pass-with-blockers.md"]="QUARANTINED"
   ["06-nc-empty-blockers.md"]="QUARANTINED"
-  ["07-tab-indent.md"]="QUARANTINED"
+  # Legitimate outcome change from the whitespace-aware indent fix (round 2
+  # of the blocker #4 re-review): `line.lstrip()` now counts a tab as
+  # indentation, so the tab-indented list-item continuation lines
+  # (`line:`/`reason:` under `- file:`) are correctly recognised as
+  # extending the same blockers entry instead of being miscounted as
+  # top-level lines. The fixture's own name says "tab-indent" -- it was
+  # QUARANTINED before only because the prior space-only indent
+  # calculation mis-parsed valid tab indentation, not because the drop was
+  # actually malformed. Strict YAML itself forbids tabs for indentation
+  # entirely (would be a PyYAML syntax error), so this is the SAME class of
+  # "known, reviewed divergence from strict YAML" as 08-ragged-indent below
+  # -- flattening/lenient-continuation behaviour this hook already accepts
+  # by design, now reachable via tabs too. No PASS<->blockers gate hole:
+  # the six guarded field names (GUARDED_TOPLEVEL_FIELDS) are unaffected by
+  # this, since the continuation branch was never the vulnerable one.
+  ["07-tab-indent.md"]="ARCHIVED"
   # Known, reviewed divergence from strict YAML: ragged indentation inside a
   # list item is accepted here (flattened) where PyYAML raises a syntax
   # error. No PASS<->blockers gate hole is reachable through it (flattening
@@ -318,6 +566,14 @@ declare -A EXPECTED=(
   ["16-block-scalar.md"]="ARCHIVED"
   ["17-bare-scalars.md"]="ARCHIVED"
   ["18-comments-inside.md"]="ARCHIVED"
+  ["19-nested-agent-verdict-forgery.md"]="ARCHIVED"
+  ["20-nested-forgery-tab.md"]="ARCHIVED"
+  ["21-nested-forgery-nbsp.md"]="ARCHIVED"
+  ["22-nested-forgery-ideographic-space.md"]="ARCHIVED"
+  ["23-nested-forgery-vertical-tab.md"]="ARCHIVED"
+  ["24-nested-forgery-form-feed.md"]="ARCHIVED"
+  ["25-nested-forgery-em-space.md"]="ARCHIVED"
+  ["26-blockers-nested-shadow.md"]="QUARANTINED"
 )
 
 corpus_names=()
@@ -1006,6 +1262,291 @@ case "$b2_eof_reason" in
     ;;
 esac
 rm -rf "$b2_eof_sandbox" "$b2_eof_dir"
+
+# ===========================================================================
+# GIT COMMIT DETECTION -- lib/git-commit-detect.sh and the four commit-time
+# PreToolUse hooks that source it.
+# ===========================================================================
+#
+# Replaces `case "$command" in *"git commit"*)` in all four of
+# enforce-conventional-commits.sh, enforce-gpg-signing.sh,
+# enforce-no-secrets.sh, and block-large-files.sh. That substring match had
+# two independent, confirmed bugs (PR #355 review):
+#
+#   - False negative: `git -C <path> commit`, `git --git-dir=... commit`,
+#     and `git -c k=v commit` never contain the literal substring
+#     "git commit" adjacently, so all four hooks silently exited 0 --
+#     bypassing conventional-commits, GPG, secrets, and size checks in one
+#     command.
+#   - False positive: a payload that merely *contains* the text
+#     "git commit" (e.g. `echo see: git commit -m msg`) triggered them.
+#
+# Two layers of coverage:
+#   1. Unit tests directly against git_commit_detect.py's output (fast,
+#      exercises every recognised global-flag form without needing a real
+#      git repo).
+#   2. End-to-end tests against the actual hook scripts via a scratch git
+#      repo, invoked exactly as Claude Code would (JSON payload on stdin).
+#      block-large-files.sh and enforce-conventional-commits.sh have zero
+#      external tool dependencies beyond git itself, so their E2E tests
+#      assert the full allow/block outcome. enforce-gpg-signing.sh and
+#      enforce-no-secrets.sh depend on this machine's/runner's gpg keyring
+#      and gitleaks installation respectively -- neither is guaranteed
+#      present on a fresh CI runner, and asserting a specific block/allow
+#      outcome there would make this suite flaky by environment rather than
+#      by regression. For those two, E2E coverage instead exercises
+#      argv-parsing paths that are deterministic regardless of gpg/gitleaks
+#      state (the false-positive text guard, and the Merge/--no-gpg-sign
+#      skip logic reached only if `-C` was seen at all) -- proving the
+#      detection fix reaches those hooks without coupling the suite to
+#      external tool availability.
+
+GIT_COMMIT_DETECT_PY="$REPO_ROOT/.claude/hooks/lib/git_commit_detect.py"
+GIT_COMMIT_DETECT_SH="$REPO_ROOT/.claude/hooks/lib/git-commit-detect.sh"
+CONVENTIONAL_COMMITS_HOOK="$REPO_ROOT/.claude/hooks/enforce-conventional-commits.sh"
+GPG_SIGNING_HOOK="$REPO_ROOT/.claude/hooks/enforce-gpg-signing.sh"
+NO_SECRETS_HOOK="$REPO_ROOT/.claude/hooks/enforce-no-secrets.sh"
+LARGE_FILES_HOOK="$REPO_ROOT/.claude/hooks/block-large-files.sh"
+
+# Builds a Bash-tool PreToolUse JSON payload: {"tool_input":{"command":<cmd>}}
+commit_payload() {
+  python3 -c 'import json,sys; print(json.dumps({"tool_input":{"command":sys.argv[1]}}))' "$1"
+}
+
+# Runs a hook script against a raw shell command string, capturing exit code
+# and combined output. Sets HOOK_EXIT and HOOK_OUT.
+run_commit_hook() {
+  local hook_script="$1" command="$2"
+  HOOK_OUT="$(commit_payload "$command" | CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$hook_script" 2>&1)"
+  HOOK_EXIT=$?
+}
+
+# Runs git_commit_detect.py directly against a raw command string, printing
+# its three output lines (GIT_COMMIT_MATCH / GIT_COMMIT_GLOBAL_ARGS /
+# GIT_COMMIT_ARGV) for grep-based assertions.
+detect_raw() {
+  printf '%s' "$1" | python3 "$GIT_COMMIT_DETECT_PY" 2>/dev/null
+}
+
+# Minimal scratch git repo with one committed file, so `--staged` and
+# `rev-parse --show-toplevel` both have something real to operate on. Prints
+# the repo path.
+mk_scratch_git_repo() {
+  local dir
+  dir="$(mktemp -d)"
+  git -C "$dir" init -q
+  git -C "$dir" config user.email "hook-test@example.invalid"
+  git -C "$dir" config user.name "Hook Test"
+  git -C "$dir" config commit.gpgsign false
+  printf 'seed\n' > "$dir/seed.txt"
+  git -C "$dir" add seed.txt
+  git -C "$dir" commit -q -m "chore: seed"
+  printf '%s\n' "$dir"
+}
+
+# --- 1. Unit coverage: git_commit_detect.py -------------------------------
+
+detect_out="$(detect_raw 'git -C /some/path commit -m "x"')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$' \
+   && printf '%s' "$detect_out" | grep -qF "GIT_COMMIT_GLOBAL_ARGS=(-C /some/path)"; then
+  report "detect: git -C <path> commit -m ... is caught (false negative fix)" 1
+else
+  report "detect: git -C <path> commit -m ... is caught (false negative fix)" 0 "$detect_out"
+fi
+
+detect_out="$(detect_raw 'git --git-dir=/x/.git commit -m y')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$' \
+   && printf '%s' "$detect_out" | grep -qF -- "--git-dir=/x/.git"; then
+  report "detect: git --git-dir=... commit is caught" 1
+else
+  report "detect: git --git-dir=... commit is caught" 0 "$detect_out"
+fi
+
+detect_out="$(detect_raw 'git -c user.name=x commit -m y')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$' \
+   && printf '%s' "$detect_out" | grep -qF "GIT_COMMIT_GLOBAL_ARGS=(-c user.name=x)"; then
+  report "detect: git -c k=v commit is caught" 1
+else
+  report "detect: git -c k=v commit is caught" 0 "$detect_out"
+fi
+
+detect_out="$(detect_raw 'echo see: git commit -m "not conventional" for details')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=0$'; then
+  report "detect: payload merely containing the text 'git commit' is NOT caught (false positive fix)" 1
+else
+  report "detect: payload merely containing the text 'git commit' is NOT caught (false positive fix)" 0 "$detect_out"
+fi
+
+detect_out="$(detect_raw 'git status')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=0$'; then
+  report "detect: unrelated git subcommand (status) is not caught" 1
+else
+  report "detect: unrelated git subcommand (status) is not caught" 0 "$detect_out"
+fi
+
+detect_out="$(detect_raw 'git add -A && git commit -m "x"')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$'; then
+  report "detect: commit half of a compound (&&) command is caught" 1
+else
+  report "detect: commit half of a compound (&&) command is caught" 0 "$detect_out"
+fi
+
+# git-commit-detect.sh sourcing contract: GIT_COMMIT_REPO_DIR resolves to
+# the ACTUAL targeted repo, not the sourcing shell's cwd.
+detect_repo="$(mk_scratch_git_repo)"
+detect_resolved="$(bash -c '
+  source "'"$GIT_COMMIT_DETECT_SH"'"
+  git_commit_detect "git -C '"'"'"$1"'"'"' commit -m x"
+  printf "%s" "$GIT_COMMIT_REPO_DIR"
+' _ "$detect_repo")"
+# Resolve both sides through realpath so a /tmp vs /private/tmp (or similar
+# symlink) mismatch on some platforms doesn't produce a false failure.
+detect_repo_real="$(cd "$detect_repo" && pwd -P)"
+if [ "$detect_resolved" = "$detect_repo_real" ]; then
+  report "git-commit-detect.sh: GIT_COMMIT_REPO_DIR resolves the -C target, not the caller's cwd" 1
+else
+  report "git-commit-detect.sh: GIT_COMMIT_REPO_DIR resolves the -C target, not the caller's cwd" 0 \
+    "expected $detect_repo_real, got $detect_resolved"
+fi
+rm -rf "$detect_repo"
+
+# --- 2. End-to-end: enforce-conventional-commits.sh (no external deps) ----
+
+# The greedy-sed regression: git commit -m "<subject>" -m "<body>" used to
+# validate the BODY (the LAST -m) instead of the subject (the FIRST -m).
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" \
+  'git commit -m "fix(auth): reject expired tokens" -m "this is free-form body text, not a conventional subject"'
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "conventional-commits: first -m (valid subject) wins over a non-conventional second -m (greedy-sed regression)" 1
+else
+  report "conventional-commits: first -m (valid subject) wins over a non-conventional second -m (greedy-sed regression)" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+
+# Same shape, but the FIRST -m is the bad one -- must still block.
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" \
+  'git commit -m "not conventional" -m "fix(auth): this looks conventional but is only the body"'
+if [ "$HOOK_EXIT" -eq 2 ]; then
+  report "conventional-commits: a non-conventional first -m still blocks even when a later -m looks conventional" 1
+else
+  report "conventional-commits: a non-conventional first -m still blocks even when a later -m looks conventional" 0 \
+    "expected exit 2, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+
+# False negative fix: git -C <path> commit with a bad subject must now block.
+cc_repo="$(mk_scratch_git_repo)"
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" "git -C $cc_repo commit -m 'not conventional at all'"
+if [ "$HOOK_EXIT" -eq 2 ]; then
+  report "conventional-commits: git -C <path> commit with a bad subject is now caught (false negative fix)" 1
+else
+  report "conventional-commits: git -C <path> commit with a bad subject is now caught (false negative fix)" 0 \
+    "expected exit 2, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+rm -rf "$cc_repo"
+
+# False positive fix: a non-commit command merely containing the text must
+# never block.
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" 'echo see: git commit -m "not conventional" for details'
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "conventional-commits: payload merely containing 'git commit' text is not caught (false positive fix)" 1
+else
+  report "conventional-commits: payload merely containing 'git commit' text is not caught (false positive fix)" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+
+# -F/--file: a valid conventional subject read from a real file passes.
+cc_file_repo="$(mk_scratch_git_repo)"
+printf 'feat: add thing\n\nlonger body\n' > "$cc_file_repo/msg.txt"
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" "git -C $cc_file_repo commit -F $cc_file_repo/msg.txt"
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "conventional-commits: -F <file> validates the file's first line as the subject" 1
+else
+  report "conventional-commits: -F <file> validates the file's first line as the subject" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+printf 'not conventional\n' > "$cc_file_repo/msg2.txt"
+run_commit_hook "$CONVENTIONAL_COMMITS_HOOK" "git -C $cc_file_repo commit -F $cc_file_repo/msg2.txt"
+if [ "$HOOK_EXIT" -eq 2 ]; then
+  report "conventional-commits: -F <file> with a bad subject blocks" 1
+else
+  report "conventional-commits: -F <file> with a bad subject blocks" 0 \
+    "expected exit 2, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+rm -rf "$cc_file_repo"
+
+# --- 3. End-to-end: block-large-files.sh (no external deps) ---------------
+
+lf_repo="$(mk_scratch_git_repo)"
+head -c 6291456 /dev/zero > "$lf_repo/big.bin" 2>/dev/null || dd if=/dev/zero of="$lf_repo/big.bin" bs=1M count=6 >/dev/null 2>&1
+git -C "$lf_repo" add big.bin
+
+run_commit_hook "$LARGE_FILES_HOOK" "git -C $lf_repo commit -m 'fix: add binary'"
+if [ "$HOOK_EXIT" -eq 2 ]; then
+  report "block-large-files: git -C <path> commit with an oversized staged file is now caught (false negative fix)" 1
+else
+  report "block-large-files: git -C <path> commit with an oversized staged file is now caught (false negative fix)" 0 \
+    "expected exit 2, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+
+run_commit_hook "$LARGE_FILES_HOOK" 'echo see: git commit -m "whatever" for details'
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "block-large-files: payload merely containing 'git commit' text is not caught (false positive fix)" 1
+else
+  report "block-large-files: payload merely containing 'git commit' text is not caught (false positive fix)" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+
+git -C "$lf_repo" restore --staged big.bin
+rm -f "$lf_repo/big.bin"
+run_commit_hook "$LARGE_FILES_HOOK" "git -C $lf_repo commit -m 'fix: nothing large staged'"
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "block-large-files: control -- same repo, no oversized file staged, passes" 1
+else
+  report "block-large-files: control -- same repo, no oversized file staged, passes" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+rm -rf "$lf_repo"
+
+# --- 4. Detection propagation: enforce-gpg-signing.sh, enforce-no-secrets.sh
+#        (deterministic paths only -- see section header for why full
+#        block/allow outcomes aren't asserted for these two) -------------
+
+for pair in "GPG_SIGNING_HOOK:gpg-signing" "NO_SECRETS_HOOK:no-secrets"; do
+  hook_var="${pair%%:*}"
+  hook_label="${pair##*:}"
+  hook_path="${!hook_var}"
+
+  run_commit_hook "$hook_path" 'echo see: git commit -m "whatever" for details'
+  if [ "$HOOK_EXIT" -eq 0 ]; then
+    report "$hook_label: payload merely containing 'git commit' text is not caught (false positive fix)" 1
+  else
+    report "$hook_label: payload merely containing 'git commit' text is not caught (false positive fix)" 0 \
+      "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+  fi
+
+  dp_repo="$(mk_scratch_git_repo)"
+  # A merge commit message reached only if -C was actually parsed through to
+  # the skip logic -- deterministic regardless of gpg/gitleaks state.
+  run_commit_hook "$hook_path" "git -C $dp_repo commit -m \"Merge branch 'x' into main\""
+  if [ "$HOOK_EXIT" -eq 0 ]; then
+    report "$hook_label: git -C <path> commit -m \"Merge ...\" is parsed through -C and skipped" 1
+  else
+    report "$hook_label: git -C <path> commit -m \"Merge ...\" is parsed through -C and skipped" 0 \
+      "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+  fi
+  rm -rf "$dp_repo"
+done
+
+# --no-gpg-sign bypass is reached through -C too.
+gpg_bypass_repo="$(mk_scratch_git_repo)"
+run_commit_hook "$GPG_SIGNING_HOOK" "git -C $gpg_bypass_repo commit --no-gpg-sign -m 'chore: whatever'"
+if [ "$HOOK_EXIT" -eq 0 ]; then
+  report "gpg-signing: --no-gpg-sign bypass is reached through -C" 1
+else
+  report "gpg-signing: --no-gpg-sign bypass is reached through -C" 0 \
+    "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
+fi
+rm -rf "$gpg_bypass_repo"
 
 # ===========================================================================
 echo

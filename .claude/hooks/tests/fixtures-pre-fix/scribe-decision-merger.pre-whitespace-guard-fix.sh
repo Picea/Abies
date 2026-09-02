@@ -81,19 +81,12 @@ ALLOWED_VERDICTS = {"PASS","NEEDS-CHANGES","BLOCKED","INFO"}
 ALLOWED_SCOPES   = {"review","decision","threat-model","benchmark","retro",
                     "handoff","architecture","doc","other"}
 # TODO(#8) narrow fix -- see the indentation guard in the parse loop below
-# (search GUARDED_TOPLEVEL_FIELDS). Column-0 (indent 0) is required for
-# these field NAMES specifically; a nested occurrence of one of them (e.g.
-# `meta:\n  agent: reviewer`) must not be promoted to -- or silently
-# pre-declared at -- top level. This is the five schema-required fields
-# (id/agent/verdict/scope/created) PLUS `blockers`, which isn't itself
-# schema-required but gates the verdict<->blockers consistency check below
-# -- reviewer-verified second exploit: a genuine top-level
-# `agent: reviewer` / `verdict: PASS` with a real non-empty top-level
-# `blockers` list, plus a nested `notes:\n  blockers: []`, satisfied the
-# consistency check by silently zeroing the real blockers list instead of
-# by forging agent/verdict. Deliberately scoped to just these six names,
-# not every key: see the parse-loop comment for why.
-GUARDED_TOPLEVEL_FIELDS = {"id", "agent", "verdict", "scope", "created", "blockers"}
+# (search REQUIRED_TOPLEVEL_FIELDS). Column-0 (indent 0) is required for
+# these five schema-required field NAMES specifically; a nested occurrence
+# of one of them (e.g. `meta:\n  agent: reviewer`) must not be promoted to
+# -- or silently pre-declared at -- top level. Deliberately scoped to just
+# these five names, not every key: see the parse-loop comment for why.
+REQUIRED_TOPLEVEL_FIELDS = {"id", "agent", "verdict", "scope", "created"}
 
 path = sys.argv[1]
 try:
@@ -132,9 +125,8 @@ except Exception as e:
 # because the two parsers diverge immediately after fence detection.
 #
 # This is DISTINCT from the nested-key-promotion bug further down (search
-# GUARDED_TOPLEVEL_FIELDS below): that one is now narrowly fixed for the
-# six names in GUARDED_TOPLEVEL_FIELDS (the five schema-required ones plus
-# `blockers`), with
+# REQUIRED_TOPLEVEL_FIELDS below): that one is now narrowly fixed for the
+# five schema-required field names (id/agent/verdict/scope/created), with
 # the broader question -- every OTHER key, and the list-item acceptance
 # branch generally -- still open pending a user scope decision. Only the
 # fence-boundary bug above was fixed by THIS COMMENT's original change;
@@ -190,41 +182,11 @@ current_list = None        # name of the key currently collecting list items
 current_item = None        # dict of the list item currently being extended
 current_item_indent = None # indentation column of that item's `- ` marker
 
-# Line splitting: `fm.splitlines()` (str.splitlines(), no args) is too
-# permissive for this purpose -- besides \r\n/\r/\n it ALSO treats
-# vertical tab (\x0b), form feed (\x0c), \x1c-\x1e, NEL (\x85), LS
-# (\u2028) and PS (\u2029) as line terminators. Reviewer-verified: a
-# vertical-tab or form-feed character placed where an indentation prefix
-# would go doesn't get miscounted as indentation at all -- splitlines()
-# consumes it as a boundary FIRST, so `meta:\n\x0bagent: reviewer` becomes
-# the two independent lines "meta:" and "agent: reviewer", the second with
-# GENUINELY zero leading whitespace, not merely zero as miscounted. No
-# indentation guard can distinguish that from a real column-0 declaration,
-# because by the time the guard runs it IS one. Splitting on exactly
-# \r\n / \r / \n (matching the CRLF fixture's expectations, nothing
-# broader) closes this at the source: none of those six extra separators
-# split a line here, so a vertical-tab/form-feed/etc used as indentation
-# stays part of the SAME line and is correctly counted below.
-fm_lines = re.split(r"\r\n|\r|\n", fm)
-
-for raw in fm_lines:
+for raw in fm.splitlines():
     line = raw.rstrip()
     if not line or line.lstrip().startswith("#"):
         continue
-    # Whitespace-aware indent -- `line.lstrip()` (no args) strips every
-    # Unicode "White_Space" character, not just U+0020. The prior
-    # `line.lstrip(" ")` counted ASCII-space indentation only, so a nested
-    # `agent:`/`verdict:`/etc. line indented with a tab, NBSP (U+00A0),
-    # ideographic space (U+3000), vertical tab, form feed, or em space
-    # (U+2003) measured as indent 0 -- the GUARDED_TOPLEVEL_FIELDS check
-    # above never fired, and `.strip()` a few lines below removes the same
-    # character anyway, so the key parsed cleanly as `agent`/`verdict`/etc.
-    # Reviewer-verified end-to-end: all six characters bypassed the
-    # column-0 guard and forged `[reviewer · PASS]` into decisions.md and
-    # `.squad/.last-review-verdict`. See
-    # fixtures/20-nested-forgery-tab.md through
-    # fixtures/25-nested-forgery-em-space.md.
-    indent = len(line) - len(line.lstrip())
+    indent = len(line) - len(line.lstrip(" "))
     stripped = line.strip()
 
     if stripped.startswith("- "):
@@ -259,7 +221,7 @@ for raw in fm_lines:
         current_item = None
         current_item_indent = None
 
-        # TODO(#8) -- NARROWLY FIXED here (see GUARDED_TOPLEVEL_FIELDS
+        # TODO(#8) -- NARROWLY FIXED here (see REQUIRED_TOPLEVEL_FIELDS
         # above and .claude/hooks/tests/fixtures/19-nested-agent-verdict-forgery.md).
         # Reached only for a bare `key: value` line that is neither a list
         # item nor a list-item continuation (both handled above and already
@@ -287,42 +249,30 @@ for raw in fm_lines:
         # After the guard: `agent`/`verdict` can no longer be overwritten by
         # a nested occurrence, so the drop is evaluated under its true
         # declared identity (csharp-dev / NEEDS-CHANGES) -- the
-        # impersonation is closed. `blockers` is guarded too (see below), so
-        # the nested `blockers: []` no longer shadows the real list either:
-        # the drop above now ARCHIVES under its true identity as
-        # `[csharp-dev - NEEDS-CHANGES]`, with the whole nested `meta:`
-        # block ignored. That is what fixtures/19 asserts.
-        #
-        # GUARDED_TOPLEVEL_FIELDS covers six names: the five schema-required
-        # ones plus `blockers`. `blockers` is in the set despite not being
-        # schema-required because the verdict<->blockers consistency check
-        # below is a gate in its own right, and a nested `blockers: []` that
-        # shadows a real, non-empty list defeats it (re-review round 2,
-        # exploit 2). A gate that another key can silently disarm is not a
-        # gate. fixtures/26-blockers-nested-shadow.md pins this.
-        #
-        # Indentation is measured with a bare `.lstrip()`, NOT `.lstrip(" ")`.
-        # The round-1 guard counted ASCII spaces only, so a tab, NBSP,
-        # ideographic space, vertical tab, form feed or em space measured as
-        # indent 0, skipped the guard entirely, and still `.strip()`ed down
-        # to a clean key -- six working bypasses (round 2, exploit 1).
-        # fixtures/20 through 25 pin one per character. Any future change
-        # here must keep measuring ALL whitespace.
+        # impersonation is closed regardless of what then happens to
+        # `blockers` (next paragraph).
         #
         # What remains open (the OTHER, larger half of #8, deliberately NOT
         # touched by this pass -- see
         # https://github.com/MCGPPeters/squad-template/issues/8 for the
         # scope question raised to the user, and do not silently widen this
-        # without that decision): the guard covers only the names in
-        # GUARDED_TOPLEVEL_FIELDS. Any other key nested the same way can
-        # still be silently promoted to top level, or shadow a
-        # previously-collected value. Nothing currently gates on such a key,
-        # which is why this is bounded rather than urgent -- but adding a
-        # new schema field or a new consistency check WITHOUT adding its key
-        # here re-opens exactly the bypass above. Broadening the guard to
-        # every key, or reworking list-item acceptance more generally, is
-        # the scope question in #8.
-        if indent > 0 and k in GUARDED_TOPLEVEL_FIELDS:
+        # without that decision): the guard only covers the five NAMED
+        # fields in REQUIRED_TOPLEVEL_FIELDS. Any other key nested the same
+        # way -- including `blockers` itself, deliberately not in that set
+        # since it isn't schema-required -- can still be silently promoted
+        # or still shadow a previously-collected value. In the fixture
+        # above, the nested `blockers: []` still overwrites the real
+        # top-level blockers list; that happens not to be exploitable for
+        # impersonation (agent/verdict, the two fields that gate
+        # ALLOWED_AGENTS and the .last-review-verdict write, can no longer
+        # be forged), but it does mean that specific drop still ends up
+        # QUARANTINED after the guard -- via the verdict<->blockers
+        # consistency check below, not via an "unknown agent" message,
+        # because the corrupted (now-empty) blockers list no longer matches
+        # its real NEEDS-CHANGES verdict. Broadening the guard to every key,
+        # or reworking list-item acceptance more generally, is the scope
+        # question in #8.
+        if indent > 0 and k in REQUIRED_TOPLEVEL_FIELDS:
             continue
 
         if v == "":

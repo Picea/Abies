@@ -9,3 +9,6 @@
 - [Nerdbank CompareFiles is infrastructure noise](nerdbank-comparefiles-is-infrastructure-noise.md) — a known flaky template build failure, not a functional regression.
 - [Dynamic imports need served-asset proof](dynamic-imports-need-served-asset-proof.md) — an unserved dynamic import fails silently in best-effort bootstraps.
 - [Runtime behaviour coverage belongs in template E2E](runtime-behaviour-coverage-belongs-in-template-e2e.md) — where "prove it wires up at runtime" tests go, and what they assert.
+- [Command-text matching is not a gate](command-text-matching-is-not-a-gate.md) — two probes that prove a `git commit` substring hook is both false-positive and false-negative.
+- [.last-review-verdict is forgeable](last-review-verdict-is-forgeable.md) — the indent guard counts spaces only; a tab or NBSP still forges a PASS.
+- [Doc inventory counts go stale within the same PR](doc-inventory-counts-go-stale-within-the-same-pr.md) — recount "Verified — N workflows" against the tree the PR leaves behind.

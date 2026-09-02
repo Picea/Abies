@@ -1,23 +1,21 @@
 ---
 name: git-advanced
-description: Advanced git operations the squad reaches for occasionally — worktrees for parallel agent isolation, bisect for regression hunting, range-diff for reviewing rebased PRs, rebase --autosquash with fixup commits, reflog recovery, partial-clone and sparse-checkout for large repos, signed commits via SSH keys, and the conventional-commits + branch-name conventions enforced by the existing PreToolUse hooks. Use when the basic add/commit/push/pull operations aren't enough — for archaeological digs, history rewrites you actually understand, multi-branch parallel work, or recovery after a destructive operation. Do not use for routine commits (Claude already knows those) or for GitHub-side operations (use the gh-cli skill).
+description: Advanced git operations the squad reaches for occasionally — worktrees for parallel agent isolation, bisect for regression hunting, range-diff for reviewing rebased PRs, rebase --autosquash with fixup commits, reflog recovery, partial-clone and sparse-checkout for large repos, signed commits via SSH keys, and the conventional-commits + branch-name conventions (only the commit-message one is currently enforced by a PreToolUse hook; branch naming and the main-branch guard are convention only). Use when the basic add/commit/push/pull operations aren't enough — for archaeological digs, history rewrites you actually understand, multi-branch parallel work, or recovery after a destructive operation. Do not use for routine commits (Claude already knows those) or for GitHub-side operations (use the gh-cli skill).
 ---
 
 # `git` — advanced operations for the squad
 
-The squad's everyday git is `add/commit/push/pull` plus the existing PreToolUse hooks (block-direct-commits-to-main, enforce-conventional-commits, validate-branch-name) that gate the rest. This skill is for the operations you reach for less often and forget the flags for.
+The squad's everyday git is `add/commit/push/pull` plus the squad's git conventions (main-branch guard, conventional commits, branch naming) that gate the rest. Of these, only conventional commits is currently backed by an installed `PreToolUse` hook — see below. This skill is for the operations you reach for less often and forget the flags for.
 
-The squad's load-bearing git conventions are **already automated**. Don't fight them; this skill explains how to live with them and what the escape hatches are.
+The squad's git conventions are **partially automated**. Don't fight the parts that are; follow the rest by discipline until the remaining hooks ship.
 
-## Squad git conventions (enforced by hooks)
+## Squad git conventions
 
-Already in `.claude/hooks/`:
+- **Never commit to `main`** — no local guard catches this before the command runs. A `block-direct-commits-to-main.sh` hook was designed to block `git commit`/`git push` on `main` or `master`, but it is deliberately not installed: it has an open false-positive defect upstream (`squad-template#19`). `main` is still protected server-side by active GitHub rulesets (`Protect main`, `protectmainbranch`) requiring a pull request, linear history, and passing status checks — a direct push is rejected by GitHub, just not caught locally first. Don't rely on the reject to catch a mistake; branch off before you start.
+- **`enforce-conventional-commits.sh`** — installed, `PreToolUse(Bash)`, in `.claude/hooks/`. Validates `git commit -m "..."` messages match `<type>(<scope>): <subject>` per [conventionalcommits.org](https://www.conventionalcommits.org). Types: `feat fix chore docs refactor test perf build ci style revert`. Message extraction anchors on the *first* `-m`/`--message`/`-F`/`--file` occurrence — the same one git itself treats as the subject — so the two-flag form `git commit -m "<type>(<scope>): <subject>" -m "<body>"` validates correctly and is the recommended way to attach a body. Coverage gap, by design: `-m "$(...)"` / backtick command substitution — the form this repo's own attribution footer produces — is not evaluated; the hook sees the literal unexecuted substitution text, not what the shell would produce, and fails open rather than run extracted shell content inside a security hook. Your commit message is unchecked in that shape — proofread it yourself.
+- **Branch naming** — convention only, currently unenforced. A `validate-branch-name.sh` hook was designed to validate `git checkout -b <name>` / `git switch -c <name>` against the squad's `<type>/<issue-or-slug>` pattern, but it is deliberately not installed for the same upstream defect (`squad-template#19`). Follow the pattern by hand; reviewers should flag branches that don't match it.
 
-- **`block-direct-commits-to-main.sh`** — `PreToolUse(Bash)`. Blocks `git commit` and `git push` when the current branch is `main` or `master`. Override only via the documented bypass (a marker in the commit message that explicitly acknowledges the deviation).
-- **`enforce-conventional-commits.sh`** — `PreToolUse(Bash)`. Validates `git commit -m "..."` messages match `<type>(<scope>): <subject>` per [conventionalcommits.org](https://www.conventionalcommits.org). Types: `feat fix chore docs refactor test perf build ci style revert`.
-- **`validate-branch-name.sh`** — `PreToolUse(Bash)`. Validates `git checkout -b <name>` and `git switch -c <name>` against the squad's pattern: `<type>/<issue-or-slug>` (e.g. `feat/142-rotate-tokens`, `fix/article-empty-state`).
-
-Don't bypass these casually. If a hook is wrong, fix the hook (it's a `/decide` moment).
+Don't bypass the installed hook casually. If it's wrong, fix the hook (it's a `/decide` moment). For the two unenforced conventions, following them is on you until the hooks land.
 
 ## Worktrees — the squad's parallel-work pattern
 
@@ -241,7 +239,7 @@ The hook validates the *first line* matches `<type>(<scope>): ` or `<type>: `. B
 
 ## Branch naming — the actual format
 
-Enforced by `validate-branch-name.sh`. Pattern: `<type>/<issue-or-slug>`.
+Convention only, currently unenforced. A `validate-branch-name.sh` hook was designed for this but is deliberately not installed (open upstream defect, `squad-template#19`). Pattern: `<type>/<issue-or-slug>`.
 
 Accepted:
 - `feat/142-rotate-tokens`

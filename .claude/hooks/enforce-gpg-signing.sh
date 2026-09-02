@@ -11,8 +11,14 @@
 #   5. `user.email` matches at least one UID on the signing key.
 #
 # Bypass mechanisms (any one allows the commit):
-#   - The user passes `--no-gpg-sign` or `-S` is followed by an empty key id
-#     (i.e., they've explicitly chosen to bypass signing for this commit).
+#   - The user passes `--no-gpg-sign` (explicitly opts out of signing for
+#     this commit). Note: `-S`/`--gpg-sign` only accepts an *attached*
+#     value per git's own option parsing (`-S<keyid>` or
+#     `--gpg-sign[=<keyid>]`) — there is no "`-S` followed by a separate,
+#     empty key id" form to special-case. An earlier version of this
+#     comment claimed one existed; nothing ever implemented it, and it
+#     doesn't correspond to real git syntax, so the claim is removed
+#     rather than the gap filled.
 #   - The env var SQUAD_ALLOW_UNSIGNED is set to 1 (intentional escape hatch
 #     for foreign environments — devcontainers, CI, etc.).
 #   - The commit is a merge or revert (those generate their own messages and
@@ -23,6 +29,15 @@
 # verdict from .squad/.signing-health (written by session-context-loader.py
 # at SessionStart) when the cache is < 5 minutes old; otherwise re-checks
 # from scratch.
+#
+# Detection of "is this a `git commit`" is delegated to
+# lib/git-commit-detect.sh (argv-level, shared with the other three
+# commit-time hooks) rather than a substring match on "git commit" — see
+# that file's header for the false-positive/false-negative bugs that
+# replaces. The signing check itself is queried against the repo the
+# command actually targets ($GIT_COMMIT_REPO_DIR / $GIT_COMMIT_GLOBAL_ARGS),
+# so `git -C <other-repo> commit` is checked against <other-repo>'s config,
+# not the hook's own working directory.
 #
 # Exit codes:
 #   0 — allow
@@ -41,18 +56,52 @@ except Exception:
     print("")
 ' 2>/dev/null)"
 
-# Short-circuit on anything that isn't a `git commit` invocation.
-case "$command" in
-  *"git commit"*) ;;
-  *) exit 0 ;;
-esac
+hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/git-commit-detect.sh
+source "$hook_dir/lib/git-commit-detect.sh"
 
-# Skip merges, reverts, and explicit bypasses.
-case "$command" in
-  *"git commit -m \"Merge "*|*"git commit -m 'Merge "*) exit 0 ;;
-  *"git commit -m \"Revert "*|*"git commit -m 'Revert "*) exit 0 ;;
-  *" --no-gpg-sign"*) exit 0 ;;
+git_commit_detect "$command"
+if [ "$GIT_COMMIT_MATCH" != "1" ]; then
+  exit 0
+fi
+
+# Skip merges, reverts, and explicit bypasses (checked against the parsed
+# argv, not raw command text).
+skip=0
+first_message=""
+have_first_message=0
+for tok in "${GIT_COMMIT_ARGV[@]}"; do
+  case "$tok" in
+    --no-gpg-sign) skip=1 ;;
+  esac
+done
+i=0
+n=${#GIT_COMMIT_ARGV[@]}
+while [ "$i" -lt "$n" ]; do
+  tok="${GIT_COMMIT_ARGV[$i]}"
+  case "$tok" in
+    -m|--message)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        i=$((i + 1))
+        [ "$i" -lt "$n" ] && first_message="${GIT_COMMIT_ARGV[$i]}"
+      fi
+      ;;
+    --message=*)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        first_message="${tok#--message=}"
+      fi
+      ;;
+  esac
+  i=$((i + 1))
+done
+case "$first_message" in
+  "Merge "*|"Revert "*) skip=1 ;;
 esac
+if [ "$skip" = "1" ]; then
+  exit 0
+fi
 
 # Env var escape hatch — note the SQUAD_ALLOW_UNSIGNED check intentionally
 # inspects the *parent* environment, not the inline command env, because
@@ -64,11 +113,25 @@ fi
 project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
 cache="$project_dir/.squad/.signing-health"
 
+# The SessionStart-populated cache is specific to THIS squad project
+# (session-context-loader.py writes it under $CLAUDE_PROJECT_DIR/.squad/).
+# It's only trustworthy when the command actually targets this project's
+# repo — a `git -C <other-repo> commit` (or --git-dir=<other-repo>/.git)
+# targets a different repo's config entirely, so the fast path is skipped
+# for those and the full check always runs (still scoped correctly via
+# GIT_COMMIT_GLOBAL_ARGS below), and the result isn't written back into
+# this project's cache either.
+target_dir="${GIT_COMMIT_REPO_DIR:-$project_dir}"
+use_project_cache=0
+if [ "$target_dir" = "$project_dir" ]; then
+  use_project_cache=1
+fi
+
 # The hook supports a fast path: if the SessionStart probe wrote an "ok"
 # cache less than 5 minutes ago, trust it and exit immediately. On any other
 # cached verdict we re-run the full check to get an accurate, current reason
 # string for the error message.
-if [ -f "$cache" ]; then
+if [ "$use_project_cache" = "1" ] && [ -f "$cache" ]; then
   age_seconds="$(python3 -c "
 import os, sys, time
 try:
@@ -84,16 +147,28 @@ except Exception:
   fi
 fi
 
-# Either no cache, stale cache, or cached non-ok → run the full check.
+# Either no cache, stale cache, cached non-ok, or the command targets a
+# different repo → run the full check, scoped to the targeted repo via
+# GIT_COMMIT_GLOBAL_ARGS (empty when no -C/--git-dir/-c was given, in which
+# case `git config` behaves exactly as it always did — the hook's own cwd).
+if [ "${#GIT_COMMIT_GLOBAL_ARGS[@]}" -eq 0 ]; then
+  global_args_json="[]"
+else
+  global_args_json="$(printf '%s\n' "${GIT_COMMIT_GLOBAL_ARGS[@]}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()))')"
+fi
+export GIT_COMMIT_GLOBAL_ARGS_JSON="$global_args_json"
+
 verdict=""
 detail=""
 read -r verdict detail <<<"$(python3 - <<'PY'
-import os, re, subprocess, sys
+import json, os, re, subprocess, sys
+
+GLOBAL_ARGS = json.loads(os.environ.get("GIT_COMMIT_GLOBAL_ARGS_JSON", "[]"))
 
 def cfg(key):
     try:
         r = subprocess.run(
-            ["git", "config", "--get", key],
+            ["git", *GLOBAL_ARGS, "config", "--get", key],
             capture_output=True, text=True, timeout=2,
         )
         return r.stdout.strip() if r.returncode == 0 else ""
@@ -156,8 +231,10 @@ PY
 )"
 
 # Refresh the cache so the next commit in this session is fast (or the next
-# session can early-out with the same verdict).
-if [ -d "$project_dir/.squad" ] && [ -n "$verdict" ]; then
+# session can early-out with the same verdict) — only when the check was
+# actually about this project's own repo; never cache another repo's
+# verdict under this project's cache file.
+if [ "$use_project_cache" = "1" ] && [ -d "$project_dir/.squad" ] && [ -n "$verdict" ]; then
   printf '%s|%s\n' "$verdict" "$detail" > "$cache"
 fi
 
@@ -210,13 +287,16 @@ EOF
 
 Reason: ${reason}
 
-Fix the underlying config, then retry the commit. The squad's reference setup:
+Fix the underlying config, then retry the commit. Reference shape (fill in
+YOUR OWN key id, name, and the email that matches a UID on that key —
+copying another contributor's values here configures a key you don't hold
+and this check will then block every commit you make):
 
-  git config --global user.signingkey D92532059F0414A3
+  git config --global user.signingkey <YOUR_GPG_KEY_ID>
   git config --global commit.gpgsign true
   git config --global tag.gpgsign true
-  git config --global user.name "Maurice Cornelius Gerardus Petrus Peters"
-  git config --global user.email "me@mauricepeters.dev"
+  git config --global user.name "<Your Name>"
+  git config --global user.email "<your-email-that-matches-the-key-UID>"
 
 To bypass for one commit:
   --no-gpg-sign        on the commit itself

@@ -209,7 +209,7 @@ The Reviewer checks for this. If a file was modified and obvious improvements we
 ### Never Commit to Main
 No agent and no human commits directly to `main` — locally or remotely. All changes go through feature branches and pull requests. No exceptions. No `--force`, no "just this once," no "it's a tiny fix." Main is protected. PRs are the only way in.
 
-This rule is mechanically enforced by the `block-direct-commits-to-main` hook in `.claude/hooks/`.
+No local hook catches a violation of this rule before it runs. A `block-direct-commits-to-main` hook was designed for that but is deliberately not installed — it has an open false-positive defect upstream (`squad-template#19`) that would block legitimate commits. The rule is enforced server-side regardless: `main` is protected by two active GitHub rulesets (`Protect main`, `protectmainbranch`), and `protectmainbranch` requires a pull request, linear history, and passing status checks, with no bypass actors configured. A direct push to `main` is rejected by GitHub — it just isn't caught on the developer's machine before the attempt.
 
 ### Conventional Commits
 All commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. No free-form messages.
@@ -251,7 +251,7 @@ Examples:
 
 Types match Conventional Commits. Always include the issue number. Slug is lowercase, hyphen-separated, max ~5 words.
 
-This format is mechanically enforced by the `validate-branch-name` hook in `.claude/hooks/`.
+This format is a squad convention, not currently mechanically enforced. A `validate-branch-name` hook was designed for this but is deliberately not installed — it has an open false-positive defect upstream (`squad-template#19`) that would block legitimately named branches. Until the hook ships a fix, follow the pattern by convention; reviewers should flag branches that don't match it.
 
 ---
 
@@ -606,3 +606,322 @@ Verification performed on 2026-03-25: every open issue has exactly one priority 
 **By:** Tech Writer
 **What:** As part of this migration, Abies's copy of the squad-template framework files now differs from the template on one specific point: the "Aspire AppHost Is the Test Fixture" convention (this file, Testing section) carries a named, closed exception permitting `WebApplicationFactory`/`TestServer` for four pre-existing fast in-memory test fixtures (`ConduitApiFactory.cs`, `Picea.Abies.Conduit.Api/Program.cs`, `EndpointTests.cs`, `OtlpProxyEndpointTests.cs`) — see that entry above for the full policy. Three framework files copied verbatim from squad-template (`.claude/agents/spec-author.md`, `.claude/skills/beast-mode-design/SKILL.md`, `.claude/skills/functional-ddd/SKILL.md`) still stated the template's unqualified "never `WebApplicationFactory`" rule for *new* work; they were updated to point at this file as authoritative rather than to restate the exception, so a project-specific carve-out doesn't have to be kept in sync across four copies. A fourth file, `.claude/docs/principles-enforcement.md`, also states the blanket rule (as an example of what counts as a deviation requiring approval) and was deliberately left completely unedited: this exception is itself a recorded instance of that protocol being followed, not a contradiction of it, so the enforcement text remains accurate as written.
 **Why:** A future person diffing Abies against squad-template on this rule needs to know the divergence was deliberate — an explicit, documented user decision — so they don't "fix" it back to the template's blanket rule. See the amended entry above for the decision itself; this entry exists so the *fact of the divergence* is discoverable from the migration record, not just from the rule text.
+
+<!-- legacy -->
+### 2026-09-02 — csharpdev-auth-integration-slice
+
+## Decision
+
+For the first E2E-to-integration authentication migration slice, port invalid login by driving the real login message path:
+
+- dispatch `LoginEmailChanged`
+- dispatch `LoginPasswordChanged`
+- dispatch and drain `LoginSubmitted`
+- mock `LoginUser` to return `ApiError`
+
+Do not inject `ApiError` directly in the migrated test. The value of this slice is proving that the reducer issues the login command with the entered credentials and that command failure flows back into the login page state and rendered error UI.
+
+## Scope
+
+Keep the slice local to `Picea.Abies.Conduit.Tests` and avoid expanding into additional auth scenarios until this pattern is established.
+
+## Update 2026-05-05
+
+For the next adjacent auth slice, valid login should use the same harness-first pattern:
+
+- dispatch `LoginEmailChanged`
+- dispatch `LoginPasswordChanged`
+- dispatch and drain `LoginSubmitted`
+- mock `LoginUser` to return `UserAuthenticated(session)`
+- capture downstream `PersistSession`, authenticated-home feed fetch, and `NavigationCommand.Push` through `MockCommand<T>` side effects
+
+Do not set authenticated model state directly in the migrated test. The useful assertion is that the success path flows through the same command batch the runtime uses after real authentication.
+
+<!-- legacy -->
+### 2026-09-02 — csharpdev-picea-1.0.0-migration
+
+# csharpdev-picea-1.0.0-migration
+
+Date: 2026-05-06
+Owner: C# Dev
+
+## Context
+
+The requested migration updates Conduit project references from prerelease `Picea` to stable `1.0.0`.
+
+Projects with direct `Picea` references were updated accordingly, but several Conduit projects also depend on `Picea.Glauca`.
+
+## Observed Constraint
+
+Published `Picea.Glauca` versions (`0.1.12`, `0.1.13`, `0.1.14`) depend on prerelease `Picea`:
+
+- `0.1.12` -> `Picea >= 1.0.22-rc-0001`
+- `0.1.13` -> `Picea >= 1.0.22-rc-0001`
+- `0.1.14` -> `Picea >= 1.0.27-rc-0002`
+
+With direct `Picea` pinned to `1.0.0`, restore fails (`NU1605`) for:
+
+- `Picea.Abies.Conduit.Api`
+- `Picea.Abies.Conduit.Api.Tests`
+- `Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests`
+
+## Decision
+
+Record this as a hard compatibility boundary:
+
+- Keep direct `Picea` updates to `1.0.0` in scope.
+- Do not perform broad event-store architecture rewrites in this migration step.
+- Track Glauca compatibility as the gating item for full Conduit stabilization on `Picea 1.0.0`.
+
+## Next Options
+
+1. Publish a `Picea.Glauca` version compatible with stable `Picea 1.0.0`.
+2. Replace Glauca usage in Conduit API/tests with alternative in-repo abstractions.
+
+
+<!-- legacy -->
+### 2026-09-02 — csharpdev-picea-glauca-temporary-pin
+
+# C# Dev Decision Note: Temporary Picea Pin for Glauca-Coupled Conduit Projects
+
+Date: 2026-05-06
+Requested by: Maurice Cornelius Gerardus Petrus Peters
+
+## Context
+
+Conduit migration target is direct `Picea` `1.0.0`.
+
+Current `Picea.Glauca` package line requires prerelease `Picea` versions (`>= 1.0.22-rc-0001` and currently `>= 1.0.27-rc-0002`), which triggers `NU1605` downgrade errors when Glauca-coupled projects pin direct `Picea` to `1.0.0`.
+
+## Decision
+
+Adopt migration option 1:
+
+1. Keep all non-Glauca projects on direct `Picea` `1.0.0`.
+2. For Glauca-coupled projects only, align direct `Picea` to the current Glauca compatibility floor (`>= 1.0.27-rc-0002`) as a temporary compatibility bridge.
+
+Applied to:
+
+- `Picea.Abies.Conduit.Api`
+- `Picea.Abies.Conduit.Api.Tests`
+- `Picea.Abies.Conduit.ReadStore.PostgreSQL`
+- `Picea.Abies.Conduit.ReadStore.PostgreSQL.Tests`
+
+## Rationale
+
+This is the smallest targeted change that unblocks restore/build while preserving stable `Picea` `1.0.0` for all projects not coupled to Glauca.
+
+## Exit Criteria
+
+Remove temporary prerelease pins and return all Conduit projects to direct `Picea` `1.0.0` when either:
+
+1. `Picea.Glauca` releases a version compatible with stable `Picea` `1.0.0`, or
+2. Conduit removes/replaces Glauca coupling in the affected API/read-store/test paths.
+
+
+<!-- legacy -->
+### 2026-09-02 — reviewer-picea-1.0.0-review
+
+# reviewer-picea-1.0.0-review
+
+Date: 2026-05-06
+Owner: Reviewer
+
+## Decision
+
+The current working-tree migration for `Picea` `1.0.0` is **not shippable** and must not merge as-is.
+
+## Blocking Facts
+
+1. Conduit restore fails with `NU1605` downgrade errors because Glauca requires prerelease `Picea` floors while direct references are pinned to `1.0.0`.
+2. The change set mixes migration concerns with unrelated CI policy and large visual-regression infrastructure additions, making risk and rollback scope unclear.
+3. New dependencies (`Microsoft.Playwright`, `SixLabors.ImageSharp`) were introduced without recorded dependency-approval evidence required by principles enforcement.
+
+## Required Next Step
+
+Split into focused deliverables:
+
+1. **Migration-only branch/PR** that contains package/docs/changelog/version updates and restores cleanly.
+2. **CI policy branch/PR** for E2E trigger/gating changes, with explicit approval for PR-gate removal.
+3. **Visual regression branch/PR** for test harness + snapshots + workflow, with dependency approval and baseline maintenance policy.
+
+## Compatibility Remediation Options
+
+1. Publish `Picea.Glauca` compatible with stable `Picea 1.0.0` and keep direct pins at `1.0.0`.
+2. Temporarily align direct pins to the Glauca transitive floor (`>= 1.0.27-rc-0002`) until compatible Glauca ships.
+3. Remove/replace Glauca usage in affected Conduit API/test paths with in-repo abstractions.
+
+
+<!-- legacy -->
+### 2026-09-02 — reviewer-picea-glauca-option1-ship-readiness
+
+# reviewer-picea-glauca-option1-ship-readiness
+
+Date: 2026-05-06
+Owner: Reviewer
+
+## Decision
+
+Option 1 (temporary Glauca compatibility pin) is shippable for the migration objective.
+
+## Why
+
+1. Prerelease direct `Picea` pin is scoped only to Glauca-coupled projects.
+2. Non-Glauca projects remain pinned to stable `Picea` `1.0.0`.
+3. Solution restore succeeds and no `NU1605` downgrade blocker remains.
+4. Migration documentation explicitly labels the strategy as temporary and includes concrete exit criteria.
+
+## Guardrails
+
+1. Treat prerelease `Picea` pins required by Glauca (`>= 1.0.27-rc-0002`) as temporary compatibility debt.
+2. Remove temporary pins once a Glauca release supports stable `Picea` `1.0.0` or Glauca coupling is removed from Conduit API/read-store/test paths.
+3. Keep this migration slice focused; unrelated CI/workflow/test-infra changes should ship in separate PRs.
+
+
+### 2026-09-02 — reviewer-20260902T144500Z-pr355-hooks [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260902T144500Z-pr355-hooks
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-02T14:45:00Z
+targets:
+  - path: .claude/hooks/
+    lines: "all 11 scripts"
+  - path: .claude/settings.json
+    lines: "1-111"
+  - path: .claude/skill-router.json
+    lines: "1-74"
+  - path: .claude/hooks/tests/
+    lines: "run.sh, agent_identity.py, 20 fixtures"
+blockers:
+  - file: .claude/settings.json
+    line: 16
+    reason: "statusLine command points at .claude/statusline.py, which does not exist in the repo. With refreshInterval 10 this fails every 10s, and the .squad/.last-review-verdict and .squad/.hooks-ok writes in three hooks have no consumer."
+  - file: .claude/hooks/enforce-conventional-commits.sh
+    line: 47
+    reason: "Greedy sed extraction takes the LAST -m, so the standard two-flag form git commit -m <subject> -m <body> validates the BODY against the subject pattern and is blocked. Verified live."
+  - file: .claude/hooks/enforce-conventional-commits.sh
+    line: 29
+    reason: "All four PreToolUse hooks gate on a bare substring match for git commit in raw command text. Verified false positive (a non-commit command containing that text was blocked) and false negative (git -C <path> commit bypasses all four gates). This is the exact defect class the PR says it avoided by not installing block-direct-commits-to-main.sh and validate-branch-name.sh."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 217
+    reason: "Nested-key promotion lets any drop forge agent reviewer and verdict PASS. Verified end-to-end: a csharp-dev NEEDS-CHANGES drop with a nested meta block was archived as reviewer PASS and wrote PASS to .last-review-verdict, also bypassing the verdict-vs-blockers consistency check. Known bug per the in-code TODO; needs explicit user sign-off or a fix before shipping."
+  - file: .github/agents/squad.agent.md
+    line: 73
+    reason: "Workflow removal is partial. This live Copilot agent definition still directs a coordinator to .squad/team.md, .squad/routing.md, .squad/agents/*/charter.md and the four deleted workflows, all removed by this PR. .gitattributes line 3 also still references .squad/agents/*/history.md."
+  - file: .claude/docs/decisions.md
+    line: 254
+    reason: "States branch naming is mechanically enforced by the validate-branch-name hook in .claude/hooks/, which this PR deliberately does not install. git-advanced and gh-cli SKILL.md make the same claim for block-direct-commits-to-main.sh. A false claim about an enforcement gate in the authoritative conventions doc."
+high:
+  - file: .github/workflows/
+    reason: "No CI job runs .claude/hooks/tests/run.sh, despite the suite's own header assuming a paths-scoped CI job. 67 regression assertions with zero automated execution."
+  - file: .claude/hooks/enforce-no-secrets.sh
+    reason: "Uses the deprecated gitleaks protect --staged while .githooks/pre-commit in the same repo already uses the current gitleaks git --staged. On a gitleaks major bump the unknown-subcommand exit lands in the catch-all branch and blocks every commit with a misleading malformed .gitleaks.toml message."
+  - file: .claude/hooks/enforce-gpg-signing.sh
+    reason: "Lines 215-219 hardcode one contributor's GPG key id and personal email as the reference setup in a tracked file in a public repo. Any other contributor copy-pasting it configures a key they do not hold, and check 5 then blocks all their commits."
+  - file: .claude/hooks/dotnet-format-on-save.sh
+    reason: "Claims .csproj/.props/.targets are in scope; dotnet format does not touch MSBuild XML (verified). Each such edit pays a full 48-project workspace load (12.8s warm) for zero effect, and rapid successive edits stack concurrent workspace loads."
+  - file: .claude/settings.json
+    reason: "Enables CLAUDE_CODE_ENABLE_TELEMETRY and the enhanced-telemetry beta for every contributor via a tracked file, with OTLP gRPC and no endpoint, defaulting to localhost:4317 - the port Aspire's dashboard binds. Belongs in the gitignored settings.local.json."
+  - file: .squad/decisions/inbox/
+    reason: "Five pre-schema drops carried over from main are inlined wholesale (171 lines) into decisions.md by the merger's LEGACY path on the first SubagentStop, unreviewed. Observed live in this working tree during the review."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Header says entries land under the Session Decisions anchor; the code appends at EOF and drop bodies carry their own H2 headings, so the last H2 in decisions.md is now an unrelated Guardrails from a prior drop."
+medium:
+  - file: .claude/hooks/enforce-no-secrets.sh
+    reason: "Missing --redact (the sibling .githooks/pre-commit passes it); config_arg is unquoted at line 94 so a project path with a space breaks the flag; duplicates coverage the git pre-commit hook already provides for all commits."
+  - file: .claude/hooks/squad-rotate.py
+    reason: "Dead code: unused mode at line 87, a .gitkeep guard inside a *.md glob at line 172. precompact-snapshot.py line 130 assigns an unused today."
+  - file: .github/workflows/pr-validation.yml
+    reason: "isMaintenancePath and the NON_DOCS filters still allowlist .squad/ but not .claude/, where framework prose now lives."
+good:
+  - file: .claude/hooks/tests/run.sh
+    reason: "67 of 67 pass in 1.1s. Coverage is real, not decorative: the pre-fix fixtures are sha256-pinned and asserted to quarantine for their NAMED reason rather than any reason, the roster invariant has a working negative control, and a decisions.md content grep closes the archived-but-never-appended gap."
+  - file: .claude/hooks/session-context-loader.py
+    reason: "All five python hooks verified to exit 0 on empty and malformed stdin; none can wedge a session."
+  - file: .gitignore
+    reason: "Correctly ignores the precompact transcript copies, snapshots and per-machine caches, which would otherwise commit full conversation transcripts."
+references: []
+---
+
+## Findings
+
+See the reviewer's detailed report for the full write-up. Verdict is
+NEEDS-CHANGES on six blockers, the most serious being a verified forgery
+path through the decision-drop validator that lets any agent record a
+Reviewer PASS it never earned.
+
+
+### 2026-09-02 — reviewer-20260902T160000Z-pr355-blocker-refix [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260902T160000Z-pr355-blocker-refix
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-02T16:00:00Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "220-280"
+  - path: .claude/hooks/lib/
+    lines: "git_commit_detect.py, git-commit-detect.sh"
+  - path: .claude/statusline.py
+    lines: "1-197"
+  - path: .claude/skills/git-advanced/SKILL.md
+    lines: "15"
+  - path: .claude/docs/tech-stack.md
+    lines: "71"
+  - path: .github/workflows/claude-hooks-tests.yml
+    lines: "16-26"
+blockers:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 275
+    reason: "Blocker 4 NOT closed. The new guard computes indent = len(line) - len(line.lstrip(' ')) -- spaces only. Indenting the nested agent:/verdict: with a tab, NBSP, ideographic space, vertical tab, form feed or em space yields indent 0, the guard never fires, and the forgery lands unchanged. Verified live against the guarded hook: a drop declaring agent: csharp-dev / verdict: INFO at column 0 archived as '[reviewer . PASS]' and wrote PASS to .squad/.last-review-verdict. All six whitespace variants reproduce."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 280
+    reason: "Second, space-only exploit using the deliberately-unguarded blockers key, answering the adversarial question directly: agent: reviewer / verdict: PASS at column 0 with a real non-empty top-level blockers list plus a nested 'notes:\\n  blockers: []' is archived as [reviewer . PASS] and writes the verdict cache. This defeats the verdict-vs-blockers consistency check, which is the only thing currently rejecting the space-indented fixture -- so devops's 'closed regardless' argument rests on a check that the same unguarded mechanism disables."
+  - file: .claude/skills/git-advanced/SKILL.md
+    line: 15
+    reason: "Newly introduced false claim. States as a 'Known defect' that enforce-conventional-commits.sh 'takes the last -m, so the body gets validated against the subject pattern', and tells contributors to avoid the two-flag form 'until this is fixed' -- but Blocker 2 fixed exactly that in this PR. Verified: git commit -m 'fix(auth): reject expired tokens' -m 'body' now exits 0. The advice steers contributors away from the form the repo's own attribution requirement uses."
+  - file: .claude/docs/tech-stack.md
+    line: 71
+    reason: "Corrected count is already wrong. Says '**Verified** -- 15 workflows' and enumerates 15, but the tree has 16 because this same PR adds .github/workflows/claude-hooks-tests.yml, which is absent from the list. CLAUDE.md:101 repeats '15 workflows'. This is the second false claim from this file pair in two passes (the first being branch protection)."
+high:
+  - file: .claude/hooks/lib/git_commit_detect.py
+    reason: "Coverage regression vs. the substring match it replaces, not in the header's documented scope limits: an env-assignment prefix (GIT_AUTHOR_DATE=... git commit), sudo git commit, env X=1 git commit, and a parenthesised subshell (git commit ...) all now return GIT_COMMIT_MATCH=0 where the old code matched. Skipping leading NAME=VALUE tokens and sudo/env wrappers is a few lines; at minimum document the class."
+  - file: .github/workflows/claude-hooks-tests.yml
+    reason: "paths: omits .claude/agents/** and .claude/docs/decision-schema.md. run.sh line 114 asserts ALLOWED_AGENTS == roster(.claude/agents/) union {lead} against the real directory -- proved empirically: dropping one agent file in takes the suite to 95/96. run.sh's own header (line 530) names decision-schema.md as an intended trigger. Adding an agent will go green in CI and surface later on an unrelated hooks PR."
+  - file: .claude/statusline.py
+    reason: "Violates its own 'MUST NOT raise' constraint in two paths outside the try: resolve_project_dir() calls Path.cwd(), which raises FileNotFoundError on a deleted cwd when CLAUDE_PROJECT_DIR is unset; and print(line) emits U+2013 and the EU flag emoji unconditionally, raising UnicodeEncodeError under an ASCII stdout. Both reproduced. Real-world probability is low (PEP 538/540 covers the plain C locale), but the fix is moving two lines inside the existing try plus a reconfigure(errors='replace')."
+  - file: .claude/hooks/dotnet-format-on-save.sh
+    reason: "The mkdir-lock fallback exists for macOS, but its stale-lock check uses `date -r \"$lock_mkdir\"`, which is GNU semantics; BSD/macOS date -r takes epoch seconds, so it fails, `|| echo 0` makes lock_age enormous, and every waiter immediately reclaims the lock -- no serialization on the one platform the branch is for. Use stat -f %m / stat -c %Y with a fallback."
+medium:
+  - file: .claude/hooks/enforce-no-secrets.sh
+    reason: "gitleaks_out=\"$(cd \"$target_dir\" ... && gitleaks ...)\" -- a directory that exists but is not cd-able makes the subshell exit 1, which the dispatch reads as 'leaks found' and blocks with an empty report. The [ ! -d ] guard above does not cover it."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "The verdict-cache created: extraction uses grep -E '^created:' | head -n1 (first column-0 match) while the python parser takes the last top-level write. Divergent tie-breaking if a drop carries two created: lines; only affects latest-wins ordering."
+good:
+  - file: .claude/hooks/lib/git-commit-detect.sh
+    reason: "Both cited defects genuinely closed, and closed at the right layer. Independently verified all four hooks: the false positive (echo see: git commit -m msg) no longer fires on any of them, and git -C <other-repo> commit is not merely parsed but actually acted on -- block-large-files reported the other repo's 6.7MB blob while cwd was Abies and the Abies control passed, and enforce-no-secrets caught a github-pat planted in the -C target. --git-dir/--work-tree resolves identically."
+  - file: .claude/hooks/enforce-conventional-commits.sh
+    reason: "First--m anchoring is correct and has a working negative control: the two-flag form passes, a bad first -m still blocks even when a later -m looks conventional, and --message=/-F/compound-&& forms all behave. The heredoc fail-open is argued honestly in the header -- it names the tradeoff, names why (evaluating extracted shell inside a security hook is worse), and admits it is the repo's own mandated form rather than burying that."
+  - file: .claude/hooks/tests/run.sh
+    reason: "96/96 verified independently, and 96/96 again with gitleaks, gpg and dotnet shimmed to exit 127 -- the CI job will pass on a fresh runner, and the suite is explicit at lines 1155-1160 about scoping the gpg/gitleaks tests to argv-parsing only. check_forgery_regression asserts the exact quarantine reason string, so the test itself records that the rejection comes from the consistency check rather than an identity check."
+  - file: .github/agents/squad.agent.md
+    reason: "Retirement is clean. Confirmed independently: no references remain anywhere outside the archived record of the original finding, beast-mode.agent.md has zero dependence on the deleted layout, and .gitattributes' surviving .squad/agents mention is explanatory comment only."
+references:
+  - "https://github.com/MCGPPeters/squad-template/issues/8"
+---
+
+## Findings
+
+Four of six blockers close. Blocker 4 does not: the indent guard counts
+spaces only, so a tab- or NBSP-indented nested key still forges
+`[reviewer · PASS]` into `decisions.md` and `.squad/.last-review-verdict`,
+and a second space-only exploit through the unguarded `blockers` key
+disables the consistency check that is currently the sole thing rejecting
+the fixture. Blockers 5 and 6 each acquired one new false doc claim
+introduced by this PR.
+

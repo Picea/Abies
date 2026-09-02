@@ -463,6 +463,17 @@ nohup.out
 .squad/.signing-health
 .squad/.hooks-ok
 
+# Transient lock files for the dotnet-format-on-save.sh hook (per-machine,
+# per-workspace; recreated on demand, never meaningful to commit).
+.squad/.locks/
+
+# Per-machine Claude Code settings overrides (OTEL endpoint, local-only
+# permissions, ...). Referenced by the `_comment` in .claude/settings.json
+# as the place per-machine values belong; must actually be ignored here for
+# that to be true for every contributor, not just contributors who happen
+# to have a matching rule in their own global gitignore.
+.claude/settings.local.json
+
 # Transcript snapshots and rotated logs. The per-day *-session.md files are
 # deliberately NOT ignored here: they are already tracked in this repo, and
 # ignoring them now would not untrack them. Whether to keep tracking session

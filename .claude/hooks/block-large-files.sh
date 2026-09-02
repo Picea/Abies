@@ -40,16 +40,49 @@ except Exception:
     print("")
 ' 2>/dev/null)"
 
-# Short-circuit on anything that isn't a `git commit` invocation.
-case "$command" in
-  *"git commit"*) ;;
-  *) exit 0 ;;
-esac
+hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/git-commit-detect.sh
+source "$hook_dir/lib/git-commit-detect.sh"
 
-# Skip merges and reverts.
-case "$command" in
-  *"git commit -m \"Merge "*|*"git commit -m 'Merge "*) exit 0 ;;
-  *"git commit -m \"Revert "*|*"git commit -m 'Revert "*) exit 0 ;;
+# Detection of "is this a `git commit`" is delegated to
+# lib/git-commit-detect.sh (argv-level, shared with the other three
+# commit-time hooks) rather than a substring match on "git commit" — see
+# that file's header for the false-positive/false-negative bugs that
+# replaces. The staged-file scan below runs against the repo the command
+# actually targets ($GIT_COMMIT_REPO_DIR), so `git -C <other-repo> commit`
+# is checked against <other-repo>'s staging area, not the hook's own
+# working directory.
+git_commit_detect "$command"
+if [ "$GIT_COMMIT_MATCH" != "1" ]; then
+  exit 0
+fi
+
+# Skip merges and reverts (checked against the parsed argv, not raw text).
+first_message=""
+have_first_message=0
+i=0
+n=${#GIT_COMMIT_ARGV[@]}
+while [ "$i" -lt "$n" ]; do
+  tok="${GIT_COMMIT_ARGV[$i]}"
+  case "$tok" in
+    -m|--message)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        i=$((i + 1))
+        [ "$i" -lt "$n" ] && first_message="${GIT_COMMIT_ARGV[$i]}"
+      fi
+      ;;
+    --message=*)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        first_message="${tok#--message=}"
+      fi
+      ;;
+  esac
+  i=$((i + 1))
+done
+case "$first_message" in
+  "Merge "*|"Revert "*) exit 0 ;;
 esac
 
 # Env var escape hatch.
@@ -75,7 +108,8 @@ fi
 # (D), as are renames-without-content-change (R) which we'd rather not
 # re-flag if the bytes themselves haven't grown.
 project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
-cd "$project_dir" 2>/dev/null || exit 0
+target_dir="${GIT_COMMIT_REPO_DIR:-$project_dir}"
+cd "$target_dir" 2>/dev/null || exit 0
 
 # If we're not in a git repo, the hook has nothing useful to say.
 if ! git rev-parse --git-dir >/dev/null 2>&1; then

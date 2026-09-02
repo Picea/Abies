@@ -19,6 +19,14 @@
 # typically <100ms even on large repos. Acceptable for every commit;
 # no caching needed.
 #
+# Detection of "is this a `git commit`" is delegated to
+# lib/git-commit-detect.sh (argv-level, shared with the other three
+# commit-time hooks) rather than a substring match on "git commit" — see
+# that file's header for the false-positive/false-negative bugs that
+# replaces. The scan itself runs against the repo the command actually
+# targets ($GIT_COMMIT_REPO_DIR), so `git -C <other-repo> commit` scans
+# <other-repo>'s staging area, not the hook's own working directory.
+#
 # Exit codes:
 #   0 — allow
 #   2 — block (Claude sees stderr as the reason)
@@ -36,16 +44,41 @@ except Exception:
     print("")
 ' 2>/dev/null)"
 
-# Short-circuit on anything that isn't a `git commit` invocation.
-case "$command" in
-  *"git commit"*) ;;
-  *) exit 0 ;;
-esac
+hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/git-commit-detect.sh
+source "$hook_dir/lib/git-commit-detect.sh"
 
-# Skip merges and reverts.
-case "$command" in
-  *"git commit -m \"Merge "*|*"git commit -m 'Merge "*) exit 0 ;;
-  *"git commit -m \"Revert "*|*"git commit -m 'Revert "*) exit 0 ;;
+git_commit_detect "$command"
+if [ "$GIT_COMMIT_MATCH" != "1" ]; then
+  exit 0
+fi
+
+# Skip merges and reverts (checked against the parsed argv, not raw text).
+first_message=""
+have_first_message=0
+i=0
+n=${#GIT_COMMIT_ARGV[@]}
+while [ "$i" -lt "$n" ]; do
+  tok="${GIT_COMMIT_ARGV[$i]}"
+  case "$tok" in
+    -m|--message)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        i=$((i + 1))
+        [ "$i" -lt "$n" ] && first_message="${GIT_COMMIT_ARGV[$i]}"
+      fi
+      ;;
+    --message=*)
+      if [ "$have_first_message" != "1" ]; then
+        have_first_message=1
+        first_message="${tok#--message=}"
+      fi
+      ;;
+  esac
+  i=$((i + 1))
+done
+case "$first_message" in
+  "Merge "*|"Revert "*) exit 0 ;;
 esac
 
 # Env var escape hatch.
@@ -73,25 +106,47 @@ EOF
   exit 2
 fi
 
-# 2. Run gitleaks against the staged diff.
+# 2. Run gitleaks against the staged diff, scoped to the repo the command
+# actually targets — $GIT_COMMIT_REPO_DIR when -C/--git-dir was given,
+# otherwise this project's own root. Same repo whose .gitleaks.toml (if
+# any) should govern the scan.
 project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+target_dir="${GIT_COMMIT_REPO_DIR:-$project_dir}"
+
+# If the resolved repo dir isn't actually accessible, fail open rather than
+# let a `cd` failure masquerade as a gitleaks "malformed config" error below.
+if [ ! -d "$target_dir" ]; then
+  exit 0
+fi
 
 # Prefer a project-level config if one exists; otherwise gitleaks uses its
 # defaults. The squad's recommended location is .gitleaks.toml at the repo
 # root for project-specific rules and allowlists.
-config_arg=""
-if [ -f "$project_dir/.gitleaks.toml" ]; then
-  config_arg="--config $project_dir/.gitleaks.toml"
+gitleaks_args=(git --staged --no-banner --redact)
+if [ -f "$target_dir/.gitleaks.toml" ]; then
+  gitleaks_args+=(--config "$target_dir/.gitleaks.toml")
 fi
 
-# `gitleaks protect --staged` scans the staging area only (not working tree,
-# not history). Exit code 1 = leaks found; 0 = clean; other = error.
+# `gitleaks git --staged` scans the staging area only (not working tree,
+# not history) — this repo's own .githooks/pre-commit uses the same
+# subcommand. The previous version of this hook used the deprecated
+# `gitleaks protect --staged`: on a gitleaks major bump that removes
+# `protect` entirely, the unknown-subcommand error falls into the
+# catch-all branch below and blocks EVERY commit with a misleading
+# "malformed .gitleaks.toml" message, since gitleaks' own error text for
+# an unrecognised subcommand doesn't distinguish itself from a config
+# parse error in this hook's exit-code-only dispatch. `git` is the current,
+# non-deprecated subcommand for staged/working-tree/history scans.
+# Exit code 1 = leaks found; 0 = clean; other = error.
 # `--no-banner` quiets the ASCII art that pollutes hook output.
+# `--redact` keeps the actual secret value out of gitleaks' own stdout/
+# report (this hook does its own bounded excerpt below).
 # `--report-format json` to a temp file lets us format findings cleanly.
 report="$(mktemp)"
 trap 'rm -f "$report"' EXIT
+gitleaks_args+=(--report-format json --report-path "$report")
 
-gitleaks_out="$(gitleaks protect --staged --no-banner $config_arg --report-format json --report-path "$report" 2>&1)"
+gitleaks_out="$(cd "$target_dir" 2>/dev/null && gitleaks "${gitleaks_args[@]}" 2>&1)"
 gitleaks_exit=$?
 
 case "$gitleaks_exit" in

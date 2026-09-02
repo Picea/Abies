@@ -151,17 +151,20 @@ Add to `.claude/skill-router.json` when this profile is active:
 
 ## Statusline indicator
 
-When this profile is active, the statusline should show an indicator. Suggested addition to `statusline.py`:
+When this profile is active, the statusline shows an indicator. This is
+implemented in `.claude/statusline.py` (`active_profiles()` / `fmt_profile()`):
+it reads `profiles-active.md` at the project root, one profile slug per
+bullet line, and if `sovereignty` is among them, prefixes the statusline
+with an EU flag indicator. No color escape codes are used (statusline
+output goes through Claude Code's own rendering, not a raw terminal write),
+unlike the sketch this section originally carried.
 
-```python
-def fmt_profile(active_profiles: list[str]) -> str:
-    """Show profile indicator in statusline."""
-    if "sovereignty" in active_profiles:
-        return RED("🇪🇺 sov")  # or BLUE
-    return ""
+To activate the indicator, create `profiles-active.md` at the repo root
+with:
+
+```markdown
+- sovereignty
 ```
-
-(Implementation left as exercise — read `profiles-active.md` from project root.)
 
 ## Review cycle
 
