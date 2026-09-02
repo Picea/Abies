@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json.schemastore.org/json",
+  "_comment": "Pattern → skill name(s) lookup for the skill-router hook. Patterns are case-insensitive Python regexes against the user prompt text. Multiple matches yield a deduplicated suggestion list. Only suggestions, not auto-invocations.",
+  "rules": [
+    {
+      "pattern": "(?i)\\b(threat[- ]?model|stride|attack surface|cve|owasp|sast|dast|vuln|prompt injection|csrf|xss|sql injection|secret|jwt|oauth|api key|saml|session fixation)\\b",
+      "skill": "security-toolchain"
+    },
+    {
+      "pattern": "(?i)\\b(benchmark|allocation|gc pressure|throughput|latency p\\d{2,3}|hot path|profiler|flame graph|micro-?bench|nbomber|k6|benchmarkdotnet|memorydiagnoser|tail latency|jit)\\b",
+      "skill": "performance-engineering"
+    },
+    {
+      "pattern": "(?i)\\b(retro|postmortem|post mortem|lesson|learning|consolidate|curate|institutional memory|what did we learn|review the log)\\b",
+      "skill": "learnings-curation"
+    },
+    {
+      "pattern": "(?i)\\b(spec[- ]by[- ]example|acceptance test|executable specification|atdd|bdd|behaviou?r[- ]driven|given[- ]when[- ]then)\\b",
+      "skill": "spec-by-example"
+    },
+    {
+      "pattern": "(?i)\\b(first[- ]?principles|beast[- ]?mode|design phase|track a|track b|realist|critic|domain expert room|adr|architecture decision)\\b",
+      "skill": "beast-mode-design"
+    },
+    {
+      "pattern": "(?i)\\b(ef core|dbcontext|migration|TUnit|aspire|opentelemetry|otel|smart constructor|state machine|sum type|result<|option<|capability function|functional ddd|aclair|bounded context|domain event)\\b",
+      "skill": "functional-ddd"
+    },
+    {
+      "pattern": "(?i)\\b(ci|cicd|ci/cd|pipeline|workflow|gh action|github action|deploy|dockerfile|docker-compose|release|tag and push|trivy|dependabot)\\b",
+      "skill": "cicd-pipelines"
+    },
+    {
+      "pattern": "(?i)\\b(diátaxis|diataxis|how-?to guide|tutorial|reference|explanation|adr template|changelog|conventional commit|onboarding doc|api reference|readme)\\b",
+      "skill": "technical-writing"
+    },
+    {
+      "pattern": "(?i)\\b(wcag|aa compliance|aria|keyboard nav|tab order|screen reader|color contrast|cognitive load|hick's law|fitts|jakob|design system|tailwind|spacing scale|component variant)\\b",
+      "skill": "ux-review"
+    },
+    {
+      "pattern": "(?i)\\b(web component|service worker|web worker|shadow dom|import map|es2024|navigation api|mutation observer|broadcastchannel|tagged template|waapi|fetch \\+ abortcontroller)\\b",
+      "skill": "vanilla-js-playbook"
+    },
+    {
+      "pattern": "(?i)\\b(code review|reviewer|review the diff|review pr|missing review lockout|merge gate|review verdict|approve this pr)\\b",
+      "skill": "code-review"
+    },
+    {
+      "pattern": "(?i)\\b(gh\\b|gh cli|github cli|gh pr|gh run|gh release|gh issue|gh api|gh workflow|gh auth)\\b",
+      "skill": "gh-cli"
+    },
+    {
+      "pattern": "(?i)\\b(az\\b|az cli|azure cli|az login|az account|az group|az containerapp|az webapp|az keyvault|az postgres|az monitor)\\b",
+      "skill": "az-cli"
+    },
+    {
+      "pattern": "(?i)\\b(dotnet build|dotnet test|dotnet run|dotnet ef|dotnet format|dotnet pack|dotnet publish|dotnet watch|dotnet add package|dotnet new|dotnet list package|directory.build.props|directory.packages.props)\\b",
+      "skill": "dotnet-cli"
+    },
+    {
+      "pattern": "(?i)\\b(playwright|playwright codegen|playwright trace|page object|e2e test|browser test|trace.zip|playwright install)\\b",
+      "skill": "playwright-cli"
+    },
+    {
+      "pattern": "(?i)\\b(git worktree|git bisect|git range-diff|git rebase|git reflog|git stash|autosquash|fixup commit|sparse[- ]checkout|partial clone|signed commit|--force-with-lease)\\b",
+      "skill": "git-advanced"
+    },
+    {
+      "pattern": "(?i)\\b(bicep|\\.bicep|\\.bicepparam|azd up|azd deploy|azd provision|azd infra synth|what-if|arm template|deployment group|main\\.bicep)\\b",
+      "skill": "bicep-iac"
+    }
+  ]
+}

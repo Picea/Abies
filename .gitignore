@@ -451,3 +451,27 @@ FodyWeavers.xsd
 dotnet-install.sh
 test-results/
 nohup.out
+
+# ============================================================================
+# Squad framework runtime state
+# ============================================================================
+# Per-machine caches written by the hooks. These hold this checkout's GPG key
+# id and transient hook state, and would be wrong on any other machine.
+# Added during the migration to the .claude/ framework layout, before the
+# hooks had ever run here — so there is nothing to untrack.
+.squad/.last-review-verdict
+.squad/.signing-health
+.squad/.hooks-ok
+
+# Transcript snapshots and rotated logs. The per-day *-session.md files are
+# deliberately NOT ignored here: they are already tracked in this repo, and
+# ignoring them now would not untrack them. Whether to keep tracking session
+# logs is a separate decision from this migration.
+.squad/log/transcripts/
+.squad/log/snapshots/
+.squad/log/*.log
+
+# Per-rotation tarballs
+.squad/decisions/archive/cold/
+.squad/decisions/cold-quarantine/
+.squad/learnings/cold/
