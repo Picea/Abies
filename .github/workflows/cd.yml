@@ -44,8 +44,34 @@ jobs:
           echo "Changed files:"
           echo "$CHANGED"
 
-          # Check if any file is NOT docs-only
-          NON_DOCS=$(echo "$CHANGED" | grep -vE '^(\.squad/|docs/|\.github/instructions/|.*\.md$|LICENSE$)' | grep -v '^$' || true)
+          # Check if any file is NOT docs-only.
+          #
+          # docs_only=true SKIPS the build, test and security jobs, so this
+          # list decides what ships unscanned. It is deliberately extension-
+          # driven, not directory-driven: `.*\.md$` already covers every
+          # prose file under .claude/ (agents, docs, skills, hook-test
+          # fixtures), while .claude/hooks/**, statusline.py, settings.json
+          # and skill-router.json correctly fall through as code and get the
+          # full pipeline. Do NOT add a bare `\.claude/` prefix here -- that
+          # would let a change to hook code skip CodeQL, Semgrep, Trivy,
+          # secret scanning and the tests.
+          #
+          # The bare `\.squad/` prefix that used to sit here had exactly that
+          # defect: it classified ANY file under .squad/ as docs, including a
+          # .sh or .yml. .squad/ holds only .md plus three .gitkeep files, so
+          # `.*\.md$` and `(.*/)?\.gitkeep$` cover the real contents with no
+          # behaviour change and no blanket directory exemption.
+          #
+          # `(.*/)?\.gitkeep$`, NOT `.*\.gitkeep$` (round 4 re-review,
+          # review-b93b430.md, finding 3 nit): the looser form matches any
+          # filename merely ENDING in the literal text ".gitkeep", so
+          # e.g. `notreally.gitkeep` was silently treated as docs-only too.
+          # `(.*/)?\.gitkeep$` requires the basename to be exactly
+          # `.gitkeep`, matching the JS `isMaintenancePath` check in
+          # pr-validation.yml (`/(^|\/)\.gitkeep$/`) and the identical shell
+          # filter in codeql.yml -- kept in step across all three
+          # deliberately.
+          NON_DOCS=$(echo "$CHANGED" | grep -vE '^((.*/)?\.gitkeep$|docs/|\.github/instructions/|.*\.md$|LICENSE$)' | grep -v '^$' || true)
 
           if [ -z "$NON_DOCS" ] && [ -n "$CHANGED" ]; then
             echo "docs_only=true" >> $GITHUB_OUTPUT

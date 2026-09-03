@@ -1,0 +1,69 @@
+name: Claude Hooks Tests
+
+# Regression + coverage suite for the squad's Claude Code hooks
+# (.claude/hooks/**). Nothing else in .github/workflows/** exercised these
+# scripts — .claude/hooks/tests/run.sh's own header comment assumes a
+# paths:-scoped CI job exactly like this one exists; until this workflow,
+# that assumption was false and the suite's 67+ assertions never ran
+# automatically.
+#
+# Scoped to .claude/hooks/** (plus its own workflow file) so it doesn't run
+# on every unrelated PR. No fetch-depth: 0 needed — see run.sh's header:
+# the two pre-fix hook revisions it regression-tests are vendored as
+# fixtures under fixtures-pre-fix/, not read via `git show <ref>`, so the
+# default shallow checkout is sufficient.
+
+on:
+  pull_request:
+    paths:
+      - '.claude/hooks/**'
+      # run.sh asserts ALLOWED_AGENTS equals the real .claude/agents/
+      # roster and reads decision-schema.md, so a change to either can
+      # break this suite without touching .claude/hooks/** at all.
+      - '.claude/agents/**'
+      - '.claude/docs/decision-schema.md'
+      # round 5 re-review (review-pr355-round4.md, should-fix): run.sh's
+      # STATUSLINE_PY tests exercise .claude/statusline.py directly
+      # ($REPO_ROOT/.claude/statusline.py), the same out-of-.claude/hooks/
+      # shape as .claude/agents/** above -- an edit here that re-breaks
+      # either MUST-NOT-RAISE path (see run.sh's own STATUSLINE section)
+      # would otherwise go green in CI and surface later on an unrelated
+      # hooks PR. Confirmed by grep: outside .claude/hooks/, run.sh's only
+      # $REPO_ROOT-relative file references are .claude/agents and
+      # .claude/statusline.py -- .claude/docs/decisions.md also appears,
+      # but only inside per-test `$sandbox/...` paths (synthetic files
+      # created by run_hook_sandbox()), never the real repo file, so it
+      # needs no filter entry of its own.
+      - '.claude/statusline.py'
+      - '.github/workflows/claude-hooks-tests.yml'
+  push:
+    branches: [ "main" ]
+    paths:
+      - '.claude/hooks/**'
+      # run.sh asserts ALLOWED_AGENTS equals the real .claude/agents/
+      # roster and reads decision-schema.md, so a change to either can
+      # break this suite without touching .claude/hooks/** at all.
+      - '.claude/agents/**'
+      - '.claude/docs/decision-schema.md'
+      # See the matching comment under pull_request above.
+      - '.claude/statusline.py'
+      - '.github/workflows/claude-hooks-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-hooks-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-suite:
+    name: Run hooks test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run .claude/hooks/tests/run.sh
+        run: bash .claude/hooks/tests/run.sh

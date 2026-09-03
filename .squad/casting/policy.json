@@ -1,8 +1,0 @@
-{
-  "strategy": "role-based",
-  "universes_allowed": [
-    "role-based"
-  ],
-  "max_agents_per_universe": 20,
-  "overflow_strategy": "structural-mirroring"
-}

@@ -2,7 +2,7 @@
 // Endpoint Tests — Integration Tests for MapAbies
 // =============================================================================
 // Tests the full HTTP pipeline: request → Kestrel → MapAbies → response.
-// Uses WebApplicationFactory to spin up a real Kestrel server in-process.
+// Uses an in-process TestServer (WebApplication.CreateBuilder() + UseTestServer()), not a real Kestrel socket.
 //
 // Covers:
 //   1. Static mode serves HTML with correct content-type
