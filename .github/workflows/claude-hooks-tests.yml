@@ -22,6 +22,19 @@ on:
       # break this suite without touching .claude/hooks/** at all.
       - '.claude/agents/**'
       - '.claude/docs/decision-schema.md'
+      # round 5 re-review (review-pr355-round4.md, should-fix): run.sh's
+      # STATUSLINE_PY tests exercise .claude/statusline.py directly
+      # ($REPO_ROOT/.claude/statusline.py), the same out-of-.claude/hooks/
+      # shape as .claude/agents/** above -- an edit here that re-breaks
+      # either MUST-NOT-RAISE path (see run.sh's own STATUSLINE section)
+      # would otherwise go green in CI and surface later on an unrelated
+      # hooks PR. Confirmed by grep: outside .claude/hooks/, run.sh's only
+      # $REPO_ROOT-relative file references are .claude/agents and
+      # .claude/statusline.py -- .claude/docs/decisions.md also appears,
+      # but only inside per-test `$sandbox/...` paths (synthetic files
+      # created by run_hook_sandbox()), never the real repo file, so it
+      # needs no filter entry of its own.
+      - '.claude/statusline.py'
       - '.github/workflows/claude-hooks-tests.yml'
   push:
     branches: [ "main" ]
@@ -32,6 +45,8 @@ on:
       # break this suite without touching .claude/hooks/** at all.
       - '.claude/agents/**'
       - '.claude/docs/decision-schema.md'
+      # See the matching comment under pull_request above.
+      - '.claude/statusline.py'
       - '.github/workflows/claude-hooks-tests.yml'
   workflow_dispatch:
 

@@ -60,23 +60,7 @@ def resolve_project_dir(payload: dict) -> Path:
         candidate = workspace.get(key) if isinstance(workspace, dict) else None
         if candidate:
             return Path(candidate)
-    try:
-        # `Path.cwd()` -- unlike everything else in this function -- calls
-        # into `os.getcwd()`, which raises `FileNotFoundError` if the
-        # process's current working directory has been deleted out from
-        # under it (round 4 re-review, review-b93b430.md, "four still-open
-        # items"; verified live). This function is called from `main()`
-        # BEFORE that function's own `try/except`, so an uncaught raise
-        # here escapes everything and turns the entire statusline into a
-        # traceback -- exactly the "MUST NOT raise" violation this
-        # module's own docstring rules out. `Path(".")` is a safe,
-        # non-raising placeholder in that case; every caller downstream
-        # already tolerates a repo path that doesn't resolve to anything
-        # useful (missing files, absent .git, etc. all degrade to "?" /
-        # placeholders rather than raising).
-        return Path.cwd()
-    except Exception:
-        return Path(".")
+    return Path.cwd()
 
 
 def git_branch(repo: Path) -> str:
@@ -205,24 +189,7 @@ def main() -> int:
         # traceback. A short, honest placeholder beats a broken statusline.
         line = "claude-squad (statusline error)"
 
-    # `print(line)` itself can raise (round 4 re-review, review-b93b430.md,
-    # "four still-open items"; verified live): `line` unconditionally
-    # contains U+2013 (en dash, the "no verdict recorded yet" placeholder --
-    # see last_review_verdict() above) and can contain other non-ASCII text
-    # via profile_tag/model. Under a strict-ASCII stdout encoding (a plain
-    # "C" locale without PEP 538/540's coercion, or an explicit
-    # PYTHONIOENCODING=ascii), `print()` raises `UnicodeEncodeError`, and
-    # this call sits AFTER the try/except above, so nothing catches it --
-    # the same "MUST NOT raise" violation as the `Path.cwd()` case in
-    # resolve_project_dir(), one call later. `errors="replace"` on stdout
-    # degrades a would-be-unencodable character to `?` instead of raising;
-    # applied only as a fallback when the direct print fails, so the
-    # common case (a UTF-8-capable stdout) is untouched.
-    try:
-        print(line)
-    except UnicodeEncodeError:
-        sys.stdout.reconfigure(errors="replace")
-        print(line)
+    print(line)
     return 0
 
 

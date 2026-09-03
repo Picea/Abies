@@ -925,3 +925,581 @@ disables the consistency check that is currently the sole thing rejecting
 the fixture. Blockers 5 and 6 each acquired one new false doc claim
 introduced by this PR.
 
+
+### 2026-09-02 — reviewer-20260902T185118Z-pr355-round3 [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260902T185118Z-pr355-round3
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-02T18:51:18Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "100, 208, 227, 325"
+  - path: .claude/skills/git-advanced/SKILL.md
+    lines: "15, 228"
+  - path: .github/workflows/pr-validation.yml
+    lines: "49-69, 164-186"
+  - path: .github/workflows/codeql.yml
+    lines: "62-82"
+  - path: .github/workflows/cd.yml
+    lines: "47-67"
+  - path: .github/workflows/claude-hooks-tests.yml
+    lines: "16-36"
+  - path: .claude/docs/tech-stack.md
+    lines: "71-72"
+blockers:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 100
+    reason: "Blocker 4, third bypass. `open(path, \"r\", encoding=\"utf-8\")` uses universal-newline translation (newline=None), so every lone CR is rewritten to LF before the parser runs -- the new strict splitter `re.split(r\"\\r\\n|\\r|\\n\", fm)` can never see a CR and is a no-op for it. Indenting the nested block with a bare CR instead of a tab makes those lines genuinely column-0, the guard never fires. Verified end-to-end against the live hook: a drop whose grep-visible column-0 declaration is `agent: csharp-dev` / `verdict: NEEDS-CHANGES` with a real non-empty blockers list archived as `[reviewer - PASS]` and wrote PASS to .squad/.last-review-verdict. Also a grep/python line-model differential: `grep -n '^agent:'` on that file matches only the csharp-dev line. Candidate fix verified: `newline=\"\"` on the open plus `re.split(r\"\\r\\n|\\n\", fm)` closes it, leaves fixtures 19/20/23/24/26 correct and keeps the suite at 146/146. Needs a fixture 27."
+  - file: .claude/skills/git-advanced/SKILL.md
+    line: 15
+    reason: "New false claim about an enforcement gate, in the sentence rewritten this round to fix a different false claim about the same hook. Documents the accepted Conventional Commit types as `feat fix chore docs refactor test perf build ci style revert`. Verified live against enforce-conventional-commits.sh line 160 for all twelve types: `style:` and `revert:` are REJECTED (exit 2) and `security:` is ACCEPTED but not listed -- and `security` is one of the ten types decisions.md's own table documents. Same wrong list repeated at line 228. Replace both with the hook's actual set: feat, fix, docs, refactor, test, perf, security, ci, build, chore."
+high:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Closing the CR case will not make .squad/.last-review-verdict trustworthy, and the in-code comment at line 290 (\"the impersonation is closed\") reads stronger than the code supports. Verified: a plain, un-nested, entirely well-formed drop declaring `agent: reviewer` / `verdict: PASS` / `scope: review` / `blockers: []` at column 0 archives as `[reviewer - PASS]` and writes PASS to the cache. `agent` is self-asserted and the SubagentStop payload carries no authorship channel, so the guard can only close parsing-differential impersonation, not impersonation as such. Say so at the top of the file and in decision-schema.md, or round four re-derives it."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "LEGACY fall-through still reachable with non-`\\s` leading characters, the same class the comment block at lines 106-141 claims closed for the single BOM. Verified: a doubled BOM, U+200B, U+180E, U+2060 or U+00AD before the opening fence makes a drop declaring `agent: bogus-not-a-real-agent` / `verdict: TOTALLY-FINE` archive silently under a `<!-- legacy -->` marker with the whitelist, verdict-enum, scope-enum and blockers-consistency checks all skipped, instead of quarantining. It cannot write the verdict cache, which is why this is high and not a blocker. Strip/reject leading format-control characters before the fence match."
+medium:
+  - file: .github/workflows/pr-validation.yml
+    reason: "The shell filter uses `.*\\.gitkeep$` while the JS isMaintenancePath uses `/(^|\\/)\\.gitkeep$/`. The comment says to keep the two in step; the shell form also matches a file literally named e.g. `notreally.gitkeep`. Harmless today, but make them the same shape."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Carried from round 2 and still open: the verdict-cache `created` extraction uses `grep -E '^created:' | head -n1` (first column-0 match) while the python parser takes the last top-level write. Now largely moot -- `created` is self-declared, so the latest-wins tie-break is gameable with an honest future timestamp regardless -- but taking `created` from the validator's stdout instead of re-grepping removes the divergence for free."
+good:
+  - file: .claude/hooks/tests/run.sh
+    reason: "146/146 verified independently. The devops claim that the strict line splitter is load-bearing is correct and I proved it: reverting only `re.split(...)` back to `fm.splitlines()` while keeping the whitespace-aware `lstrip()` still forges `[reviewer - PASS]` and writes PASS for fixtures 23 (vertical tab) and 24 (form feed), while fixture 20 (tab) stays closed. The two fixes are independently necessary and the fixtures pin both. Every whitespace fixture also has a working positive control against a vendored pre-fix hook."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "The guard now holds against all 17 characters Python's str.isspace() recognises, including U+001C-U+001E, NEL, LS and PS, which have no fixture -- all archive under the true identity csharp-dev/NEEDS-CHANGES. The five non-space format-control characters (U+200B, U+FEFF, U+180E, U+2060, U+00AD) survive into the key name and so cannot shadow a guarded field either. The warning that adding a new schema field or consistency check without adding its key re-opens the bypass is accurate and is the right thing to have written down."
+  - file: .github/workflows/pr-validation.yml
+    reason: "The path-filter conclusion is right and the enumeration behind it holds. `.claude/` needs no entry: `.*\\.md$` / `path.endsWith('.md')` already cover all prose under it, and .claude/hooks/**, statusline.py, settings.json and skill-router.json correctly fall through as code. The bare `.squad/` prefix was the real defect. Verified at HEAD: .squad/ tracks exactly 41 .md plus 3 .gitkeep, and every non-.md runtime artefact (.last-review-verdict, .hooks-ok, .signing-health, .locks/, transcripts, snapshots, *.log) is gitignored, so it can never reach a changed-file list. Behaviour for the real contents is unchanged and a .squad/*.sh would now correctly get the full pipeline."
+  - file: .claude/skills/gh-cli/SKILL.md
+    reason: "The ruleset claim is accurate and attributed to the right ruleset, which is the part that could easily have been wrong. Verified against the live API: `main` has two active rulesets; `Protect main` (6177598) has bypass actors OrganizationAdmin and RepositoryRole 5 with bypass_mode always, but carries only deletion/non_fast_forward/pull_request. Every rule the claim rests on -- pull_request, required_linear_history and the exact five required checks build / Validate PR Title / Validate PR Description / e2e / Analyze C# Code -- lives in `protectmainbranch` (12483698), which has zero bypass actors and current_user_can_bypass: never. The hedge about a future ruleset change is the right caveat."
+  - file: .claude/docs/tech-stack.md
+    reason: "Dropping the hand-maintained count was the right call after two stale passes, and the replacement is exact: the 16 enumerated workflow filenames match `ls .github/workflows/` with zero difference in either direction, the list is framed as point-in-time, and the reader is pointed at `ls | wc -l` instead of a number. The squad-*.yml removal claim is also true -- those four were deleted in 7f5d7d2, the PR's own first commit."
+  - file: .claude/skills/git-advanced/SKILL.md
+    reason: "Every behavioural claim about enforce-conventional-commits.sh other than the type list is verified live: first -m/-F anchoring (two-flag form passes, bad first -m blocks even with a good later -m, -m before a bad -F wins, bad -F before a good -m blocks), and the `$(...)`/heredoc fail-open, which really does exit 0 with a bogus subject. Naming that gap in the same breath as the recommendation is the honest shape."
+references:
+  - "https://github.com/MCGPPeters/squad-template/issues/8"
+---
+
+## Findings
+
+Third pass on PR #355. Four of the six original blockers are closed and stay
+closed. Blocker 4 is partially closed: the whitespace-indent and
+`blockers`-shadow bypasses from round 2 are genuinely fixed and well
+fixtured, but a bare CR used as the indentation prefix still forges
+`[reviewer · PASS]` — universal-newline translation at `open()` rewrites it
+to LF before the new strict splitter can ever see it, so the splitter is a
+no-op for the one line terminator that arrives for free. Blocker 6 is
+partially closed: the branch-name and `--admin` claims are now correct and
+verified against the live ruleset API, but the same skill file states a
+Conventional Commit type list that the hook rejects in two entries and is
+missing a third.
+
+Confirmed still open, not re-derived: `enforce-no-secrets.sh`'s non-cd-able
+`target_dir` reading as "leaks found", `dotnet-format-on-save.sh`'s GNU
+`date -r`, `statusline.py`'s two paths outside the `try`, and the
+`git_commit_detect.py` under-match on `env`/`sudo`/subshell prefixes.
+
+
+### 2026-09-02 — reviewer-20260902T193000Z-pr355-round4 [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260902T193000Z-pr355-round4
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-02T19:30:00Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "197-217, 525"
+  - path: .claude/hooks/lib/git_commit_detect.py
+    lines: "45-72, 199-210"
+  - path: .github/workflows/claude-hooks-tests.yml
+    lines: "17-35"
+  - path: .claude/hooks/enforce-no-secrets.sh
+    lines: "115-140"
+  - path: .claude/hooks/dotnet-format-on-save.sh
+    lines: "169-206"
+  - path: .claude/statusline.py
+    lines: "60-82, 205-228"
+  - path: .claude/docs/decision-schema.md
+    lines: "166"
+  - path: .claude/skills/git-advanced/SKILL.md
+    lines: "15, 228"
+  - path: .github/workflows/pr-validation.yml
+    lines: "76, 195, 203-225"
+blockers:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 215
+    reason: "LEGACY fall-through is still open, and the new comment claims it is closed. `while text and unicodedata.category(text[0]) == \"Cf\"` strips only a LEADING RUN of Cf, but the comment says it 'closes the whole class instead of pinning one more instance of it'. It pinned one more instance. Six live reproductions against the current hook, each a drop with plainly-present, grep-visible front matter declaring `agent: bogus-not-a-real-agent` / `verdict: TOTALLY-FINE` / `scope: nonsense-scope`, all archived silently under `<!-- legacy -->` with ALLOWED_AGENTS/ALLOWED_VERDICTS/ALLOWED_SCOPES and the blockers-consistency check skipped, and the body `cat`'d verbatim into decisions.md (a forged `### ... [reviewer · PASS]` heading in the body lands in the authoritative conventions file): (1) one ASCII space then a BOM before the fence -- defeats the Cf loop outright; (2) leading NUL U+0000 (Cc); (3) leading BEL U+0007 (Cc); (4) leading combining acute U+0301 (Mn); (5) BOM, newline, BOM; (6) a drop written entirely with CR-only line endings. Case (6) is a REGRESSION INTRODUCED BY THIS ROUND: the vendored pre-fix hook (newline=None) quarantines it correctly for 'unknown agent'; with newline=\"\" the fence regex's `\\r?\\n` no longer matches and it falls to LEGACY. Verified fix, applied and re-run: replace the bare `print(\"LEGACY\")` with a fence-presence check first -- `if re.search(r\"(?m)^---\", text): print(\"front-matter fence present but file does not start with it\"); sys.exit(1)`. That closes all six at the outermost layer instead of enumerating one more character class, and the suite stays at 173 passed / 0 failed. Cannot write .last-review-verdict, so this is narrower than blocker #4 was -- but it is a validation bypass on decisions.md reachable with a one-byte prefix, and shipping the 'closes the whole class' comment is what buys a fifth round."
+high:
+  - file: .github/workflows/claude-hooks-tests.yml
+    reason: "New coverage gap of exactly the shape fixed in round 2 for `.claude/agents/**`. run.sh line 1759 now sets STATUSLINE_PY=\"$REPO_ROOT/.claude/statusline.py\" and four of this round's new assertions exercise it, but `.claude/statusline.py` is in neither the pull_request nor the push `paths:` filter. An edit to statusline.py that re-breaks either MUST-NOT-RAISE path goes green in CI and surfaces later on an unrelated hooks PR. Add `.claude/statusline.py` to both filters. Confirmed by grep: the only run.sh references outside `.claude/hooks/` are `.claude/agents` (filtered) and `.claude/statusline.py` (not filtered)."
+  - file: .claude/hooks/lib/git_commit_detect.py
+    reason: "The documented limits do not fully match behaviour, which is what was asked. The `else: # \"env\"` branch comment says '`env` accepts its own flags (-i, -0, -u NAME, ...)', but the loop only skips tokens starting with `-`, so `-u`'s value is left as argv[0]. Verified live: `env -u FOO git commit -m \"x\"` returns no match, while `env -i`, `env --unset=FOO`, `env X=1`, `sudo`, `sudo env X=1` and both subshell forms all match. `sudo -u user` is documented in the module docstring's scope-limits section; `env -u NAME` is not documented anywhere and the inline comment reads as if it is handled. Either consume the value (`if argv[0] in (\"-u\",) and len(argv) > 1: argv = argv[2:]`) or list `env -u NAME` alongside `sudo -u user` in the scope-limits block. Fail-open either way, so it is accuracy, not a security regression."
+medium:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Carried from rounds 2 and 3, still open at line 525: the verdict-cache `created` extraction uses `grep -E '^created:' | head -n1` (first column-0 match) while the python parser takes the last top-level write. Taking `created` from the validator's stdout instead of re-grepping removes the divergence for free."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "A drop whose `agent:` is a YAML block list (`agent:\\n  - reviewer`) fails closed, but by raising `TypeError: cannot use 'list' as a set element` -- the raw Python traceback is written verbatim into the .reason file. Correct outcome, unhelpful message. Coerce non-str field values to a rejection reason before the whitelist checks."
+  - file: .claude/hooks/tests/fixtures-pre-fix/lib/git-commit-detect.sh
+    reason: "Eight vendored pre-fix fixtures are sha256-pinned and all eight pins verify. This ninth vendored file is not pinned, so it can drift without the suite noticing. Pin it like the rest."
+good:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Blocker #4 is closed for the parsing-differential class, and it holds under re-attack. All four rounds of exploits re-run against the current hook as regressions and every one now archives under the true identity `[csharp-dev · NEEDS-CHANGES]` with no verdict-cache write: space-indented nesting, tab, NBSP, vertical tab, form feed, the blockers-shadow (quarantined for 'verdict PASS but blockers list is non-empty'), and the round-3 bare-CR indent. Encoding-level attacks fail closed to quarantine, not to LEGACY: UTF-16 and invalid UTF-8 both hit `unreadable: 'utf-8' codec can't decode byte 0xff`. No NFC/NFKC differential exists -- nothing normalises, so a fullwidth `ａgent:` never becomes `agent`. A CR-only nested block inside an LF-fenced drop quarantines for 'missing required fields'."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "The devops claim that `newline=\"\"` and the narrowed `re.split(r\"\\r\\n|\\n\", fm)` are BOTH necessary is correct, verified the same way as the round-3 splitter: reverting the splitter alone (keeping newline=\"\") re-forges `[reviewer · PASS]` and writes PASS for the CR fixture; reverting newline=\"\" alone (keeping the narrowed splitter) does the same. Neither is redundant. The vendored `scribe-decision-merger.pre-cr-newline-fix.sh` is a working positive control -- it reproduces the CR forgery end-to-end -- and all eight sha256 fixture pins verify."
+  - file: .claude/docs/decision-schema.md
+    reason: "The self-declaration limitation text is genuinely correct, not merely less wrong. It draws the right line -- parsing bugs closed does not equal identity authenticated -- names the reason (the SubagentStop payload has no authorship channel), tells the reader how to treat `.last-review-verdict` and the `[agent · verdict]` heading, and puts the real fix upstream of the parser rather than promising another validator patch. Verified against behaviour: an honest column-0 `agent: reviewer` / `verdict: PASS` / `blockers: []` drop archives as `[reviewer · PASS]` and writes PASS, exactly as documented. The matching in-code comments (file header and the parse-loop block) are scoped the same way."
+  - file: .claude/hooks/dotnet-format-on-save.sh
+    reason: "The stdout-contamination bug devops reports catching mid-fix is real and the fix is right. Reproduced on this Linux box: GNU `stat -f %m <path>` exits 1 but prints a six-line filesystem-info block to STDOUT, so a bare `cmd1 || cmd2 || echo 0` would have captured it into lock_mtime and made `$(( ))` a syntax error -- wedging the mkdir-lock fallback harder than the GNU-only `date -r` it replaces. Regex-validating each dialect's output as `^[0-9]+$` before accepting it closes that regardless of which way the wrong dialect fails. Confirmed the shipped sequence yields lock_age=0 on a real directory."
+  - file: .claude/skills/git-advanced/SKILL.md
+    reason: "Type-list alignment verified independently across all four sources, which now read the identical ten in the identical order -- feat fix docs refactor test perf security ci build chore: the hook's regex at line 160, the decisions.md table at 220-231, pr-validation.yml's `types:` block, and SKILL.md at 15 and 228. Exercised the hook live for all twelve candidate types: the ten exit 0, `style:` and `revert:` exit 2. The new Merge/Revert parenthetical is accurate rather than conflated -- `Merge branch x` and `Revert \"feat: y\"` exit 0 via the subject-prefix case, while `Mergefoo bar` and lowercase `merge branch x` exit 2, so it really is a prefix special case and really is distinct from a `revert:` type."
+  - file: .github/workflows/pr-validation.yml
+    reason: "`(.*/)?\\.gitkeep$` is equivalent to the JS `/(^|\\/)\\.gitkeep$/` and is applied identically in all three shell filters (pr-validation, codeql, cd). Checked both patterns over `.gitkeep`, `a/.gitkeep`, `a/b/.gitkeep`, `notreally.gitkeep`, `a/notreally.gitkeep`, `.gitkeeps`, `x.gitkeep` -- identical results on every one. No similar error remains in those filters: `docs/`, `\\.github/instructions/` and `LICENSE$` are all anchored by the group's leading `^`, and `.*\\.md$` matches the JS `path.endsWith('.md')`."
+  - file: .claude/hooks/enforce-no-secrets.sh
+    reason: "`[ ! -d \"$target_dir\" ] || ! (cd \"$target_dir\" 2>/dev/null)` is the right fix at the right layer -- it tests cd-ability directly, in its own subshell so it cannot move this script's cwd, and lands on the same fail-open posture as the plain `-d` case. The gitleaks-stub fixturing keeps the assertion CI-independent, and the paired vendored pre-fix hook proves the old form really did block on a phantom finding."
+  - file: .claude/statusline.py
+    reason: "Both MUST-NOT-RAISE paths are closed and the degradation is clean, not garbled. Under PYTHONIOENCODING=ascii the script exits 0 and emits a single well-formed line (`claude | ? | last-review:? | inbox=0 Q=0 | sign:? | hooks:never`) with no partial-write duplication from the failed first print. Both regression tests have working positive controls against the vendored pre-fix copy that assert the specific exception name (FileNotFoundError, UnicodeEncodeError) rather than merely a non-zero exit."
+references:
+  - "https://github.com/MCGPPeters/squad-template/issues/8"
+---
+
+## 👁️ CODE REVIEW — PR #355 round 4 (uncommitted working tree on b93b430)
+
+### Holistic Assessment
+
+**Motivation:** Justified. Every change traces to a named, reproduced finding from
+rounds 1–3, and two of them (the `stat` stdout contamination, the generalised
+leading-format-character strip) were found by devops rather than handed to it.
+
+**Approach:** Right, with one exception. The merger fixes finally moved to the
+correct layer — `open(newline="")` is upstream of the splitter, which is upstream
+of the indent guard — and I confirmed both halves are independently load-bearing.
+The leading-character fix did not: it enumerated one more character class (`Cf`)
+where the layer above it (fence presence) was the actual boundary.
+
+**Verdict:** 🔴 Changes Requested
+
+Blocker #4 — the headline, four rounds running — is **closed**. I re-ran every
+exploit from rounds 1, 2 and 3 plus new encoding-, normalisation- and
+fence-level attacks; the parsing-differential forgery class holds, and the
+residual self-declaration case is now documented accurately in three places. The
+one blocker below is a *different, lower-severity* finding: the LEGACY
+fall-through I rated `high` in round 3 is still open via six routes, one of them
+newly introduced by this round's `newline=""`, and the in-code comment asserts it
+is closed. I have a verified four-line fix that closes all six and keeps the
+suite at 173/173.
+
+### Test suite
+
+`bash .claude/hooks/tests/run.sh` → **`Summary: 173 passed, 0 failed`**. Confirmed
+independently, and again at 173/173 with the candidate fix applied.
+
+### Findings
+
+#### 🔴 Must Fix (blocks merge)
+
+**`.claude/hooks/scribe-decision-merger.sh:215`** — see the `blockers` entry.
+Six reproductions; case (6), CR-only line endings, is a regression this round
+introduced. Verified fix:
+
+```python
+m = re.match(r"\s*---[ \t]*\r?\n", text)
+if not m:
+    if re.search(r"(?m)^---", text):
+        print("front-matter fence present but file does not start with it")
+        sys.exit(1)
+    print("LEGACY")
+    sys.exit(0)
+```
+
+It catches the CR-only case at position 0 and all five prefix cases via the
+closing fence, and leaves genuinely front-matter-less legacy files on LEGACY.
+
+#### ⚠️ Should Fix
+
+- **`.github/workflows/claude-hooks-tests.yml:17-35`** — add `.claude/statusline.py`
+  to both `paths:` filters; four new assertions exercise a file CI does not watch.
+- **`.claude/hooks/lib/git_commit_detect.py:199-210`** — `env -u NAME git commit`
+  under-matches and is undocumented; the inline comment implies `-u NAME` is handled.
+
+#### 💡 Nitpicks
+
+- `created` grep/parser tie-break divergence at line 525 — carried, still open.
+- `agent:` as a block list quarantines with a raw Python traceback as the reason.
+- `fixtures-pre-fix/lib/git-commit-detect.sh` is the one vendored fixture without
+  a sha256 pin.
+
+#### ✅ What's Good
+
+The regression discipline is now the strongest thing in this PR: eight pinned
+pre-fix fixtures, all verifying; positive controls that assert the *named*
+failure, not just a non-zero exit; and a devops report that reproduced my exploit
+against the live pre-fix hook before touching anything rather than applying my
+candidate on faith. The load-bearing claim about the two merger changes is true
+and I proved it both ways. The self-declaration write-up in `decision-schema.md`
+is the first time in four rounds that a comment about this hook says exactly what
+is true and stops there.
+
+### Metrics
+
+- Files reviewed: 13 modified, 5 new (excluding out-of-scope `.claude/agent-memory/**`
+  and the `.squad/` decision-archive churn)
+- Lines added/modified: ~721 added / 28 removed
+- Test coverage of new code: high — 27 new assertions, every fix paired with a
+  vendored pre-fix positive control
+- Complexity: Medium
+- Pattern catalog consulted: yes
+
+
+### 2026-09-02 — reviewer-20260902T203000Z-pr355-round5 [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260902T203000Z-pr355-round5
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-02T20:30:00Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "128-176, 285-292, 340-375"
+  - path: .claude/hooks/lib/git_commit_detect.py
+    lines: "62-72, 171-244"
+  - path: .github/workflows/claude-hooks-tests.yml
+    lines: "22-51"
+  - path: .claude/hooks/tests/run.sh
+    lines: "new legacy-bypass block"
+  - path: .claude/skills/git-advanced/SKILL.md
+    lines: "15, 228"
+blockers:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 168
+    reason: "_FENCE_SAFETY_CAP is a fail-OPEN cap, so it is itself the bypass the round-4 blocker asked to close. `_fence_hidden_behind_junk_prefix()` returns False when `i == n`, and False means LEGACY -- so any junk prefix LONGER than 256 characters routes straight back into the unvalidated LEGACY branch. Reproduced end-to-end against the real hook (CLAUDE_PROJECT_DIR sandbox, forged drop declaring `agent: bogus-not-a-real-agent` / `verdict: TOTALLY-FINE` / `scope: nonsense-scope`): 257 NUL bytes then the fence -> archived under `<!-- legacy -->`, forged body in decisions.md, 0 quarantined. 256 NUL bytes rejects, 257 does not -- an exact off-by-cap boundary. This is not only reachable with exotic bytes: `1 NUL + 300 ordinary spaces + fence` also falls through, i.e. ONE non-\\s character plus ordinary whitespace padding. The comment at line 141-145 calls the cap 'not load-bearing for correctness', which is the same over-claim class as rounds 3 and 4. Fix: the walk terminates at the first visible character anyway, so it is already O(prefix), and the file is already fully in memory -- delete the cap (`n = len(text)`). If a cap is wanted it must fail CLOSED (return True on cap-hit), never fall to LEGACY."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 140
+    reason: "_JUNK_CATEGORIES = {Cc, Cf, Cs, Co, Mn, Me} still enumerates category MEMBERS, and the comment above it claims 'What is DELIBERATELY excluded: every visible category -- letters, digits, punctuation (including `#`), symbols.' That is false: it also excludes Cn (unassigned) and Mc (spacing mark), neither of which is a visible category. Cn contains the Unicode Default_Ignorable_Code_Point ranges, which renderers are required NOT to render -- so these are genuinely invisible one-character prefixes. Five reproductions, each a single leading character in front of a plainly-present forged fence, all archived to decisions.md unvalidated (verified end-to-end against the real hook for U+2065, U+E0002, U+FFF0): U+2065, U+FFF0, U+E0002, U+E0080 (all Cn + Default_Ignorable), U+0378 (plain Cn), U+0903 (Mc). Third consecutive round where the in-code comment asserts closure the code does not have. Verified fix, applied and re-run: `return c.isspace() or unicodedata.category(c)[0] in (\"C\", \"Z\", \"M\")` -- a closure over the category CLASSES (Other / Separator / Mark) instead of an enumeration of members, i.e. 'anything that is not a Letter, Number, Punctuation or Symbol'. `#` is Po, so fixture 35 still stops the walk. With that plus the cap removal the suite stays at 217 passed / 0 failed, all six of round 4's routes and all five of these stay rejected, and all three genuine-legacy controls (fixtures 34, 35, and a leading-blank-lines variant) still return LEGACY."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 375
+    reason: "Most reachable instance of this exact bug class, and it needs no exotic bytes at all: a drop with a well-formed OPENING fence and no closing fence hits `if not close: print(\"LEGACY\")` and is appended verbatim to decisions.md with ALLOWED_AGENTS/ALLOWED_VERDICTS/ALLOWED_SCOPES and the verdict<->blockers consistency check all skipped. Reproduced end-to-end (forged drop, closing `---` deleted): legacy marker present, forged content in decisions.md, 0 quarantined. PRE-EXISTING -- present at b93b430 and earlier, not introduced by this round -- but it is the same invariant the round-5 walk exists to enforce, so shipping the walk while this stays open is incoherent: the hook now rejects a fence hidden behind one invisible byte and accepts one that is simply unterminated. Flagging rather than prescribing, because the naive fix (reject whenever the opening fence matches and no closing fence follows) would hard-reject a genuine legacy drop whose first line happens to be a `---` horizontal rule -- the same false-rejection trap that correctly killed my round-4 candidate. Fix now with that case considered, or split to a follow-up issue and say so; do not apply a one-line version on faith."
+high:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "The safety cap is on the wrong loop. The bounded walk got a cap for a hypothetical 'megabytes of combining marks'; the Cf-strip loop at line 290-291 -- which is genuinely quadratic, `text = text[1:]` re-copying the whole string every iteration -- got none. Measured on this box: 50k leading BOMs 0.05s, 200k 0.41s, 400k (1.2 MB) 1.68s, i.e. 4x per doubling; ~12 MB of leading BOMs is minutes of CPU inside a SubagentStop hook. Same threat surface as the forged drops (write access to the inbox). Replace the loop with a single scan-and-slice, e.g. advance an index while `unicodedata.category(text[i]) == \"Cf\"` then `text = text[i:]` once."
+medium:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "_FENCE_OPEN_WIDE_RE's widened `\\r\\n|\\r|\\n` terminator does not reopen anything from rounds 3 or 4 -- checked deliberately. It is used only inside `_fence_hidden_behind_junk_prefix()`, whose sole output is reject-vs-LEGACY; it never reaches `fm_lines`, which still splits on `\\r\\n|\\n` only, so the round-4 bare-CR indent forgery still archives as `[csharp-dev - NEEDS-CHANGES]`. Recording it as verified so round 6 does not re-derive it."
+good:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "devops is right and my round-4 candidate fix was wrong -- confirmed independently, not taken on report. `re.search(r\"(?m)^---\", text)` matches a body horizontal rule in a realistic front-matter-less legacy drop (`## Decision\\n\\n...\\n\\n---\\n\\nRationale: ...`), so my fix would have converted honest legacy content into a hard quarantine error. Rejecting a reviewer's prescribed fix after verifying it live, and shipping a narrower one, is the right call and the right order of operations."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Keeping BOTH the Cf strip and the walk is justified, not redundant complexity -- verified by deleting the strip loop and re-running: a benign valid drop with a single leading BOM goes from VALID|reviewer|PASS (archived normally) to quarantine. The two layers do genuinely different work: strip = tolerate an editor-inserted BOM, walk = reject a hidden fence. The stated ground holds."
+  - file: .claude/hooks/lib/git_commit_detect.py
+    reason: "The env value-flag fix is correct and the over-consumption bug devops reports catching mid-implementation is real and really fixed. 17 cases exercised live: `env -u FOO`, `env --unset FOO`, `env --unset=FOO`, `env -C /tmp`, `env --chdir=/tmp`, chained `-u FOO -u BAR`, `--unset=FOO --unset=BAR`, `env -i -u FOO X=1`, `sudo env -u FOO`, `(env -u FOO ...)` and `GIT_AUTHOR_DATE=x env -u FOO ...` all detect; the attached form does NOT eat `git`. Degenerate `env -u git commit` and `env -u FOO notgit commit` fail open (no match), never a false trigger, which is the documented posture. The `sep`-based attached-vs-separate discrimination is the right discriminator and the comment explains the failure mode of getting it backwards."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Test construction is the strongest part of this round. Each of fixtures 28-33 gets three assertions -- vendored pre-fix hook REPRODUCES the fall-through, current hook quarantines, current hook rejects for the EXPECTED REASON -- and fixtures 34/35 are genuine-legacy negative controls that would have caught my round-4 candidate before it shipped. All nine vendored fixtures now sha256-pin and verify. The NUL fixture's positive control works despite decisions.md containing a NUL byte (grep -q still matches in binary), so the reported grep/NUL blind spot did not silently weaken that assertion."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Rounds 1-3 forgery regressions all hold under re-attack: nested-key promotion indented with space, tab, NBSP, vertical tab, form feed, file separator and bare CR all archive under the true identity `csharp-dev|NEEDS-CHANGES` with no verdict-cache write; the blockers-shadow quarantines for 'verdict PASS but blockers list is non-empty'; UTF-16 and invalid UTF-8 fail closed to 'unreadable'; CRLF and honest drops parse. The `created` sixth output field, the non-scalar rejection reason, and the ninth sha256 pin all do what the round-4 nits asked."
+  - file: .claude/skills/git-advanced/SKILL.md
+    reason: "Re-confirmed the four type-list sources still agree after tech-writer's parallel edit: `feat fix docs refactor test perf security ci build chore`, identical set AND identical order in the hook regex (enforce-conventional-commits.sh:160), the decisions.md table (221-230), pr-validation.yml's `types:` block (109-119), and SKILL.md lines 15 and 228. No drift."
+  - file: .github/workflows/claude-hooks-tests.yml
+    reason: "`.claude/statusline.py` added to both the pull_request and push `paths:` filters, closing the round-4 coverage gap; the comment correctly notes that decisions.md appears in run.sh only via per-test sandbox paths and needs no filter entry."
+references:
+  - ".squad/decisions/archive/2026-09/2026-09-02T19-26-47-review-pr355-round4.md"
+  - ".squad/decisions/archive/2026-09/2026-09-02T18-52-26-review-b93b430.md"
+---
+
+## 👁️ CODE REVIEW — PR #355 round 5 (uncommitted working tree on b93b430)
+
+### Holistic Assessment
+
+**Motivation:** Justified. Every change traces to a named, reproduced round-4
+finding, and devops independently falsified my prescribed fix before applying it
+rather than applying it on faith.
+
+**Approach:** Half right. The nine non-blocker items are all correct and verified.
+The blocker fix moved to a better layer than round 4's, but it is still an
+enumeration — of six category members instead of one — wrapped in a fail-open cap.
+
+**Verdict:** 🔴 Changes Requested — not shippable.
+
+### Test suite
+
+`bash .claude/hooks/tests/run.sh` → **`Summary: 217 passed, 0 failed`**, confirmed
+independently, and again at **217/217** with my candidate fix applied to a mirrored
+tree.
+
+### Findings
+
+See the front-matter. Three blocker routes (cap fail-open, `Cn`/`Mc`, unterminated
+fence), one high (quadratic Cf strip), one medium (verified non-regression), eight
+positives.
+
+### Metrics
+- Files reviewed: 14 changed + 9 new fixtures + 4 new pre-fix fixtures
+- Lines added/modified: ~1311 added / 34 removed
+- Test coverage of new code: high (3 assertions per bypass fixture + 2 negative controls)
+- Complexity: High
+- Pattern catalog consulted: yes
+
+
+### 2026-09-03 — reviewer-20260903T075500Z-pr355-round6 [reviewer · NEEDS-CHANGES]
+
+---
+id: reviewer-20260903T075500Z-pr355-round6
+agent: reviewer
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-03T07:55:00Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "265-345, 503, 575-585"
+  - path: .claude/hooks/tests/fixtures-pre-fix/scribe-decision-merger.pre-unterminated-fence-fix.sh
+    lines: "1-20"
+  - path: .claude/hooks/tests/run.sh
+    lines: "926-972"
+blockers:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 282
+    reason: "Iteration 3's contiguous-run discriminator is bypassable and the bypass is undocumented. An attacker separates each required field with an UNINDENTED, COLON-FREE line -- e.g. a bare YAML block-sequence item (`- none`) -- which resets hits_in_run, so no run ever reaches 2 distinct hits. Verified live end-to-end against the real hook: a drop that is VALID YAML (PyYAML parses it to {agent: reviewer, verdict: PASS, scope: review, id: ..., created: ..., blockers: []}), opens with `---`, has no closing fence, and interleaves `references:/- none`, `targets:/- one`, `good:/- clean`, `medium:/- nit` between the five required fields, ARCHIVES under `<!-- legacy -->` with the whitelist, both enums and the verdict<->blockers check all skipped, body cat'd verbatim into decisions.md. The comment at 265-292 reasons only about an attacker padding BEFORE or BETWEEN blocks; it never considers an attacker deliberately interleaving separators INSIDE the block, so this failure mode is entirely unrecorded. Severity note: this grants strictly LESS than the already-accepted unclosable route (an honest column-0 `agent: reviewer`/`verdict: PASS` WITH a closing fence archives as `[reviewer PASS]` and writes PASS to .last-review-verdict -- re-verified this round), because LEGACY never sets the verdict cache or the [agent verdict] heading. Fix requested is TEXT ONLY: record this bypass in the RESIDUAL paragraph. Do NOT ship an iteration 4 of the heuristic -- the discriminator infers intent from shape and cannot be made sound; another enumeration round is the exact failure mode rounds 4 and 5 already paid for."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    line: 293
+    reason: "The RESIDUAL paragraph's characterisation of the false-positive surface is directionally wrong -- fourth consecutive round in which a comment in this file overclaims how narrow something is. It says the residual is 'two of the five required words used as ADJACENT bare shorthand labels with NO prose between them'. Only an unindented, COLON-FREE line breaks a run, so ordinary prose sentences that happen to contain a colon do not break it. Two verified genuine-legacy reproductions, both hard-QUARANTINED by the current hook and both correctly LEGACY under the vendored pre-fix hook: (1) `created: 2026-01-05` / blank / 'We decided this at the sync: everyone agreed on the direction.' / 'The rollout plan: staged over two weeks, starting Monday.' / blank / `scope: tooling`; (2) `id: OLD-11` / blank / 'Standup at 09:30 covered the migration.' / blank / `scope: infra`. Neither is adjacent and both have real prose between the signal lines. Indented lines (code blocks, blockquotes) also keep a run alive. Restate the residual accurately: the separator must be unindented AND colon-free, so any colon-bearing prose line, URL line, `Note:`/`Context:` line, colon-containing markdown heading, or indented block keeps the run alive and can carry two coincidental signal words into the same run."
+high:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Quarantine reason string at ~578 is stale: 'found a required field name at column 0' describes discarded iteration 1 (one hit, bounded scan). Shipped logic requires TWO DISTINCT required field names within one contiguous mapping-shaped run. A human triaging a quarantined drop is told the wrong rule. Restate, e.g. '...found two schema-required field names in one unbroken block of mapping-shaped lines'."
+  - file: .claude/hooks/tests/fixtures-pre-fix/scribe-decision-merger.pre-unterminated-fence-fix.sh
+    reason: "Provenance not declared. This is the one vendored fixture that was hand-reconstructed rather than snapshotted, but its header is byte-identical to the current hook's preamble and says nothing about that, while run.sh's integrity block states the convention that these fixtures are 'identified by commit *message* in the header comment above' -- i.e. a future reader will take it as a captured historical artifact. I independently verified the reconstruction IS faithful: diff vs the current hook is exactly and only the route-3 addition (nothing else), and across a 49-fixture behavioural sweep it diverges from the current hook on the unterminated-fence cases alone, matching every rounds-1-5 outcome identically. The sha256 pin is meaningful for its actual job (guarding future drift) but attests nothing about historical accuracy. Add a header note: reconstructed, not snapshotted; how it was verified."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Line 503 still says the check looks for a fence 'just behind a SMALL run of characters'. There is no cap any more (blocker 1 of round 5 removed it); the run is unbounded. Stale qualifier in the same paragraph family that has now caused two blockers."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Test gap for the residual being claimed. Fixtures 49 and 50 cover the HR-open case and prose-separated coincidence where the prose is colon-free. There is no genuine-legacy control for the colon-bearing-prose shape (the actual false-positive boundary). Add one fixture per the two reproductions in blocker 2 so the documented residual is pinned by a test rather than only by a comment."
+medium:
+  - file: .claude/statusline.py
+    reason: "The UnicodeEncodeError fallback calls sys.stdout.reconfigure(errors='replace') then print(line); both sit outside any try. If stdout is not a TextIOWrapper (reconfigure -> AttributeError) or the second print fails otherwise, the module's own MUST-NOT-RAISE contract is violated at the last line. Wrap in a bare try/except and fall back to os.write of an ASCII-encoded line."
+  - file: .claude/hooks/tests/run.sh
+    reason: "The post-fix perf budget of <2000ms on 500k leading BOMs is loose relative to the measured post-fix cost (milliseconds). A partial regression could still pass. Consider tightening to a few hundred ms, or asserting a ratio against the pre-fix timing measured in the same run."
+good:
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Round-5 routes 1 and 2 are fixed exactly as prescribed and independently re-derived by devops before adoption. Re-verified all 39 rounds-1-5 exploits this round: nested-key promotion, six whitespace-indent bypasses, nested blockers shadow, CR-indent forgery, leading BOM, space+BOM, NUL, BEL, combining acute, BOM/newline/BOM, CR-only, cap boundary 256 AND 257, 1 NUL + 300 spaces, and all six Cn/Mc characters (U+2065, U+FFF0, U+E0002, U+E0080, U+0378, U+0903) -- every one rejected or archived under its true identity. All three genuine-legacy controls still take the LEGACY path."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "The quadratic Cf-strip finding was measured independently (0.03/0.34/1.63s at 50k/200k/400k), rewritten to scan-index-then-slice-once, and pinned by a perf regression test that asserts the pre-fix fixture EXCEEDS the budget -- a positive control, not just a threshold."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Stale-comment sweep is complete and accurate. The duplicate _JUNK_CATEGORIES/_FENCE_SAFETY_CAP block is gone; the two surviving references (lines 188-197, 442) are unambiguously past-tense historical notes, and the call-site pointer at 546-556 explicitly names comment duplication as the reason the false claim survived one edit and not the other."
+  - file: .github/workflows/pr-validation.yml
+    reason: "Conventional-commit type list verified against enforce-conventional-commits.sh line 160 and decisions.md's table -- all three now carry the same ten types, style/revert correctly dropped and security added. The (.*/)?\\.gitkeep$ tightening verified by probe: notreally.gitkeep is no longer classified as docs-only, .gitkeep and foo/.gitkeep still are; applied consistently across cd.yml, codeql.yml and pr-validation.yml."
+  - file: .claude/hooks/enforce-no-secrets.sh
+    reason: "The cd-ability check is the correct fix and the reasoning about `cd` failure being indistinguishable from gitleaks exit 1 is verified. dotnet-format-on-save.sh's dual-dialect stat with per-candidate integer validation correctly anticipates GNU stat -f printing a multi-line block to stdout on the wrong dialect."
+references:
+  - .squad/decisions/archive/2026-09/2026-09-02T19-54-17-review-pr355-round5.md
+---
+
+## CODE REVIEW — PR #355 round 6 (uncommitted working tree on b93b430)
+
+### Holistic Assessment
+
+**Motivation:** Justified. Rounds 1-5 each found a live, reproducible validation bypass in the
+`SubagentStop` decision merger; this round closes the last two of them plus route 3, which the
+user elected to fix in-PR rather than defer.
+
+**Approach:** Routes 1 and 2 are structurally right — the cap is deleted rather than resized, and
+the junk test closes over category classes rather than enumerating members. Route 3 is different
+in kind: it is a heuristic that infers authorial intent from line shape, and it cannot be made
+sound. That is acceptable; what is not acceptable is shipping it with a residual description that
+is wrong in both directions.
+
+**Verdict:** 🔴 Changes Requested — **on comment accuracy only.**
+
+The logic is fine and I am explicitly **not** asking for a fourth iteration of the discriminator.
+Two blockers, both text-only, both in one file: an unrecorded bypass of iteration 3 (run-splitting
+with unindented colon-free lines, verified live with a fully valid-YAML forged drop) and a
+false-positive residual that is stated as "adjacent, no prose between them" when ordinary prose
+containing a colon does not break the run either. Fix those two paragraphs and the change ships.
+Everything else — all 39 rounds-1-5 exploits, the perf fix, the sweep, the fixture provenance,
+the workflow changes — I verified and it holds.
+
+---
+
+### Findings
+
+#### 🔴 Must Fix (blocks merge)
+
+- **`scribe-decision-merger.sh:265-292`** — Iteration 3 is bypassable and the bypass is
+  unrecorded. `hits_in_run` resets on any unindented, colon-free line. A bare YAML block-sequence
+  item (`- none`) is exactly that, and is valid YAML. Verified live: a drop opening with `---`,
+  no closing fence, interleaving `references:/- none`, `targets:/- one`, `good:/- clean`,
+  `medium:/- nit` between the five required fields, declaring `agent: reviewer` / `verdict: PASS`
+  / `blockers: []`, parses under PyYAML to a clean schema-shaped dict **and archives under
+  `<!-- legacy -->`** with every validation skipped. The comment reasons only about padding before
+  or between blocks, never about separators placed inside the block.
+  **Severity, stated plainly:** this grants strictly less than the unclosable route already
+  documented at the top of the file — an honest column-0 drop *with* a closing fence archives as
+  `[reviewer · PASS]` and writes PASS to `.last-review-verdict` (re-verified this round), whereas
+  the LEGACY path never touches the cache. So this is a documentation blocker, not a capability
+  blocker. **Fix: record it in the RESIDUAL paragraph. Do not ship iteration 4.**
+
+- **`scribe-decision-merger.sh:293-312`** — The RESIDUAL paragraph is directionally wrong. It
+  claims the residual needs "adjacent bare shorthand labels with NO prose between them". Two
+  verified genuine-legacy reproductions say otherwise, both hard-quarantined now and both correctly
+  LEGACY under the vendored pre-fix hook:
+
+  ```
+  ---
+  created: 2026-01-05
+
+  We decided this at the sync: everyone agreed on the direction.
+  The rollout plan: staged over two weeks, starting Monday.
+
+  scope: tooling
+  ```
+
+  ```
+  ---
+  id: OLD-11
+
+  Standup at 09:30 covered the migration.
+
+  scope: infra
+  ```
+
+  Neither is adjacent; both have real prose between the signal lines. Indented lines (code blocks,
+  blockquotes) also keep a run alive, as do colon-containing markdown headings (`# Decision: adopt
+  the new layout`) and bare URL lines (`see: https://…`). Restate: the separator must be
+  **unindented and colon-free**. This is the fourth consecutive round a comment in this file has
+  understated a residual, which is why it blocks rather than being advisory.
+
+#### ⚠️ Should Fix (recommended)
+
+- **`scribe-decision-merger.sh:~578`** — quarantine reason says "found a required field name at
+  column 0", which is discarded iteration 1's rule. The shipped rule is two distinct names in one
+  contiguous run. Restate.
+- **`fixtures-pre-fix/scribe-decision-merger.pre-unterminated-fence-fix.sh:1-20`** — the one
+  reconstructed fixture doesn't say it was reconstructed, while `run.sh`'s integrity block states
+  the convention that these are identified by their commit-message headers. I verified the
+  reconstruction is faithful (see below); add a header note recording that it was authored, not
+  captured, and how it was checked.
+- **`scribe-decision-merger.sh:503`** — "SMALL run of characters" is stale; the cap is gone.
+- **`tests/run.sh:926-972`** — no genuine-legacy control for the colon-bearing-prose shape. Add
+  the two reproductions above as fixtures so the residual is pinned by a test.
+
+#### 💡 Nitpicks
+
+- **`statusline.py:~220`** — the `UnicodeEncodeError` fallback (`reconfigure` + second `print`) is
+  itself outside any try; both can raise, against the module's MUST-NOT-RAISE contract.
+- **`tests/run.sh:914`** — the `<2000ms` post-fix perf budget is loose against a measured
+  millisecond-scale fix.
+
+#### ✅ What's Good
+
+- **Routes 1 and 2 closed exactly as prescribed, and independently re-derived first.** Re-ran all
+  39 rounds-1-5 exploits: nested-key promotion, six whitespace-indent bypasses, nested `blockers`
+  shadow, CR-indent forgery, BOM, space+BOM, NUL, BEL, combining acute, BOM/NL/BOM, CR-only, cap
+  boundary at both 256 and 257, `1 NUL + 300 spaces`, and all six `Cn`/`Mc` characters. Every one
+  rejected or archived under its true identity. All three genuine-legacy controls still LEGACY.
+- **The quadratic `Cf` strip** was measured independently and pinned with a *positive-control*
+  perf test that asserts the pre-fix fixture blows the budget — not just a one-sided threshold.
+- **The stale-comment sweep is complete.** Only two references survive and both are unambiguously
+  past-tense. The call-site pointer explicitly names comment duplication as the mechanism that let
+  the false claim survive one edit and not the other — that is the right lesson written in the
+  right place.
+- **The reconstructed fixture is faithful.** `diff` against the current hook is exactly and only
+  the route-3 addition; across a 49-fixture behavioural sweep it diverges from the current hook on
+  the unterminated-fence cases *alone* and matches every rounds-1-5 outcome identically. That is
+  stronger evidence than a snapshot's provenance claim would have been.
+- **Workflow changes verified by probe**, not by reading: the commit-type list matches
+  `enforce-conventional-commits.sh` line 160 and `decisions.md`'s table across all three files, and
+  `(.*/)?\.gitkeep$` correctly stops classifying `notreally.gitkeep` as docs-only.
+
+### Metrics
+- Files reviewed: 14 changed + 5 new pre-fix fixtures + 24 new drop fixtures
+- Lines added/modified: ~1,847 added / ~35 removed
+- Test coverage of new code: high — route 3 has 2 exploit fixtures with pre-fix regression proof
+  plus 2 genuine-legacy controls; gap is the colon-bearing-prose control
+- Complexity: High (adversarial parser hardening, sixth round)
+- Pattern catalog consulted: yes — `code-review` skill; charter Step 0-3 followed, design
+  artifacts read only after forming the independent assessment
+
+
+### 2026-09-03 — reviewer-20260903T083000Z-pr355-round7-confirm [reviewer · PASS]
+
+---
+id: reviewer-20260903T083000Z-pr355-round7-confirm
+agent: reviewer
+verdict: PASS
+scope: review
+created: 2026-09-03T08:30:00Z
+targets:
+  - path: .claude/hooks/scribe-decision-merger.sh
+    lines: "294-368, 645-654"
+  - path: .claude/hooks/tests/fixtures-pre-fix/scribe-decision-merger.pre-unterminated-fence-fix.sh
+    lines: "1-40"
+  - path: .claude/hooks/tests/run.sh
+    lines: "235-237, 987-1008"
+blockers: []
+high: []
+medium:
+  - file: .claude/statusline.py
+    reason: "Carried nitpick, not re-raised as blocking: the UnicodeEncodeError fallback (sys.stdout.reconfigure + second print) sits outside any try. Optional follow-up."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Carried nitpick, not re-raised as blocking: the <2000ms post-fix perf budget is loose against a millisecond-scale fix. Optional follow-up."
+good:
+  - file: .claude/hooks/tests/run.sh
+    reason: "sha256 pin recomputed correctly to fbd4c0007d284e6ac2f84560e6cf8b4b66d55d36fe1138d76f67db62a34d6825 and the guard PROVEN still live: I appended one byte to the pinned fixture and re-ran the suite -- it failed loudly with the expected drift message (275 passed, 1 failed), then restored and re-verified. Editing a pinned fixture did not disable the guard it exists to provide."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "Both blockers closed accurately. The BYPASS paragraph carries the exact reproduction, states the PyYAML parse result, and rules out iteration 4 with the correct reason -- shape alone cannot distinguish an abandoned attempt whose author used block-sequence fields from a deliberate interleave, because the input is IDENTICAL. The RESIDUAL paragraph now states the true boundary (any two of the five words separated only by blank, indented or colon-bearing lines) and names the four concrete shapes that qualify. No overclaim remains in either."
+  - file: .claude/hooks/scribe-decision-merger.sh
+    reason: "No logic edits, proven rather than asserted: re-ran the full 46-fixture rounds-1-6 corpus end-to-end against the edited hook. Every outcome is identical to round 6 except the intentionally-changed quarantine reason string. The run-splitting bypass (c1/c2) still archives as LEGACY -- documented, not closed, as instructed."
+  - file: .claude/hooks/tests/fixtures-pre-fix/scribe-decision-merger.pre-unterminated-fence-fix.sh
+    reason: "Provenance header is better than requested: it states the reconstruction was mechanical, lists three independent faithfulness checks, and pre-empts the specific trap that the byte-identical preamble is NOT evidence of capture from git history. It also states explicitly that the sha256 pin guards future drift and cannot attest historical accuracy."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Fixtures 51/52 as a distinct residual-pinning class is the right structural answer to the drift pattern, and the failure message gets the polarity right ('update the paragraph, not this test'). Correctly asymmetric: the false-positive residual is pinned (nobody wants honest docs quarantined, so no perverse incentive) while the BYPASS is deliberately not pinned -- a test asserting 'this forgery succeeds' would penalise anyone who closed it as a side effect. Honest limitation: two fixtures pin the residual's LOWER bound, so they catch narrowing loudly but cannot catch widening. That asymmetry is inherent to examples, not a defect in these two."
+references:
+  - .squad/decisions/archive/2026-09/2026-09-03T07-46-14-review-pr355-round6.md
+---
+
+## CODE REVIEW — PR #355 round 7 (confirmation pass)
+
+### Holistic Assessment
+
+**Motivation:** Confirmation of four scoped edits requested in round 6. Not a fresh hunt, as agreed.
+
+**Approach:** All four landed, none introduced logic changes, and the one operation I flagged as
+risky (editing a pinned fixture) was verified not to have broken its own guard.
+
+**Verdict:** ✅ Approved — `276 passed, 0 failed`. **The PR is shippable.**
+
+Both blockers are closed by accurate text, the two carried nitpicks remain non-blocking, and the
+residual-pinning idea is a genuine structural improvement on prose-only documentation.
+
+---
+
+### Confirmation of the four items
+
+- **Blocker 1 (bypass recorded)** — ✅ `scribe-decision-merger.sh:294`. Exact reproduction, PyYAML
+  parse result stated, iteration 4 ruled out for the right reason.
+- **Blocker 2 (residual restated)** — ✅ `scribe-decision-merger.sh:333`. True boundary stated;
+  four concrete qualifying shapes named. Both of my reproductions verified independently.
+- **Item 3 (quarantine reason)** — ✅ now "found two schema-required field names in one unbroken
+  block of mapping-shaped lines", with a comment recording what the old string described.
+- **Item 4** — ✅ "SMALL run" gone; provenance header added and stronger than requested; control
+  fixtures 51/52 added.
+
+### sha256 pin — specifically confirmed
+
+Pin matches the file. **The guard is still live:** I appended one byte to the pinned fixture and
+re-ran the suite — it failed loudly (`275 passed, 1 failed`) with the expected drift message, then
+I restored it and re-verified. The pin edit did not disable the check.
+
+### No logic edits — proven
+
+Re-ran the full 46-fixture rounds-1-6 corpus against the edited hook. Every outcome identical to
+round 6 except the intentionally-changed reason string. The run-splitting bypass still archives as
+LEGACY: documented, not closed.
+
+### Metrics
+- Files reviewed: 4 (targeted re-review, not a full pass)
+- Suite: 276 passed / 0 failed (was 270)
+- Complexity: Low (text-only edits + two fixtures)
+- Pattern catalog consulted: yes
+

@@ -169,7 +169,41 @@ lock_name="dotnet-format-$(printf '%s' "$workspace" | cksum | cut -d' ' -f1)"
       # 60s `timeout` above bounds a healthy run). Reclaim it rather than
       # wait forever.
       if [ -d "$lock_mkdir" ]; then
-        lock_age=$(( $(date +%s) - $(date -r "$lock_mkdir" +%s 2>/dev/null || echo 0) ))
+        # `date -r <path>` (NOT `date -r <epoch-seconds>`) is GNU-only
+        # semantics -- round 4 re-review (review-b93b430.md, "four still-
+        # open items") flagged this as the exact BSD/macOS bug this whole
+        # mkdir-lock branch exists for: BSD/macOS `date -r` takes an epoch
+        # SECONDS COUNT as its argument, not a path, so passing
+        # `$lock_mkdir` there fails to parse, `|| echo 0` makes lock_age
+        # enormous (now minus epoch 0), and every waiter reclaims the lock
+        # immediately -- no serialization on the one platform this branch
+        # is for. `stat` is used instead, tried in BOTH dialects: BSD/macOS
+        # `stat -f %m` first (the platform this fallback targets), then
+        # GNU `stat -c %Y` (so this also degrades correctly on a Linux box
+        # that genuinely lacks `flock`, the other case that reaches this
+        # branch).
+        #
+        # Each candidate's output is validated as a bare non-negative
+        # integer, NOT just "did the command exit non-zero" -- verified
+        # live: GNU `stat -f %m <path>` doesn't fail silently on the wrong
+        # dialect, it falls back to printing a multi-line filesystem-info
+        # block (`File: ... ID: ... Block size: ...`) to STDOUT while
+        # still exiting non-zero. A bare `cmd1 2>/dev/null || cmd2
+        # 2>/dev/null || echo 0` only silences STDERR, so that whole
+        # garbage block would have been captured as part of $lock_mtime,
+        # making the `$(( ))` arithmetic below a syntax error and this
+        # entire subshell abort -- the mkdir-lock fallback's OWN attempted
+        # fix would have wedged the hook harder than the bug it replaced.
+        # Regex-validating each candidate before accepting it closes that
+        # regardless of which dialect's failure mode looks like.
+        lock_mtime="$(stat -f %m "$lock_mkdir" 2>/dev/null)"
+        if ! [[ "$lock_mtime" =~ ^[0-9]+$ ]]; then
+          lock_mtime="$(stat -c %Y "$lock_mkdir" 2>/dev/null)"
+        fi
+        if ! [[ "$lock_mtime" =~ ^[0-9]+$ ]]; then
+          lock_mtime=0
+        fi
+        lock_age=$(( $(date +%s) - lock_mtime ))
         if [ "$lock_age" -gt 120 ]; then
           rmdir "$lock_mkdir" 2>/dev/null || true
           continue

@@ -115,26 +115,7 @@ target_dir="${GIT_COMMIT_REPO_DIR:-$project_dir}"
 
 # If the resolved repo dir isn't actually accessible, fail open rather than
 # let a `cd` failure masquerade as a gitleaks "malformed config" error below.
-#
-# `[ ! -d "$target_dir" ]` alone is not enough (round 4 re-review,
-# review-b93b430.md, "four still-open items"): a directory can exist and
-# pass `-d` while still not being `cd`-able (e.g. no execute/search
-# permission, or removed out from under the process between checks). The
-# gitleaks invocation below runs as
-# `gitleaks_out="$(cd "$target_dir" ... && gitleaks ... 2>&1)"` --
-# on a `cd` failure, `&&` short-circuits, gitleaks never runs, and the
-# command substitution's exit status is `cd`'s own failure exit code, 1.
-# The dispatch below treats exit 1 as "leaks found" (see the `case
-# "$gitleaks_exit" in 1)` branch), so a non-cd-able-but-existing
-# `target_dir` is read as leaks found and blocks the commit with an empty
-# findings report -- verified live: `cd` into a 0-permission directory
-# exits 1 with empty stdout, indistinguishable at that point from
-# gitleaks itself finding something. Testing `cd`-ability directly here,
-# in its own subshell so it can't change this script's actual working
-# directory, closes that: a directory that exists but can't be entered
-# now fails open (same posture as the plain `-d` case) instead of
-# blocking on a phantom finding.
-if [ ! -d "$target_dir" ] || ! (cd "$target_dir" 2>/dev/null); then
+if [ ! -d "$target_dir" ]; then
   exit 0
 fi
 

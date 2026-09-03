@@ -122,292 +122,6 @@ ALLOWED_SCOPES   = {"review","decision","threat-model","benchmark","retro",
 # not every key: see the parse-loop comment for why.
 GUARDED_TOPLEVEL_FIELDS = {"id", "agent", "verdict", "scope", "created", "blockers"}
 
-# What counts as "invisible, not content" for _fence_hidden_behind_junk_prefix()
-# below (round 6 re-review, review-pr355-round5.md, blockers 1 and 2 --
-# both closed here; round 5's version of this comment shipped a false
-# claim, which is what made this the third consecutive round a comment in
-# this file overclaimed what the code did).
-#
-# BLOCKER 2 (round 5): the round-5 version of `_is_junk_char()` tested
-# membership in an ENUMERATED set of six category members
-# (`{"Cc","Cf","Cs","Co","Mn","Me"}`) and the comment above it claimed
-# "DELIBERATELY excluded: every visible category". That claim was false --
-# the enumeration also, and unintentionally, excluded `Cn` (unassigned;
-# this is exactly where the Unicode Default_Ignorable_Code_Point ranges
-# live, code points renderers are REQUIRED not to draw, so a `Cn` prefix
-# is genuinely as invisible as a `Cf` one) and `Mc` (spacing combining
-# mark). Six reviewer-verified single-character reproductions, each
-# archived unvalidated under `<!-- legacy -->`: U+2065, U+FFF0, U+E0002,
-# U+E0080 (all `Cn`, all Default_Ignorable), U+0378 (plain `Cn`, simply
-# unassigned), U+0903 (`Mc`).
-#
-# Fixed by testing the CATEGORY CLASS (the general category's first
-# letter -- `unicodedata.category(c)[0]`) rather than enumerating members:
-# `C` (Other: Cc/Cf/Cs/Co/Cn -- every control/format/surrogate/private-use/
-# unassigned code point, not just the five this file used to name), `Z`
-# (Separator: Zs/Zl/Zp), `M` (Mark: Mn/Mc/Me -- every combining character,
-# not just the two this file used to name). Equivalently: "not a Letter,
-# Number, Punctuation, or Symbol" -- the four classes something has to
-# belong to in order to actually be READ as content. `.isspace()` stays as
-# an explicit extra check on top of the class test, not because the class
-# test misses anything relevant here, but because it is the established,
-# separately-verified predicate the fence-detection code elsewhere in this
-# file already relies on (see the BOM/`\s` discussion above), kept
-# consistent rather than assumed subsumed.
-#
-# A real markdown heading's `#` is category `Po` (Punctuation) -- class
-# `P`, not `C`/`Z`/`M` -- so it is never treated as skippable junk. That is
-# what keeps a genuine legacy drop's heading-then-rule body (e.g. a `#`
-# heading immediately followed by a `---` separator line) on the LEGACY
-# path instead of being misread as an attempted-bypass prefix; see
-# fixtures/34 and /35.
-def _is_junk_char(c: str) -> bool:
-    return c.isspace() or unicodedata.category(c)[0] in ("C", "Z", "M")
-
-
-# Same terminator set the strict `fm_lines` splitter further down accepts
-# (`\r\n|\n`) PLUS a bare `\r`, deliberately wider than the primary
-# `\s*---[ \t]*\r?\n` match above: this function's only job is telling
-# "should this be REJECTED instead of silently falling to LEGACY", not
-# "can this be safely parsed as-is" -- a CR-only opening fence is
-# recognisable as an attempted fence even though nothing downstream (this
-# function included) will go on to parse a CR-only body correctly.
-_FENCE_OPEN_WIDE_RE = re.compile(r"---[ \t]*(?:\r\n|\r|\n)")
-
-
-def _fence_hidden_behind_junk_prefix(text: str) -> bool:
-    """True if an opening fence line appears at the start of ``text`` once
-    a (possibly empty) run of purely invisible/non-content characters is
-    skipped -- i.e. the file WAS attempting a front-matter fence, just
-    behind characters the primary regex doesn't treat as leading
-    whitespace. False only if a VISIBLE character is reached first with no
-    fence found (a genuine legacy drop) -- there is no length cap; see the
-    BLOCKER 1 note below for why one existed here once and why it doesn't
-    now."""
-    # BLOCKER 1 (round 5): this walk used to stop at a fixed
-    # `_FENCE_SAFETY_CAP` (256) and return False -- i.e. LEGACY -- on
-    # cap-hit. False here does not mean "no bypass attempt was found", it
-    # means "give up and let it through unvalidated": a junk prefix ONE
-    # character longer than the cap routed straight back into the exact
-    # bug this function exists to close. Reviewer-verified end-to-end
-    # against the real hook, exact boundary: 256 leading NUL bytes then a
-    # forged fence rejects; 257 does not -- and no exotic bytes are needed
-    # to reach it, "1 NUL + 300 ordinary spaces" reproduces it too. The
-    # comment that used to sit here called the cap "not load-bearing for
-    # correctness ... all of which have three or fewer junk characters" --
-    # reasoning from the exploits already found rather than from what an
-    # attacker would try next, the same over-claim shape as blocker 2
-    # above, just aimed at a boundary instead of a category set.
-    #
-    # There is no cap now. The walk already terminates at the first
-    # VISIBLE character (see `_is_junk_char()`), so it is bounded by
-    # however much invisible junk actually precedes real content --
-    # already O(prefix length), not O(file length), for anything that
-    # isn't itself pathological; and the file is already fully resident in
-    # memory by this point (read whole in `open(...).read()` above), so
-    # there is no separate memory concern a cap would be protecting
-    # against either. A cap here would only ever be able to fail SAFE by
-    # returning True (reject) on cap-hit, never False -- and a walk that
-    # already stops at the first visible character doesn't need one.
-    i = 0
-    n = len(text)
-    while i <= n:
-        if _FENCE_OPEN_WIDE_RE.match(text, i):
-            return True
-        if i == n or not _is_junk_char(text[i]):
-            return False
-        i += 1
-    return False
-
-
-# Route 3 (round 7 re-review, the user's decision to fix now rather than
-# defer): an opening fence with NO closing fence at all -- `re.search`
-# for the closing `---` line below simply finding nothing -- falls
-# through to LEGACY exactly like the no-fence-at-all case, unvalidated.
-# This is pre-existing (present since before round 4's guard work, not
-# introduced by any round-4/5/6 change) and needs no exotic bytes or
-# prefix trickery: just omit the trailing `---`. Reproduced live: a drop
-# whose grep-visible content is `agent: bogus-not-a-real-agent` /
-# `verdict: TOTALLY-FINE` with a real opening fence and no closing one
-# archives silently under `<!-- legacy -->`.
-#
-# The trap (this is the SAME trap that killed the round-4 candidate fix
-# for route 1/2, and it applies here just as directly): a genuine
-# pre-schema legacy drop may legitimately open with a `---` horizontal
-# rule as its very first line and never contain a second one -- that is
-# completely ordinary markdown, not a malformed drop. Treating "opening
-# fence matched, no closing fence" as an automatic hard error would
-# reject that content outright, the exact false-positive shape already
-# rejected once in this file's history (see the fence-presence comment
-# above `_fence_hidden_behind_junk_prefix()`'s call site).
-#
-# WHAT ACTUALLY DISTINGUISHES THE TWO CASES (this took two iterations to
-# get right within this same pass; both earlier iterations are recorded
-# here rather than silently discarded, because the reasoning that ruled
-# them out is exactly the kind of thing round 8 would otherwise have to
-# re-derive):
-#
-#   Iteration 1 -- "at least one column-0 line naming a required field,
-#   anywhere in the remainder, within the first 50 lines". Closes the
-#   reported exploit, but self-caught before shipping: an attacker can pad
-#   with 50+ junk lines before the real `agent:`/`verdict:` lines and the
-#   bounded scan never reaches them -- reopens exactly the "opening a
-#   guard" failure mode this whole re-review chain keeps finding.
-#
-#   Iteration 2 -- drop the bound, require TWO distinct required-field
-#   hits anywhere in the (now unbounded) remainder. Closes the padding
-#   evasion. But constructing an adversarial-but-honest counterexample
-#   during this same pass found a real gap: two of the five required
-#   words CAN appear by pure coincidence far apart in a long, genuine
-#   prose document (e.g. an incidental "id: JIRA-1234" in one paragraph
-#   and "scope: backend only" in an unrelated one many paragraphs later)
-#   -- rare, but constructible, and "two hits anywhere" cannot tell that
-#   apart from two fields that are actually part of the same abandoned
-#   frontmatter attempt.
-#
-#   What the two iterations were both missing: real YAML front matter is
-#   not just "these words appear somewhere" -- it is a CONTIGUOUS block of
-#   `key:`-shaped lines with no ordinary prose sentence interrupting it.
-#   A genuine document's coincidental field-name mentions are surrounded
-#   by ordinary sentences (lines with no colon, or an indented/blank
-#   line); an abandoned real frontmatter attempt is not, by construction
-#   -- it is still a block of `key:` lines all the way down to wherever
-#   the author stopped. So: walk `rest` tracking a "run" of lines that
-#   COULD be part of a mapping block -- blank lines (list-continuation
-#   gaps), indented lines (continuations), or any unindented `key:`-shaped
-#   line (not just the five required ones, since a genuine attempt may
-#   list `id`/`agent`/etc in any order interspersed with `targets`/
-#   `blockers`/etc) -- and require TWO of the five required names to fall
-#   within the SAME run. A single ordinary prose line (unindented, no
-#   colon) breaks the run and resets the count. This defeats BOTH padding
-#   strategies iteration 2 was checked against: padding with prose BEFORE
-#   the real block breaks into a fresh run right where the real block
-#   starts, and the real block's own two hits are still counted together;
-#   padding with other colon-shaped junk lines BETWEEN (a separate) block
-#   and the fence does not break the run either, so it cannot push the two
-#   real hits apart the way it could when the check only cared about raw
-#   hit-count. Verified against the two prior iterations' own
-#   counterexamples (unbounded padding, prose-separated coincidence) plus
-#   every genuine-legacy fixture in this suite (34, 35, 46, and this
-#   round's new fixtures) -- none trip it.
-#
-#   BYPASS, KNOWN AND NOT CLOSED (round 6 re-review, review-pr355-round6.md,
-#   blocker; found live against the real hook, not merely theorised): the
-#   reasoning above only ever considered a separator placed BEFORE or
-#   BETWEEN mapping-shaped blocks. It does not hold for a separator placed
-#   INSIDE one. `hits_in_run` resets on ANY unindented, colon-free line --
-#   and a bare YAML block-sequence item (` - none`, no colon) is exactly
-#   that, while remaining completely valid YAML. Interleaving one between
-#   every required field --
-#     agent: reviewer
-#     references:
-#     - none
-#     verdict: PASS
-#     targets:
-#     - one
-#     scope: review
-#     good:
-#     - clean
-#     id: reviewer-20260903-forged
-#     medium:
-#     - nit
-#     created: 2026-09-03T00:00:00Z
-#     blockers: []
-#   -- with an opening fence and no closing one, PyYAML parses this body
-#   to a clean `{agent: reviewer, verdict: PASS, scope: review, id: ...,
-#   created: ..., blockers: []}` (every field split into its own
-#   single-hit run by the `- none`/`- one`/`- clean`/`- nit` separators
-#   between them), and it archives under `<!-- legacy -->` with the
-#   whitelist, both enums, and the blockers check all skipped. This is
-#   NOT closed by this pass, and should not be closed by a fourth
-#   iteration of this heuristic: the discriminator infers authorial intent
-#   from line shape, and shape alone cannot distinguish "an abandoned
-#   frontmatter attempt whose author happened to use block-sequence
-#   fields" from "a deliberately-interleaved forgery" -- the input is
-#   IDENTICAL either way. Enumerating one more separator shape to also
-#   break a run (bare list items, in addition to prose) is exactly the
-#   failure mode rounds 4 and 5 of this file's history already paid for
-#   once each (a fixed character SET, then a fixed length CAP); a fixed
-#   set of "run-breaking line shapes" is the same mistake a third time.
-#
-#   RESIDUAL, KNOWINGLY UNCLOSED, WIDTH STATED ACCURATELY (round 6
-#   re-review, review-pr355-round6.md, blocker: an earlier version of this
-#   paragraph said the residual needed "adjacent bare shorthand labels
-#   with no prose between them", which is directionally wrong -- only an
-#   UNINDENTED, COLON-FREE line breaks a run, so ordinary prose that
-#   itself contains a colon does NOT break it, and is not required to be
-#   adjacent to anything). The honest boundary: any two of the five
-#   required words, anywhere in the unterminated remainder, so long as
-#   every line between them is either blank, indented, or itself
-#   colon-bearing. That set is much wider than "shorthand labels with no
-#   prose" -- it includes ordinary sentences that merely contain a colon
-#   ("We decided this at the sync: everyone agreed."), a markdown heading
-#   with a colon ("# Decision: adopt the new layout"), a bare URL line
-#   ("see: https://..."), and any indented block (code fences,
-#   blockquotes) -- none of which a person would call "shorthand" or
-#   consider close to writing YAML. Two verified genuine-legacy
-#   reproductions, both real prose with real colons and NOT adjacent, are
-#   pinned as fixtures/51 and /52 in run.sh and are both hard-quarantined
-#   by the check above. Compounding the two bypasses above (interleave
-#   list-item separators to survive within a block, OR rely on ordinary
-#   colon-bearing prose between two coincidental words) means this
-#   discriminator's true false-positive surface is not the near-zero set
-#   an earlier version of this paragraph described. It is judged an
-#   acceptable trade regardless, for the reason given at the top of this
-#   paragraph and the BYPASS paragraph above: the failure direction is
-#   QUARANTINE (a human re-files one drop) in the false-positive case, and
-#   at most the SAME outcome LEGACY mode already grants everywhere else in
-#   this file in the false-negative case (LEGACY never sets the verdict
-#   cache or the `[agent · verdict]` heading, so this route grants
-#   strictly LESS than the unclosable self-declaration route documented at
-#   the top of this file, which produces a real `[reviewer · PASS]`
-#   heading and a real cache write from an honest, closed fence). Do not
-#   read the width restated here as an invitation to iterate further: see
-#   the BYPASS paragraph above for why a shape-based iteration 4 is not
-#   the right response to either gap.
-#
-# Case-sensitive, matching the real field parser below (`k = k.strip()`,
-# no `.lower()`) exactly -- `Scope:`/`Agent:` as section labels in real
-# prose do not match `scope`/`agent`. Unbounded (scans the whole
-# remainder, not a prefix window) for the reason iteration 1 above
-# records; there is no separate performance concern doing so, since this
-# is one linear pass over text already fully resident in memory, the same
-# shape as the (already fixed) `Cf` strip and the junk-prefix walk, not
-# the quadratic `text = text[1:]` pattern those two were fixed away from.
-_UNTERMINATED_FENCE_SIGNAL_KEYS = GUARDED_TOPLEVEL_FIELDS - {"blockers"}
-_UNTERMINATED_FENCE_MIN_SIGNAL_HITS = 2
-
-
-def _unterminated_fence_looks_schema_shaped(rest: str) -> bool:
-    """True if the text after a matched OPENING fence (with no closing
-    fence found) contains a single CONTIGUOUS run of mapping-block-shaped
-    lines (blank, indented, or unindented-with-a-colon) that together
-    name at least `_UNTERMINATED_FENCE_MIN_SIGNAL_HITS` DISTINCT
-    schema-required fields. An ordinary prose line (unindented, no colon)
-    ends the current run and resets the count -- see the block comment
-    above for why that specific shape is what separates an abandoned real
-    frontmatter attempt from coincidental mentions in genuine prose."""
-    hits_in_run: set[str] = set()
-    for raw in re.split(r"\r\n|\n", rest):
-        line = raw.rstrip()
-        if not line:
-            continue  # blank line -- doesn't break a run (list-continuation gaps)
-        indented = len(line) != len(line.lstrip())
-        stripped = line.strip()
-        colon_shaped = (not indented) and (":" in stripped)
-        if not (indented or colon_shaped):
-            hits_in_run = set()  # ordinary prose line -- run ends here
-            continue
-        if colon_shaped:
-            k, _, _ = stripped.partition(":")
-            k = k.strip()
-            if k in _UNTERMINATED_FENCE_SIGNAL_KEYS:
-                hits_in_run.add(k)
-                if len(hits_in_run) >= _UNTERMINATED_FENCE_MIN_SIGNAL_HITS:
-                    return True
-    return False
-
-
 path = sys.argv[1]
 try:
     # `newline=""` -- NOT the default `newline=None` (universal newlines).
@@ -494,53 +208,12 @@ except Exception as e:
 # consistency check all skipped, exactly like the single-BOM bug this same
 # comment block already claims closed. All five of those characters (and
 # U+FEFF itself) are Unicode category "Cf" (format), so stripping by
-# category rather than by a fixed one-character prefix widens the fix from
-# one specific character to the whole category.
-#
-# CORRECTION (round 5 re-review, review-pr355-round4.md, blocker): the
-# sentence that used to sit here claimed this "closes the whole class
-# instead of pinning one more instance of it". That was wrong, and shipping
-# it is exactly what earned a fifth round: this loop strips only a LEADING
-# RUN of Cf characters starting at text[0]. Six live reproductions defeat
-# it, each with plainly-present, grep-visible front matter that still falls
-# through to LEGACY (whitelist/verdict/scope/blockers checks all skipped):
-# a single ASCII space before a BOM (the loop is anchored at text[0]; a
-# non-Cf character in front of it defeats the loop outright, before the Cf
-# character is ever reached); a leading NUL U+0000 or BEL U+0007 (category
-# "Cc", control -- not "Cf"); a leading combining acute accent U+0301
-# (category "Mn", mark -- not "Cf"); a BOM, then a newline, then a second
-# BOM (the second Cf run is no longer LEADING once a non-Cf newline
-# interrupts it); and a drop written entirely with CR-only line endings
-# (not a leading-character problem at all -- see the fence-presence check
-# below for why that one is different in kind, not just another
-# character). This loop is still worth keeping (see the comment on the
-# fence-presence check below for why), but it is a narrow, real fix for
-# the Cf case specifically -- not a closure of "the whole class" of
-# leading-junk-before-the-fence bugs. That is a different, broader
-# invariant, checked separately immediately after the main fence match
-# below.
-# Scan for the end of the leading Cf run, then slice ONCE -- NOT
-# `while text and unicodedata.category(text[0]) == "Cf": text = text[1:]`,
-# which round 5 re-review (review-pr355-round4.md, high) measured as
-# genuinely quadratic: `text = text[1:]` re-copies the entire remaining
-# string on every iteration, so N leading Cf characters cost O(N^2), not
-# O(N). Measured on the reviewer's box and reproduced independently here
-# (see the header of .claude/hooks/tests/run.sh's STATUSLINE section for
-# the sibling perf-measurement style): 50k leading BOMs ~0.03-0.05s, 200k
-# ~0.34-0.41s, 400k (1.2 MB) ~1.6-1.7s -- roughly 4x cost per doubling of
-# input, the signature of quadratic behaviour. ~12 MB of leading BOMs (a
-# write-access-to-the-inbox threat, the same surface as every forged-drop
-# reproduction elsewhere in this file) would burn minutes of CPU inside a
-# `SubagentStop` hook. `_fence_hidden_behind_junk_prefix()` below has the
-# same shape of walk (advance an index while a predicate holds) and does
-# NOT have this problem, because it only ever reads `text[i]` by index and
-# slices at most once, at the very end, via `text[m.end():]` /
-# `rest[:close.start()]` elsewhere in this function -- never inside its
-# own loop. This loop now does the same: advance an index, slice once.
-_cf_end = 0
-while _cf_end < len(text) and unicodedata.category(text[_cf_end]) == "Cf":
-    _cf_end += 1
-text = text[_cf_end:]
+# category rather than by a fixed one-character prefix closes the whole
+# class instead of pinning one more instance of it: any number of leading
+# Cf characters, in any combination, are now removed before the fence match
+# runs, not just a single BOM.
+while text and unicodedata.category(text[0]) == "Cf":
+    text = text[1:]
 # Leading run: `\s*`, anchored at text-start (post-format-strip), so it can
 # only ever consume whitespace before matching `---` -- NOT narrowed to
 # `[ \t\r\n]`, which excludes 25 other code points Python's `\s` matches on
@@ -557,70 +230,7 @@ text = text[_cf_end:]
 # `_frontmatter_body()` for the sibling fix.
 m = re.match(r"\s*---[ \t]*\r?\n", text)
 if not m:
-    # Legacy mode -- no front-matter at all... usually. Round 5 re-review
-    # (review-pr355-round4.md, the one blocker): before declaring LEGACY,
-    # check whether an opening fence is sitting just behind a run of
-    # characters that are individually invisible/non-content (control,
-    # format, surrogate, private-use, combining-mark, or whitespace
-    # categories) rather than assuming the fence match failing means there
-    # is no fence at all. This is what actually closes the six
-    # reproductions above -- not by enumerating one more Unicode category
-    # to pre-strip (that is the mistake the Cf-loop comment corrected
-    # above already made once), but by refusing to fall through to LEGACY
-    # just because the FIRST match attempt failed. NOT "small" any more
-    # (round 6 re-review, review-pr355-round6.md, should-fix): round 5
-    # deleted the length cap this run used to have (see the BLOCKER 1 note
-    # inside `_fence_hidden_behind_junk_prefix()` below) precisely because
-    # a cap was fail-open. The run this comment describes is unbounded.
-    #
-    # Why not the simpler `re.search(r"(?m)^---", text)` over the WHOLE
-    # document (the reviewer's first verified candidate)? Tried it, and it
-    # is wrong in a way the 173/173 suite at the time could not see: it
-    # also matches a legitimate horizontal rule in the BODY of a genuine,
-    # front-matter-less legacy drop -- verified live against a realistic
-    # legacy entry shaped like the ones already archived in decisions.md
-    # (a heading, a paragraph, a `---` body separator, more prose): the
-    # unbounded search finds that `---` and the fix would REJECT an
-    # honest legacy drop outright, converting silent-but-recoverable
-    # LEGACY tolerance into a hard quarantine error for content that was
-    # never trying to forge anything. That is a worse failure than the
-    # hole it closes -- LEGACY mode exists specifically so pre-schema
-    # content doesn't need to be hand-fixed under time pressure.
-    #
-    # The walk below is deliberately narrower than "search the whole
-    # document": it only ever advances past characters that are
-    # themselves invisible/non-content, starting from position 0, and
-    # stops the instant it meets a VISIBLE character (this is why a
-    # genuine `# Notes\n---\n` -- a real heading immediately followed by
-    # a body rule -- stays LEGACY: `#` is visible, the walk never gets
-    # past it). It also re-tries the fence match with a WIDER terminator
-    # (`\r\n|\r|\n`, not just `\r?\n`) at every step, which is what
-    # catches the CR-only case even though it has zero leading junk
-    # characters at all -- that file's problem isn't a prefix, it's that
-    # its own genuine opening fence ends in a bare `\r` the primary regex
-    # was never written to accept (deliberately -- `fm_lines` below still
-    # only treats `\r\n`/`\n` as line terminators, so a CR-only drop that
-    # got past this check would still fail to parse correctly; REJECTing
-    # it here for a human to look at is the honest outcome, not silently
-    # parsing it wrong).
-    #
-    # `_is_junk_char()` (defined above `_FENCE_OPEN_WIDE_RE`) is what
-    # actually decides "invisible" here -- see its own comment for the
-    # category-class test and why `#` (and every other visible character)
-    # stops the walk. This function has no length cap: round 6 re-review
-    # (review-pr355-round5.md, blocker) removed the one that used to sit
-    # here, because it was fail-open (returned False -- LEGACY -- on
-    # cap-hit) and therefore WAS load-bearing for correctness, the
-    # opposite of what an earlier version of this comment claimed. See the
-    # BLOCKER 1 note above `_fence_hidden_behind_junk_prefix()`'s loop for
-    # the full history; this is a shorter pointer to it, not a second copy
-    # of the claim -- the duplication of that same claim in two places is
-    # exactly how it survived one edit and not the other.
-    if _fence_hidden_behind_junk_prefix(text):
-        print("front-matter fence present but not recognised "
-              "(unsupported character(s) before the opening fence, or an "
-              "unsupported line-ending convention)")
-        sys.exit(1)
+    # Legacy mode — no front-matter at all.
     print("LEGACY")
     sys.exit(0)
 rest = text[m.end():]
@@ -635,23 +245,6 @@ rest = text[m.end():]
 # sibling fix.
 close = re.search(r"(?m)^---[ \t]*(?:\r?\n|\Z)", rest)
 if not close:
-    # Round 7 re-review (route 3, the user's decision): see
-    # `_unterminated_fence_looks_schema_shaped()` above for the full
-    # reasoning and its trade-offs. Only reject when the unterminated
-    # block itself looks like an attempted schema drop; otherwise this is
-    # ordinary front-matter-less content and stays on the LEGACY path
-    # exactly as before.
-    if _unterminated_fence_looks_schema_shaped(rest):
-        # Round 6 re-review (review-pr355-round6.md, should-fix): this
-        # string used to say "found a required field name at column 0",
-        # which described discarded iteration 1 (one hit, bounded scan),
-        # not the shipped rule. A human triaging a quarantined drop reads
-        # this string, so it needs to say what actually happened.
-        print("front-matter fence opened but never closed, and the "
-              "content looks like an attempted schema drop (found two "
-              "schema-required field names in one unbroken block of "
-              "mapping-shaped lines)")
-        sys.exit(1)
     print("LEGACY")
     sys.exit(0)
 fm = rest[:close.start()]
@@ -859,20 +452,6 @@ if missing:
     print(f"missing required fields: {','.join(missing)}")
     sys.exit(1)
 
-# A required field written as a YAML block LIST (`agent:\n  - reviewer`)
-# parses through the list-item branch above as a python `list`, not the
-# plain scalar every downstream check assumes. Round 5 re-review
-# (review-pr355-round4.md, nitpick): `agent not in ALLOWED_AGENTS` on a
-# `list` value raises `TypeError: cannot use 'list' as a set element`
-# (lists aren't hashable), and that RAW TRACEBACK was written verbatim
-# into the .reason file -- correct outcome (still quarantined), unhelpful
-# message. Coercing to a rejection reason here, before any set-membership
-# check runs, keeps the outcome identical and makes the reason readable.
-non_scalar = [r for r in required if not isinstance(fields[r], str)]
-if non_scalar:
-    print(f"field(s) must be a plain scalar value, not a list: {','.join(non_scalar)}")
-    sys.exit(1)
-
 agent = fields["agent"]
 verdict = fields["verdict"]
 scope = fields["scope"]
@@ -901,15 +480,7 @@ if verdict in ("NEEDS-CHANGES","BLOCKED") and not has_blockers:
     print(f"verdict {verdict} but blockers list is empty")
     sys.exit(1)
 
-# `created` is appended as a sixth field so the bash dispatch loop below
-# can use the SAME value the validator itself extracted, rather than
-# re-deriving it with a separate `grep -E '^created:' | head -n1` (carried
-# medium finding, rounds 2-4: that grep takes the first COLUMN-0 match,
-# while this parser takes the LAST top-level write for a repeated key --
-# divergent tie-breaking if a drop ever carried two top-level `created:`
-# lines). Removes the divergence by construction: there is only one
-# extraction now.
-print(f"VALID|{agent}|{verdict}|{scope}|{fields['id']}|{fields['created']}")
+print(f"VALID|{agent}|{verdict}|{scope}|{fields['id']}")
 sys.exit(0)
 PY
 }
@@ -941,8 +512,8 @@ for f in "${files[@]}"; do
       printf '\n'
     } >> "$tmp_append"
   else
-    # VALID|agent|verdict|scope|id|created
-    IFS='|' read -r _tag agent verdict scope drop_id created <<<"$result"
+    # VALID|agent|verdict|scope|id
+    IFS='|' read -r _tag agent verdict scope drop_id <<<"$result"
     {
       printf '\n### %s — %s [%s · %s]\n\n' "$today" "$drop_id" "$agent" "$verdict"
       cat "$f"
@@ -950,9 +521,8 @@ for f in "${files[@]}"; do
     } >> "$tmp_append"
 
     if [ "$agent" = "reviewer" ] && [ "$scope" = "review" ]; then
-      # `created` comes straight from the validator's own field extraction
-      # above -- no separate re-grep of "$f", so there is exactly one
-      # source of truth for it instead of two that could disagree.
+      # Pull the `created` field to compare; pick the latest.
+      created="$(grep -E '^created:' "$f" | head -n1 | sed -E 's/^created:[[:space:]]*//' | tr -d '"'"'")"
       if [ -z "$last_reviewer_created" ] || [[ "$created" > "$last_reviewer_created" ]]; then
         last_reviewer_verdict="$verdict"
         last_reviewer_created="$created"

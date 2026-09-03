@@ -137,6 +137,10 @@ NESTED_MAPPING_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-nested-mapping-fix.
 STALE_WHITELIST_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-whitelist-fix.sh"      # has the parser fix, still missing the 6 phase agents
 COLUMN0_GUARD_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-column0-guard-fix.sh"    # nested key promotion forges reviewer/PASS, no guard at all
 WHITESPACE_GUARD_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-whitespace-guard-fix.sh"  # HAS the column-0 guard (space-only) but non-space whitespace and the unguarded blockers key still forge it
+CR_NEWLINE_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-cr-newline-fix.sh"            # HAS the whitespace-aware guard AND the strict \r\n|\r|\n splitter, but reads with newline=None (universal newlines), so a lone CR is rewritten to LF at read time, upstream of the splitter and the guard both
+LEGACY_FENCE_BYPASS_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-legacy-fence-bypass-fix.sh"  # HAS newline="" and the Cf-strip loop, but the Cf-strip only strips a LEADING RUN of Cf characters -- a non-Cf character in front, a non-Cf junk character (Cc/Mn), a Cf run interrupted by a newline, or a CR-only line-ending fence all still fall through to LEGACY
+PRE_CAP_AND_CATEGORY_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-cap-and-category-fix.sh"  # HAS the junk-prefix walk from round 5, but (a) it fails OPEN on cap-hit (256-char cap, returns False/LEGACY past it) and (b) _JUNK_CATEGORIES enumerates six category MEMBERS, missing Cn (unassigned/Default_Ignorable) and Mc (spacing mark) -- also still has the quadratic Cf-strip loop
+UNTERMINATED_FENCE_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-unterminated-fence-fix.sh"  # HAS all of round 4/5/6's fixes, but an opening fence with NO closing fence at all still falls through to LEGACY unvalidated -- route 3, pre-existing, fixed in round 7
 
 pass=0
 fail=0
@@ -199,6 +203,38 @@ verify_fixture_sha256 \
   "pre-whitespace-guard-fix.sh" \
   "$PRE_FIX/scribe-decision-merger.pre-whitespace-guard-fix.sh" \
   "5f997f5024a7284cc624324af9a862e3fd70b8f52bd121c1ac85a90f2675128f"
+verify_fixture_sha256 \
+  "pre-cr-newline-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-cr-newline-fix.sh" \
+  "52d5bd319c676c58c9d4343abba6adfbe61115c98346665ec51f0c62a8ed6920"
+verify_fixture_sha256 \
+  "enforce-no-secrets.pre-cd-subshell-fix.sh" \
+  "$PRE_FIX/enforce-no-secrets.pre-cd-subshell-fix.sh" \
+  "052f13791157147deadd07a70f81b90c341332465c3dbac13ff96c491281a350"
+verify_fixture_sha256 \
+  "lib/git_commit_detect.py (pre-transparent-prefix-fix, also enforce-no-secrets.pre-cd-subshell-fix.sh's own lib/ dependency)" \
+  "$PRE_FIX/lib/git_commit_detect.py" \
+  "fde84c1cc579f66d789e9b3a6d7252e35481fad2a7749579d70128cd02736e5c"
+verify_fixture_sha256 \
+  "statusline.pre-must-not-raise-fix.py" \
+  "$PRE_FIX/statusline.pre-must-not-raise-fix.py" \
+  "f674313ec9c1129897315c6e4c8f3023a740086915739185452dfbaeb6a33b30"
+verify_fixture_sha256 \
+  "pre-legacy-fence-bypass-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-legacy-fence-bypass-fix.sh" \
+  "1f6e24b7eec9df6525588529ce466107389b8a794355edbeef615a71533c510d"
+verify_fixture_sha256 \
+  "lib/git-commit-detect.sh (round 5 re-review, review-pr355-round4.md nit: previously the one vendored fixture without a pin)" \
+  "$PRE_FIX/lib/git-commit-detect.sh" \
+  "324d3a9abdf3a718759a048aa10ec40e82100d742b3b8f9d4c463404e0cbc6cb"
+verify_fixture_sha256 \
+  "pre-cap-and-category-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-cap-and-category-fix.sh" \
+  "8e6a76d05f6393b5afcfd4be333cfea49345215e00838036b1408fee75b96e10"
+verify_fixture_sha256 \
+  "pre-unterminated-fence-fix.sh" \
+  "$PRE_FIX/scribe-decision-merger.pre-unterminated-fence-fix.sh" \
+  "fbd4c0007d284e6ac2f84560e6cf8b4b66d55d36fe1138d76f67db62a34d6825"
 
 # ---------------------------------------------------------------------------
 # Sandbox helper: builds a throwaway project dir with a given hook script and
@@ -411,6 +447,62 @@ check_regression() {
   rm -rf "$after_sandbox"
 }
 
+# ---------------------------------------------------------------------------
+# LEGACY-fall-through-as-bypass regression (round 5 re-review,
+# review-pr355-round4.md, the one blocker): inverted polarity from
+# check_regression above -- the bug made the pre-fix hook wrongly ARCHIVE
+# the drop under the `<!-- legacy -->` marker (whitelist/verdict/scope/
+# blockers checks all skipped, content appended to decisions.md
+# unvalidated), where "fixed" means QUARANTINED with a specific reason
+# instead. Cannot write .last-review-verdict either way (LEGACY mode never
+# does), so unlike check_forgery_regression there is no verdict-cache
+# assertion here -- see the blocker's own severity note for why that
+# makes this narrower than blocker #4 was.
+# ---------------------------------------------------------------------------
+check_legacy_bypass_regression() {
+  local label="$1" before_hook="$2" fixture="$3" expected_after_reason="$4" base
+  base="$(basename "$fixture")"
+
+  if [ -f "$before_hook" ]; then
+    local before_sandbox before_outcome
+    before_sandbox="$(run_hook_sandbox "$before_hook" "$fixture")"
+    before_outcome="$(outcome_of "$before_sandbox" "$base")"
+    if [ "$before_outcome" = "ARCHIVED" ] \
+      && grep -qF '<!-- legacy -->' "$before_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+      report "regression: $label -- vendored pre-fix hook reproduces the LEGACY fall-through" 1
+    else
+      report "regression: $label -- vendored pre-fix hook reproduces the LEGACY fall-through" 0 \
+        "expected ARCHIVED under <!-- legacy -->, got outcome=$before_outcome"
+    fi
+    rm -rf "$before_sandbox"
+  else
+    report "regression: $label -- missing vendored pre-fix hook" 0 "$before_hook not found"
+  fi
+
+  local after_sandbox after_outcome after_reason
+  after_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$fixture")"
+  after_outcome="$(outcome_of "$after_sandbox" "$base")"
+  if [ "$after_outcome" = "QUARANTINED" ]; then
+    report "regression: $label -- current hook quarantines instead of falling through to LEGACY" 1
+    after_reason="$(reason_of "$after_sandbox" "$base")"
+    case "$after_reason" in
+      *"$expected_after_reason"*)
+        report "regression: $label -- current hook rejects for the expected reason" 1
+        ;;
+      *)
+        report "regression: $label -- current hook rejects for the expected reason" 0 \
+          "expected reason containing '$expected_after_reason', got '${after_reason:-<none>}'"
+        ;;
+    esac
+  else
+    report "regression: $label -- current hook quarantines instead of falling through to LEGACY" 0 \
+      "expected QUARANTINED, got $after_outcome"
+    report "regression: $label -- current hook rejects for the expected reason" 0 \
+      "skipped -- outcome was not QUARANTINED"
+  fi
+  rm -rf "$after_sandbox"
+}
+
 # ===========================================================================
 # 0. Synthetic phase-agent fixtures, generated once and reused by both the
 #    regression checks and the whitelist-completeness section below.
@@ -523,8 +615,404 @@ check_forgery_regression \
   "QUARANTINED" \
   "verdict PASS but blockers list is non-empty"
 
+# ---------------------------------------------------------------------------
+# Round 4 re-review (PR #355 review-b93b430.md, blocker #1): a THIRD, outer
+# layer of the same bug class, one call further out than round 2. The
+# round-2 fix's own strict splitter, `re.split(r"\r\n|\r|\n", fm)`, names a
+# bare `\r` as a line terminator it handles -- but the file was opened with
+# `open(path, "r", encoding="utf-8")`, i.e. `newline=None` (universal
+# newlines), which translates every lone `\r` to `\n` at READ time, before
+# `fm` (the frontmatter substring the splitter runs on) exists at all. The
+# `|\r|` alternation was therefore dead code with respect to the one
+# terminator it named: a lone CR used as the indentation prefix on a nested
+# `meta:` block is consumed as a line terminator by the io layer itself, so
+# `agent: reviewer` arrives at the splitter as a genuinely separate,
+# genuinely column-0 line -- not merely miscounted indentation the guard
+# could catch, real column-0, same failure mode as the vertical-tab/
+# form-feed splitlines() bug fixed in round 2, one layer further upstream.
+# Reviewer-verified end-to-end against the round-3 "fixed" hook (vendored as
+# $CR_NEWLINE_BUG_HOOK -- HAS both the whitespace-aware indent guard and the
+# \r\n|\r|\n splitter, still bypassable): bytes
+# `b"agent: csharp-dev\n\ragent: reviewer\n"` read back as
+# `'agent: csharp-dev\n\nagent: reviewer\n'` -- the CR is gone -- and the
+# forged drop archived as `[reviewer · PASS]` / wrote PASS to
+# .squad/.last-review-verdict. Fixed by reading with `newline=""` (disables
+# universal-newline translation; `\r`, `\r\n` and `\n` all pass through as
+# literal bytes) paired with narrowing the splitter to `\r\n|\n` (a bare
+# `\r` is no longer treated as ITS OWN line terminator, so it stays part of
+# the line it indents and is correctly counted as whitespace by
+# `line.lstrip()`). Both halves are necessary together: `newline=""` alone
+# without narrowing the splitter would still split on the literal `\r`
+# character once it survives to `fm`, reopening the same bug one step
+# later.
+check_forgery_regression \
+  "forgeable verdict, bare-CR indentation (round 4: newline=None translates a lone CR to LF upstream of the splitter)" \
+  "$CR_NEWLINE_BUG_HOOK" \
+  "$FIXTURES/27-nested-forgery-cr.md" \
+  "csharpdev-20260821T000008Z-forged-cr" \
+  "ARCHIVED" \
+  "[csharp-dev · NEEDS-CHANGES]"
+
+# ---------------------------------------------------------------------------
+# Round 5 re-review (review-pr355-round4.md, the one blocker): the LEGACY
+# fall-through the round-4 Cf-strip loop claimed to close was only closed
+# for a LEADING RUN of Cf characters. Six reproductions, each a drop with
+# plainly-present, grep-visible front matter declaring
+# `agent: bogus-not-a-real-agent` / `verdict: TOTALLY-FINE` /
+# `scope: nonsense-scope` that the pre-fix hook (vendored as
+# $LEGACY_FENCE_BYPASS_BUG_HOOK -- HAS newline="" and the Cf-strip loop,
+# still bypassable) silently archives under `<!-- legacy -->` with
+# ALLOWED_AGENTS/ALLOWED_VERDICTS/ALLOWED_SCOPES and the blockers-
+# consistency check all skipped. Fixed by `_fence_hidden_behind_junk_prefix()`
+# -- NOT by unbounded `re.search(r"(?m)^---", text)` over the whole
+# document, which was verified live to also reject a genuine legacy drop's
+# body horizontal rule (see fixtures/34 and /35 below, which exist
+# specifically to prove this narrower fix doesn't reintroduce that
+# regression).
+# ---------------------------------------------------------------------------
+declare -A legacy_bypass_fixtures=(
+  ["28-legacy-bypass-space-then-bom.md"]="front-matter fence present but not recognised"
+  ["29-legacy-bypass-nul.md"]="front-matter fence present but not recognised"
+  ["30-legacy-bypass-bel.md"]="front-matter fence present but not recognised"
+  ["31-legacy-bypass-combining-acute.md"]="front-matter fence present but not recognised"
+  ["32-legacy-bypass-bom-newline-bom.md"]="front-matter fence present but not recognised"
+  ["33-legacy-bypass-cr-only.md"]="front-matter fence present but not recognised"
+)
+for lb_name in "${!legacy_bypass_fixtures[@]}"; do
+  check_legacy_bypass_regression \
+    "LEGACY fall-through bypass ($lb_name)" \
+    "$LEGACY_FENCE_BYPASS_BUG_HOOK" \
+    "$FIXTURES/$lb_name" \
+    "${legacy_bypass_fixtures[$lb_name]}"
+done
+
+# Non-vacuousness in the OTHER direction: the fix must not turn genuine
+# legacy drops into hard quarantine errors. Both stay LEGACY under the
+# CURRENT hook -- no "before" state needed, since this behaviour was never
+# broken; the risk is the FIX breaking it, not a bug being fixed.
+for genuine_legacy_name in "34-genuine-legacy-body-hr.md" "35-genuine-legacy-short-heading-then-hr.md"; do
+  gl_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$FIXTURES/$genuine_legacy_name")"
+  gl_outcome="$(outcome_of "$gl_sandbox" "$genuine_legacy_name")"
+  if [ "$gl_outcome" = "ARCHIVED" ] \
+    && grep -qF '<!-- legacy -->' "$gl_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+    report "legacy-fence-fix control: $genuine_legacy_name still archives as LEGACY (not falsely rejected)" 1
+  else
+    report "legacy-fence-fix control: $genuine_legacy_name still archives as LEGACY (not falsely rejected)" 0 \
+      "expected ARCHIVED under <!-- legacy -->, got outcome=$gl_outcome"
+  fi
+  rm -rf "$gl_sandbox"
+done
+
+# ---------------------------------------------------------------------------
+# Raw-traceback-as-quarantine-reason nitpick (round 5 re-review,
+# review-pr355-round4.md): a required field written as a YAML block list
+# (`agent:\n  - reviewer`) parses to a python `list`, and
+# `list not in ALLOWED_AGENTS` used to raise `TypeError: cannot use 'list'
+# as a set element` -- correct OUTCOME (still quarantined), unreadable
+# REASON (a raw traceback written into the .reason file). Both the buggy
+# and fixed hook quarantine fixtures/36 either way, so this checks the
+# REASON text changed, not the outcome -- reusing
+# $LEGACY_FENCE_BYPASS_BUG_HOOK as the "before" state since the underlying
+# bug predates and is independent of this round's fence-presence fix
+# (verified: it reproduces the same raw traceback).
+# ---------------------------------------------------------------------------
+alb_fixture="$FIXTURES/36-agent-block-list-not-scalar.md"
+alb_base="$(basename "$alb_fixture")"
+
+if [ -f "$LEGACY_FENCE_BYPASS_BUG_HOOK" ]; then
+  alb_before_sandbox="$(run_hook_sandbox "$LEGACY_FENCE_BYPASS_BUG_HOOK" "$alb_fixture")"
+  alb_before_reason="$(reason_of "$alb_before_sandbox" "$alb_base")"
+  case "$alb_before_reason" in
+    *"Traceback"*"TypeError"*)
+      report "agent-as-block-list: vendored pre-fix hook reproduces the raw traceback reason" 1
+      ;;
+    *)
+      report "agent-as-block-list: vendored pre-fix hook reproduces the raw traceback reason" 0 \
+        "expected a Traceback/TypeError reason, got '${alb_before_reason:-<none>}'"
+      ;;
+  esac
+  rm -rf "$alb_before_sandbox"
+else
+  report "agent-as-block-list: missing vendored pre-fix hook" 0 "$LEGACY_FENCE_BYPASS_BUG_HOOK not found"
+fi
+
+alb_after_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$alb_fixture")"
+alb_after_outcome="$(outcome_of "$alb_after_sandbox" "$alb_base")"
+alb_after_reason="$(reason_of "$alb_after_sandbox" "$alb_base")"
+if [ "$alb_after_outcome" = "QUARANTINED" ]; then
+  case "$alb_after_reason" in
+    *"Traceback"*)
+      report "agent-as-block-list: current hook gives a readable reason, not a traceback" 0 \
+        "reason still contains a Traceback: $alb_after_reason"
+      ;;
+    *"must be a plain scalar value"*"agent"*)
+      report "agent-as-block-list: current hook gives a readable reason, not a traceback" 1
+      ;;
+    *)
+      report "agent-as-block-list: current hook gives a readable reason, not a traceback" 0 \
+        "expected a 'must be a plain scalar value' reason naming agent, got '${alb_after_reason:-<none>}'"
+      ;;
+  esac
+else
+  report "agent-as-block-list: current hook gives a readable reason, not a traceback" 0 \
+    "expected QUARANTINED, got $alb_after_outcome"
+fi
+rm -rf "$alb_after_sandbox"
+
+# ---------------------------------------------------------------------------
+# Round 6 re-review (review-pr355-round5.md, blockers 1 and 2): the round-5
+# junk-prefix walk itself became the bypass, two independent ways.
+#
+# Blocker 1 -- fail-open safety cap: `_fence_hidden_behind_junk_prefix()`
+# returned False (== LEGACY) on cap-hit, so any junk prefix past 256
+# characters routed straight back into the unvalidated LEGACY branch. Exact
+# boundary reproduced: 256 rejects, 257 does not. Fixture 37 pins the
+# still-correct boundary (must stay QUARANTINED before AND after this
+# round's fix -- it was never broken); fixture 38 is the one-character-over
+# case that WAS broken; fixture 39 shows no exotic bytes are needed at all
+# (1 NUL + 300 ordinary spaces). Fixed by removing the cap: the walk
+# already stops at the first VISIBLE character, so it was already
+# O(prefix), not O(file) -- a cap was never load-bearing for anything the
+# walk doesn't already bound itself.
+#
+# Blocker 2 -- category enumeration, not classes: `_JUNK_CATEGORIES`
+# enumerated six members (Cc/Cf/Cs/Co/Mn/Me) and the comment claimed this
+# excluded "every visible category", which was false -- it also
+# (unintentionally) excluded Cn (unassigned, where the Default_Ignorable
+# ranges live -- code points renderers are REQUIRED not to draw) and Mc
+# (spacing mark). Fixtures 40-43 pin Default_Ignorable Cn code points,
+# fixture 44 a plain unassigned Cn, fixture 45 an Mc spacing mark. Fixed by
+# testing the category CLASS (`unicodedata.category(c)[0]`) instead of
+# enumerating members: `C`/`Z`/`M`, i.e. "not a Letter, Number,
+# Punctuation, or Symbol".
+#
+# Fixture 46 is a THIRD genuine-legacy control (leading blank lines, real
+# `\s`, before front-matter-less content) alongside 34/35, proving the
+# blocker fixes don't regress the false-positive risk that killed the
+# round-4 candidate.
+# ---------------------------------------------------------------------------
+declare -A round6_bypass_fixtures=(
+  ["38-legacy-bypass-cap-boundary-257.md"]="front-matter fence present but not recognised"
+  ["39-legacy-bypass-nul-plus-spaces.md"]="front-matter fence present but not recognised"
+  ["40-legacy-bypass-cn-default-ignorable-2065.md"]="front-matter fence present but not recognised"
+  ["41-legacy-bypass-cn-default-ignorable-fff0.md"]="front-matter fence present but not recognised"
+  ["42-legacy-bypass-cn-default-ignorable-e0002.md"]="front-matter fence present but not recognised"
+  ["43-legacy-bypass-cn-default-ignorable-e0080.md"]="front-matter fence present but not recognised"
+  ["44-legacy-bypass-cn-unassigned-0378.md"]="front-matter fence present but not recognised"
+  ["45-legacy-bypass-mc-spacing-mark-0903.md"]="front-matter fence present but not recognised"
+)
+for r6_name in "${!round6_bypass_fixtures[@]}"; do
+  check_legacy_bypass_regression \
+    "round 6 junk-prefix-walk bypass ($r6_name)" \
+    "$PRE_CAP_AND_CATEGORY_BUG_HOOK" \
+    "$FIXTURES/$r6_name" \
+    "${round6_bypass_fixtures[$r6_name]}"
+done
+
+# The cap boundary itself: 256 was ALREADY correctly rejected before this
+# round's fix (the walk's old `i <= n` with `n = min(len, 256)` covers
+# positions 0..256 inclusive) -- this fixture must stay QUARANTINED under
+# BOTH the pre-fix and current hook, proving the fix didn't just move the
+# boundary rather than removing it.
+r6_256_fixture="$FIXTURES/37-legacy-bypass-cap-boundary-256.md"
+r6_256_base="$(basename "$r6_256_fixture")"
+if [ -f "$PRE_CAP_AND_CATEGORY_BUG_HOOK" ]; then
+  r6_256_pre_sandbox="$(run_hook_sandbox "$PRE_CAP_AND_CATEGORY_BUG_HOOK" "$r6_256_fixture")"
+  r6_256_pre_outcome="$(outcome_of "$r6_256_pre_sandbox" "$r6_256_base")"
+  if [ "$r6_256_pre_outcome" = "QUARANTINED" ]; then
+    report "round 6 cap boundary: exactly 256 junk chars already quarantines pre-fix (boundary, not a regression)" 1
+  else
+    report "round 6 cap boundary: exactly 256 junk chars already quarantines pre-fix (boundary, not a regression)" 0 \
+      "expected QUARANTINED, got $r6_256_pre_outcome"
+  fi
+  rm -rf "$r6_256_pre_sandbox"
+else
+  report "round 6 cap boundary: missing vendored pre-fix hook" 0 "$PRE_CAP_AND_CATEGORY_BUG_HOOK not found"
+fi
+r6_256_post_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$r6_256_fixture")"
+r6_256_post_outcome="$(outcome_of "$r6_256_post_sandbox" "$r6_256_base")"
+if [ "$r6_256_post_outcome" = "QUARANTINED" ]; then
+  report "round 6 cap boundary: exactly 256 junk chars still quarantines after cap removal" 1
+else
+  report "round 6 cap boundary: exactly 256 junk chars still quarantines after cap removal" 0 \
+    "expected QUARANTINED, got $r6_256_post_outcome"
+fi
+rm -rf "$r6_256_post_sandbox"
+
+# Third genuine-legacy control (leading blank lines) -- forward-only, this
+# behaviour was never broken.
+r6_gl_fixture="$FIXTURES/46-genuine-legacy-leading-blank-lines.md"
+r6_gl_base="$(basename "$r6_gl_fixture")"
+r6_gl_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$r6_gl_fixture")"
+r6_gl_outcome="$(outcome_of "$r6_gl_sandbox" "$r6_gl_base")"
+if [ "$r6_gl_outcome" = "ARCHIVED" ] \
+  && grep -qF '<!-- legacy -->' "$r6_gl_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+  report "legacy-fence-fix control: $r6_gl_base still archives as LEGACY (not falsely rejected)" 1
+else
+  report "legacy-fence-fix control: $r6_gl_base still archives as LEGACY (not falsely rejected)" 0 \
+    "expected ARCHIVED under <!-- legacy -->, got outcome=$r6_gl_outcome"
+fi
+rm -rf "$r6_gl_sandbox"
+
+# ---------------------------------------------------------------------------
+# Quadratic Cf-strip regression (round 6 re-review, review-pr355-round5.md,
+# high): `while text and unicodedata.category(text[0]) == "Cf": text =
+# text[1:]` re-copies the whole remaining string every iteration -- O(N^2)
+# for N leading Cf characters. Fixed by scanning for the run's end with an
+# index, then slicing once. Timing-based, not outcome-based: both hooks
+# must reach the SAME correct outcome (a valid reviewer/PASS drop with
+# 150000 leading BOMs archives normally either way -- this is not a
+# correctness bug), so the assertion is that the vendored pre-fix hook
+# EXCEEDS a small budget while the current hook stays well UNDER a much
+# larger one, at the SAME input size -- not both compared against one
+# shared threshold. 500000 leading BOMs was chosen after measuring both
+# hooks end-to-end on this box: pre-fix ~3.0s, post-fix ~0.09s, a ~34x
+# gap. The 1000ms/2000ms thresholds below both have wide margin on either
+# side of that measurement -- a CI runner would need to be roughly 3x
+# slower than this box before the post-fix assertion could false-fail, or
+# 3x faster before the pre-fix one could.
+# ---------------------------------------------------------------------------
+perf_dir="$(mktemp -d)"
+perf_fixture="$perf_dir/perf-500k-bom.md"
+python3 - "$perf_fixture" <<'PYPERF'
+import sys
+n = 500_000
+content = ("﻿" * n) + (
+    "---\n"
+    "id: reviewer-20260821T000050Z-perf-check\n"
+    "agent: reviewer\n"
+    "scope: review\n"
+    "created: 2026-08-21T00:00:00Z\n"
+    "verdict: PASS\n"
+    "blockers: []\n"
+    "---\n\nbody\n"
+)
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    f.write(content)
+PYPERF
+
+if [ -f "$PRE_CAP_AND_CATEGORY_BUG_HOOK" ]; then
+  perf_pre_start=$(date +%s%N)
+  perf_pre_sandbox="$(run_hook_sandbox "$PRE_CAP_AND_CATEGORY_BUG_HOOK" "$perf_fixture")"
+  perf_pre_end=$(date +%s%N)
+  perf_pre_ms=$(( (perf_pre_end - perf_pre_start) / 1000000 ))
+  rm -rf "$perf_pre_sandbox"
+
+  perf_post_start=$(date +%s%N)
+  perf_post_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$perf_fixture")"
+  perf_post_end=$(date +%s%N)
+  perf_post_ms=$(( (perf_post_end - perf_post_start) / 1000000 ))
+  rm -rf "$perf_post_sandbox"
+
+  if [ "$perf_pre_ms" -gt 1000 ]; then
+    report "perf: quadratic Cf-strip regression -- vendored pre-fix hook exceeds the 1s budget on 500k leading BOMs" 1
+  else
+    report "perf: quadratic Cf-strip regression -- vendored pre-fix hook exceeds the 1s budget on 500k leading BOMs" 0 \
+      "expected >1000ms (demonstrating the quadratic cost), got ${perf_pre_ms}ms -- $PRE_CAP_AND_CATEGORY_BUG_HOOK may no longer represent the pre-fix state, or this runner is unexpectedly fast"
+  fi
+
+  if [ "$perf_post_ms" -lt 2000 ]; then
+    report "perf: current hook stays well inside the 2s budget on 500k leading BOMs (scan-and-slice-once fix)" 1
+  else
+    report "perf: current hook stays well inside the 2s budget on 500k leading BOMs (scan-and-slice-once fix)" 0 \
+      "expected <2000ms, got ${perf_post_ms}ms"
+  fi
+else
+  report "perf: missing vendored pre-fix hook" 0 "$PRE_CAP_AND_CATEGORY_BUG_HOOK not found"
+  report "perf: current hook stays well inside the 2s budget on 500k leading BOMs (scan-and-slice-once fix)" 0 \
+    "skipped -- pre-fix hook missing"
+fi
+rm -rf "$perf_dir"
+
+# ---------------------------------------------------------------------------
+# Route 3 (round 7 re-review -- the user's explicit decision to fix this
+# in-PR rather than defer it): an opening fence with NO closing fence at
+# all falls through to LEGACY unvalidated. Pre-existing since before
+# round 4, reachable with no exotic bytes and no prefix trickery -- just
+# omit the trailing `---`.
+#
+# Fixture 47 is the reported exploit. Fixture 48 stress-tests the fix
+# against padding evasion (60 prose lines between the opening fence and
+# the real schema-shaped block) -- an EARLIER, bounded-scan version of
+# this fix (self-caught and discarded before shipping, see the
+# `_unterminated_fence_looks_schema_shaped()` block comment for the full
+# iteration history) would have missed this one. Fixtures 49 and 50 are
+# genuine-legacy controls: 49 is the coordinator's explicitly-requested
+# case (a genuine legacy drop that itself opens with a `---` horizontal
+# rule and has no closing fence -- ordinary markdown, must stay LEGACY,
+# not error); 50 is an adversarial-but-honest stress case found while
+# iterating on the fix (two of the five required field names appearing by
+# coincidence, but separated by ordinary prose, in an otherwise genuine
+# document) that an earlier "two hits anywhere" version of the fix would
+# have wrongly quarantined.
+# ---------------------------------------------------------------------------
+check_legacy_bypass_regression \
+  "route 3: opening fence, no closing fence (47-legacy-bypass-unterminated-fence.md)" \
+  "$UNTERMINATED_FENCE_BUG_HOOK" \
+  "$FIXTURES/47-legacy-bypass-unterminated-fence.md" \
+  "front-matter fence opened but never closed"
+check_legacy_bypass_regression \
+  "route 3: opening fence, no closing fence, padded to evade a bounded scan (48-legacy-bypass-unterminated-fence-padded.md)" \
+  "$UNTERMINATED_FENCE_BUG_HOOK" \
+  "$FIXTURES/48-legacy-bypass-unterminated-fence-padded.md" \
+  "front-matter fence opened but never closed"
+
+for r3_genuine_name in "49-genuine-legacy-hr-open-unterminated.md" "50-genuine-legacy-prose-separated-coincidence.md"; do
+  r3_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$FIXTURES/$r3_genuine_name")"
+  r3_outcome="$(outcome_of "$r3_sandbox" "$r3_genuine_name")"
+  if [ "$r3_outcome" = "ARCHIVED" ] \
+    && grep -qF '<!-- legacy -->' "$r3_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+    report "legacy-fence-fix control: $r3_genuine_name still archives as LEGACY (not falsely rejected)" 1
+  else
+    report "legacy-fence-fix control: $r3_genuine_name still archives as LEGACY (not falsely rejected)" 0 \
+      "expected ARCHIVED under <!-- legacy -->, got outcome=$r3_outcome"
+  fi
+  rm -rf "$r3_sandbox"
+done
+
+# ---------------------------------------------------------------------------
+# Round 6 re-review (review-pr355-round6.md, blocker 2 -- restate the
+# residual's width honestly): fixtures 49/50 above cover genuine legacy
+# content the discriminator correctly leaves alone. Fixtures 51/52 are the
+# OPPOSITE kind of control -- they PIN the documented, knowingly-unclosed
+# false-positive residual itself, so a future change that accidentally
+# narrows or widens it is visible here rather than only in a comment.
+# Both are real prose with real colons, NOT adjacent, and are hard
+# QUARANTINED by the current hook -- this is the accepted trade recorded
+# in the RESIDUAL paragraph above `_unterminated_fence_looks_schema_shaped()`,
+# not a bug being asserted as fixed. Also checked against the vendored
+# pre-route-3 hook to confirm this residual is specific to the route-3 fix
+# (both correctly stayed LEGACY before route 3 existed at all).
+# ---------------------------------------------------------------------------
+for r3_residual_name in "51-genuine-legacy-colon-prose-not-adjacent.md" "52-genuine-legacy-colon-prose-short.md"; do
+  r3_residual_pre_sandbox="$(run_hook_sandbox "$UNTERMINATED_FENCE_BUG_HOOK" "$FIXTURES/$r3_residual_name")"
+  r3_residual_pre_outcome="$(outcome_of "$r3_residual_pre_sandbox" "$r3_residual_name")"
+  if [ "$r3_residual_pre_outcome" = "ARCHIVED" ] \
+    && grep -qF '<!-- legacy -->' "$r3_residual_pre_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+    report "residual control: $r3_residual_name archived as LEGACY before route 3 existed (confirms the residual is route-3-specific)" 1
+  else
+    report "residual control: $r3_residual_name archived as LEGACY before route 3 existed (confirms the residual is route-3-specific)" 0 \
+      "expected ARCHIVED under <!-- legacy --> pre-route-3, got outcome=$r3_residual_pre_outcome"
+  fi
+  rm -rf "$r3_residual_pre_sandbox"
+
+  r3_residual_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$FIXTURES/$r3_residual_name")"
+  r3_residual_outcome="$(outcome_of "$r3_residual_sandbox" "$r3_residual_name")"
+  if [ "$r3_residual_outcome" = "QUARANTINED" ]; then
+    report "residual control: $r3_residual_name is quarantined -- the documented, knowingly-unclosed residual, pinned rather than only described" 1
+  else
+    report "residual control: $r3_residual_name is quarantined -- the documented, knowingly-unclosed residual, pinned rather than only described" 0 \
+      "expected QUARANTINED (the documented residual), got outcome=$r3_residual_outcome -- if this now passes as ARCHIVED, the RESIDUAL paragraph in scribe-decision-merger.sh needs updating to match, not this test silently changed"
+  fi
+  rm -rf "$r3_residual_sandbox"
+done
+
 # ===========================================================================
-# 2. Corpus coverage -- 26 cases, cross-checked against PyYAML 6.0.3.
+# 2. Corpus coverage -- 52 cases (18 cross-checked against PyYAML 6.0.3;
+#    19-52 are the forgery/legacy-bypass/scalar-coercion/junk-prefix-walk/
+#    unterminated-fence fixtures added in later rounds, batch-run here
+#    alongside the original 18 to prove the hook still handles a mixed
+#    inbox correctly, not just one fixture at a time).
 # ===========================================================================
 declare -A EXPECTED=(
   ["01-schema-nested-2blockers.md"]="ARCHIVED"
@@ -574,6 +1062,36 @@ declare -A EXPECTED=(
   ["24-nested-forgery-form-feed.md"]="ARCHIVED"
   ["25-nested-forgery-em-space.md"]="ARCHIVED"
   ["26-blockers-nested-shadow.md"]="QUARANTINED"
+  ["27-nested-forgery-cr.md"]="ARCHIVED"
+  ["28-legacy-bypass-space-then-bom.md"]="QUARANTINED"
+  ["29-legacy-bypass-nul.md"]="QUARANTINED"
+  ["30-legacy-bypass-bel.md"]="QUARANTINED"
+  ["31-legacy-bypass-combining-acute.md"]="QUARANTINED"
+  ["32-legacy-bypass-bom-newline-bom.md"]="QUARANTINED"
+  ["33-legacy-bypass-cr-only.md"]="QUARANTINED"
+  ["34-genuine-legacy-body-hr.md"]="ARCHIVED"
+  ["35-genuine-legacy-short-heading-then-hr.md"]="ARCHIVED"
+  ["36-agent-block-list-not-scalar.md"]="QUARANTINED"
+  ["37-legacy-bypass-cap-boundary-256.md"]="QUARANTINED"
+  ["38-legacy-bypass-cap-boundary-257.md"]="QUARANTINED"
+  ["39-legacy-bypass-nul-plus-spaces.md"]="QUARANTINED"
+  ["40-legacy-bypass-cn-default-ignorable-2065.md"]="QUARANTINED"
+  ["41-legacy-bypass-cn-default-ignorable-fff0.md"]="QUARANTINED"
+  ["42-legacy-bypass-cn-default-ignorable-e0002.md"]="QUARANTINED"
+  ["43-legacy-bypass-cn-default-ignorable-e0080.md"]="QUARANTINED"
+  ["44-legacy-bypass-cn-unassigned-0378.md"]="QUARANTINED"
+  ["45-legacy-bypass-mc-spacing-mark-0903.md"]="QUARANTINED"
+  ["46-genuine-legacy-leading-blank-lines.md"]="ARCHIVED"
+  ["47-legacy-bypass-unterminated-fence.md"]="QUARANTINED"
+  ["48-legacy-bypass-unterminated-fence-padded.md"]="QUARANTINED"
+  ["49-genuine-legacy-hr-open-unterminated.md"]="ARCHIVED"
+  ["50-genuine-legacy-prose-separated-coincidence.md"]="ARCHIVED"
+  # QUARANTINED, not a bug: these two pin the documented, knowingly-
+  # unclosed false-positive residual (round 6 re-review, blocker 2) -- see
+  # the RESIDUAL paragraph above _unterminated_fence_looks_schema_shaped()
+  # in scribe-decision-merger.sh.
+  ["51-genuine-legacy-colon-prose-not-adjacent.md"]="QUARANTINED"
+  ["52-genuine-legacy-colon-prose-short.md"]="QUARANTINED"
 )
 
 corpus_names=()
@@ -1302,6 +1820,7 @@ rm -rf "$b2_eof_sandbox" "$b2_eof_dir"
 #      external tool availability.
 
 GIT_COMMIT_DETECT_PY="$REPO_ROOT/.claude/hooks/lib/git_commit_detect.py"
+PRE_FIX_DETECT_PY="$PRE_FIX/lib/git_commit_detect.py"
 GIT_COMMIT_DETECT_SH="$REPO_ROOT/.claude/hooks/lib/git-commit-detect.sh"
 CONVENTIONAL_COMMITS_HOOK="$REPO_ROOT/.claude/hooks/enforce-conventional-commits.sh"
 GPG_SIGNING_HOOK="$REPO_ROOT/.claude/hooks/enforce-gpg-signing.sh"
@@ -1326,6 +1845,13 @@ run_commit_hook() {
 # GIT_COMMIT_ARGV) for grep-based assertions.
 detect_raw() {
   printf '%s' "$1" | python3 "$GIT_COMMIT_DETECT_PY" 2>/dev/null
+}
+
+# Same, but against the vendored pre-transparent-prefix-fix revision --
+# used only by the round-4 regression checks below to prove those cases
+# genuinely failed before this pass.
+detect_raw_pre_fix() {
+  printf '%s' "$1" | python3 "$PRE_FIX_DETECT_PY" 2>/dev/null
 }
 
 # Minimal scratch git repo with one committed file, so `--staged` and
@@ -1389,6 +1915,121 @@ if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$'; then
   report "detect: commit half of a compound (&&) command is caught" 1
 else
   report "detect: commit half of a compound (&&) command is caught" 0 "$detect_out"
+fi
+
+# ---------------------------------------------------------------------------
+# Round 4 re-review (review-b93b430.md, "four still-open items", flagged
+# twice now -- round 2's review named these same three under-matches as
+# "high"): a NAME=VALUE assignment prefix, a sudo/env wrapper, or a bare
+# `( ... )` subshell in front of `git commit` all put a token OTHER than
+# "git" at argv[0], so the old `os.path.basename(argv[0]) != "git"` check
+# rejected every one of them -- a commit made through any of these forms
+# silently skipped conventional-commits, GPG, secrets, and size checks.
+# Fixed by `_strip_transparent_prefix()`. Each case is checked against the
+# vendored pre-fix parser ($PRE_FIX_DETECT_PY) to prove it genuinely failed
+# before, and the current parser to prove it's fixed now -- plus a control
+# proving the fix doesn't turn into a false trigger (sudo with a
+# flag-that-takes-a-value stays a documented, safe under-match, not a
+# mis-detection).
+# ---------------------------------------------------------------------------
+declare -A transparent_prefix_fixtures=(
+  ["GIT_AUTHOR_DATE=2020-01-01T00:00:00 git commit -m 'x'"]="env-assignment prefix"
+  ["sudo git commit -m 'x'"]="sudo wrapper"
+  ["env X=1 git commit -m 'x'"]="env wrapper"
+  ["(git commit -m 'x')"]="parenthesised subshell"
+)
+for tp_cmd in "${!transparent_prefix_fixtures[@]}"; do
+  tp_label="${transparent_prefix_fixtures[$tp_cmd]}"
+
+  tp_pre_out="$(detect_raw_pre_fix "$tp_cmd")"
+  if printf '%s' "$tp_pre_out" | grep -q '^GIT_COMMIT_MATCH=0$'; then
+    report "detect regression: $tp_label -- vendored pre-fix parser reproduces the under-match" 1
+  else
+    report "detect regression: $tp_label -- vendored pre-fix parser reproduces the under-match" 0 \
+      "expected GIT_COMMIT_MATCH=0, got: $tp_pre_out"
+  fi
+
+  tp_post_out="$(detect_raw "$tp_cmd")"
+  if printf '%s' "$tp_post_out" | grep -q '^GIT_COMMIT_MATCH=1$'; then
+    report "detect: $tp_label is now caught (round 4 transparent-prefix fix)" 1
+  else
+    report "detect: $tp_label is now caught (round 4 transparent-prefix fix)" 0 \
+      "expected GIT_COMMIT_MATCH=1, got: $tp_post_out"
+  fi
+done
+
+# The parenthesised-subshell case must also preserve a message that
+# legitimately contains its own trailing paren, not truncate it.
+detect_out="$(detect_raw '(git commit -m "fix(auth))")')"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$' \
+   && printf '%s' "$detect_out" | grep -qF -- "-m 'fix(auth))'"; then
+  report "detect: parenthesised subshell does not truncate a message ending in its own ')'" 1
+else
+  report "detect: parenthesised subshell does not truncate a message ending in its own ')'" 0 "$detect_out"
+fi
+
+# Documented safe under-match, not a false trigger: sudo with a flag that
+# itself takes a value (-u <user>) is intentionally NOT special-cased (see
+# the module docstring) -- `user` is mis-treated as the next command token
+# and the `== "git"` check correctly fails, rather than risk over-reading.
+detect_out="$(detect_raw "sudo -u someuser git commit -m 'x'")"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=0$'; then
+  report "detect: sudo -u <user> git commit is a documented under-match, not mis-detected" 1
+else
+  report "detect: sudo -u <user> git commit is a documented under-match, not mis-detected" 0 "$detect_out"
+fi
+
+# ---------------------------------------------------------------------------
+# `env -u NAME` under-match (round 5 re-review, review-pr355-round4.md,
+# should-fix): the round-4 `env` branch only skipped a flag TOKEN, never a
+# following value token, so `env -u FOO git commit` left `FOO` mis-treated
+# as the next command token and under-matched -- while the inline comment
+# at the time read as if `-u NAME` were already handled. Fixed by
+# `_ENV_FLAGS_WITH_VALUE`, which also distinguishes the separate-token form
+# (`-u FOO` / `--unset FOO`, consume two tokens) from the attached form
+# (`--unset=FOO`, already one token -- consuming a second would eat `git`
+# itself, caught and fixed during this same pass before it shipped).
+# Checked against the SAME vendored round-4 parser used for the transparent-
+# prefix fixtures above ($PRE_FIX_DETECT_PY) -- it already reproduces this
+# specific under-match, no new vendoring needed.
+# ---------------------------------------------------------------------------
+declare -A env_unset_fixtures=(
+  ["env -u FOO git commit -m 'x'"]="short -u, separate-token value"
+  ["env --unset FOO git commit -m 'x'"]="long --unset, separate-token value"
+  ["env --unset=FOO git commit -m 'x'"]="long --unset=FOO, attached value"
+  ["env -u FOO -u BAR git commit -m 'x'"]="two chained -u flags"
+  ["env -C /tmp git commit -m 'x'"]="short -C, separate-token value"
+)
+for eu_cmd in "${!env_unset_fixtures[@]}"; do
+  eu_label="${env_unset_fixtures[$eu_cmd]}"
+
+  eu_pre_out="$(detect_raw_pre_fix "$eu_cmd")"
+  if printf '%s' "$eu_pre_out" | grep -q '^GIT_COMMIT_MATCH=0$'; then
+    report "detect regression: env value-flag ($eu_label) -- vendored pre-fix parser reproduces the under-match" 1
+  else
+    report "detect regression: env value-flag ($eu_label) -- vendored pre-fix parser reproduces the under-match" 0 \
+      "expected GIT_COMMIT_MATCH=0, got: $eu_pre_out"
+  fi
+
+  eu_post_out="$(detect_raw "$eu_cmd")"
+  if printf '%s' "$eu_post_out" | grep -q '^GIT_COMMIT_MATCH=1$'; then
+    report "detect: env value-flag ($eu_label) is now caught (round 5 fix)" 1
+  else
+    report "detect: env value-flag ($eu_label) is now caught (round 5 fix)" 0 \
+      "expected GIT_COMMIT_MATCH=1, got: $eu_post_out"
+  fi
+done
+
+# Attached-value control from the fixed bug above, made explicit: the
+# attached form must NOT consume a second token (that would eat `git`
+# itself). If this regresses, GIT_COMMIT_ARGV below would be missing `-m x`
+# or GIT_COMMIT_MATCH would flip back to 0.
+detect_out="$(detect_raw "env --unset=FOO git commit -m 'x'")"
+if printf '%s' "$detect_out" | grep -q '^GIT_COMMIT_MATCH=1$' \
+   && printf '%s' "$detect_out" | grep -qF "GIT_COMMIT_ARGV=(-m x)"; then
+  report "detect: env --unset=FOO (attached form) does not over-consume and eat 'git'" 1
+else
+  report "detect: env --unset=FOO (attached form) does not over-consume and eat 'git'" 0 "$detect_out"
 fi
 
 # git-commit-detect.sh sourcing contract: GIT_COMMIT_REPO_DIR resolves to
@@ -1547,6 +2188,161 @@ else
     "expected exit 0, got $HOOK_EXIT -- $HOOK_OUT"
 fi
 rm -rf "$gpg_bypass_repo"
+
+# ---------------------------------------------------------------------------
+# enforce-no-secrets.sh cd-subshell regression (round 4 re-review,
+# review-b93b430.md, "four still-open items"): $target_dir can pass
+# `[ ! -d "$target_dir" ]` while still not being `cd`-able (e.g. mode 000 --
+# exists, `-d` only needs the PARENT directory's search permission, not the
+# target's own). The scan line is
+# `gitleaks_out="$(cd "$target_dir" 2>/dev/null && gitleaks ... 2>&1)"` --
+# on a `cd` failure, `&&` short-circuits, gitleaks never runs, and the
+# command substitution's own exit status is `cd`'s failure code, 1, which
+# the dispatch below reads as "leaks found" and blocks with an empty
+# findings report. Reached via `git -C <mode-000-dir> commit ...` PLUS
+# `CLAUDE_PROJECT_DIR` also pointed at a non-cd-able dir: `-C` on a
+# non-enterable directory makes git itself fail, so
+# `GIT_COMMIT_REPO_DIR` resolves empty and the hook falls back to
+# `$CLAUDE_PROJECT_DIR` -- the actual $target_dir this test exercises.
+# A `gitleaks` STUB is put first on PATH so the toolchain-presence check
+# (section 1 of the hook, which runs BEFORE the buggy cd logic) passes
+# deterministically on a runner that doesn't have real gitleaks installed;
+# the stub is never actually expected to execute here (the whole point of
+# the bug is that `cd` fails before gitleaks would ever be invoked) --
+# a run that hits the stub is itself evidence the target_dir resolution
+# took an unexpected path, not just a fixture problem.
+ns_stub_bin="$(mktemp -d)"
+cat > "$ns_stub_bin/gitleaks" <<'STUB'
+#!/usr/bin/env bash
+echo "no-secrets cd-subshell test: gitleaks stub was invoked -- target_dir did not resolve to the non-cd-able directory as expected" >&2
+exit 99
+STUB
+chmod +x "$ns_stub_bin/gitleaks"
+
+ns_bad_dir="$(mktemp -d)"
+chmod 000 "$ns_bad_dir"
+
+ns_cd_command="git -C $ns_bad_dir commit -m 'chore: whatever'"
+
+NO_SECRETS_PRE_FIX_HOOK="$PRE_FIX/enforce-no-secrets.pre-cd-subshell-fix.sh"
+if [ -f "$NO_SECRETS_PRE_FIX_HOOK" ]; then
+  ns_pre_out="$(commit_payload "$ns_cd_command" \
+    | PATH="$ns_stub_bin:$PATH" CLAUDE_PROJECT_DIR="$ns_bad_dir" bash "$NO_SECRETS_PRE_FIX_HOOK" 2>&1)"
+  ns_pre_exit=$?
+  if [ "$ns_pre_exit" -eq 2 ]; then
+    report "no-secrets: vendored pre-fix hook reproduces the cd-subshell bug (blocks on a non-cd-able target_dir)" 1
+  else
+    report "no-secrets: vendored pre-fix hook reproduces the cd-subshell bug (blocks on a non-cd-able target_dir)" 0 \
+      "expected exit 2, got $ns_pre_exit -- $ns_pre_out"
+  fi
+else
+  report "no-secrets: missing vendored pre-fix hook" 0 "$NO_SECRETS_PRE_FIX_HOOK not found"
+fi
+
+ns_post_out="$(commit_payload "$ns_cd_command" \
+  | PATH="$ns_stub_bin:$PATH" CLAUDE_PROJECT_DIR="$ns_bad_dir" bash "$NO_SECRETS_HOOK" 2>&1)"
+ns_post_exit=$?
+if [ "$ns_post_exit" -eq 0 ]; then
+  report "no-secrets: current hook fails open on a non-cd-able (but existing) target_dir (cd-subshell fix)" 1
+else
+  report "no-secrets: current hook fails open on a non-cd-able (but existing) target_dir (cd-subshell fix)" 0 \
+    "expected exit 0, got $ns_post_exit -- $ns_post_out"
+fi
+
+chmod 755 "$ns_bad_dir"
+rm -rf "$ns_bad_dir" "$ns_stub_bin"
+
+# ===========================================================================
+# STATUSLINE -- .claude/statusline.py "MUST NOT raise" regressions (round 4
+# re-review, review-b93b430.md, "four still-open items"). Two independent
+# paths sit OUTSIDE main()'s own try/except and can turn the statusline
+# into an uncaught traceback instead of the documented placeholder-on-
+# failure degradation:
+#   1. resolve_project_dir()'s Path.cwd() fallback, called from main()
+#      BEFORE the try, raises FileNotFoundError if the process's cwd has
+#      been deleted out from under it.
+#   2. print(line), called from main() AFTER the try/except, raises
+#      UnicodeEncodeError under a strict-ASCII stdout when `line` contains
+#      non-ASCII text -- guaranteed reachable via the U+2013 "no verdict
+#      recorded yet" placeholder in last_review_verdict().
+# Checked against the vendored pre-fix revision (subprocess, not `source`,
+# since this is a standalone script invoked as `python3 statusline.py`,
+# not sourced) to prove each genuinely crashed before, and the current
+# script to prove both now degrade instead of raising.
+# ===========================================================================
+
+STATUSLINE_PY="$REPO_ROOT/.claude/statusline.py"
+STATUSLINE_PRE_FIX_PY="$PRE_FIX/statusline.pre-must-not-raise-fix.py"
+
+# A minimal on-disk "repo" with no real .squad/.claude state, so
+# last_review_verdict() falls through to its U+2013 placeholder (case 2
+# needs that character to actually appear in the line).
+sl_empty_repo="$(mktemp -d)"
+mkdir -p "$sl_empty_repo/.squad/decisions/inbox" "$sl_empty_repo/.squad/decisions/quarantine" "$sl_empty_repo/.claude"
+
+# --- Case 1: deleted cwd -> Path.cwd() raises FileNotFoundError ----------
+sl_deleted_cwd_dir="$(mktemp -d)"
+sl_pre_stderr="$(mktemp)"
+
+if [ -f "$STATUSLINE_PRE_FIX_PY" ]; then
+  sl_pre_exit=0
+  (cd "$sl_deleted_cwd_dir" && rmdir "$sl_deleted_cwd_dir" 2>/dev/null; \
+    printf '{}' | env -u CLAUDE_PROJECT_DIR python3 "$STATUSLINE_PRE_FIX_PY" >/dev/null 2>"$sl_pre_stderr") \
+    || sl_pre_exit=$?
+  if [ "$sl_pre_exit" -ne 0 ] && grep -q "FileNotFoundError" "$sl_pre_stderr" 2>/dev/null; then
+    report "statusline: vendored pre-fix script reproduces the deleted-cwd crash (Path.cwd())" 1
+  else
+    report "statusline: vendored pre-fix script reproduces the deleted-cwd crash (Path.cwd())" 0 \
+      "expected non-zero exit with FileNotFoundError in stderr, got exit=$sl_pre_exit stderr=$(cat "$sl_pre_stderr" 2>/dev/null)"
+  fi
+else
+  report "statusline: missing vendored pre-fix script" 0 "$STATUSLINE_PRE_FIX_PY not found"
+fi
+rm -f "$sl_pre_stderr"
+
+sl_deleted_cwd_dir2="$(mktemp -d)"
+sl_post_stdout="$(mktemp)"
+sl_post_stderr="$(mktemp)"
+sl_post_exit=0
+(cd "$sl_deleted_cwd_dir2" && rmdir "$sl_deleted_cwd_dir2" 2>/dev/null; \
+  printf '{}' | env -u CLAUDE_PROJECT_DIR python3 "$STATUSLINE_PY" >"$sl_post_stdout" 2>"$sl_post_stderr") \
+  || sl_post_exit=$?
+if [ "$sl_post_exit" -eq 0 ] && [ -s "$sl_post_stdout" ]; then
+  report "statusline: current script degrades instead of crashing on a deleted cwd (Path.cwd() fix)" 1
+else
+  report "statusline: current script degrades instead of crashing on a deleted cwd (Path.cwd() fix)" 0 \
+    "expected exit 0 with non-empty stdout, got exit=$sl_post_exit stdout=$(cat "$sl_post_stdout" 2>/dev/null) stderr=$(cat "$sl_post_stderr" 2>/dev/null)"
+fi
+rm -f "$sl_post_stdout" "$sl_post_stderr"
+
+# --- Case 2: strict-ASCII stdout -> print(line) raises UnicodeEncodeError
+if [ -f "$STATUSLINE_PRE_FIX_PY" ]; then
+  sl_ascii_pre_exit=0
+  sl_ascii_pre_out="$(printf '{}' \
+    | PYTHONIOENCODING=ascii CLAUDE_PROJECT_DIR="$sl_empty_repo" python3 "$STATUSLINE_PRE_FIX_PY" 2>&1)" \
+    || sl_ascii_pre_exit=$?
+  if [ "$sl_ascii_pre_exit" -ne 0 ] && printf '%s' "$sl_ascii_pre_out" | grep -q "UnicodeEncodeError"; then
+    report "statusline: vendored pre-fix script reproduces the ASCII-stdout crash (print(line))" 1
+  else
+    report "statusline: vendored pre-fix script reproduces the ASCII-stdout crash (print(line))" 0 \
+      "expected non-zero exit with UnicodeEncodeError, got exit=$sl_ascii_pre_exit output=$sl_ascii_pre_out"
+  fi
+else
+  report "statusline: missing vendored pre-fix script (ASCII case)" 0 "$STATUSLINE_PRE_FIX_PY not found"
+fi
+
+sl_ascii_post_exit=0
+sl_ascii_post_out="$(printf '{}' \
+  | PYTHONIOENCODING=ascii CLAUDE_PROJECT_DIR="$sl_empty_repo" python3 "$STATUSLINE_PY" 2>&1)" \
+  || sl_ascii_post_exit=$?
+if [ "$sl_ascii_post_exit" -eq 0 ] && [ -n "$sl_ascii_post_out" ] && ! printf '%s' "$sl_ascii_post_out" | grep -q "Traceback"; then
+  report "statusline: current script degrades instead of crashing under strict-ASCII stdout (print fix)" 1
+else
+  report "statusline: current script degrades instead of crashing under strict-ASCII stdout (print fix)" 0 \
+    "expected exit 0 with no traceback, got exit=$sl_ascii_post_exit output=$sl_ascii_post_out"
+fi
+
+rm -rf "$sl_empty_repo"
 
 # ===========================================================================
 echo

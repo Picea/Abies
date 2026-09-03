@@ -12,3 +12,8 @@
 - [Command-text matching is not a gate](command-text-matching-is-not-a-gate.md) — two probes that prove a `git commit` substring hook is both false-positive and false-negative.
 - [.last-review-verdict is forgeable](last-review-verdict-is-forgeable.md) — the indent guard counts spaces only; a tab or NBSP still forges a PASS.
 - [Doc inventory counts go stale within the same PR](doc-inventory-counts-go-stale-within-the-same-pr.md) — recount "Verified — N workflows" against the tree the PR leaves behind.
+- [Line-splitting fixes must start at the open() call](line-splitting-fixes-must-start-at-the-open-call.md) — universal newlines rewrites `\r` before any splitter fix can see it.
+- [Guarding a field is not authenticating it](guarding-a-field-is-not-authenticating-it.md) — split parsing-differential impersonation from plain self-declaration, or the blocker reopens forever.
+- [Prefix-stripping fixes are unbounded](prefix-stripping-fixes-are-unbounded.md) — enumerate character classes and you get a fifth round; move the check to fence presence.
+- [Safety caps must fail closed](safety-caps-must-fail-closed.md) — a cap that returns the permissive answer on cap-hit IS the bypass; probe cap+1.
+- [Shape heuristics are defeated by one line](shape-heuristics-are-defeated-by-one-line.md) — attack the reset predicate in both directions before accepting the residual note.

@@ -45,58 +45,12 @@ Deliberate scope limits (documented, not silently missing):
   * An unrecognised flag ahead of `commit` is assumed to take no value
     (best effort) rather than mis-consuming the next token; this can only
     ever cause an under-match (fail open), never a false trigger.
-  * `_strip_transparent_prefix()` (round 4 re-review, review-b93b430.md,
-    "four still-open items", closing a gap flagged twice now) peels off
-    constructs that precede `git` without changing which command ultimately
-    runs, before the `argv[0] == "git"` check: leading `NAME=VALUE` shell
-    assignments (`GIT_AUTHOR_DATE=... git commit`), `env`/`sudo` wrapper
-    invocations including `env`'s own leading flags/assignments
-    (`env X=1 git commit`, `sudo git commit`), and a single enclosing
-    `( ... )` subshell pair wrapping one simple command
-    (`(git commit -m x)`). This is still deliberately best-effort, not
-    exhaustive:
-      - `sudo`'s own flags are skipped assuming none take a value (same
-        "under-match, never false-trigger" posture as unrecognised git
-        global flags above) — `sudo -u user git commit` will NOT be
-        recognised, because `-u`'s value `user` is mis-treated as the next
-        command token and fails the `== "git"` check. Fails open (no
-        match), not a mis-detection.
-      - Only a single top-level `( ... )` pair around exactly one simple
-        command is unwrapped. `(cd dir && git commit ...)` splits into two
-        simple commands on `&&` before this function ever runs, so the
-        `git commit` half is examined without its enclosing parens intact
-        — already handled correctly, just not through this function.
-        Nested or multi-statement subshell forms beyond that are not
-        specially handled.
-      - Chained wrappers (`sudo env X=1 git commit`) are supported via the
-        strip loop running until nothing more peels off, but each layer's
-        own best-effort flag handling still applies.
 """
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import sys
-
-# `NAME=VALUE` shell assignment prefix, e.g. `GIT_AUTHOR_DATE=2020-01-01`
-# or `X=1`. Matches POSIX shell identifier rules (letters/digits/underscore,
-# not starting with a digit); the value half is unconstrained (shlex has
-# already resolved any quoting inside it by this point).
-_ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-
-# Wrapper commands whose presence doesn't change WHICH program ultimately
-# runs, just how it's invoked -- see `_strip_transparent_prefix()`.
-_TRANSPARENT_WRAPPERS = {"env", "sudo"}
-
-# `env`'s own flags that consume a following, SEPARATE argv token as their
-# value (short and long GNU forms) -- e.g. `env -u FOO git commit` must
-# skip BOTH `-u` and `FOO`, not just `-u`. Attached-form long options
-# (`--unset=FOO`) need no special handling: they don't split into two
-# tokens, so the generic `argv[0].startswith("-")` skip in
-# `_strip_transparent_prefix()` already consumes the whole thing in one
-# step.
-_ENV_FLAGS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 
 # Global git options that consume a following argument, e.g. `-C <dir>`.
 GLOBAL_FLAGS_WITH_VALUE = {
@@ -168,80 +122,6 @@ def split_simple_commands(command: str) -> list[list[str]]:
     return commands
 
 
-def _strip_transparent_prefix(argv: list[str]) -> list[str]:
-    """Best-effort: peel off leading shell constructs that precede the
-    actual command without changing which program runs -- inline
-    `NAME=VALUE` assignments, `env`/`sudo` wrapper invocations (including
-    `env`'s own leading flags/assignments), and a single enclosing
-    `( ... )` subshell pair around one simple command. See the module
-    docstring's scope-limits section for exactly what this does and does
-    not cover. Never raises; worst case returns `argv` unchanged (falls
-    through to the existing `argv[0] != "git"` under-match, not a false
-    trigger)."""
-    if not argv:
-        return argv
-    argv = list(argv)
-
-    had_paren = argv[0].startswith("(")
-    if had_paren:
-        argv[0] = argv[0][1:]
-        if argv[0] == "":
-            argv = argv[1:]
-
-    changed = True
-    while changed and argv:
-        changed = False
-        while argv and _ENV_ASSIGNMENT_RE.match(argv[0]):
-            argv = argv[1:]
-            changed = True
-        if argv and os.path.basename(argv[0]) in _TRANSPARENT_WRAPPERS:
-            wrapper = os.path.basename(argv[0])
-            argv = argv[1:]
-            changed = True
-            if wrapper == "sudo":
-                # Best-effort: assume sudo's own flags take no value (same
-                # posture as unrecognised git global flags in
-                # find_commit()) -- `sudo -u user git commit` will under-
-                # match (fails open) rather than mis-consume `user`.
-                while argv and argv[0].startswith("-"):
-                    argv = argv[1:]
-            else:  # "env"
-                # `env` accepts its own flags (-i, -0, -u NAME, ...) and
-                # NAME=VALUE assignments before the target command. Flags
-                # in `_ENV_FLAGS_WITH_VALUE` consume the NEXT token too
-                # (round 5 re-review, review-pr355-round4.md, should-fix:
-                # `env -u FOO git commit` previously under-matched because
-                # only `-u` was skipped, leaving `FOO` mis-treated as the
-                # next command token -- the inline comment claimed `-u
-                # NAME` was handled when it wasn't, the same "comment says
-                # more than the code does" defect class flagged across
-                # four rounds now).
-                while argv and (
-                    argv[0].startswith("-") or _ENV_ASSIGNMENT_RE.match(argv[0])
-                ):
-                    tok = argv[0]
-                    name, sep, _ = tok.partition("=")
-                    # `sep` is non-empty for the attached form
-                    # (`--unset=FOO`), which is already a single, complete
-                    # token -- only the SEPARATE-token form (`-u FOO`,
-                    # `--unset FOO`) needs a second token consumed. Getting
-                    # this backwards would eat the next REAL argv token
-                    # (potentially `git` itself) for `--unset=FOO`.
-                    if not sep and name in _ENV_FLAGS_WITH_VALUE and len(argv) > 1:
-                        argv = argv[2:]
-                    else:
-                        argv = argv[1:]
-
-    if had_paren and argv:
-        last = argv[-1]
-        if last == ")":
-            argv = argv[:-1]
-        elif last.endswith(")"):
-            argv[-1] = last[:-1]
-
-    return argv
-
-
 def find_commit(argv: list[str]):
     """If ``argv`` (with ``argv[0] == 'git'``) invokes the ``commit``
     subcommand, return ``(global_args, commit_argv)``. Otherwise
@@ -286,9 +166,6 @@ def find_commit(argv: list[str]):
 
 def detect(command: str) -> tuple[bool, list[str], list[str]]:
     for argv in split_simple_commands(command):
-        if not argv:
-            continue
-        argv = _strip_transparent_prefix(argv)
         if not argv:
             continue
         if os.path.basename(argv[0]) != "git":
