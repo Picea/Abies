@@ -82,9 +82,9 @@ This backlog is derived from the initial repository assessment and the baseline 
 
 ## Suggested Owners
 
-- Luthien: secret scanning, Semgrep, ZAP, Trivy, threat model governance.
-- Faramir and Legolas: host/API middleware hardening and test implementation.
-- Elrond: enforce checklist and gate consistency in review.
+- `security-expert`: secret scanning, Semgrep, ZAP, Trivy, threat model governance.
+- `csharp-dev`: host/API middleware hardening and test implementation (the middleware and TUnit test suites here are C#/.NET, in `Picea.Abies.Conduit.Api`).
+- `reviewer`: enforce checklist and gate consistency in review.
 
 ## Tracking
 
