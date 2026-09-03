@@ -2,3 +2,4 @@
 
 - [Correlated artifacts share one timestamp](correlated-artifacts-share-one-timestamp.md) — compute the ISO 8601 UTC timestamp once so cross-file correlation is exact.
 - [Presentation review heuristics](presentation-review-heuristics.md) — reusable deck-review checklist from the 2026-04-15 express dry run.
+- [Stale roster references: rename vs. note](stale-roster-references-rename-vs-note.md) — check if the described work shipped before renaming retired agent names; historical docs get a dated note, live docs get a verified rename.

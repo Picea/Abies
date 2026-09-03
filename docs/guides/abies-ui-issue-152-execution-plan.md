@@ -1,5 +1,7 @@
 # Abies UI Issue #152 Execution Plan
 
+> **Historical document (added 2026-09-03).** Issue #152 Phase 1 shipped in PR #167 (merged to `main`) — all seven Phase 1 components (`button`, `textInput`, `select`, `modal`, `table`, `spinner`, `toast`) are implemented in `Picea.Abies.UI` and marked ✅ Verified in [`abies-ui-accessibility-matrix.md`](abies-ui-accessibility-matrix.md). The Ownership Map below still names the squad's retired Tolkien codenames (Gandalf, Galadriel, Faramir, Legolas, Samwise, Gimli, Boromir, Elrond), none of which exist in the current roster (`.claude/agents/`, see `CLAUDE.md`). It is left as-is rather than remapped to the current roster: this plan describes staffing for work that already shipped, and relabeling it to today's agent names would make a closed phase look like an open assignment. For current ownership of UI/accessibility/security work, see `CLAUDE.md`'s Squad Members and Routing tables.
+
 ## Purpose
 This document converts the accepted Issue #152 architecture decisions into an execution-ready delivery plan for `Picea.Abies.UI` and `Picea.Abies.UI.Demo`.
 
