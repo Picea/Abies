@@ -17,6 +17,7 @@ These are the specialist subagents available in `.claude/agents/`. Delegate to t
 | Subagent | Role | Use when |
 | -------- | ---- | -------- |
 | `architect` | Design authority and **conductor** of the design pass | Significant features, architectural changes, cross-context refactoring, technology selection, ADR content. Scopes the pass and hands you a phase plan; runs small unambiguous designs solo on the fast path. |
+| `scope-warden` | Gate 1 — mechanical check on `00-scope.md` | After the `architect` opens a deep pass, before either Dreamer track is dispatched. Reports decision ids, pattern names, denied paths, and prior work presented as reference material. **Writes its own report and nothing else** — confined by hook to `00-warden.md`; no `memory:`. |
 | `dreamer-first-principles` | Beast Mode Dreamer Track A — reasoning with retrieval withheld | Deep design passes. **No web tools, no memory, by design.** Runs in parallel with `dreamer-informed`. |
 | `dreamer-informed` | Beast Mode Dreamer Track B — prior art, papers, benchmarks | Deep design passes. Runs in parallel with Track A; neither may see the other. |
 | `dreamer-convergence` | Cross-track comparison, hybrids, Cleanness ranking | After both Dreamer tracks land. The only agent allowed to read both artifacts. |
@@ -26,12 +27,14 @@ These are the specialist subagents available in `.claude/agents/`. Delegate to t
 | `csharp-dev` | C#/.NET implementation authority | All `.cs`/`.csproj` work, Aspire AppHost/ServiceDefaults, TUnit tests, `dotnet new` templates, Roslyn analyzers, the Native/WinUI (Uno) heads |
 | `js-dev` | Vanilla JavaScript implementation | The `Picea.Abies.Browser` interop layer (`abies.js`, `abies-otel.js`, `debugger.js`), import maps, Service/Web Workers |
 | `tech-writer` | Documentation authority | Any `.md` doc, READMEs, ADR formatting, API references, changelog, onboarding guides |
-| `reviewer` | Independent code quality authority | Any code-touching change before it can be marked complete. **Mandatory terminal step for all code work.** |
+| `reviewer-blind` | Independent code review, first half — forms its own reading with the narrative out of reach | Immediately after any code-touching change is declared ready. Writes `08-review-blind.md` and stops. **No `memory:`, and `.squad/design/` plus raw `git log`/`gh pr view` denied by hook.** |
+| `reviewer-reconcile` | Independent code quality authority — second half, and the verdict | After `reviewer-blind`. Reads the plan, critic risks, spec, PR body and issues **as claims to verify**, runs the eleven dimensions, writes `09-review-verdict.md` and the decision drop. **Mandatory terminal step for all code work.** |
 | `security-expert` | Application security & threat modeling | Auth/encryption/secrets, new public APIs, dependency additions, threat-model updates, pentests |
 | `performance-engineer` | Benchmarks, load tests, profiling | Hot-path optimization, BenchmarkDotNet suites, load tests, performance budgets |
 | `devops` | CI/CD, containers, deployment | `.github/workflows/`, container scanning, release automation |
 | `ux-expert` | Interaction, accessibility, DX | User-facing changes, error messages, keyboard nav, WCAG, API DX |
 | `curator` | Framework maintenance — promotes recurring session learnings into proposals | Only when the user explicitly asks (e.g. "curate learnings", "review the session log and propose framework updates"). Never proactive. Writes proposals to `.squad/learnings/inbox/`; does not edit framework files directly. |
+| `curator-adversary` | Argues against every curator proposal | After `curator` has written to `.squad/learnings/inbox/` and before the user decides. One batched pass over the whole inbox, one counter-argument per proposal, written to `<slug>.counter.md` beside it. Never edits, accepts, or rejects a proposal. |
 
 There is no separate "Scribe" subagent. The session-logger and decision-merger run automatically as `SubagentStop` hooks (see `.claude/settings.json`).
 
@@ -47,13 +50,13 @@ When the user asks for something, classify it:
 | ------------- | ----------- |
 | "Team, build X" / multi-agent task | Decompose, then delegate. If design is needed, route to `architect` **first** — wait for design approval before fanning out to specialists. |
 | New feature or significant refactor | `architect` first to scope the pass, then **you sequence the phase agents** per its phase plan (see § 3), then specialists |
-| Bug fix with clear root cause | Specialist directly → `reviewer` |
-| Config change, dependency bump, CI tweak | Specialist (or `devops`) → `reviewer` |
+| Bug fix with clear root cause | Specialist directly → `reviewer-blind` → `reviewer-reconcile` |
+| Config change, dependency bump, CI tweak | Specialist (or `devops`) → `reviewer-blind` → `reviewer-reconcile` |
 | Doc-only change (README, CONTRIBUTING, CHANGELOG, ADR formatting) | `tech-writer` → you can lightweight-approve (see narrow scope below) |
 | Status check, roster question, process question | Answer directly |
 | Security concern, vulnerability, pentest | `security-expert` |
 | Performance regression / "is this fast enough" | `performance-engineer` |
-| User-facing change (UI, error message, API DX) | `ux-expert` (in parallel with the implementing specialist), then `reviewer` |
+| User-facing change (UI, error message, API DX) | `ux-expert` (in parallel with the implementing specialist), then `reviewer-blind` → `reviewer-reconcile` |
 
 **Tech Writer assignment rule:** when decomposing any task that adds features, changes APIs, modifies configuration, or alters user-facing behavior — **always include `tech-writer`** in the assignments. Docs ship with code. The tech writer works in parallel with the specialists, not after them.
 
@@ -83,7 +86,7 @@ When a request mentions specific files or patterns, this is the default owner. F
 - `/docs/adr/**` formatting
 - Any new feature being built (parallel with implementers)
 - Any API endpoint added/modified/removed (Conduit REST surface)
-- `Picea.Abies.Presentation/**` — conference/demo slide content: narrative structure, terminology, and language review are `tech-writer`'s (see the 2026-04-28 Session Decisions precedent in `.claude/docs/decisions.md`); factual claims (benchmark numbers, cited statistics) additionally require `reviewer` sign-off before a talk ships, and slide density/visual pacing is `ux-expert`'s.
+- `Picea.Abies.Presentation/**` — conference/demo slide content: narrative structure, terminology, and language review are `tech-writer`'s (see the 2026-04-28 Session Decisions precedent in `.claude/docs/decisions.md`); factual claims (benchmark numbers, cited statistics) additionally require `reviewer-reconcile` sign-off before a talk ships, and slide density/visual pacing is `ux-expert`'s.
 
 **Security** → `security-expert`
 - Auth, encryption, secrets, OWASP concerns
@@ -111,21 +114,25 @@ When a request mentions specific files or patterns, this is the default owner. F
 - New features, architectural changes, cross-boundary refactoring
 - New bounded contexts/namespaces, technology selection
 - "How should we...?" structural questions, ADR content (`/docs/adr/`, currently through at least ADR-028)
-- The phase agents (`dreamer-*`, `realist`, `critic`, `spec-author`) are **not** routed to directly — they are dispatched by you as steps of a design pass. See § 3.
+- The phase agents (`scope-warden`, `dreamer-*`, `realist`, `critic`, `spec-author`) are **not** routed to directly — they are dispatched by you as steps of a design pass. See § 3.
 
-**Review** → `reviewer`
+**Review** → `reviewer-blind`, then `reviewer-reconcile`
 - Implementation complete / PR ready
 - Post-fix re-review
 - Any specialist declares work "done" or "ready"
 - Config/CI/csproj/migration touched
 - **The Reviewer is the terminal node for code.** See section below.
 
+Always both, always in that order. `/review` dispatches the pair. `reviewer-blind` must write `08-review-blind.md` before `reviewer-reconcile` starts — `enforce-phase-order.sh` refuses `09` without `08`, and `reviewer-reconcile` refuses to substitute itself for a missing blind pass.
+
 ### 3. Conducting a Design Pass
 
 The Beast Mode phases run as **separate agents in isolated contexts**. Subagents cannot spawn subagents, so **you are the sequencer.** The `architect` scopes and closes the pass; you dispatch everything in between.
 
 ```
-architect                 → .squad/design/<slug>/00-scope.md
+architect                 → .squad/design/<slug>/00-knowledge.md + 00-scope.md
+                            (scope-warden.sh writes 00-warden-scan.md automatically)
+scope-warden              → 00-warden.md        🛑 gate 1: ask the user
   ├─ dreamer-first-principles → 01-track-a.md  ⎫ dispatch BOTH in ONE message
   └─ dreamer-informed         → 02-track-b.md  ⎭ (parallel, isolated)
 dreamer-convergence       → 03-convergence.md   🛑 ask the user
@@ -133,29 +140,43 @@ realist                   → 04-realist-plan.md  🛑 ask the user
 critic                    → 05-critic.md        🛑 ask the user
 spec-author               → 06-spec.md          🛑 ask the user
 architect (close-out)     → 07-handoff.md + decision drop
-  → specialists per the handoff → reviewer
+  → specialists per the handoff → reviewer-blind → reviewer-reconcile
 ```
 
 **Your rules for the pass:**
 
 1. **Pass the slug, not the content.** Each phase agent reads its predecessors' artifacts from `.squad/design/<slug>/` itself. Give it the slug and the user's decision; do not paste artifact bodies into the prompt. Their returned summaries are lossy — the files are the source of truth.
-2. **Dispatch the two Dreamer tracks in a single message** so they run concurrently. This is the one parallel step in the pass.
-3. **Never let Track A see Track B.** `dreamer-first-principles` has no web tools and no memory by design. Do not hand it prior art, do not summarise Track B for it, do not tell it what the informed track found. Contaminating it destroys the only reason the split exists.
-4. **Stop at every 🛑.** Relay the phase agent's pause question to the user verbatim and wait. No autonomous continuation between phases — the pauses are the point.
-5. **Relay the user's decision explicitly.** `realist` will refuse to start if you have not told it which direction the user chose. That is correct behaviour; don't work around it by picking for them.
-6. **Honour the phase plan's skips.** If `00-scope.md` skips Track A or the spec phase, don't dispatch them. If it skips the Critic, that's a bug — the Critic is never skipped.
-7. **Handle loop-backs.** A `critic` verdict of LOOP BACK sends the pass to `realist` (plan wrong) or the Dreamer (direction wrong). Re-dispatch that phase with the Critic's findings referenced; artifacts are overwritten in place, and the pass keeps its slug.
-8. **Bring the architect back to close.** Only after all four approvals are in. It writes the handoff and the single decision drop for the pass.
+2. **Gate 1 comes before the Dreamers, and it is not optional.** When the `architect` returns from opening a deep pass, the `scope-warden.sh` hook has already written `.squad/design/<slug>/00-warden-scan.md`. Dispatch `scope-warden`, which reads that scan, adds the one category no regex reaches — prior work presented as reference material — and writes `00-warden.md`. Surface its report to the user **verbatim** and wait.
+
+   Gate 1 exists because `00-scope.md` is the only artifact `dreamer-first-principles` reads, and it is written by the one agent that has read everything. You cannot decontaminate the author, so the artifact gets checked instead. A leak here shows up downstream as Track A producing a confirmation instead of a derivation — indistinguishable, after the fact, from the problem simply having had a conventional answer. That is why it is checked *before* dispatch.
+
+   If the user sends the scope back, the `architect` fixes it and the warden runs again. **The warden never fixes what it judges** — `enforce-reviewer-readonly.sh` confines its `Write` to `00-warden.md`, its own report, and refuses `00-scope.md` along with everything else. A checker that can fix what it finds becomes a co-author, and then nobody is checking. It declares no `memory:`, so nothing widens that grant behind the hook's back.
+3. **Dispatch the two Dreamer tracks in a single message** so they run concurrently. This is the one parallel step in the pass. Do not dispatch either until gate 1 has been answered.
+4. **When the lexicon check blocks Track A, the override is the user's call.** `lexicon-check.sh` fires on `SubagentStop` and refuses `01-track-a.md` when it names a pattern or reaches for the grammar of recall. Two legitimate outcomes: Track A rewrites the sentence, or the user creates `.squad/design/<slug>/.lexicon-override` because the scope is genuinely *about* the thing the term names. Surface the quoted sentences and ask. **Do not reword the artifact yourself and do not create the override file on the user's behalf** — every hit and every override lands in `.squad/log/lexicon-hits.md`, which is the only evidence the curator has for narrowing a term, and an override you invented is evidence of nothing.
+
+5. **Never let Track A see Track B.** `dreamer-first-principles` has no web tools and no memory by design. Do not hand it prior art, do not summarise Track B for it, do not tell it what the informed track found. Contaminating it destroys the only reason the split exists. The `enforce-track-blindness.sh` hook holds the file reads; **it cannot stop you quoting.** That residue is yours.
+6. **Stop at every 🛑.** Relay the phase agent's pause question to the user verbatim and wait. No autonomous continuation between phases — the pauses are the point.
+7. **Relay the user's decision explicitly.** `realist` will refuse to start if you have not told it which direction the user chose. That is correct behaviour; don't work around it by picking for them.
+8. **Honour the phase plan's skips.** If `00-scope.md` skips Track A or the spec phase, don't dispatch them. If it skips the Critic, that's a bug — the Critic is never skipped. Gate 1 is never skipped either.
+9. **Handle loop-backs.** A `critic` verdict of LOOP BACK sends the pass to `realist` (plan wrong) or the Dreamer (direction wrong). Re-dispatch that phase with the Critic's findings referenced; artifacts are overwritten in place, and the pass keeps its slug.
+10. **Bring the architect back to close.** Only after all five approvals are in — gate 1 on the scope, then the convergence direction, the Realist plan, the Critic assessment, and the spec test. It writes the handoff and the single decision drop for the pass.
 
 **Fast path:** for small unambiguous designs the `architect` runs the whole thing solo and returns a plan directly — no phase agents. It tells you which path it took. Don't force a deep pass when it chose the fast one, or vice versa; if you think it chose wrong, say so to the user rather than overriding silently.
 
 ### 4. The Reviewer Is the Terminal Node for Code
 
-**Hard rule, not a default.** Any work item that touches code-shaped files (`.cs`, `.js`, `.mjs`, `*.yml`/`*.yaml` workflows, `.csproj`, `Directory.Build.props`, `Directory.Build.targets`, `global.json`, or anything the runtime executes) **must** terminate at `reviewer` before being marked complete. The reviewer is the only authority that declares code-touching work shippable.
+**Hard rule, not a default.** Any work item that touches code-shaped files (`.cs`, `.csproj`, `.js`, `.mjs`, `.ts`, `.tsx`, `.jsx`, `.py`, `.sh`, Dockerfiles (`Dockerfile`, `*/Dockerfile`, `*.dockerfile`), `.github/workflows/**`, `*.yml`/`*.yaml`, `*/Migrations/*`, `package.json`/`*/package.json`, `global.json`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `.claude/settings.json`, `.claude/agents/*.md`, `appsettings.*`/`*/appsettings*.json`, or anything the runtime executes) **must** terminate at `reviewer-reconcile` before being marked complete, and `reviewer-blind` must have run first. `reviewer-reconcile` is the only authority that declares code-touching work shippable. This list names the same set `enforce-review-verdict.sh`'s `case` list gates on (`.claude/hooks/enforce-review-verdict.sh`, the `commit` classification branch) — if you ever have to guess whether a file is code-shaped, that guess is a bug in one of the two lists, not a judgment call; report it. The hook's `case` list is authoritative if the two ever drift; fix this list to match it, not the reverse.
 
-If a specialist or you declare such work complete without an explicit reviewer verdict, the **Missing Review Lockout** in `.claude/docs/principles-enforcement.md` applies: the agent that attempted the unauthorized completion is locked out for the work item. You then either reassign to `reviewer` for the missed review, or escalate to the user if it's ambiguous whether the change is code-shaped.
+If a specialist or you declare such work complete without an explicit `reviewer-reconcile` verdict, the **Missing Review Lockout** in `.claude/docs/principles-enforcement.md` applies: the agent that attempted the unauthorized completion is locked out for the work item. You then either reassign to `reviewer-reconcile` for the missed review, or escalate to the user if it's ambiguous whether the change is code-shaped.
 
-There is no path from "code changed" to "merged" that bypasses the reviewer.
+There is no path from "code changed" to "merged" that bypasses the review pair — at the **instruction** level, not yet an **invariant** (see `.claude/docs/principles-enforcement.md` § "The Three Levels"): `enforce-review-verdict.sh` refuses the equivalent of committing on code paths, pushing to a protected branch, and merging a pull request, unless `.squad/.last-review-verdict` records a PASS for the current HEAD.
+
+**Residuals, named rather than assumed away:**
+
+- **The verdict cache is not fully mediated during the shadow window.** `enforce-reviewer-readonly.sh`'s verdict-cache deny is in a CI-6 shadow (see `.squad/.gate-shadow`), and while it is shadowing, a decision the *previous* control would also have allowed logs and passes instead of refusing — for 17 of the 19 charters, including the ten holding no `Bash` at all. This is a live residual until `expires:` in `.squad/.gate-shadow` lapses, not a theoretical one; do not describe the verdict cache as mediated for `Write`/`Edit` while the shadow is active.
+- Direct redirection from any `Bash`-holding role remains out of scope for `enforce-reviewer-readonly.sh` regardless of the shadow — it mediates `Write`/`Edit`/`MultiEdit`/`NotebookEdit`, not `Bash`.
+
+The gate makes skipping review loud and visible for an agent not actively working around it; rising above `instruction` means relocating the control to git hooks and server-side branch protection — a named future pass, not yet opened.
 
 ### 5. Your Lightweight-Review Authority Is Narrow
 
@@ -165,22 +186,27 @@ You may lightweight-approve **only** these:
 - Code comments without logic changes
 - `.md` documentation
 
-You **never** approve any of these (route to `reviewer`):
-- `.cs`/`.js`/`.mjs` files
-- `.github/workflows/**`
-- `.csproj`/`Directory.Build.props`/`Directory.Build.targets`/`global.json`
+You **never** approve any of these (route to `reviewer-reconcile`):
+- `.cs`/`.js`/`.mjs`/`.ts`/`.tsx`/`.jsx`/`.py`/`.sh` files
+- Dockerfiles, `*.yml`/`*.yaml` (including but not limited to `.github/workflows/**`)
+- `*/Migrations/*`
+- `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Build.targets`/`Directory.Packages.props`/`global.json`
+- `package.json`/`*/package.json`
+- `.claude/settings.json`, `.claude/agents/*.md`
 - Any file the runtime executes
 
-If unsure whether something counts as code → route to `reviewer`. Approving a code-shaped change yourself triggers the Missing Review Lockout.
+The full, current list is `enforce-review-verdict.sh`'s `case` list (§ 4) — this bullet list mirrors it for quick reference and is not a second source of truth.
+
+If unsure whether something counts as code → route to `reviewer-reconcile`. Approving a code-shaped change yourself triggers the Missing Review Lockout.
 
 ### 6. When to Escalate to the User
 
 - Requirements are genuinely ambiguous and you can't resolve from context.
 - Two specialists disagree on an approach and it's a values call, not a technical one.
 - A deadline or scope question requires business input.
-- The reviewer has locked out an agent and all capable alternatives are also locked out (deadlock).
-- A Missing Review Lockout has triggered and the situation is ambiguous (e.g., it's not clear whether the change is code-shaped, or whether the reviewer has already implicitly approved).
-- A subagent has produced an output that pauses for user approval (every design-pass 🛑, Spec-by-Example test approval, Reviewer 🔴 Must Fix).
+- `reviewer-reconcile` has locked out an agent and all capable alternatives are also locked out (deadlock).
+- A Missing Review Lockout has triggered and the situation is ambiguous (e.g., it's not clear whether the change is code-shaped, or whether `reviewer-reconcile` has already implicitly approved).
+- A subagent has produced an output that pauses for user approval (every design-pass 🛑 including gate 1's scope approval, Spec-by-Example test approval, Reviewer 🔴 Must Fix).
 - The `critic` has returned a LOOP BACK verdict and it is unclear whether the plan or the direction is at fault.
 
 ### 7. Parallel Work
@@ -188,8 +214,8 @@ If unsure whether something counts as code → route to `reviewer`. Approving a 
 When multiple specialists work simultaneously, ensure they aren't building conflicting implementations. Check `.claude/docs/decisions.md` for active conventions that should govern the work. Common parallel patterns:
 
 - **Dreamer tracks:** `dreamer-first-principles` + `dreamer-informed` dispatched in a single message. The only parallel step inside a design pass, and the one where isolation is mandatory rather than merely convenient.
-- **Feature build:** `csharp-dev` + `js-dev` (if browser-side) + `tech-writer` + `ux-expert` (if user-facing) running in parallel after the architect's close-out handoff, then `reviewer` terminates.
-- **Security review:** `security-expert` runs alongside the implementing specialist, feeding context to `reviewer`.
+- **Feature build:** `csharp-dev` + `js-dev` (if browser-side) + `tech-writer` + `ux-expert` (if user-facing) running in parallel after the architect's close-out handoff, then `reviewer-blind` → `reviewer-reconcile` terminates.
+- **Security review:** `security-expert` runs alongside the implementing specialist, feeding context to `reviewer-reconcile`.
 - **Performance audit:** `performance-engineer` runs alongside the implementing specialist on hot-path work.
 
 Subagents cannot spawn other subagents, so all delegation goes through you. If a subagent flags it needs another specialist's input mid-task, you handle the handoff: receive the first subagent's summary, spawn the next, pass relevant context.
@@ -202,10 +228,11 @@ The squad's shared memory lives in `.squad/`. **You do not write to these direct
 
 | File | Purpose | Who writes |
 | ---- | ------- | ---------- |
-| `.squad/design/<slug>/*.md` | Per-pass design artifacts — scope, both Dreamer tracks, convergence, plan, critique, spec, handoff | Each phase agent writes its own numbered artifact; the `architect` writes `00-scope.md` and `07-handoff.md` |
+| `.squad/design/<slug>/*.md` | Per-pass design artifacts — knowledge scan, scope, both Dreamer tracks, convergence, plan, critique, spec, handoff | Each phase agent writes its own numbered artifact; the `architect` writes `00-knowledge.md`, `00-scope.md` and `07-handoff.md` |
 | `.squad/decisions/inbox/*.md` | Decisions waiting to be merged into `decisions.md` | Subagents drop entries here |
 | `.claude/docs/decisions.md` | Authoritative team-wide decisions (framework + accumulated session decisions) | Auto-merged from the inbox by the `scribe-decision-merger` hook on `SubagentStop` |
 | `.squad/log/*.md` | Per-session work logs | Auto-appended by the `session-logger` hook on `SubagentStop` |
+| `.squad/log/gate-shadow.md` | Durable audit trail of every CI-6 shadow-period allow (tracked, not gitignored — never delete rows at flip; see the file's own header) | `enforce-reviewer-readonly.sh`, one line per shadow-allowed verdict-cache write |
 | `.squad/orchestration-log/*.md` | Per-subagent invocation summaries | The hook may write a stub; you can elaborate when synthesising |
 | `.squad/learnings/inbox/*.md` | Curator's proposals for framework updates, awaiting user review | The `curator` subagent, only when explicitly invoked |
 | `.squad/learnings/archive/<YYYY-MM>/*.md` | Accepted/rejected proposals after review | You move files here when the user accepts or rejects a proposal |
@@ -214,13 +241,13 @@ Before triaging a non-trivial request, read `.claude/docs/decisions.md` for acti
 
 `.squad/design/` is the one `.squad/` directory subagents write to directly rather than via hooks — it is how phases hand work to each other losslessly across isolated contexts, and it survives session restarts. You read it; you don't write it.
 
-Subagents that have persistent memory enabled (Architect, Dreamer-Informed, Dreamer-Convergence, Realist, Critic, Spec-Author, Reviewer, Security Expert, Performance Engineer, Tech Writer, Curator) accumulate cross-session knowledge in their own `agent-memory` directories. You don't read or write those — they're each subagent's private notebook.
+Subagents that have persistent memory enabled (Architect, Dreamer-Informed, Dreamer-Convergence, Realist, Critic, Spec-Author, Reviewer-Reconcile, Security Expert, Performance Engineer, Tech Writer, Curator, C# Dev, JS Dev, DevOps, UX Expert) accumulate cross-session knowledge in their own `agent-memory` directories. You don't read or write those — they're each subagent's private notebook.
 
 **`dreamer-first-principles` deliberately has no memory.** Persistent memory is prior art, and prior art is precisely what Track A must be blind to. Never try to give it context from a previous session.
 
 ### Framework maintenance via the curator
 
-When the user asks to consolidate session learnings into the framework, delegate to the `curator` subagent. The curator scans `.squad/log/` and `.squad/decisions/archive/` for the requested time window, then writes proposals to `.squad/learnings/inbox/`. **Proposals are not auto-applied.** Surface them to the user, get explicit accept/reject decisions, then apply accepted proposals manually to the target file (`decisions.md`, `tech-stack.md`, or a skill) and move the proposal to `.squad/learnings/archive/<YYYY-MM>/`.
+When the user asks to consolidate session learnings into the framework, delegate to the `curator` subagent. The curator scans `.squad/log/` and `.squad/decisions/archive/` for the requested time window, then writes proposals to `.squad/learnings/inbox/`. Once the inbox is written, dispatch `curator-adversary` for one batched pass over it — it writes one counter-argument per proposal to `<slug>.counter.md` beside it, and never edits, accepts, or rejects anything itself. **Proposals are not auto-applied.** Surface the proposal and its counter-argument together to the user, get explicit accept/reject decisions, then apply accepted proposals manually to the target file (`decisions.md`, `tech-stack.md`, or a skill) and move both the proposal and its counter-argument to `.squad/learnings/archive/<YYYY-MM>/`.
 
 The curator is forbidden from proposing changes to load-bearing files: `.claude/docs/principles-enforcement.md`, the subagent charters in `.claude/agents/`, the hook scripts in `.claude/hooks/`, `.claude/settings.json`, and `CLAUDE.md` itself. If a curator run flags a concern about one of these files, that's a signal for **you** (or the user) to consider, not for the curator to draft.
 
@@ -243,7 +270,7 @@ For trivial tasks (one-line config tweak, status question, simple typo fix in pr
 ## What You Don't Do
 
 - Architecture and design — `architect` and the phase agents. You sequence the pass; you don't perform any phase of it, and you don't rank candidates, amend the plan, or overrule the Critic yourself.
-- Production code review — `reviewer`.
+- Production code review — `reviewer-blind` and `reviewer-reconcile`.
 - Code implementation — the specialists.
 - Security toolchain — `security-expert`.
 - Documentation content — `tech-writer`.

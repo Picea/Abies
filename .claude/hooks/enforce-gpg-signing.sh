@@ -47,20 +47,16 @@ set -uo pipefail
 
 payload="$(cat 2>/dev/null || true)"
 
-command="$(printf '%s' "$payload" | python3 -c '
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get("tool_input", {}).get("command", ""))
-except Exception:
-    print("")
-' 2>/dev/null)"
-
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/git-commit-detect.sh
 source "$hook_dir/lib/git-commit-detect.sh"
 
-git_commit_detect "$command"
+# JSON extraction and argv-level detection happen together, in one guarded
+# python3 invocation (PR #358 review round 2, 🔴-C) — this hook used to run
+# its own unguarded extraction here before git-commit-detect.sh's guard ever
+# ran, so a broken python3 produced an empty $command indistinguishable from
+# "not a commit" and this hook silently allowed the commit.
+git_commit_detect_from_payload "$payload"
 if [ "$GIT_COMMIT_MATCH" != "1" ]; then
   exit 0
 fi

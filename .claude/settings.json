@@ -3,6 +3,9 @@
   "env": {
     "_comment": "OpenTelemetry export is opt-in PER MACHINE, deliberately not set here. This file previously enabled CLAUDE_CODE_ENABLE_TELEMETRY for every contributor with OTEL_EXPORTER_OTLP_PROTOCOL=grpc and no endpoint, which defaults to localhost:4317 -- the same port Aspire's dashboard binds in this repo, so every contributor without their own collector there either silently failed to export or collided with Aspire. To opt in on your own machine, add these keys under an env block in .claude/settings.local.json (gitignored, per-machine, merged over this file): CLAUDE_CODE_ENABLE_TELEMETRY=1, CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1, OTEL_METRICS_EXPORTER=otlp, OTEL_LOGS_EXPORTER=otlp, OTEL_TRACES_EXPORTER=otlp, OTEL_EXPORTER_OTLP_PROTOCOL=grpc, OTEL_METRIC_EXPORT_INTERVAL=10000, OTEL_RESOURCE_ATTRIBUTES=service.name=claude-squad,deployment.environment=local, plus your own OTEL_EXPORTER_OTLP_ENDPOINT. The squad's app and the squad's agent should share the same OTLP endpoint and slice by service.name."
   },
+  "worktree": {
+    "baseRef": "head"
+  },
   "statusLine": {
     "type": "command",
     "command": "python3 $CLAUDE_PROJECT_DIR/.claude/statusline.py",
@@ -35,6 +38,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-direct-commits-to-main.sh"
+          },
+          {
+            "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-conventional-commits.sh"
           },
           {
@@ -48,6 +55,49 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-large-files.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/validate-branch-name.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-review-history-channel.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-review-verdict.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Grep|Glob|NotebookRead|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-track-blindness.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-review-blindness.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-reviewer-readonly.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-phase-order.sh"
           }
         ]
       }
@@ -84,6 +134,33 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-logger.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "architect",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/scope-warden.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "dreamer-first-principles",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/lexicon-check.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "dreamer-first-principles|dreamer-informed|critic|spec-author",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/validate-phase-artifact.sh"
           }
         ]
       }

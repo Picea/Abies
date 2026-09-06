@@ -110,7 +110,7 @@ Read MEMORY.md before writing — terminology consistency depends on it. Curate 
 
 - Architectural decisions → `architect` (you document them, you don't make them).
 - Code implementation → specialists (they write code, you write *about* code).
-- Code review verdicts → `reviewer`.
+- Code review verdicts → `reviewer-reconcile`.
 
 ---
 

@@ -5,6 +5,8 @@ description: The full Beast Mode 4.4 × Disney Creative Strategy design procedur
 
 # Beast Mode 4.3 × Disney Creative Strategy
 
+> **Not for Track A.** `dreamer-first-principles` loads `beast-mode-track-a` instead, which carries only its own row of the artifact contract and its own method. This skill describes Track B's procedure, the convergence rubric and the knowledge-capture pattern tag — all three are prior art, and putting them in Track A's context would defeat the isolation the dual track exists for.
+
 The squad's design procedure. Each agent's charter describes when and why to use its phase; this skill describes how — the room mechanics, the dual-track Dreamer, the convergence analysis, the expert rooms, the spec-by-example phase, and the handoff protocol.
 
 > *"There were actually three different Walts: the dreamer, the realist, and the spoiler. You never knew which one was coming to the meeting."* — Ollie Johnston & Frank Thomas
@@ -17,24 +19,31 @@ Johnston and Thomas were describing a problem as much as a method: nobody knew w
 
 Each phase is a **separate subagent in an isolated context**. You are running exactly one of them. Find your row, do that phase, write that artifact, and stop.
 
+The last three rows are not design phases, but they write into the same directory and are bound by the same contract — which is the point: `enforce-phase-order.sh` governs `09` after `08` exactly as it governs `03` after `01` and `02`.
+
 | Phase | Agent | Writes | Reads |
 |---|---|---|---|
-| Scope + knowledge scan | `architect` | `00-scope.md` | `decisions.md`, own MEMORY |
+| Scope + knowledge scan | `architect` | `00-scope.md` **and** `00-knowledge.md` | `decisions.md`, own MEMORY |
 | Dreamer Track A | `dreamer-first-principles` | `01-track-a.md` | `00-scope.md`, the codebase — **nothing else** |
-| Dreamer Track B | `dreamer-informed` | `02-track-b.md` | `00-scope.md`, `decisions.md`, own MEMORY, the web |
-| Convergence | `dreamer-convergence` | `03-convergence.md` | `00`, `01`, `02` |
-| Realist | `realist` | `04-realist-plan.md` | `00`, `03` (+ `01`/`02` for detail), user's chosen direction |
-| Critic | `critic` | `05-critic.md` | `00`, `03`, `04`, Track B's failure modes, the codebase |
-| Spec-by-Example | `spec-author` | `06-spec.md` | `00`, `04`, `05`, existing tests |
+| Dreamer Track B | `dreamer-informed` | `02-track-b.md` | `00-scope.md`, `00-knowledge.md`, `decisions.md`, own MEMORY, the web |
+| Convergence | `dreamer-convergence` | `03-convergence.md` | `00`, `00-knowledge`, `01`, `02` |
+| Realist | `realist` | `04-realist-plan.md` | `00`, `00-knowledge`, `03` (+ `01`/`02` for detail), user's chosen direction |
+| Critic | `critic` | `05-critic.md` | `00`, `00-knowledge`, `03`, `04`, Track B's failure modes, the codebase |
+| Spec-by-Example | `spec-author` | `06-spec.md` | `00`, `00-knowledge`, `04`, `05`, existing tests |
 | Close-out | `architect` | `07-handoff.md` + decision drop | all of the above |
+| Gate 1 — mechanical | `scope-warden.sh` (hook) | `00-warden-scan.md` | `00-scope.md`, `pattern-lexicon.md` |
+| Gate 1 — judgement | `scope-warden` | `00-warden.md` | `00-scope.md`, `00-warden-scan.md`, the lexicon — **not** `00-knowledge.md` |
+| Blind review | `reviewer-blind` | `08-review-blind.md` | the diff, the full files, callers, siblings, `git-history-namestatus.sh` — **not** `.squad/design/` |
+| Review verdict | `reviewer-reconcile` | `09-review-verdict.md` + decision drop | `08`, `04`, `05`, `06`, the PR body and issues — **all as claims to verify** |
 
 All artifacts live under `.squad/design/<slug>/`. Rules:
 
 1. **Artifacts are the interface.** Returned summaries are for the orchestrator and the user; the next phase reads your file. Write the file to be read by a peer who has none of your context.
 2. **Track A and Track B are mutually blind.** They run concurrently. Neither reads the other's artifact, at any point, for any reason. `dreamer-convergence` is the only agent that reads both — which is why it is a separate context and not a section at the bottom of the Dreamer.
-3. **One phase per agent.** Do not run the next phase because it seems obvious. Every transition is gated by a 🛑 the user must answer.
-4. **Loop-backs overwrite in place.** The pass keeps its slug; a re-run of `realist` replaces `04-realist-plan.md`. The Critic's findings that triggered the loop-back stay in `05-critic.md` and the re-run must address them.
-5. **Subagents cannot spawn subagents.** You never dispatch the next phase. You return to the orchestrator, which does.
+3. **`00-knowledge.md` is not readable by Track A.** The conductor's knowledge scan is a separate artifact from the scope because it carries decision ids and pattern names by design. `00-scope.md` restates the hard constraints in plain language; the ids and the names stay in `00-knowledge.md`, which Track B, convergence, the Realist and the Critic read and `dreamer-first-principles` does not.
+4. **One phase per agent.** Do not run the next phase because it seems obvious. Every transition is gated by a 🛑 the user must answer.
+5. **Loop-backs overwrite in place.** The pass keeps its slug; a re-run of `realist` replaces `04-realist-plan.md`. The Critic's findings that triggered the loop-back stay in `05-critic.md` and the re-run must address them.
+6. **Subagents cannot spawn subagents.** You never dispatch the next phase. You return to the orchestrator, which does.
 
 ---
 
@@ -372,7 +381,7 @@ When all approvals are in:
 4. Log architectural decisions to `.squad/decisions/inbox/`.
 5. Tell the orchestrator: *"All phases approved. Spec test approved at [path]. Ready for squad execution. Assign: [agent] → [task], ..., tech-writer → [doc scope] + doc-sync verification."*
 6. Stay available for questions during implementation — specialist subagents can be re-spawned with questions for you.
-7. After implementation, the **`reviewer`** subagent performs an independent code review. You do not review code — the reviewer does. This separation is intentional.
+7. After implementation, the **`reviewer-reconcile`** subagent performs an independent code review. You do not review code — the reviewer does. This separation is intentional.
 
 ---
 

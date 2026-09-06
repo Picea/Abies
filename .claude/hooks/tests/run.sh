@@ -131,6 +131,21 @@ HOOK_REL=".claude/hooks/scribe-decision-merger.sh"
 CURRENT_HOOK="$REPO_ROOT/$HOOK_REL"
 AGENTS_DIR="$REPO_ROOT/.claude/agents"
 
+# Defined HERE, not left to arrive via invariant-chain.sh's own `ic_json`
+# (sourced much later in this file, after section 7). An earlier revision of
+# section 7 called `ic_json` before that source line ran; `set -u` does not
+# catch a missing FUNCTION, there is no `-e`, and the resulting malformed
+# JSON payload (`{"cwd": }`) parsed silently into `cwd=""` in the hook's own
+# `except Exception` handler -- two tests ran with a premise ("cwd inside
+# the worktree") that was never actually established, passed anyway because
+# their assertions turned on `commit:` rather than `cwd`, and the suite
+# still exited 0 with `command not found` on stderr. A test that cannot
+# establish its own premise must fail, not silently pass on a different
+# path. `json_str` is a plain, dependency-free definition, not a workaround
+# that leaves the ordering hazard in place for the next section that needs
+# JSON.
+json_str() { python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"; }
+
 # Vendored pre-fix hook revisions -- see header comment for why these are
 # fixtures rather than `git show <ref>:<path>` against a commit SHA.
 NESTED_MAPPING_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-nested-mapping-fix.sh"  # mis-parsed nested-mapping list items
@@ -145,6 +160,12 @@ UNTERMINATED_FENCE_BUG_HOOK="$PRE_FIX/scribe-decision-merger.pre-unterminated-fe
 pass=0
 fail=0
 
+# A counter incremented inside a subshell increments a COPY. A file append
+# does not. So every failure is also appended here, and the summary is checked
+# against this file rather than against $fail alone.
+IC_FAIL_LOG="$(mktemp)" || { echo "cannot create failure log" >&2; exit 1; }
+trap 'rm -f "$IC_FAIL_LOG"' EXIT
+
 report() {
   local name="$1" ok="$2" detail="${3:-}"
   if [ "$ok" = "1" ]; then
@@ -152,6 +173,9 @@ report() {
     printf 'ok      %s\n' "$name"
   else
     fail=$((fail + 1))
+    # The append is the authoritative record: it survives a subshell, the
+    # counter above does not.
+    printf '%s\n' "$name" >> "$IC_FAIL_LOG"
     printf 'FAIL    %s -- %s\n' "$name" "$detail"
   fi
 }
@@ -257,6 +281,48 @@ run_hook_sandbox() {
     | CLAUDE_PROJECT_DIR="$sandbox" bash "$sandbox/.claude/hooks/scribe-decision-merger.sh" \
     > "$sandbox/.hook-stdout.log" 2> "$sandbox/.hook-stderr.log"
   printf '%s\n' "$sandbox"
+}
+
+# ---------------------------------------------------------------------------
+# Git-backed sandbox pair, for the verdict-cache tests -- since
+# arch-verdict-cache-and-gate-classification (Question 1), the destination is
+# `git -C "$PAYLOAD_CWD" rev-parse --show-toplevel`, so a bare (non-git)
+# directory has no destination at all and every cache write refuses (INV-4,
+# no fallback). new_git_sandbox() builds the repo FIRST, separately from
+# run_hook_sandbox_reuse(), because a caller writing a fixture drop's
+# `commit:` field needs the repo's real HEAD sha before the drop file is
+# written -- run_hook_sandbox() above can't do that in one call since the
+# sandbox path (and therefore the sha) doesn't exist until after mktemp runs
+# inside it.
+# ---------------------------------------------------------------------------
+new_git_sandbox() {
+  local sandbox
+  sandbox="$(mktemp -d)"
+  mkdir -p "$sandbox/.claude/hooks" "$sandbox/.claude/docs" "$sandbox/.squad/decisions/inbox" "$sandbox/.squad/log"
+  printf '# Decisions\n' > "$sandbox/.claude/docs/decisions.md"
+  git -C "$sandbox" init -q
+  git -C "$sandbox" config user.email t@t
+  git -C "$sandbox" config user.name t
+  git -C "$sandbox" config commit.gpgsign false
+  printf 'x\n' > "$sandbox/README.md"
+  git -C "$sandbox" add -A
+  git -C "$sandbox" commit -qm init
+  printf '%s\n' "$sandbox"
+}
+
+# $1 = hook script, $2 = an ALREADY-BUILT sandbox (from new_git_sandbox),
+# $3.. = fixture drop file paths to copy into its inbox.
+run_hook_sandbox_reuse() {
+  local hook_script="$1" sandbox="$2"; shift 2
+  mkdir -p "$sandbox/.claude/hooks"
+  cp "$hook_script" "$sandbox/.claude/hooks/scribe-decision-merger.sh"
+  chmod +x "$sandbox/.claude/hooks/scribe-decision-merger.sh"
+  for f in "$@"; do
+    cp "$f" "$sandbox/.squad/decisions/inbox/"
+  done
+  printf '{"stop_hook_active": false, "cwd": "%s"}' "$sandbox" \
+    | CLAUDE_PROJECT_DIR="$sandbox" bash "$sandbox/.claude/hooks/scribe-decision-merger.sh" \
+    > "$sandbox/.hook-stdout.log" 2> "$sandbox/.hook-stderr.log"
 }
 
 # $1 = sandbox, $2 = original basename -> prints ARCHIVED / QUARANTINED / MISSING
@@ -1131,6 +1197,99 @@ esac
 rm -rf "$corpus_sandbox"
 
 # ===========================================================================
+# 2b. R2 (09-review-verdict.md round 5): the new validate() conditional
+# commit: requirement is unreachable by the 18-case corpus above -- every
+# one of those fixtures carries `agent: reviewer`, never
+# `reviewer-reconcile`, so none of them ever evaluates the
+# `agent == "reviewer-reconcile" and scope == "review"` branch. Closed with
+# two more fixtures that DO reach it: one missing `commit:` (quarantined,
+# for that specific reason), one carrying a `commit:` that matches a real
+# HEAD (archives AND writes the cache) -- the two outcomes R2 names.
+# ===========================================================================
+r2_nc_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$FIXTURES/53-reviewer-reconcile-no-commit.md")"
+r2_nc_got="$(outcome_of "$r2_nc_sandbox" "53-reviewer-reconcile-no-commit.md")"
+if [ "$r2_nc_got" = "QUARANTINED" ]; then
+  report "R2: reviewer-reconcile/scope:review drop with no commit: is quarantined" 1
+else
+  report "R2: reviewer-reconcile/scope:review drop with no commit: is quarantined" 0 "got $r2_nc_got"
+fi
+r2_nc_reason="$(reason_of "$r2_nc_sandbox" "53-reviewer-reconcile-no-commit.md")"
+case "$r2_nc_reason" in
+  *"missing required fields: commit (required when agent: reviewer-reconcile and scope: review)"*)
+    report "R2: quarantined for the conditional-commit reason, not a generic one" 1
+    ;;
+  *)
+    report "R2: quarantined for the conditional-commit reason, not a generic one" 0 \
+      "reason was: ${r2_nc_reason:-<none>}"
+    ;;
+esac
+rm -rf "$r2_nc_sandbox"
+
+r2_wc_sandbox="$(new_git_sandbox)"
+r2_wc_head="$(git -C "$r2_wc_sandbox" rev-parse HEAD)"
+r2_wc_src_dir="$(mktemp -d)"
+r2_wc_src="$r2_wc_src_dir/wc.md"
+{
+  printf -- '---\nid: reviewer-reconcile-20260906T000001Z-wc\nagent: reviewer-reconcile\nscope: review\ncreated: 2026-09-06T00:00:01Z\nverdict: PASS\n'
+  printf 'commit: %s\n' "$r2_wc_head"
+  printf 'blockers: []\n'
+  printf -- '---\n\nR2 fixture, valid commit.\n'
+} > "$r2_wc_src"
+run_hook_sandbox_reuse "$CURRENT_HOOK" "$r2_wc_sandbox" "$r2_wc_src"
+r2_wc_got="$(outcome_of "$r2_wc_sandbox" "wc.md")"
+if [ "$r2_wc_got" = "ARCHIVED" ]; then
+  report "R2: reviewer-reconcile/scope:review drop with a valid commit: archives" 1
+else
+  report "R2: reviewer-reconcile/scope:review drop with a valid commit: archives" 0 "got $r2_wc_got"
+fi
+if [ -f "$r2_wc_sandbox/.squad/.last-review-verdict" ] \
+   && [ "$(head -n1 "$r2_wc_sandbox/.squad/.last-review-verdict")" = "PASS" ] \
+   && grep -qF "commit: $r2_wc_head" "$r2_wc_sandbox/.squad/.last-review-verdict"; then
+  report "R2: reviewer-reconcile/scope:review drop with a valid commit: writes the cache" 1
+else
+  report "R2: reviewer-reconcile/scope:review drop with a valid commit: writes the cache" 0 \
+    "got: $(cat "$r2_wc_sandbox/.squad/.last-review-verdict" 2>/dev/null || echo '<missing>')"
+fi
+rm -rf "$r2_wc_sandbox" "$r2_wc_src_dir"
+
+# ===========================================================================
+# 2c. M-3 (09-review-verdict.md round 6): validate() enforced commit:'s
+# PRESENCE, not its FORMAT. decision-schema.md defines the field as "full
+# 40-hex ... no abbreviation, no branch or tag name, no ^{commit} peel",
+# and the bash-side cache-write check enforces exactly that, one stage
+# past the quarantine boundary -- reproduced with the reviewer's own
+# literal: a `commit: abc` drop used to ARCHIVE clean.
+# ===========================================================================
+m3_sandbox="$(mktemp -d)"
+mkdir -p "$m3_sandbox/.claude/hooks" "$m3_sandbox/.claude/docs" "$m3_sandbox/.squad/decisions/inbox"
+cp "$CURRENT_HOOK" "$m3_sandbox/.claude/hooks/scribe-decision-merger.sh"
+chmod +x "$m3_sandbox/.claude/hooks/scribe-decision-merger.sh"
+printf '# Decisions\n' > "$m3_sandbox/.claude/docs/decisions.md"
+{
+  printf -- '---\nid: reviewer-reconcile-20260906T000002Z-badsha\nagent: reviewer-reconcile\nscope: review\ncreated: 2026-09-06T00:00:02Z\nverdict: PASS\ncommit: abc\nblockers: []\n'
+  printf -- '---\n\nM-3 fixture: commit: abc.\n'
+} > "$m3_sandbox/.squad/decisions/inbox/badsha.md"
+printf '{"stop_hook_active": false, "cwd": "%s"}' "$m3_sandbox" \
+  | CLAUDE_PROJECT_DIR="$m3_sandbox" bash "$m3_sandbox/.claude/hooks/scribe-decision-merger.sh" \
+    >/dev/null 2>"$m3_sandbox/.hook-stderr.log"
+m3_got="$(outcome_of "$m3_sandbox" "badsha.md")"
+if [ "$m3_got" = "QUARANTINED" ]; then
+  report "M-3: a 'commit: abc' drop is quarantined, not archived" 1
+else
+  report "M-3: a 'commit: abc' drop is quarantined, not archived" 0 "got $m3_got"
+fi
+m3_reason="$(reason_of "$m3_sandbox" "badsha.md")"
+case "$m3_reason" in
+  *"invalid commit:"*"not a full 40-hex sha"*)
+    report "M-3: quarantine reason names the format problem" 1
+    ;;
+  *)
+    report "M-3: quarantine reason names the format problem" 0 "reason was: ${m3_reason:-<none>}"
+    ;;
+esac
+rm -rf "$m3_sandbox"
+
+# ===========================================================================
 # 3. Agent-whitelist completeness -- every Beast Mode phase agent accepted,
 #    a bogus name still rejected.
 # ===========================================================================
@@ -1196,7 +1355,13 @@ import ast, json, re, sys
 path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as fh:
     text = fh.read()
-m = re.search(r"ALLOWED_AGENTS\s*=\s*(\{.*?\})", text, re.DOTALL)
+# ALLOWED_AGENTS is now CURRENT_AGENTS | LEGACY_AGENTS. The roster invariant
+# below compares against CURRENT_AGENTS, because LEGACY_AGENTS is by
+# definition the set with no charter file -- unioning it in would make the
+# invariant unfalsifiable.
+m = re.search(r"CURRENT_AGENTS\s*=\s*(\{.*?\})", text, re.DOTALL)
+if not m:
+    m = re.search(r"ALLOWED_AGENTS\s*=\s*(\{.*?\})", text, re.DOTALL)
 if not m:
     print("[]")
     sys.exit(0)
@@ -1268,9 +1433,9 @@ PY
 allowed_json="$(extract_allowed_agents "$CURRENT_HOOK")"
 roster_json="$(roster_of "$AGENTS_DIR")"
 if [ "$allowed_json" = "$roster_json" ]; then
-  report "invariant: ALLOWED_AGENTS == roster(.claude/agents/) union {lead}" 1
+  report "invariant: CURRENT_AGENTS == roster(.claude/agents/) union {lead}" 1
 else
-  report "invariant: ALLOWED_AGENTS == roster(.claude/agents/) union {lead}" 0 \
+  report "invariant: CURRENT_AGENTS == roster(.claude/agents/) union {lead}" 0 \
     "$(diff_roster "$allowed_json" "$roster_json")"
 fi
 
@@ -1570,49 +1735,64 @@ fi
 
 rm -rf "$legacy_sandbox" "$legacy_dir"
 
-# Two reviewer-scope drops with different `created` timestamps, filenames
+# Two reviewer-reconcile drops with different `created` timestamps, filenames
 # chosen so glob (alphabetical) processing order is the *reverse* of
 # chronological order. If the cache picked "whichever file the loop saw
 # last" instead of comparing `created`, this would report the wrong
-# verdict.
+# verdict. Git-backed (new_git_sandbox): since
+# arch-verdict-cache-and-gate-classification, the destination is
+# cwd-derived and every reviewer-reconcile/scope:review drop needs a full
+# 40-hex `commit:` matching the destination's real HEAD or nothing is
+# written at all (INV-3/INV-4) -- both drops here carry that same real sha,
+# so the ONLY variable under test is which one wins the created-timestamp
+# race, not whether either individually passes the cross-check.
 verdict_dir="$(mktemp -d)"
-cat > "$verdict_dir/a-processed-first.md" <<'DROP'
+verdict_sandbox="$(new_git_sandbox)"
+verdict_head="$(git -C "$verdict_sandbox" rev-parse HEAD)"
+
+cat > "$verdict_dir/a-processed-first.md" <<DROP
 ---
-id: reviewer-verdict-check-late
-agent: reviewer
+id: reviewer-reconcile-verdict-check-late
+agent: reviewer-reconcile
 scope: review
 verdict: NEEDS-CHANGES
 created: 2026-08-21T10:00:00Z
+commit: $verdict_head
 blockers:
   - file: src/Foo.cs
     reason: "later created timestamp, must win the verdict-cache race"
 ---
 
-Synthetic drop: later `created`, must win despite sorting first
+Synthetic drop: later \`created\`, must win despite sorting first
 alphabetically (glob order processes this file before the other one).
 DROP
 
-cat > "$verdict_dir/z-processed-last.md" <<'DROP'
+cat > "$verdict_dir/z-processed-last.md" <<DROP
 ---
-id: reviewer-verdict-check-early
-agent: reviewer
+id: reviewer-reconcile-verdict-check-early
+agent: reviewer-reconcile
 scope: review
 verdict: PASS
 created: 2026-08-21T05:00:00Z
+commit: $verdict_head
 blockers: []
 ---
 
-Synthetic drop: earlier `created`, must lose despite sorting last
+Synthetic drop: earlier \`created\`, must lose despite sorting last
 alphabetically (glob order processes this file after the other one).
 DROP
 
-verdict_sandbox="$(run_hook_sandbox "$CURRENT_HOOK" "$verdict_dir/a-processed-first.md" "$verdict_dir/z-processed-last.md")"
-verdict_cache_content="$(cat "$verdict_sandbox/.squad/.last-review-verdict" 2>/dev/null || true)"
+run_hook_sandbox_reuse "$CURRENT_HOOK" "$verdict_sandbox" \
+  "$verdict_dir/a-processed-first.md" "$verdict_dir/z-processed-last.md"
+# First line only: since WP-8 the cache is `<verdict>` then `commit: <sha>`,
+# because enforce-review-verdict.sh has to know which commit the PASS was for.
+# A bare verdict would approve every future change too.
+verdict_cache_content="$(head -n1 "$verdict_sandbox/.squad/.last-review-verdict" 2>/dev/null || true)"
 if [ "$verdict_cache_content" = "NEEDS-CHANGES" ]; then
-  report "verdict cache: latest-by-created reviewer verdict wins over file processing order" 1
+  report "verdict cache: latest-by-created reviewer-reconcile verdict wins over file processing order" 1
 else
-  report "verdict cache: latest-by-created reviewer verdict wins over file processing order" 0 \
-    "expected NEEDS-CHANGES (created 10:00 > 05:00), got '$verdict_cache_content'"
+  report "verdict cache: latest-by-created reviewer-reconcile verdict wins over file processing order" 0 \
+    "expected NEEDS-CHANGES (created 10:00 > 05:00), got '$verdict_cache_content' -- stderr: $(cat "$verdict_sandbox/.hook-stderr.log" 2>/dev/null | head -3)"
 fi
 rm -rf "$verdict_sandbox" "$verdict_dir"
 
@@ -2345,6 +2525,517 @@ fi
 rm -rf "$sl_empty_repo"
 
 # ===========================================================================
+# 7. Verdict-cache targeting -- architect ruling
+#    arch-verdict-cache-and-gate-classification (Question 1).
+#
+# Neither run_hook_sandbox() (no git repo at all) nor the corpus above (no
+# worktrees, no `commit:` field) exercises any of this, so it gets a real
+# git repo with a real linked worktree, matching the pattern
+# invariant-chain.sh already uses for the commit gate itself.
+#
+# INV-1 destination provenance (cwd-derived, nothing else), INV-2 subject
+# binding (commit: read fresh from git, never copied from the drop), INV-3
+# declaration cross-check (full 40-hex, fail-closed), INV-4 no fallback of
+# any kind, INV-5 single writer. `worktree_for_sha()` and `--replay` are
+# DELETED, not amended -- a verdict-minting CLI reachable from Bash is the
+# same call as forging one, per the ruling's own reasoning; there is
+# nothing here that tests them, because there is nothing left to test.
+# ===========================================================================
+wt_dir="$(mktemp -d)"
+WT_MAIN="$wt_dir/main"
+WT_LINKED="$wt_dir/wt"
+mkdir -p "$WT_MAIN/.claude/hooks" "$WT_MAIN/.claude/docs" "$WT_MAIN/.squad/decisions/inbox" "$WT_MAIN/.squad/log"
+cp "$CURRENT_HOOK" "$WT_MAIN/.claude/hooks/scribe-decision-merger.sh"
+chmod +x "$WT_MAIN/.claude/hooks/scribe-decision-merger.sh"
+printf '# Decisions\n' > "$WT_MAIN/.claude/docs/decisions.md"
+
+wt_ready=0
+if git -C "$WT_MAIN" init -q 2>/dev/null \
+   && git -C "$WT_MAIN" config user.email t@t && git -C "$WT_MAIN" config user.name t \
+   && git -C "$WT_MAIN" config commit.gpgsign false \
+   && printf 'x\n' > "$WT_MAIN/README.md" \
+   && git -C "$WT_MAIN" add -A 2>/dev/null \
+   && git -C "$WT_MAIN" commit -qm init 2>/dev/null \
+   && git -C "$WT_MAIN" branch -m main >/dev/null 2>&1 \
+   && git -C "$WT_MAIN" worktree add -q -b wtbranch "$WT_LINKED" >/dev/null 2>&1; then
+  wt_ready=1
+else
+  report "verdict-cache fixture: created" 0 "git init/worktree add failed"
+fi
+
+if [ "$wt_ready" = "1" ]; then
+  mkdir -p "$WT_LINKED/.squad"
+  WT_MAIN_HEAD="$(git -C "$WT_MAIN" rev-parse HEAD)"
+  # Give the linked worktree its OWN head, distinct from the main checkout's,
+  # so a test that asserts "the worktree's HEAD, not the main checkout's" is
+  # actually discriminating between the two rather than passing by
+  # coincidence (they'd otherwise share one commit).
+  printf 'y\n' > "$WT_LINKED/only-in-wt.txt"
+  git -C "$WT_LINKED" add only-in-wt.txt
+  git -C "$WT_LINKED" commit -qm "wt-only commit" -q
+  WT_LINKED_HEAD="$(git -C "$WT_LINKED" rev-parse HEAD)"
+
+  drop_inbox() {
+    # $1 = inbox dir, $2 = filename, $3 = id, $4 = verdict, $5 = commit-sha-or-empty
+    local dir="$1" name="$2" id="$3" verdict="$4" sha="$5"
+    {
+      printf -- '---\nid: %s\nagent: reviewer-reconcile\nverdict: %s\nscope: review\ncreated: %s\n' \
+        "$id" "$verdict" "2026-01-01T00:00:00Z"
+      [ -n "$sha" ] && printf 'commit: %s\n' "$sha"
+      if [ "$verdict" = "PASS" ]; then
+        printf 'blockers: []\n'
+      else
+        printf 'blockers:\n  - file: src/Foo.cs\n    reason: "test blocker"\n'
+      fi
+      printf -- '---\n\nTest drop.\n'
+    } > "$dir/$name"
+  }
+
+  fire_merger() {
+    # $1 = cwd for the payload (destination is derived from THIS)
+    local cwd="$1"
+    printf '{"stop_hook_active": false, "cwd": %s}' "$(json_str "$cwd")" \
+      | CLAUDE_PROJECT_DIR="$WT_MAIN" bash "$WT_MAIN/.claude/hooks/scribe-decision-merger.sh" \
+        >/dev/null 2>"$WT_MAIN/.hook-stderr.log"
+  }
+
+  # --- 7a. cwd inside the linked worktree, full 40-hex commit: naming the
+  # worktree's OWN head -- the cache lands at the worktree, never at
+  # $project_dir (main), because the destination is cwd-derived (INV-1).
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "a.md" \
+    "reviewer-reconcile-20260101T000001Z-wt-target" PASS "$WT_LINKED_HEAD"
+  fire_merger "$WT_LINKED"
+
+  if [ -f "$WT_LINKED/.squad/.last-review-verdict" ] \
+     && [ "$(head -n1 "$WT_LINKED/.squad/.last-review-verdict")" = "PASS" ] \
+     && grep -qF "commit: $WT_LINKED_HEAD" "$WT_LINKED/.squad/.last-review-verdict"; then
+    report "verdict-cache: cwd=worktree, full sha matching its own HEAD -> cached AT the worktree" 1
+  else
+    report "verdict-cache: cwd=worktree, full sha matching its own HEAD -> cached AT the worktree" 0 \
+      "expected PASS/commit:$WT_LINKED_HEAD at $WT_LINKED/.squad/.last-review-verdict -- got: $(cat "$WT_LINKED/.squad/.last-review-verdict" 2>/dev/null || echo '<missing>') -- stderr: $(cat "$WT_MAIN/.hook-stderr.log" 2>/dev/null | head -2)"
+  fi
+  if [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: the main checkout's cache is untouched (INV-1, no fallback there either)" 1
+  else
+    report "verdict-cache: the main checkout's cache is untouched (INV-1, no fallback there either)" 0 \
+      "expected no cache at $WT_MAIN/.squad/.last-review-verdict -- found: $(cat "$WT_MAIN/.squad/.last-review-verdict")"
+  fi
+
+  # --- 7b. Same-HEAD ambiguity, the case the mechanism this replaced was
+  # built for and missed: main and a FRESH second worktree share HEAD
+  # immediately after `git worktree add`, before any new commit. Under a
+  # sha-keyed lookup this was structurally ambiguous (worktree_for_sha()
+  # returned main, first in `git worktree list`'s output, every time).
+  # Under a cwd-derived destination there is no ambiguity to resolve: the
+  # destination IS wherever cwd points, full stop.
+  rm -f "$WT_MAIN/.squad/.last-review-verdict" "$WT_LINKED/.squad/.last-review-verdict"
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+  WT_LINKED2="$wt_dir/wt2"
+  git -C "$WT_MAIN" worktree add -q -b wt2branch "$WT_LINKED2" >/dev/null 2>&1
+  same_head_main="$(git -C "$WT_MAIN" rev-parse HEAD)"
+  same_head_wt2="$(git -C "$WT_LINKED2" rev-parse HEAD)"
+  if [ "$same_head_main" = "$same_head_wt2" ]; then
+    drop_inbox "$WT_MAIN/.squad/decisions/inbox" "same-head.md" \
+      "reviewer-reconcile-20260101T000002Z-same-head" PASS "$same_head_wt2"
+    fire_merger "$WT_LINKED2"
+    if [ -f "$WT_LINKED2/.squad/.last-review-verdict" ] && [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+      report "verdict-cache: same-HEAD ambiguity (main and wt2 share a commit) resolves to cwd's own tree, not main" 1
+    else
+      report "verdict-cache: same-HEAD ambiguity (main and wt2 share a commit) resolves to cwd's own tree, not main" 0 \
+        "wt2 has cache: $([ -f "$WT_LINKED2/.squad/.last-review-verdict" ] && echo yes || echo no); main has cache: $([ -f "$WT_MAIN/.squad/.last-review-verdict" ] && echo yes || echo no)"
+    fi
+  else
+    report "verdict-cache: same-HEAD ambiguity fixture (main and wt2 share a commit)" 0 \
+      "setup failed -- main=$same_head_main wt2=$same_head_wt2"
+  fi
+  git -C "$WT_MAIN" worktree remove --force "$WT_LINKED2" >/dev/null 2>&1 || true
+  rm -f "$WT_MAIN/.squad/.last-review-verdict" "$WT_LINKED/.squad/.last-review-verdict"
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+
+  # --- 7c. M-3 (09-review-verdict.md round 6): an abbreviated sha is now
+  # caught at validate()'s quarantine boundary -- format, not just
+  # presence, is enforced there since M-3 landed. Writes NOTHING, not even
+  # at the correct destination, same as before; the REASON now lives in
+  # the durable quarantine record, not only in the gitignored session log.
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "abbrev.md" \
+    "reviewer-reconcile-20260101T000003Z-abbrev" PASS "${WT_LINKED_HEAD:0:7}"
+  fire_merger "$WT_LINKED"
+  if [ ! -f "$WT_LINKED/.squad/.last-review-verdict" ] && [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: an abbreviated commit: is refused (nothing written, anywhere)" 1
+  else
+    report "verdict-cache: an abbreviated commit: is refused (nothing written, anywhere)" 0 \
+      "expected no cache written anywhere -- wt: $([ -f "$WT_LINKED/.squad/.last-review-verdict" ] && echo yes || echo no) main: $([ -f "$WT_MAIN/.squad/.last-review-verdict" ] && echo yes || echo no)"
+  fi
+  abbrev_reason_file="$(find "$WT_MAIN/.squad/decisions/quarantine" -type f -name "*-abbrev.md.reason" 2>/dev/null | head -n1)"
+  abbrev_reason="$([ -n "$abbrev_reason_file" ] && cat "$abbrev_reason_file" || true)"
+  case "$abbrev_reason" in
+    *"invalid commit:"*"not a full 40-hex sha"*)
+      report "verdict-cache: abbreviated-sha drop is quarantined by validate() naming the format (M-3)" 1
+      ;;
+    *)
+      report "verdict-cache: abbreviated-sha drop is quarantined by validate() naming the format (M-3)" 0 \
+        "reason was: ${abbrev_reason:-<none>}"
+      ;;
+  esac
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+  rm -rf "$WT_MAIN/.squad/decisions/quarantine"
+
+  # --- 7d. An absent commit: field on a reviewer-reconcile/scope:review
+  # drop is caught by validate() (the Q-E conditional-required check), NOT
+  # by this section's own INV-3 bash-side refusal -- 09-review-verdict.md
+  # round 5, finding R3: the previous title/assertion here ("INV-3: an
+  # absent commit: field is refused the same way") only checked that no
+  # cache was written, which is also true of a QUARANTINED drop that never
+  # reaches the bash-side cache-write block at all. Retitled to assert what
+  # actually happens: quarantine, for the validate()-level reason, and
+  # (unchanged) no cache written anywhere.
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "absent.md" \
+    "reviewer-reconcile-20260101T000004Z-absent" PASS ""
+  fire_merger "$WT_LINKED"
+  if [ ! -f "$WT_LINKED/.squad/.last-review-verdict" ] && [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: an absent commit: field writes no cache anywhere" 1
+  else
+    report "verdict-cache: an absent commit: field writes no cache anywhere" 0 "unexpected write"
+  fi
+  absent_reason_file="$(find "$WT_MAIN/.squad/decisions/quarantine" -type f -name "*-absent.md.reason" 2>/dev/null | head -n1)"
+  absent_reason="$([ -n "$absent_reason_file" ] && cat "$absent_reason_file" || true)"
+  case "$absent_reason" in
+    *"missing required fields: commit (required when agent: reviewer-reconcile and scope: review)"*)
+      report "verdict-cache: an absent commit: field is quarantined by validate() for that reason (R3)" 1
+      ;;
+    *)
+      report "verdict-cache: an absent commit: field is quarantined by validate() for that reason (R3)" 0 \
+        "reason was: ${absent_reason:-<none>} -- if this is empty, the drop archived instead of quarantining"
+      ;;
+  esac
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+  rm -rf "$WT_MAIN/.squad/decisions/quarantine"
+
+  # --- 7d2 (R7, 09-review-verdict.md round 5). Every rev-parse in the
+  # cache-write block now runs under `timeout 5`, a NEW dependency this
+  # revision added (base revision aa743c4 calls git directly, no timeout
+  # anywhere). Absent `timeout` on PATH, every one of those calls fails
+  # exactly like a real rev-parse failure -- empty output -- so the
+  # refusal must name timeout/PATH, not send a maintainer to debug git.
+  # Built as a minimal PATH containing symlinks to every OTHER external
+  # command this hook and validate() need, so failure is attributable to
+  # the one binary deliberately left out.
+  NO_TIMEOUT_BIN="$(mktemp -d)"
+  for b in bash basename cat date find git grep head mkdir mktemp mv python3 rm sed tr; do
+    bp="$(command -v "$b" 2>/dev/null)" || continue
+    ln -sf "$bp" "$NO_TIMEOUT_BIN/$b"
+  done
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "notimeout.md" \
+    "reviewer-reconcile-20260101T0000045-notimeout" PASS "$WT_LINKED_HEAD"
+  printf '{"stop_hook_active": false, "cwd": %s}' "$(json_str "$WT_LINKED")" \
+    | CLAUDE_PROJECT_DIR="$WT_MAIN" PATH="$NO_TIMEOUT_BIN" bash "$WT_MAIN/.claude/hooks/scribe-decision-merger.sh" \
+      >/dev/null 2>"$WT_MAIN/.hook-stderr.log"
+  r7_stderr="$(cat "$WT_MAIN/.hook-stderr.log" 2>/dev/null)"
+  case "$r7_stderr" in
+    *timeout*PATH*|*PATH*timeout*)
+      report "verdict-cache: timeout absent from PATH names timeout/PATH in the refusal (R7)" 1
+      ;;
+    *)
+      report "verdict-cache: timeout absent from PATH names timeout/PATH in the refusal (R7)" 0 \
+        "stderr: $r7_stderr"
+      ;;
+  esac
+  if [ ! -f "$WT_LINKED/.squad/.last-review-verdict" ] && [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: timeout absent from PATH still writes no cache (fail-closed)" 1
+  else
+    report "verdict-cache: timeout absent from PATH still writes no cache (fail-closed)" 0 "unexpected write"
+  fi
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+  rm -rf "$WT_MAIN/.squad/decisions/quarantine" "$NO_TIMEOUT_BIN"
+
+  # --- 7e. INV-3: a well-formed 40-hex sha that does not match the
+  # destination's actual HEAD is refused -- the process-rule cross-check
+  # doing exactly the job the ruling assigns it: catching a review that
+  # examined a different tree than the one this session is sitting in.
+  #
+  # Architect ruling, Q-E's "attached items" (cited in this file's history
+  # as `10-architect-ruling-classifier.md`; that ruling originates in an
+  # upstream-template design pass that has no corresponding artifact in
+  # this repository -- `git ls-tree -r --name-only HEAD -- .squad/design`
+  # returns only `undo-redo/00-scope-undo-redo.md`. PR #358 review round 2,
+  # ⚠️-C. If the source pass is ever imported here, retarget this citation
+  # at the real path): this fixture was previously
+  # `0000000000000000000000000000000000dead`, which is 38 characters, not
+  # 40 -- it exercised the LENGTH-check branch (7c/7d's territory), never
+  # the HEAD-EQUALITY branch, which is the one the entire `commit:` field
+  # exists for. `grep "does not match the destination"` across the suite
+  # returned nothing. Fixed to a genuine 40-hex value (`git rev-parse
+  # --verify` on this literal string would say "not a valid object name",
+  # which is fine -- INV-3 never resolves the drop's value through git, it
+  # only string-compares it against a HEAD IT read itself, so a well-formed
+  # but non-existent sha exercises exactly the comparison this test needs).
+  IC_WRONG_SHA="$(printf '0%.0s' $(seq 1 36))dead"
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "mismatch.md" \
+    "reviewer-reconcile-20260101T000005Z-mismatch" PASS "$IC_WRONG_SHA"
+  fire_merger "$WT_LINKED"
+  if [ ! -f "$WT_LINKED/.squad/.last-review-verdict" ] && [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: a well-formed but mismatched sha is refused (nothing written)" 1
+  else
+    report "verdict-cache: a well-formed but mismatched sha is refused (nothing written)" 0 "unexpected write"
+  fi
+  if grep -q "The two facts that disagree" "$WT_MAIN/.hook-stderr.log" 2>/dev/null; then
+    report "verdict-cache: the mismatch reaches INV-3's HEAD-equality branch specifically, not the length check" 1
+  else
+    report "verdict-cache: the mismatch reaches INV-3's HEAD-equality branch specifically, not the length check" 0 \
+      "stderr: $(cat "$WT_MAIN/.hook-stderr.log" 2>/dev/null)"
+  fi
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+
+  # --- 7f. cwd outside any checkout of this project entirely (a scratch
+  # repo, exactly the shape this suite's own fixtures use elsewhere) is
+  # refused via the ownership check, even with a well-formed, genuinely
+  # matching sha.
+  WT_OTHER="$wt_dir/unrelated-repo"
+  mkdir -p "$WT_OTHER"
+  git -C "$WT_OTHER" init -q 2>/dev/null
+  git -C "$WT_OTHER" config user.email t@t
+  git -C "$WT_OTHER" config user.name t
+  git -C "$WT_OTHER" config commit.gpgsign false
+  printf 'x\n' > "$WT_OTHER/f.txt"
+  git -C "$WT_OTHER" add -A 2>/dev/null
+  git -C "$WT_OTHER" commit -qm init 2>/dev/null
+  WT_OTHER_HEAD="$(git -C "$WT_OTHER" rev-parse HEAD)"
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "foreign.md" \
+    "reviewer-reconcile-20260101T000006Z-foreign" PASS "$WT_OTHER_HEAD"
+  fire_merger "$WT_OTHER"
+  if [ ! -f "$WT_OTHER/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: cwd outside this project entirely is refused (ownership check)" 1
+  else
+    report "verdict-cache: cwd outside this project entirely is refused (ownership check)" 0 "unexpected write at $WT_OTHER"
+  fi
+  if grep -q "not this project" "$WT_MAIN/.hook-stderr.log" 2>/dev/null; then
+    report "verdict-cache: foreign-cwd refusal names the ownership mismatch on stderr" 1
+  else
+    report "verdict-cache: foreign-cwd refusal names the ownership mismatch on stderr" 0 \
+      "stderr: $(cat "$WT_MAIN/.hook-stderr.log" 2>/dev/null)"
+  fi
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+
+  # --- 7g. A drop-supplied PATH must be powerless as a `commit:` value: it
+  # is checked against a 40-hex regex before anything else, so a path never
+  # even reaches the point of being compared to a real HEAD, let alone
+  # chosen as a destination. This is the confused-deputy shape INV-1 exists
+  # to rule out categorically, not just patch around.
+  fake_target="$wt_dir/not-a-worktree-just-a-path"
+  mkdir -p "$fake_target/.squad"
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "fakepath.md" \
+    "reviewer-reconcile-20260101T000007Z-fakepath" PASS "$fake_target"
+  fire_merger "$WT_MAIN"
+  if [ ! -f "$fake_target/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: a commit: field that is a filesystem path is refused, not followed" 1
+  else
+    report "verdict-cache: a commit: field that is a filesystem path is refused, not followed" 0 \
+      "a drop-supplied path was written to -- this is the injection INV-1 rules out"
+  fi
+  if [ -f "$WT_MAIN/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: no fallback -- the path-shaped commit: field also writes nothing at the (valid) destination" 0 \
+      "expected no cache at $WT_MAIN/.squad/.last-review-verdict either (INV-4, no fallback)"
+  else
+    report "verdict-cache: no fallback -- the path-shaped commit: field also writes nothing at the (valid) destination" 1
+  fi
+  rm -rf "$fake_target"
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+
+  # --- 7h. TODO(#8)'s reach is capped by INV-1, not widened by it. A
+  # nested-`meta:` forged drop (agent/verdict/scope/commit all nested under
+  # an unrelated top-level key) still validates as a bogus PASS -- the
+  # parser bug documented in scribe-decision-merger.sh stays open, this
+  # changeset does not touch it -- but it can ONLY ever write to wherever
+  # cwd's own destination resolves, never to an arbitrary OTHER tree the
+  # forged `commit:` might name. Firing it from $WT_MAIN while the forged
+  # value names $WT_LINKED's head must write nothing anywhere, because
+  # $WT_MAIN's own real HEAD does not match it -- the identical cross-check
+  # an honest drop would fail the same way.
+  forged_redirect="$WT_MAIN/.squad/decisions/inbox/forged-redirect.md"
+  {
+    printf -- '---\nid: csharp-dev-20260101T000008Z-forged-redirect\nagent: csharp-dev\nverdict: INFO\n'
+    printf 'scope: doc\ncreated: 2026-01-01T00:00:00Z\nblockers: []\n'
+    printf 'meta:\n  agent: reviewer-reconcile\n  verdict: PASS\n  scope: review\n  commit: %s\n' "$WT_LINKED_HEAD"
+    printf -- '---\n\nForged, naming a DIFFERENT tree'"'"'s head while fired from main.\n'
+  } > "$forged_redirect"
+  fire_merger "$WT_MAIN"
+  if [ ! -f "$WT_MAIN/.squad/.last-review-verdict" ] && [ ! -f "$WT_LINKED/.squad/.last-review-verdict" ]; then
+    report "verdict-cache: INV-1 caps TODO#8's reach -- forged drop cannot redirect the write to a different tree" 1
+  else
+    report "verdict-cache: INV-1 caps TODO#8's reach -- forged drop cannot redirect the write to a different tree" 0 \
+      "expected no write anywhere -- main: $([ -f "$WT_MAIN/.squad/.last-review-verdict" ] && echo yes || echo no) wt: $([ -f "$WT_LINKED/.squad/.last-review-verdict" ] && echo yes || echo no)"
+  fi
+  find "$WT_MAIN/.squad/decisions/inbox" -type f -delete
+
+  # --- 7i. Legitimate PASS at the main checkout itself still works end to
+  # end -- the common case is not collateral damage from all the refusal
+  # paths above.
+  main_head_now="$(git -C "$WT_MAIN" rev-parse HEAD)"
+  drop_inbox "$WT_MAIN/.squad/decisions/inbox" "legit.md" \
+    "reviewer-reconcile-20260101T000009Z-legit" PASS "$main_head_now"
+  fire_merger "$WT_MAIN"
+  if [ -f "$WT_MAIN/.squad/.last-review-verdict" ] \
+     && [ "$(head -n1 "$WT_MAIN/.squad/.last-review-verdict")" = "PASS" ] \
+     && grep -qF "commit: $main_head_now" "$WT_MAIN/.squad/.last-review-verdict"; then
+    report "verdict-cache: a legitimate drop at the main checkout still writes correctly" 1
+  else
+    report "verdict-cache: a legitimate drop at the main checkout still writes correctly" 0 \
+      "got: $(cat "$WT_MAIN/.squad/.last-review-verdict" 2>/dev/null || echo '<missing>')"
+  fi
+
+  # --- 7j (R1, 09-review-verdict.md round 5). CLAUDE_PROJECT_DIR unset
+  # must refuse and write NOTHING -- not fall back to PAYLOAD_CWD, which
+  # used to make the ownership check compare a repository to itself and
+  # always pass. Built against a brand-new, UNRELATED scratch repository --
+  # the exact shape reconcile executed: a PASS written into a tree the old
+  # fallback chain treated as "this project" purely because nothing else
+  # was configured.
+  r1_dir="$(mktemp -d)"
+  mkdir -p "$r1_dir/.claude/hooks" "$r1_dir/.claude/docs" "$r1_dir/.squad/decisions/inbox"
+  cp "$CURRENT_HOOK" "$r1_dir/.claude/hooks/scribe-decision-merger.sh"
+  chmod +x "$r1_dir/.claude/hooks/scribe-decision-merger.sh"
+  printf '# Decisions\n' > "$r1_dir/.claude/docs/decisions.md"
+  if git -C "$r1_dir" init -q 2>/dev/null \
+     && git -C "$r1_dir" config user.email t@t && git -C "$r1_dir" config user.name t \
+     && git -C "$r1_dir" config commit.gpgsign false \
+     && printf 'x\n' > "$r1_dir/README.md" \
+     && git -C "$r1_dir" add -A 2>/dev/null \
+     && git -C "$r1_dir" commit -qm init 2>/dev/null; then
+    r1_head="$(git -C "$r1_dir" rev-parse HEAD)"
+    {
+      printf -- '---\nid: reviewer-reconcile-20260101T000010Z-r1\nagent: reviewer-reconcile\nverdict: PASS\nscope: review\ncreated: 2026-01-01T00:00:10Z\n'
+      printf 'commit: %s\n' "$r1_head"
+      printf 'blockers: []\n'
+      printf -- '---\n\nR1 fixture.\n'
+    } > "$r1_dir/.squad/decisions/inbox/r1.md"
+    r1_out="$(printf '{"stop_hook_active": false, "cwd": %s}' "$(json_str "$r1_dir")" \
+      | env -u CLAUDE_PROJECT_DIR bash "$r1_dir/.claude/hooks/scribe-decision-merger.sh" 2>&1 >/dev/null)"
+    if [ ! -f "$r1_dir/.squad/.last-review-verdict" ]; then
+      report "verdict-cache: CLAUDE_PROJECT_DIR unset writes no cache into an unrelated scratch repo (R1/INV-4)" 1
+    else
+      report "verdict-cache: CLAUDE_PROJECT_DIR unset writes no cache into an unrelated scratch repo (R1/INV-4)" 0 \
+        "cache was written: $(cat "$r1_dir/.squad/.last-review-verdict" 2>/dev/null)"
+    fi
+    case "$r1_out" in
+      *"CLAUDE_PROJECT_DIR is unset"*)
+        report "verdict-cache: CLAUDE_PROJECT_DIR unset names the reason on stderr" 1
+        ;;
+      *)
+        report "verdict-cache: CLAUDE_PROJECT_DIR unset names the reason on stderr" 0 "stderr: $r1_out"
+        ;;
+    esac
+  else
+    report "R1 fixture: unrelated scratch repo created" 0 "git init/commit failed"
+  fi
+  rm -rf "$r1_dir"
+
+  git -C "$WT_MAIN" worktree remove --force "$WT_LINKED" >/dev/null 2>&1 || true
+fi
+rm -rf "$wt_dir"
+
+# ===========================================================================
+# validate()'s own stderr must never become part of $result, the tagged
+# string the merger loop parses with `IFS='|' read`. Falsifier: a python3
+# warning printed to validate()'s stderr, merged into stdout via `2>&1`,
+# becomes the FIRST LINE `read` consumes -- `_tag` reads as the warning
+# text rather than "VALID", and agent/verdict/scope/id/commit all read as
+# empty, so the entry appended to decisions.md silently loses its id and
+# verdict even though the drop file itself still gets moved to the archive
+# directory (a stray warning does not change validate()'s exit code, so
+# outcome_of() alone cannot see this corruption -- only the appended
+# content can). Two hook copies, differing in exactly one line, both with
+# the SAME injected warning: the current hook (stderr discarded) must
+# still produce a clean tag; reverting ONLY the stderr-separation line
+# must reproduce the corruption.
+# ===========================================================================
+rh_dir="$(mktemp -d)"
+rh_fixed_hook="$rh_dir/fixed.sh"
+rh_reverted_hook="$rh_dir/reverted.sh"
+cp "$CURRENT_HOOK" "$rh_fixed_hook"
+# Inject a stderr warning into validate()'s python heredoc, right after its
+# first import line -- present in BOTH variants below.
+sed -i.bak 's/^import sys, re, unicodedata$/import sys, re, unicodedata\nprint("RuntimeWarning: mock injected warning (regression test)", file=sys.stderr)/' \
+  "$rh_fixed_hook"
+rm -f "$rh_fixed_hook.bak"
+cp "$rh_fixed_hook" "$rh_reverted_hook"
+# Revert ONLY the stderr-separation fix, reproducing the pre-fix channel.
+sed -i.bak 's/validate "\$f" 2>\/dev\/null)"/validate "$f" 2>\&1)"/' "$rh_reverted_hook"
+rm -f "$rh_reverted_hook.bak"
+
+if ! diff -q <(grep -v 'validate "\$f" 2>' "$rh_fixed_hook") <(grep -v 'validate "\$f" 2>' "$rh_reverted_hook") >/dev/null 2>&1; then
+  report "stderr-separation fixture: the two hook copies differ only on the validate() stderr-redirection line" 0 \
+    "the mutation touched more than the intended line"
+else
+  report "stderr-separation fixture: the two hook copies differ only on the validate() stderr-redirection line" 1
+fi
+
+rh_fixed_sandbox="$(run_hook_sandbox "$rh_fixed_hook" "$FIXTURES/02-schema-pass.md")"
+rh_reverted_sandbox="$(run_hook_sandbox "$rh_reverted_hook" "$FIXTURES/02-schema-pass.md")"
+
+if grep -qF 'reviewer-20260821T000000Z-x — reviewer-20260821T000000Z-x [reviewer' \
+     "$rh_fixed_sandbox/.claude/docs/decisions.md" 2>/dev/null \
+   || grep -qF 'reviewer-20260821T000000Z-x [reviewer' "$rh_fixed_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+  report "stderr separation: an injected python3 warning does not corrupt the archived entry (fixed)" 1
+else
+  report "stderr separation: an injected python3 warning does not corrupt the archived entry (fixed)" 0 \
+    "expected the clean id/agent tag in decisions.md; got: $(cat "$rh_fixed_sandbox/.claude/docs/decisions.md" 2>/dev/null)"
+fi
+
+if grep -qF 'reviewer-20260821T000000Z-x [reviewer' "$rh_reverted_sandbox/.claude/docs/decisions.md" 2>/dev/null; then
+  report "stderr separation: reverting the stderr separation reproduces the corruption (mutation control)" 0 \
+    "expected the id/agent tag to be MISSING (stderr merged into \$result via 2>&1), but it is present -- the mutation did not reproduce the defect"
+else
+  report "stderr separation: reverting the stderr separation reproduces the corruption (mutation control)" 1
+fi
+
+rm -rf "$rh_dir"
+
+# ===========================================================================
+# WP-2: the four PreToolUse blindness hooks and the sanctioned git-history
+# channel. Sourced rather than invoked so its results land in the same
+# pass/fail tally as everything above. blindness.sh also runs standalone.
+# ===========================================================================
+# shellcheck source=./blindness.sh
+. "$SCRIPT_DIR/blindness.sh"
+
+# ===========================================================================
+# WP-3/4/6: the gate hooks -- scope-warden (reports), lexicon-check (blocks,
+# overridable) and enforce-phase-order (blocks). Sourced for the same reason
+# as blindness.sh: one tally.
+# ===========================================================================
+# shellcheck source=./phase-gates.sh
+. "$SCRIPT_DIR/phase-gates.sh"
+
+# ===========================================================================
+# WP-7/8/9/10/11: the invariant chain (artifact validator), the commit gate,
+# pass-cost logging, and the structural checks for the stage-3 roster and
+# memory declarations. Sourced for the same reason as the two above.
+# ===========================================================================
+# shellcheck source=./invariant-chain.sh
+. "$SCRIPT_DIR/invariant-chain.sh"
+
+# ===========================================================================
+# The tally and the record must agree.
+#
+# `report` increments a counter, and an assertion that runs in a subshell
+# increments a COPY of it: a probe produced a real FAIL line at
+# `382 passed, 0 failed` with exit 0. A file append survives the subshell where
+# a variable assignment does not, so every failure is recorded to a file and
+# the exit status is taken from the file rather than from the counter.
+#
+# A tally that can disagree with the record it summarises is a tally, not a
+# check.
 echo
 echo "Summary: $pass passed, $fail failed"
-[ "$fail" -eq 0 ]
+
+logged_failures="$(wc -l < "$IC_FAIL_LOG" 2>/dev/null | tr -d ' ')"
+: "${logged_failures:=0}"
+if [ "$logged_failures" != "$fail" ]; then
+  printf 'INTEGRITY: %s failure(s) recorded, counter says %s.\n' \
+    "$logged_failures" "$fail" >&2
+  printf 'An assertion reported a failure the tally never saw -- most likely it ran in a subshell, where report() increments a copy of the counters. Recorded:\n' >&2
+  sed 's/^/  /' "$IC_FAIL_LOG" >&2
+  exit 1
+fi
+
+[ "$logged_failures" -eq 0 ]

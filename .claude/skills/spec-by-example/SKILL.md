@@ -31,13 +31,48 @@ This is more disciplined than canonical TDD. In TDD the developer writes their o
 | Pure infrastructure (CI, hooks, build config) | **No** | Specs cover the system, not the toolchain |
 | Documentation-only changes | **No** | |
 
-If you're unsure whether a change qualifies as "behaviour change," err on the side of writing a spec. The reviewer flags missing specs as 🔴 Must Fix.
+If you're unsure whether a change qualifies as "behaviour change," err on the side of writing a spec. `reviewer-reconcile` flags missing specs as 🔴 Must Fix.
+
+## The two layers, and why they are different forms
+
+A spec has **two layers**, and they are written in different forms on purpose.
+
+| Layer | Form | Why this form |
+|---|---|---|
+| **Acceptance** | **Example-based** — one happy path plus a small set of variants | Its job is **recognition**. The user reads it and agrees or disagrees. A property is harder to recognise than a concrete case, and a spec the user cannot recognise is not serving as a specification. |
+| **Invariants** | **Property-based** — exactly one property per `INV-n` declared in `00-scope.md` | An invariant is a claim over the **whole input space**. An example under-tests it by construction. |
+
+### The invariant chain
+
+```
+00-scope.md      declares INV-1, INV-2, …   (architect)
+04-realist-plan  plans a test approach for each
+05-critic.md     BLOCKS an invariant with no corresponding property
+06-spec.md       one property per INV-n, named so the id is visible
+validate-phase-artifact.sh   refuses 06-spec.md when an INV-n is uncovered
+```
+
+**Why an example is not enough for an invariant.** Round-trip symmetry, reachability, monotonicity, idempotency — these are claims quantified over every input. Testing `roundtrip(x) == x` for three chosen values of `x` proves almost nothing about the claim; it proves something about those three values. A design that states an invariant and then tests it with examples has kept the sentence and thrown away the claim it made.
+
+**And the chain runs backwards too.** *An invariant nobody can write a property for is probably not an invariant.* When `spec-author` cannot express an `INV-n` as a property, the correct move is to say so and send it back to the architect — which makes the spec phase a late check on the scope phase. Writing a weak property to satisfy the validator breaks the chain silently, and nothing downstream catches it.
+
+### Naming property tests
+
+Put the id in the name so the coverage is greppable and the validator can match it:
+
+```csharp
+[Test]
+[Property("Invariant", "INV-2")]
+public async Task INV_2_a_published_article_never_returns_to_draft(...)
+```
+
+The artifact also carries an explicit `INV-n → property` table. Two mechanisms, because a rename that breaks the greppable name should not silently drop coverage.
 
 ## What a spec is *not*
 
 - **Not a unit test.** Unit tests cover internals; specs cover observable behaviour. A spec that asserts on private fields or internal state has been written at the wrong level.
 - **Not a regression test.** Regression tests come from bugs; specs come from features. They live in different test projects (see Layout below).
-- **Not the only test.** Specs are necessary, not sufficient. Properties tests, fuzz tests, performance tests, security regression tests all exist alongside specs and have their own roles.
+- **Not the only test.** Specs are necessary, not sufficient. Fuzz tests, performance tests and security regression tests all exist alongside specs and have their own roles. Note that the **invariant layer above is part of the spec**, not one of these neighbours — the properties that carry `INV-n` are drafted, approved and locked with the acceptance layer.
 - **Not negotiable mid-implementation.** This is the bit that takes discipline. When implementation reveals the spec is wrong, the natural urge is to "just tweak the test a tiny bit." Don't. Stop, surface, re-approve.
 
 ## Form: TUnit only
@@ -269,7 +304,7 @@ The reviewer agent enforces this with a git-history check: spec files modified i
 ## Cross-references in this framework
 
 - `csharp-dev` agent's Stop conditions (`.claude/agents/csharp-dev.md`): refusing to implement features without an approved spec.
-- `reviewer` agent's checklist (`.claude/agents/reviewer.md`): verifying spec presence and integrity at merge time.
+- `reviewer-reconcile` agent's checklist (`.claude/agents/reviewer-reconcile.md`): verifying spec presence and integrity at merge time.
 - `spec-author` agent (`.claude/agents/spec-author.md`): drafts the spec and owns the approval workflow.
 - `architect` agent (`.claude/agents/architect.md`): records the approval in the design-pass decision drop at close-out.
 - `code-review` skill (`.claude/skills/code-review/SKILL.md`): how reviewer evaluates spec quality during a review pass.

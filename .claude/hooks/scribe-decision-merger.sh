@@ -3,7 +3,8 @@
 # SubagentStop hook.
 # Validates and merges decision drops from .squad/decisions/inbox/ into
 # .claude/docs/decisions.md, quarantining malformed entries and updating
-# the .squad/.last-review-verdict cache used by the statusline.
+# the .squad/.last-review-verdict cache used by the statusline and by
+# enforce-review-verdict.sh (the commit gate).
 #
 # Schema reference: .claude/docs/decision-schema.md
 #
@@ -16,8 +17,120 @@
 #   * Legacy drops with no front-matter are tolerated indefinitely, not for
 #     a single cycle: appended under a <!-- legacy --> marker and archived
 #     normally, with no automated flush of that marker's contents.
-#   * If the most recent successfully-merged drop is from `agent: reviewer`,
-#     its verdict is written to .squad/.last-review-verdict.
+#   * If the most recent successfully-merged drop is from
+#     `agent: reviewer-reconcile` with `scope: review`, its verdict is
+#     written to .squad/.last-review-verdict.
+#
+# ---------------------------------------------------------------------------
+# VERDICT-CACHE TARGETING -- architect ruling
+# arch-verdict-cache-and-gate-classification (Question 1), replacing the
+# `commit:`-selects-the-destination design both review rounds proved
+# structurally unsound (a decision drop is written by a subagent; letting
+# any of its fields choose which path the commit-gate token lands at is a
+# confused-deputy shape no bug-fix to that design could close).
+#
+#   INV-1 — destination provenance. No field of a decision drop may
+#           influence the filesystem path .squad/.last-review-verdict is
+#           written to. The destination is
+#           `git -C "$PAYLOAD_CWD" rev-parse --show-toplevel`, and nothing
+#           else. `enforce-review-verdict.sh` and
+#           `enforce-reviewer-readonly.sh` already treat `cwd` as
+#           authoritative for path resolution, for the same reason stated in
+#           both their headers; this hook parsing `cwd` and then discarding
+#           it behind `CLAUDE_PROJECT_DIR` was the inconsistency, not the
+#           destination that needed a selector field.
+#   INV-2 — subject binding. The `commit:` line WRITTEN INTO THE CACHE is
+#           read fresh from `git -C <destination> rev-parse HEAD` at write
+#           time. Never copied from the drop, even when the drop's value is
+#           about to be checked for equality against it.
+#   INV-3 — declaration cross-check, fail-closed. A `reviewer-reconcile`
+#           drop with `scope: review` must carry a full 40-hex `commit:`.
+#           Absent, abbreviated, malformed, or unequal to the destination's
+#           HEAD => the merger writes nothing and reports. This field is a
+#           cross-check on the process rule ("the review happened in the
+#           tree this session is sitting in"), not a selector and not a
+#           security control on its own -- it exists to catch the honest
+#           case where the review examined tree X from a session sitting in
+#           tree Y, which is exactly the case that used to mint a PASS for a
+#           HEAD nobody reviewed.
+#   INV-4 — no fallback. There is no $project_dir fallback of any kind.
+#           Every failure path (unresolvable destination, ownership
+#           mismatch, missing/bad/mismatched commit:) writes NOTHING,
+#           anywhere.
+#   INV-5 — single writer. .squad/.last-review-verdict has exactly one
+#           automated writer: this hook. `reviewer-reconcile` no longer
+#           writes it directly (removed from `enforce-reviewer-readonly.sh`'s
+#           ALLOW list in the same changeset) -- two writers of the same
+#           security-relevant file is what produced "it will silently
+#           overwrite whatever sha I wrote" in the first place, and the
+#           direct write bought nothing anyway: it was cwd-relative and hit
+#           the identical constraint.
+#
+# WHAT "SINGLE WRITER" DOES AND DOES NOT CLAIM. INV-1..5 make this the only TOOL-MEDIATED path to
+# the cache and make that path fail-closed on a HEAD cross-check. They do
+# NOT authenticate who is asking: this hook trusts the inbox drop's
+# self-asserted `agent:` field. A drop declaring `agent: reviewer-reconcile`,
+# `scope: review`, `verdict: PASS`, and `commit:` equal to the current HEAD
+# (trivially obtained by running `git rev-parse HEAD`) is indistinguishable,
+# to this hook, from a genuine reviewer-reconcile verdict, and nothing in
+# this repository governs who may write `.squad/decisions/inbox/` --
+# `enforce-reviewer-readonly.sh` confines three agents' own outputs; every
+# other agent's `Write` to the inbox passes through untouched. So: "no
+# agent can write this path, ever" is true only of the FILE itself and only
+# via a tool call; it is not true of the VERDICT the file records, which an
+# unauthenticated inbox drop can still forge end to end. The honest claim is
+# narrower than earlier prose stated it: this hook validates a drop's
+# SCHEMA (required fields, enum membership, the commit: cross-check above)
+# and binds the sha it writes to a real `git rev-parse HEAD`, but it does
+# not and cannot verify that the agent named in a drop is the agent that
+# actually produced it. Closing that gap means authenticating the drop's
+# `agent:` field, or gating who may write the inbox, and both are a
+# write-side sibling of TM-012 (the read-side-mirrored write-side residual on
+# this same file) -- tracked as TM-013, docs/security/threat-model.md, Trust
+# Boundary 5 (ledger pointer: .claude/enforcement/refutations.md, residual
+# R-15).
+#
+# `worktree_for_sha()` and `--replay` (a prior revision of this hook) are
+# DELETED, not fixed. A CLI that mints a verdict-cache entry from a file on
+# disk, reachable by any agent holding Bash, is the same call as forging one
+# -- "re-derive an old PASS mechanically" and "mint a PASS" are the same
+# operation from the gate's point of view. The one archived PASS that
+# --replay existed to restore is re-issued (reviewer-reconcile re-runs
+# against the changeset, or a human places the two lines by hand), not
+# replayed.
+#
+# ---------------------------------------------------------------------------
+# MEASURED, checked before relying on it rather than assumed: a
+# non-`isolation:`-declaring agent spawned from a worktree session runs
+# with `cwd` equal to
+# that worktree, not to the main checkout. CONFIRMED BY EXECUTION:
+# `grep "^isolation:" .claude/agents/*.md` names exactly three files
+# (csharp-dev, devops, js-dev) -- `reviewer-reconcile` is not among them --
+# and a `reviewer-reconcile` session run from a worktree measured its own
+# `cwd` as `.../.claude/worktrees/<id>`, with `git -C "$cwd" rev-parse
+# --git-dir`/`--git-common-dir` resolving it as a linked worktree of the
+# main checkout. `isolation:` governs which agent the Lead hands its OWN
+# worktree to; it says nothing about which directory a subagent inherits
+# when its parent session is already inside one, and a non-declaring agent
+# inherits that directory, not the main checkout.
+#
+# The consequence, stated rather than assumed away: this hook resolves
+# `$project_dir` from `$PAYLOAD_CWD` (INV-1), so a drop authored under
+# these conditions lands in `<worktree>/.squad/decisions/inbox/`, and this
+# merger -- a single `SubagentStop` hook rooted at `$CLAUDE_PROJECT_DIR` --
+# only ever reads `$CLAUDE_PROJECT_DIR/.squad/decisions/inbox`. The drop is
+# stranded, not merged, until a human moves it by hand -- a gap between the
+# register (project-global, one inbox) and the cache (per-tree, by design
+# per Q-E) that this hook cannot close by itself.
+#
+# The cache's own safety does not depend on any of the above: if `cwd` is a
+# tree the review did not actually cover, the drop's `commit:` will not
+# match `git -C "$PAYLOAD_CWD" rev-parse HEAD`, INV-3 refuses the write, and
+# a human places the file by hand. Automatic when the drop reaches this
+# hook and matches; loud and safe when it reaches this hook and does not
+# match; silently STRANDED -- not merged, not refused, simply absent from
+# the register -- when it never reaches the inbox this hook reads at all.
+# That last outcome is the one the previous wording here did not name.
 #
 # Exit codes:
 #   0 — always (this hook never blocks).
@@ -51,59 +164,50 @@
 
 set -uo pipefail
 
-payload="$(cat 2>/dev/null || true)"
-
-read -r STOP_ACTIVE PAYLOAD_CWD <<<"$(
-  printf '%s' "$payload" | python3 -c '
-import json,sys
-try:
-    d = json.loads(sys.stdin.read())
-except Exception:
-    d = {}
-print("true" if d.get("stop_hook_active") else "false", d.get("cwd",""))
-' 2>/dev/null
-)"
-
-[ "${STOP_ACTIVE:-false}" = "true" ] && exit 0
-
-project_dir="${CLAUDE_PROJECT_DIR:-${PAYLOAD_CWD:-$PWD}}"
-[ -z "$project_dir" ] && project_dir="$PWD"
-
-inbox="$project_dir/.squad/decisions/inbox"
-quarantine="$project_dir/.squad/decisions/quarantine"
-decisions_doc="$project_dir/.claude/docs/decisions.md"
-verdict_cache="$project_dir/.squad/.last-review-verdict"
-
-[ -d "$inbox" ] || exit 0
-[ -f "$decisions_doc" ] || exit 0
-
-shopt -s nullglob
-files=( "$inbox"/*.md )
-shopt -u nullglob
-[ "${#files[@]}" -eq 0 ] && exit 0
-
-mkdir -p "$quarantine"
-
-anchor='## Session Decisions'
-grep -qF "$anchor" "$decisions_doc" || printf '\n%s\n' "$anchor" >> "$decisions_doc"
-
-today="$(date -u +%Y-%m-%d)"
-archive_month="$(date -u +%Y-%m)"
-archive_dir="$project_dir/.squad/decisions/archive/$archive_month"
-mkdir -p "$archive_dir"
+# 🔴-4 (PR #358 review round 1): every code path below that reads a drop's
+# fields, or writes the verdict cache, goes through python3. A missing or
+# broken interpreter used to produce empty stdout wherever `|| true`
+# swallowed its exit status, indistinguishable from "nothing to validate" or
+# "nothing to write" -- this hook's OWN exit-code contract is "0 -- always"
+# (it never blocks a tool call, there being no tool call to block), so the
+# fail-closed direction available to it is not a non-zero exit but simply
+# REFUSING TO TOUCH ANYTHING: no merge, no quarantine, no verdict-cache
+# write, loud on stderr instead. Checked once, here, before the inbox or the
+# cache is touched at all.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 scribe-decision-merger.sh: python3 is required to validate decision drops and derive the verdict cache, and is not on PATH -- refusing to process the inbox or write the cache rather than doing either with an interpreter that cannot be trusted to be there." >&2
+  exit 0
+}
 
 # Validator. Returns:
-#   0 + stdout="VALID|<agent>|<verdict>|<scope>|<id>"  for valid front-matter drops
-#   0 + stdout="LEGACY"                                 for files with no front-matter (legacy mode)
-#   1 + stdout="<reason>"                               for invalid drops
+#   0 + stdout="VALID|<agent>|<verdict>|<scope>|<id>|<created>|<commit>"  for valid front-matter drops
+#     (<created> is the drop's top-level `created:` field; <commit> is its
+#     optional top-level `commit:` field, or empty)
+#   0 + stdout="LEGACY"                                          for files with no front-matter (legacy mode)
+#   1 + stdout="<reason>"                                        for invalid drops
 validate() {
   local file="$1"
   python3 - "$file" <<'PY'
 import sys, re, unicodedata
-ALLOWED_AGENTS = {"reviewer","security-expert","performance-engineer","architect",
+# Agents that currently have a charter in .claude/agents/, plus "lead" (the
+# orchestrator, which has no charter file of its own). Kept in lockstep with
+# the roster by an invariant check in .claude/hooks/tests/run.sh.
+CURRENT_AGENTS = {"security-expert","performance-engineer","architect",
                   "curator","tech-writer","ux-expert","csharp-dev","js-dev","devops","lead",
-                  "critic","realist","spec-author",
+                  "critic","realist","spec-author","scope-warden","curator-adversary",
+                  "reviewer-blind","reviewer-reconcile",
                   "dreamer-first-principles","dreamer-informed","dreamer-convergence"}
+
+# Names with no charter that must still validate, because drops carrying them
+# exist in .squad/decisions/archive/ and in the test fixtures. Retiring an
+# agent must not retroactively invalidate the record it left behind: a drop
+# that was valid when written stays valid, and quarantining history would
+# destroy exactly the evidence the register exists to keep.
+#
+#   reviewer — split into reviewer-blind + reviewer-reconcile (spec v2.1 WP-5).
+LEGACY_AGENTS = {"reviewer"}
+
+ALLOWED_AGENTS = CURRENT_AGENTS | LEGACY_AGENTS
 ALLOWED_VERDICTS = {"PASS","NEEDS-CHANGES","BLOCKED","INFO"}
 ALLOWED_SCOPES   = {"review","decision","threat-model","benchmark","retro",
                     "handoff","architecture","doc","other"}
@@ -877,6 +981,44 @@ agent = fields["agent"]
 verdict = fields["verdict"]
 scope = fields["scope"]
 
+# Q-E (architect ruling 10-architect-ruling-classifier.md -- an
+# upstream-template design pass that has no corresponding artifact in this
+# repository; see principles-enforcement.md's "Merge Criterion" section for
+# the same disclosure and its verifying command): decision-schema.md
+# documents `commit:` as "Required when agent: reviewer-reconcile and scope:
+# review", but this validator did not enforce it -- a compliant-looking drop
+# missing the field archived clean (appended=1, quarantined=0) and only
+# failed later, silently, at the cache write. The permanent record could not
+# then distinguish "reviewer omitted a required field" (a validator's job)
+# from "a compliant drop refused for an environmental reason" (INV-3's job,
+# a few stages downstream). Enforced HERE, conditionally -- unconditionally
+# requiring `commit:` for every drop would quarantine every other agent's
+# INFO/decision drop, which never carries the field at all.
+if agent == "reviewer-reconcile" and scope == "review":
+    commit_required = fields.get("commit")
+    if not commit_required or not isinstance(commit_required, str):
+        print("missing required fields: commit (required when agent: reviewer-reconcile and scope: review)")
+        sys.exit(1)
+    # validate() must enforce FORMAT, not just PRESENCE:
+    # decision-schema.md defines the field as "full
+    # 40-hex ... no abbreviation, no branch or tag name, no ^{commit}
+    # peel" and the bash-side cache-write check (further down this file)
+    # enforces exactly that, one stage past the quarantine boundary.
+    # CONFIRMED BY EXECUTION: a `commit: abc` drop used to ARCHIVE clean
+    # (decisions.md gained 2 mentions, quarantine empty, no cache written),
+    # so the durable register could not distinguish "reviewer sent a
+    # malformed drop" from "compliant drop refused for an environmental
+    # reason" -- the session log recorded the real reason, but
+    # .squad/log/ is gitignored and rotated, not part of the durable
+    # register. Moving the format check here closes the gap at the
+    # quarantine boundary, where entry 6's remedy always meant it to live;
+    # the bash-side check stays as defence in depth (a second, independent
+    # enforcement of the same rule, not a fallback for this one).
+    if not re.match(r"^[0-9a-f]{40}$", commit_required):
+        print("invalid commit: field (%r is not a full 40-hex sha -- required when "
+              "agent: reviewer-reconcile and scope: review)" % commit_required)
+        sys.exit(1)
+
 if agent not in ALLOWED_AGENTS:
     print(f"unknown agent: {agent}")
     sys.exit(1)
@@ -909,20 +1051,150 @@ if verdict in ("NEEDS-CHANGES","BLOCKED") and not has_blockers:
 # divergent tie-breaking if a drop ever carried two top-level `created:`
 # lines). Removes the divergence by construction: there is only one
 # extraction now.
-print(f"VALID|{agent}|{verdict}|{scope}|{fields['id']}|{fields['created']}")
+#
+# `commit` is appended as a seventh field, the drop's optional top-level
+# `commit:` (full 40-hex sha), required when `agent: reviewer-reconcile`
+# and `scope: review` -- see decision-schema.md. Both `created` and
+# `commit` come from this SAME field-extraction pass, so there is exactly
+# one source of truth for each rather than a second grep that could
+# disagree with it.
+commit_val = fields.get("commit", "") or ""
+if not isinstance(commit_val, str):
+    commit_val = ""
+print(f"VALID|{agent}|{verdict}|{scope}|{fields['id']}|{fields['created']}|{commit_val}")
 sys.exit(0)
 PY
 }
 
+payload="$(cat 2>/dev/null || true)"
+
+# 🔴-4: captured separately from `read` so a non-zero python3 exit (broken
+# interpreter, not merely a missing one -- the `command -v python3` preamble
+# above already covers absence) is distinguishable from a legitimate empty
+# parse. `read`'s own exit status reflects only whether it filled both
+# fields, never the nested command substitution's -- collapsing the two
+# steps hid exactly the failure this check exists to catch.
+parsed_stop="$(
+  printf '%s' "$payload" | python3 -c '
+import json,sys
+try:
+    d = json.loads(sys.stdin.read())
+except Exception:
+    d = {}
+print("true" if d.get("stop_hook_active") else "false", d.get("cwd",""))
+' 2>/dev/null
+)"
+stop_py_status=$?
+if [ "$stop_py_status" -ne 0 ]; then
+  echo "🚫 scribe-decision-merger.sh: could not parse the SubagentStop payload (python3 exited ${stop_py_status}) -- refusing to process the inbox or write the verdict cache rather than guessing stop_hook_active/cwd from a failed parse." >&2
+  exit 0
+fi
+read -r STOP_ACTIVE PAYLOAD_CWD <<<"$parsed_stop"
+
+[ "${STOP_ACTIVE:-false}" = "true" ] && exit 0
+
+# Q-E (architect ruling 10-architect-ruling-classifier.md -- upstream-template
+# design pass, no corresponding artifact in this repository; see this file's
+# first Q-E citation, above, for the full disclosure): the
+# `${CLAUDE_PROJECT_DIR:-${PAYLOAD_CWD:-$PWD}}` fallback chain is REMOVED,
+# not narrowed. `project_dir` is the ownership check's identity anchor
+# (`own_common` below); when `CLAUDE_PROJECT_DIR` is unset it used to
+# collapse to `PAYLOAD_CWD` -- the very value the destination `$T` is ALSO
+# derived from -- so the ownership check compared a repository to itself
+# and always passed. Reconcile executed this: a PASS written into a
+# brand-new unrelated scratch repository with `CLAUDE_PROJECT_DIR` unset.
+# A check that always passes is worse than an absent one, because it reads
+# as coverage.
+#
+# ⚠️-1 (PR #358 review round 1): an earlier version of this paragraph
+# claimed `enforce-review-verdict.sh` "refuses outright in the identical
+# condition", citing it as a sibling that already got this right. That is
+# false, and citing it did the opposite of what a citation should: a
+# maintainer reading it would have no reason to go looking further.
+# `enforce-review-verdict.sh` (and `enforce-reviewer-readonly.sh`) never
+# read `CLAUDE_PROJECT_DIR` AT ALL -- their own headers say so directly
+# ("Paths resolve against the `cwd` field in the payload, never against
+# `${CLAUDE_PROJECT_DIR}`") -- so there is no "CLAUDE_PROJECT_DIR is unset"
+# condition for either of them to refuse on in the first place; the
+# "identical condition" this paragraph used to name never existed on that
+# side.
+#
+# The two hooks are not actually in tension, once each one's job is stated
+# precisely. `project_dir` below anchors the REGISTER this hook owns
+# (`.squad/decisions/inbox`/`decisions.md`/`archive`/`log`) -- deliberately
+# project-global (Q-E, endorsed design), which is exactly the one thing a
+# per-tree `cwd` cannot give it: a single register a worktree session and
+# the main checkout both feed. The verdict CACHE this hook also writes is a
+# different anchor entirely -- `$T`, derived from `PAYLOAD_CWD` further
+# below in the cache-write block -- and THAT matches `enforce-review-verdict.sh`'s
+# and `enforce-reviewer-readonly.sh`'s own per-tree, `cwd`-based resolution
+# of the identical file. So: one register, project-global by design;
+# one cache, per-tree by design and consistent with every other hook that
+# reads or writes it; an ownership check (below) ties the two together by
+# refusing a cache write whose `$T` is not this project or one of its linked
+# worktrees. There was never a second hook to be consistent WITH on the
+# `CLAUDE_PROJECT_DIR`-unset question specifically -- this hook's refusal
+# here is the whole answer, load-bearing on its own.
+#
+# `CLAUDE_PROJECT_DIR` is now the SOLE anchor for `project_dir`, with no
+# fallback of any kind -- the inbox/`decisions.md`/archive/log register
+# (project-global, per blind finding L, endorsed as design) only needs
+# `project_dir` to be A DIRECTORY, so that much is checked right here.
+# Whether it is ALSO a git repository with a resolvable `--git-common-dir`
+# only matters for the cache write (the ownership check's identity anchor),
+# so that resolution stays where it is used, inside the cache-write block
+# below -- computing it here and refusing the WHOLE run on its failure would
+# also refuse ordinary inbox processing in a project_dir that is a plain
+# directory (every non-git-backed fixture in this hook's own test suite),
+# which INV-1..5 never asked for.
+project_dir="${CLAUDE_PROJECT_DIR:-}"
+if [ -z "$project_dir" ] || [ ! -d "$project_dir" ]; then
+  echo "🚫 scribe-decision-merger.sh: CLAUDE_PROJECT_DIR is unset or not a directory -- refusing to process the inbox or write the verdict cache rather than guessing which tree this SubagentStop invocation is for." >&2
+  exit 0
+fi
+
+inbox="$project_dir/.squad/decisions/inbox"
+quarantine="$project_dir/.squad/decisions/quarantine"
+decisions_doc="$project_dir/.claude/docs/decisions.md"
+
+[ -d "$inbox" ] || exit 0
+[ -f "$decisions_doc" ] || exit 0
+
+shopt -s nullglob
+files=( "$inbox"/*.md )
+shopt -u nullglob
+[ "${#files[@]}" -eq 0 ] && exit 0
+
+mkdir -p "$quarantine"
+
+anchor='## Session Decisions'
+grep -qF "$anchor" "$decisions_doc" || printf '\n%s\n' "$anchor" >> "$decisions_doc"
+
+today="$(date -u +%Y-%m-%d)"
+archive_month="$(date -u +%Y-%m)"
+archive_dir="$project_dir/.squad/decisions/archive/$archive_month"
+mkdir -p "$archive_dir"
+
 last_reviewer_verdict=""
 last_reviewer_created=""
+last_reviewer_commit=""
 appended_count=0
 
 tmp_append="$(mktemp)"
 trap 'rm -f "$tmp_append"' EXIT
 
 for f in "${files[@]}"; do
-  result="$(validate "$f" 2>&1)"
+  # validate()'s own stderr must never be merged into $result: $result is
+  # parsed as a tagged field ("VALID|agent|verdict|scope|id|created|commit"
+  # or "LEGACY", or else treated as a quarantine reason), and anything else
+  # sharing that channel becomes the tag `read` sees. Falsifier: a
+  # python3 warning printed to validate()'s stderr, with stdout merged in
+  # via `2>&1`, becomes the first line `read` consumes -- `_tag` becomes
+  # the warning text, not "VALID", and agent/verdict/scope/id/created/commit
+  # all read as empty, so the archived entry silently loses its id and
+  # verdict even though the drop file itself still gets moved to the archive
+  # directory (a stray warning does not change validate()'s exit code).
+  result="$(validate "$f" 2>/dev/null)"
   status=$?
 
   if [ "$status" -ne 0 ]; then
@@ -941,21 +1213,22 @@ for f in "${files[@]}"; do
       printf '\n'
     } >> "$tmp_append"
   else
-    # VALID|agent|verdict|scope|id|created
-    IFS='|' read -r _tag agent verdict scope drop_id created <<<"$result"
+    # VALID|agent|verdict|scope|id|created|commit
+    IFS='|' read -r _tag agent verdict scope drop_id created drop_commit <<<"$result"
     {
       printf '\n### %s — %s [%s · %s]\n\n' "$today" "$drop_id" "$agent" "$verdict"
       cat "$f"
       printf '\n'
     } >> "$tmp_append"
 
-    if [ "$agent" = "reviewer" ] && [ "$scope" = "review" ]; then
+    if [ "$agent" = "reviewer-reconcile" ] && [ "$scope" = "review" ]; then
       # `created` comes straight from the validator's own field extraction
       # above -- no separate re-grep of "$f", so there is exactly one
       # source of truth for it instead of two that could disagree.
       if [ -z "$last_reviewer_created" ] || [[ "$created" > "$last_reviewer_created" ]]; then
         last_reviewer_verdict="$verdict"
         last_reviewer_created="$created"
+        last_reviewer_commit="$drop_commit"
       fi
     fi
   fi
@@ -969,10 +1242,160 @@ if [ "$appended_count" -gt 0 ]; then
   cat "$tmp_append" >> "$decisions_doc"
 fi
 
-# Update the verdict cache for the statusline. Only overwrite if we saw a
-# reviewer verdict this round; otherwise leave the previous value alone.
+# ---------------------------------------------------------------------------
+# Verdict-cache write. INV-1..INV-5 above. No fallback of any kind (INV-4):
+# every refusal path below writes NOTHING, anywhere, and reports instead.
+# ---------------------------------------------------------------------------
 if [ -n "$last_reviewer_verdict" ]; then
-  printf '%s\n' "$last_reviewer_verdict" > "$verdict_cache"
+  refusal=""
+  T=""
+  destination_head=""
+
+  # Every rev-parse below runs under `timeout 5`, which makes `timeout`
+  # itself a dependency of this hook. Absent `timeout`
+  # (e.g. macOS without coreutils), every one of those calls fails the same
+  # way a real rev-parse failure does -- empty output -- so without this
+  # check the refusal below ("could not resolve a repository...") sends a
+  # maintainer to debug git, not PATH. Checked once, here, before the first
+  # call, so every downstream refusal in this block is not blamed on git.
+  if ! command -v timeout >/dev/null 2>&1; then
+    refusal="the 'timeout' command is not on PATH -- this hook requires it (coreutils) to bound every git rev-parse call; install coreutils or add timeout to PATH"
+  # INV-1 -- the destination comes from PAYLOAD_CWD and nothing else.
+  elif [ -z "${PAYLOAD_CWD:-}" ]; then
+    refusal="the hook payload carried no cwd, so there is nowhere to derive the destination from"
+  else
+    T="$(timeout 5 git -C "$PAYLOAD_CWD" rev-parse --path-format=absolute --show-toplevel 2>/dev/null)"
+    if [ -z "$T" ]; then
+      refusal="could not resolve a repository at the payload's cwd ($PAYLOAD_CWD) -- rev-parse failed, timed out, or cwd is not inside a work tree"
+    fi
+  fi
+
+  # Ownership: the destination must be this project (main checkout or one
+  # of its linked worktrees), identified by CLAUDE_PROJECT_DIR's own
+  # git-common-dir -- not by any path or field the drop supplies. Resolved
+  # from `$project_dir` alone (no `PAYLOAD_CWD`/`$PWD` fallback -- see the
+  # header and the top-of-script guard); a `project_dir` that is not itself
+  # a git repository fails this resolution and refuses here, same as any
+  # other unresolvable identity, rather than at the top of the script,
+  # so ordinary inbox processing in a non-git-backed `project_dir` (this
+  # hook's own test fixtures) is unaffected.
+  if [ -z "$refusal" ]; then
+    own_common="$(timeout 5 git -C "$project_dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+    target_common="$(timeout 5 git -C "$T" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+    if [ -z "$own_common" ] || [ -z "$target_common" ]; then
+      refusal="could not resolve repository identity for CLAUDE_PROJECT_DIR or the destination -- refusing rather than guessing"
+    elif [ "$own_common" != "$target_common" ]; then
+      refusal="the destination ($T) is not this project or one of its linked worktrees (CLAUDE_PROJECT_DIR=$project_dir)"
+    fi
+  fi
+
+  # INV-3 -- full 40-hex commit:, cross-checked against the destination's
+  # ACTUAL current HEAD. Not rev-parsed/normalised: a ref name, a `HEAD~1`,
+  # or a `^{commit}` peel is refused rather than resolved, so a drop cannot
+  # name anything but the literal sha.
+  #
+  # DELETED, not fixed: a "commit: field is absent" branch this check used
+  # to special-case. validate()
+  # above already refuses (quarantines) any reviewer-reconcile/scope:review
+  # drop with no commit: field before it is ever appended to $tmp_append or
+  # counted toward last_reviewer_commit, so $last_reviewer_commit is empty
+  # HERE only if no such drop was ever processed at all -- confirmed by
+  # reading the loop above: last_reviewer_commit is assigned only from
+  # drop_commit, itself only produced by a VALID| result for a drop that
+  # already passed validate()'s conditional-required check. A branch no
+  # code path can reach is not defence-in-depth, it is dead weight that
+  # reads as tested when it is not. The general non-40-hex message below
+  # covers an empty string the same way it covers any other malformed
+  # value, so nothing is lost by removing the special case.
+  if [ -z "$refusal" ]; then
+    if ! [[ "$last_reviewer_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+      refusal="the drop's commit: field (\"$last_reviewer_commit\") is not a full 40-hex sha -- an abbreviation, a ref, or a ^{commit} peel is refused rather than resolved"
+    fi
+  fi
+
+  if [ -z "$refusal" ]; then
+    # INV-2 -- read fresh from git, never copied from the drop, even though
+    # by construction it must equal the drop's (already-validated) value for
+    # the write to proceed at all. This cannot be independently falsified
+    # by execution while INV-3 holds --
+    # any test that makes the write proceed necessarily makes this line's
+    # value equal the drop's, since INV-3 forced that equality first. It is
+    # registered and kept anyway as defence-in-depth against a future
+    # relaxation of INV-3, not as a property this suite can prove on its
+    # own behaviour today.
+    destination_head="$(timeout 5 git -C "$T" rev-parse HEAD 2>/dev/null)"
+    if [ -z "$destination_head" ]; then
+      refusal="could not read HEAD at the destination ($T) -- refusing rather than guessing"
+    elif [ "$last_reviewer_commit" != "$destination_head" ]; then
+      refusal="the drop's commit: ($last_reviewer_commit) does not match the destination's HEAD ($destination_head) -- the review may have examined a different tree than the one this session is sitting in"
+    fi
+  fi
+
+  if [ -n "$refusal" ]; then
+    # Q-F (architect ruling 10-architect-ruling-classifier.md -- same
+    # upstream-template design pass as this file's Q-E citations above, no
+    # corresponding artifact in this repository): "A refusal message must
+    # never render a command that writes, creates or modifies
+    # the object the refusal is protecting. Not as an instruction, not as an
+    # example, not addressed to a human, not in a log line." The PREVIOUS
+    # revision violated this: it printed a `printf ... > .../.last-review-
+    # verdict` pair prescribing the DESTINATION's sha -- so following it
+    # verbatim records a PASS bound to the tree nobody reviewed, precisely
+    # the outcome the check exists to prevent. Rewritten to the four things
+    # a refusal is allowed to do: (1) state what was refused and the two
+    # facts that disagree, both in full, both labelled with their tree;
+    # (2) diagnose in words; (3) name the remedy that RE-ESTABLISHES the
+    # evidence (re-run the review pair in the tree being committed), never a
+    # way to write the token that stands for it; (4) state the override as
+    # policy with no executable form. Nothing below is copy-pasteable into
+    # a write of this file.
+    target_display="${T:-<unresolved>}/.squad/.last-review-verdict"
+    {
+      printf '🚫 scribe-decision-merger.sh refused to write the verdict cache.\n\n'
+      printf 'What was refused: a %s verdict from a reviewer-reconcile drop, for %s.\n' \
+        "$last_reviewer_verdict" "$target_display"
+      if [ -n "$destination_head" ] && [ -n "$last_reviewer_commit" ] \
+         && [ "$last_reviewer_commit" != "$destination_head" ]; then
+        printf '\nThe two facts that disagree:\n'
+        printf '  The drop says the review examined commit: %s\n' "$last_reviewer_commit"
+        printf '  This session is sitting in %s at commit:  %s\n' "${T:-<unresolved>}" "$destination_head"
+        printf '\nDiagnosis: the review examined a different tree than the one this session is\n'
+        printf 'committing in. Writing a PASS here would authorise a tree nobody reviewed --\n'
+        printf 'the exact case this cross-check exists to catch.\n'
+      else
+        printf '\nReason: %s\n' "$refusal"
+      fi
+      printf '\nThe remedy is evidence, not a shortcut: re-run the review pair (reviewer-blind\n'
+      printf 'then reviewer-reconcile, or /review) in the tree being committed (%s), so the\n' "${T:-the tree this session is in}"
+      printf 'resulting drop names the HEAD of that same tree.\n'
+      printf '\nIf a human is deliberately overriding review, the override is recorded by that\n'
+      printf 'human, not by this message: a described procedure for writing\n'
+      printf '.squad/.last-review-verdict is the same instruction whether or not a human is\n'
+      printf 'the one carrying it out, and this file has exactly one legitimate writer --\n'
+      printf 'this hook, reached only through a compliant reviewer-reconcile drop.\n'
+    } >&2
+    log_dir="$project_dir/.squad/log"
+    if [ -d "$log_dir" ]; then
+      log_file="$log_dir/${today}-session.md"
+      {
+        printf '\n**scribe-decision-merger.sh refused to write the verdict cache** (%s)\n' \
+          "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf -- '- Verdict on record: %s\n' "$last_reviewer_verdict"
+        printf -- '- Destination: %s\n' "${T:-<unresolved>}"
+        if [ -n "$destination_head" ] && [ -n "$last_reviewer_commit" ]; then
+          printf -- '- Drop commit: %s\n' "$last_reviewer_commit"
+          printf -- '- Destination HEAD: %s\n' "$destination_head"
+        fi
+        printf -- '- Reason: %s\n' "$refusal"
+      } >> "$log_file"
+    fi
+  else
+    mkdir -p "$T/.squad" 2>/dev/null || true
+    {
+      printf '%s\n' "$last_reviewer_verdict"
+      printf 'commit: %s\n' "$destination_head"
+    } > "$T/.squad/.last-review-verdict"
+  fi
 fi
 
 exit 0

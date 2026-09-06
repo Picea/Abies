@@ -39,6 +39,17 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+# Left UNANCHORED, matching the stock Visual Studio entry: the intent is
+# any build-log directory at any depth, not just one at the repo root --
+# this repository has 20+ projects, each capable of dropping its own
+# [Ll]og/ underneath it. Anchoring this (an earlier revision of this file
+# did, via a leading `/`) would have narrowed that intent to fix a
+# different problem: an unanchored [Ll]og/ also matches .squad/log/,
+# which defeats the `!.squad/log/*.md` exceptions further down, since git
+# cannot re-include a FILE whose parent directory is already excluded.
+# The actual fix for that is `!.squad/log/` (re-including the directory
+# itself), placed immediately above those file-level exceptions -- see
+# that comment for why the directory negation has to come first.
 [Ll]og/
 [Ll]ogs/
 
@@ -474,6 +485,16 @@ nohup.out
 # to have a matching rule in their own global gitignore.
 .claude/settings.local.json
 
+# Per-agent git worktrees Claude Code creates for `isolation: worktree`
+# subagents (see the charters' "Isolation" notes and
+# enforce-track-blindness.sh / enforce-review-blindness.sh's worktree
+# handling). Each is a full nested checkout under the main tree, created
+# and torn down per-session -- machine- and session-local state, never
+# meaningful to commit, and large enough (a second copy of the tracked
+# tree) that leaving it untracked-but-unignored invites it being swept up
+# by an unrelated `git add -A`.
+.claude/worktrees/
+
 # Transcript snapshots and rotated logs. The per-day *-session.md files are
 # deliberately NOT ignored here: they are already tracked in this repo, and
 # ignoring them now would not untrack them. Whether to keep tracking session
@@ -481,6 +502,27 @@ nohup.out
 .squad/log/transcripts/
 .squad/log/snapshots/
 .squad/log/*.log
+
+# Re-include the DIRECTORY first: the unanchored [Ll]og/ above (kept
+# unanchored for its original, broader intent -- see that comment) also
+# matches .squad/log/, and a `!pattern` for a file whose PARENT directory
+# is already excluded cannot re-include it -- git never descends into an
+# excluded directory to evaluate per-file negations at all. This line has
+# to exist, and has to come before the file-level exceptions below, or
+# they are silently inert.
+!.squad/log/
+
+# Explicit keep for files the squad-flow v2.1 delta introduces under
+# .squad/log/: session-logger.sh's pass-cost.md, lexicon-check.sh's
+# lexicon-hits.md, and the CI-6 shadow audit trail gate-shadow.md (see
+# .squad/.gate-shadow and enforce-reviewer-readonly.sh). None of the
+# three rules above match these filenames, so they are not ignored by
+# this repository's existing rules today -- these lines pin that so a
+# future, broader .squad/log/ ignore rule (as the template itself later
+# adopted) cannot silently swallow them without an explicit decision.
+!.squad/log/lexicon-hits.md
+!.squad/log/pass-cost.md
+!.squad/log/gate-shadow.md
 
 # Per-rotation tarballs
 .squad/decisions/archive/cold/
