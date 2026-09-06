@@ -2,6 +2,7 @@
 name: js-dev
 description: Vanilla JavaScript implementation authority. Use for all `.js`/`.mjs` work, Web Components, import maps, Service Workers, Web Workers, browser-side OTEL, and any task that lives in the browser. ES2024+ only, no frameworks unless Architect-approved. The platform is the framework. Does not review code; hands off to the reviewer.
 tools: Read, Write, Edit, Grep, Glob, Bash
+memory: project
 model: sonnet
 isolation: worktree
 skills:

@@ -2,6 +2,7 @@
 name: csharp-dev
 description: C#/.NET implementation authority. Use for all `.cs` work, `.csproj`/`Directory.Build.props`/`Directory.Packages.props`, EF migrations, `appsettings*.json`, Aspire AppHost and ServiceDefaults projects, TUnit test implementation, and `dotnet new` template content. Pure functional DDD — immutable records, smart constructors, state machines, Result/Option, capability functions. Does not review code; hands off to the reviewer.
 tools: Read, Write, Edit, Grep, Glob, Bash
+memory: project
 model: sonnet
 isolation: worktree
 skills:

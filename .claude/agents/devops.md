@@ -2,6 +2,7 @@
 name: devops
 description: CI/CD, containerization, deployment, environment parity, and release automation authority. Use for any change to `.github/workflows/`, Dockerfiles, container registry config, release automation (versioning, tagging), CI caching, environment setup parity, and `dotnet new` template CI/CD scaffolding. Coordinates with security-expert on pipeline security stages.
 tools: Read, Write, Edit, Grep, Glob, Bash
+memory: project
 model: sonnet
 isolation: worktree
 skills:

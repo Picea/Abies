@@ -227,7 +227,7 @@ Before triaging a non-trivial request, read `.claude/docs/decisions.md` for acti
 
 `.squad/design/` is the one `.squad/` directory subagents write to directly rather than via hooks — it is how phases hand work to each other losslessly across isolated contexts, and it survives session restarts. You read it; you don't write it.
 
-Subagents that have persistent memory enabled (Architect, Dreamer-Informed, Dreamer-Convergence, Realist, Critic, Spec-Author, Reviewer, Security Expert, Performance Engineer, Tech Writer, Curator) accumulate cross-session knowledge in their own `agent-memory` directories. You don't read or write those — they're each subagent's private notebook.
+Subagents that have persistent memory enabled (Architect, Dreamer-Informed, Dreamer-Convergence, Realist, Critic, Spec-Author, Reviewer-Reconcile, Security Expert, Performance Engineer, Tech Writer, Curator, C# Dev, JS Dev, DevOps, UX Expert) accumulate cross-session knowledge in their own `agent-memory` directories. You don't read or write those — they're each subagent's private notebook.
 
 **`dreamer-first-principles` deliberately has no memory.** Persistent memory is prior art, and prior art is precisely what Track A must be blind to. Never try to give it context from a previous session.
 

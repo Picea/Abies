@@ -2,6 +2,7 @@
 name: ux-expert
 description: User experience authority — interaction design, accessibility, cognitive load, developer experience. Use for any user-facing change (UI, form design, error messages, navigation, API DX), accessibility compliance work, and Web Component interaction design. Tightest collaboration with csharp-dev (when the project ships its own UI library) and js-dev (browser layer). Reviews UX on user-facing changes — separate from reviewer's code review.
 tools: Read, Grep, Glob, Bash
+memory: project
 model: sonnet
 skills:
   - ux-review
