@@ -71,9 +71,26 @@ Deliberate scope limits (documented, not silently missing):
       - Chained wrappers (`sudo env X=1 git commit`) are supported via the
         strip loop running until nothing more peels off, but each layer's
         own best-effort flag handling still applies.
+
+Also exposes `find_push()`/`push_destinations()` (same argv-level machinery,
+aimed at `git push` instead of `git commit`) and a `--payload` CLI mode that
+takes the full PreToolUse JSON payload on stdin instead of a bare command
+string. Both were added in PR #358's round 2 re-review (🔴-A, 🔴-C): before
+this, `enforce-review-verdict.sh` and `block-direct-commits-to-main.sh` each
+carried their own byte-identical ~50-line copy of `split_simple_commands` +
+a push-destination parser whose own leading-token skip only recognised a
+single `sudo`/`env`/`NAME=VALUE` token, so it missed `env -u FOO git push`
+entirely (see `push_destinations()`'s own docstring below for exactly which
+of the two forms this fix reaches and which remains a documented,
+unimproved scope limit), and the four commit-time hooks
+(enforce-no-secrets.sh, enforce-gpg-signing.sh, block-large-files.sh,
+enforce-conventional-commits.sh) each ran their OWN unguarded JSON-extraction
+python3 call before ever sourcing `git-commit-detect.sh` -- so a broken
+python3 could defeat them before the shared library's own guard ever ran.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -242,20 +259,22 @@ def _strip_transparent_prefix(argv: list[str]) -> list[str]:
     return argv
 
 
-def find_commit(argv: list[str]):
-    """If ``argv`` (with ``argv[0] == 'git'``) invokes the ``commit``
-    subcommand, return ``(global_args, commit_argv)``. Otherwise
-    ``(None, None)`` — argv[0] is git but the subcommand isn't commit, or
-    an unrecognisable token appeared where a subcommand was expected."""
+def _find_subcommand(argv: list[str], subcommand: str):
+    """If ``argv`` (with ``argv[0] == 'git'``) invokes ``subcommand``, return
+    ``(global_args, rest_argv)``. Otherwise ``(None, None)`` — argv[0] is git
+    but a different, non-flag subcommand is reached first, or an
+    unrecognisable token appeared where a subcommand was expected. Shared
+    body of `find_commit()` and `find_push()`; behaviour for either is
+    identical except for which literal subcommand token it's looking for."""
     global_args: list[str] = []
     i = 1
     n = len(argv)
     while i < n:
         tok = argv[i]
-        if tok == "commit":
+        if tok == subcommand:
             return global_args, argv[i + 1 :]
         if not tok.startswith("-"):
-            # A non-flag, non-"commit" token before the subcommand: some
+            # A non-flag, non-target token before the subcommand: some
             # other git invocation (`git status`, `git log`, ...).
             return None, None
 
@@ -284,6 +303,84 @@ def find_commit(argv: list[str]):
     return None, None
 
 
+def find_commit(argv: list[str]):
+    """If ``argv`` (with ``argv[0] == 'git'``) invokes the ``commit``
+    subcommand, return ``(global_args, commit_argv)``. Otherwise
+    ``(None, None)``. See `_find_subcommand()`."""
+    return _find_subcommand(argv, "commit")
+
+
+def find_push(argv: list[str]):
+    """If ``argv`` (with ``argv[0] == 'git'``) invokes the ``push``
+    subcommand, return ``(global_args, push_argv)``. Otherwise
+    ``(None, None)``. See `_find_subcommand()`."""
+    return _find_subcommand(argv, "push")
+
+
+def push_destinations(command: str):
+    """Returns ``("ALL", [])`` | ``("DESTS", [branch, ...])`` |
+    ``("NONE", [])`` | ``("UNKNOWN", [])`` for the destination(s) of every
+    `git push` invocation found anywhere in `command`.
+
+    Reuses this module's own tokenizer and transparent-prefix stripper
+    (`split_simple_commands` + `_strip_transparent_prefix`) rather than the
+    weaker "skip one leading NAME=VALUE/sudo/env token" scan that
+    `enforce-review-verdict.sh` and `block-direct-commits-to-main.sh` used to
+    duplicate inline — that scan missed `env -u FOO git push ...` entirely
+    (PR #358 review round 2, 🔴-A); this one recognises it correctly, because
+    `_strip_transparent_prefix` already knows `env`'s `-u`/`--unset`/`-C`/
+    `--chdir` take a separate value token. `sudo -u user git push ...` is
+    UNCHANGED by this fix and still resolves to UNKNOWN either way — that one
+    is `_strip_transparent_prefix`'s own documented scope limit (`sudo`'s own
+    flags are assumed to take no value, so `-u`'s value `user` is mis-treated
+    as the next command token and the `== "git"` check fails), not something
+    the old duplicated scan handled and this one regressed.
+
+    ANY ambiguity (unparseable quoting, no recognisable `git push` argv)
+    resolves to UNKNOWN, which callers treat as protected — fail closed,
+    never silently skip the gate because a refspec could not be read.
+    """
+    dests: list[str] = []
+    saw_all_or_mirror = False
+    found_push = False
+
+    for argv in split_simple_commands(command):
+        if not argv:
+            continue
+        argv = _strip_transparent_prefix(argv)
+        if not argv or os.path.basename(argv[0]) != "git":
+            continue
+        _global_args, push_argv = find_push(argv)
+        if push_argv is None:
+            continue
+        found_push = True
+        positional = []
+        for a in push_argv:
+            if a in ("--all", "--mirror"):
+                saw_all_or_mirror = True
+            elif a.startswith("-"):
+                continue
+            else:
+                positional.append(a)
+        # positional[0] is the remote (if given); the rest are refspecs.
+        for r in positional[1:]:
+            r = r.lstrip("+")
+            _, _, dst = r.partition(":") if ":" in r else ("", "", r)
+            dst = dst.strip()
+            if dst.startswith("refs/heads/"):
+                dst = dst[len("refs/heads/") :]
+            if dst:
+                dests.append(dst)
+
+    if not found_push:
+        return "UNKNOWN", []
+    if saw_all_or_mirror:
+        return "ALL", []
+    if dests:
+        return "DESTS", dests
+    return "NONE", []
+
+
 def detect(command: str) -> tuple[bool, list[str], list[str]]:
     for argv in split_simple_commands(command):
         if not argv:
@@ -307,9 +404,23 @@ def bash_array(name: str, items: list[str]) -> str:
 
 def main() -> int:
     try:
-        command = sys.stdin.read()
+        raw = sys.stdin.read()
     except Exception:
-        command = ""
+        raw = ""
+
+    command = raw
+    if "--payload" in sys.argv[1:]:
+        # Full PreToolUse JSON payload on stdin instead of a bare command
+        # string — used by `git_commit_detect_from_payload()` in the
+        # co-located git-commit-detect.sh so the four commit-time hooks get
+        # JSON extraction AND argv-level detection from one guarded python3
+        # invocation, instead of an unguarded extraction ahead of a
+        # separately-guarded detection (PR #358 review round 2, 🔴-C).
+        try:
+            d = json.loads(raw)
+            command = (d.get("tool_input") or {}).get("command") or ""
+        except Exception:
+            command = ""
 
     matched, global_args, commit_argv = detect(command)
 

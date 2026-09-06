@@ -1503,3 +1503,310 @@ LEGACY: documented, not closed.
 - Complexity: Low (text-only edits + two fixtures)
 - Pattern catalog consulted: yes
 
+
+### 2026-09-06 — reviewer-reconcile-20260906T124513Z-pr358-round2 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260906T124513Z-pr358-round2
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-06T12:45:13Z
+commit: 6e28e7403f79ed02b93d0d1f3324152e97c7b628
+targets:
+  - path: .claude/hooks/enforce-review-verdict.sh
+    lines: "47-141,190-240"
+  - path: .claude/hooks/block-direct-commits-to-main.sh
+    lines: "36-130"
+  - path: .claude/hooks/enforce-track-blindness.sh
+    lines: "229-250"
+  - path: .claude/hooks/enforce-review-blindness.sh
+    lines: "185-225"
+  - path: .claude/hooks/lib/path_containment.py
+    lines: "150-180"
+  - path: .claude/hooks/tests/invariant-chain.sh
+    lines: "156-200"
+  - path: .claude/enforcement/refutations.md
+    lines: "80-330"
+  - path: .claude/agents/reviewer-reconcile.md
+    lines: "244-254"
+  - path: CLAUDE.md
+    lines: "165-180"
+  - path: .gitignore
+    lines: "485-497"
+blockers:
+  - file: .claude/hooks/block-direct-commits-to-main.sh
+    line: 36
+    reason: "The fix for round-1 finding 🔴-3 duplicates ~90 lines of security-critical argv parsing (split_simple_commands/push_destinations) verbatim into enforce-review-verdict.sh and block-direct-commits-to-main.sh, reintroducing round-1 finding ⚠️-7/R-10 in the same commit that closes it for path containment. The comment justifies this with 'no established sourcing convention between them', which is false twice over: lib/git-commit-detect.sh is already sourced by four hooks at HEAD, and lib/git_commit_detect.py already implements split_simple_commands with a stronger prefix stripper; the HOOKS_LIB_DIR python import convention is established by this very changeset. Nothing asserts the two copies agree (grep push_destinations .claude/hooks/tests/ -> no matches), while blindness.sh:1304 asserts exactly that for path_containment.py."
+  - file: .claude/hooks/lib/path_containment.py
+    line: 150
+    reason: "Both blindness hooks are defeated by a read rooted at .claude/worktrees. Verified by execution against the live repo with a registered worktree present: for dreamer-first-principles, Grep(path='.claude/worktrees') and Glob('.claude/worktrees/**/decisions.md') both exit 0 while Grep(path='.claude') exits 2; identically for reviewer-blind against .squad/design/**. The worktree holds full copies of every deny-list target. reach_hit's docstring names the gap as open, but it is registered nowhere: no refutations.md entry and no threat-model row. This changeset normalises the directory (adds .claude/worktrees/ to .gitignore as a standing convention) while three charters declare isolation: worktree, so a nested checkout is now routine rather than accidental. Merge Criterion (b): unregistered residual on the most-argued invariant in the changeset."
+  - file: .claude/hooks/tests/invariant-chain.sh
+    line: 159
+    reason: "Round-1 finding 🔴-4 is unfixed for four live blocking PreToolUse gates, and the new stub-interpreter loop excludes them citing a registration that does not exist. Verified by execution with a python3 stub exiting 127: enforce-no-secrets.sh, enforce-gpg-signing.sh and block-large-files.sh exit 0; enforce-conventional-commits.sh exits 127, which is fail-open by this changeset's own stated rule (only exit 2 blocks a PreToolUse hook). All four are wired in settings.json. The loop's guard comment calls this 'a KNOWN, separately registered gap', but grep over refutations.md and threat-model.md for all four hook names returns no matches. Merge Criterion (c): publishing above the computed level, in the file whose job is to catch it. All four share lib/git-commit-detect.sh, so one guard there closes it."
+  - file: .claude/enforcement/refutations.md
+    line: 80
+    reason: "Seven of the fourteen status:open ledger entries state, in the present tense, a level consequence this same working tree falsifies: R-1 (CI paths all present plus a drift guard), R-2 (00-warden-scan.md and 00-warden.md are in Track A's DENY at enforce-track-blindness.sh:244-245), R-6 (all three hooks import resolve_artifact), R-7 (.gitignore is unanchored again with !.squad/log/), R-11 (both shape checks tightened), R-12 (header rewritten), R-13 (verified refused across 17 command forms). R-18 additionally describes reviewer-reconcile.md as still carrying the old numbering when it was reworded into a different false claim. This is not laundering -- I audited all eighteen and the two genuine deferrals (R-5, R-8) are honest -- but the file is append-only, is the instrument the next round grades against, and is about to become history in which 'open because unfixed' and 'open because unverified at registration time' are indistinguishable. Append status: closed lines the way R-3/R-4/R-9/R-17 already do."
+high:
+  - file: .claude/hooks/enforce-review-verdict.sh
+    line: 213
+    reason: "git add -A && git commit -m x still bypasses the commit gate for new files (verified by execution: exit 0 with only an untracked B.cs), and the fix's comment asserts the index-union is complete -- 'an untracked file cannot be committed without git add first, which would already show up staged' -- which is true across two Bash calls and false within one."
+  - file: .claude/agents/reviewer-reconcile.md
+    line: 248
+    reason: "The reworded 🔴-6 paragraph now claims the threat model 'lists four trust boundaries, none of which cover decision-inbox forgery'. In this same tree security-expert added a fifth (Squad-flow enforcement boundary) and TM-013/OR-008 is decision-drop forgery exactly. Two specialists shipped contradictory statements about one file; the charter should cite TM-013 / Trust Boundary 5 / R-15."
+  - file: .claude/hooks/enforce-track-blindness.sh
+    line: 311
+    reason: "Three citation families from round-1 🔴-6 still dangle: T-012 (~10 uses across both blindness hooks and blindness.sh, now colliding with the newly created and unrelated TM-012), 04-realist-plan.md:2054 (both blindness hooks), and 10-architect-ruling-classifier.md (scribe-decision-merger.sh:984,1093,1330 and run.sh:2756). principles-enforcement.md shows the correct upstream-template treatment; apply it or give T-012 a real row."
+  - file: .claude/hooks/enforce-review-history-channel.sh
+    line: 60
+    reason: "Variable indirection defeats all three command-classifying gates (verified: 'g=git; $g log' exits 0 for reviewer-blind; a variable-indirected commit ran unrefused). Not a fixable regex -- it is the structural limit refutations.md's own type: bound category exists for, and the ledger has zero bound entries. R-13 registers only the -c half, which is now fixed."
+  - file: CLAUDE.md
+    line: 168
+    reason: "The new sentence 'This is the same set enforce-review-verdict.sh's case list gates on' is false: the hook also carries *.ts, *.tsx, *.jsx, *.py, *.sh, */Migrations/*, package.json and Directory.Packages.props, none of which CLAUDE.md names. Safe direction (doc narrower than gate), but the sentence instructs the reader to report exactly this."
+medium:
+  - file: .claude/hooks/validate-phase-artifact.sh
+    line: 134
+    reason: "Comment says the Reasoning Trail section is measured 'up to the next heading of the same or higher level'; the regex stops at the next heading of any level, so a subheading truncates the measured body. Fail-closed, so harmless in effect, but the comment describes a different regex."
+  - file: .claude/hooks/lib/artifact_attribution.py
+    line: 139
+    reason: "slug = os.path.relpath(...) is unbounded: a transcript Write to any path ending /00-scope.md outside .squad/design/ yields a slug like ../../tmp/foo, and scope-warden.sh then writes 00-warden-scan.md beside it. Guard with a ..-rejecting check."
+good:
+  - file: .gitignore
+    line: 42
+    reason: "The ⚠️-4 fix rejected the reviewer's proposed rationale, kept [Ll]og/ unanchored for its real intent, and added !.squad/log/ above the file-level negations with a comment explaining why the directory negation must come first. Verified correct across 8 paths."
+  - file: .github/workflows/claude-hooks-tests.yml
+    line: 18
+    reason: "🔴-1 fixed beyond what was asked: all six paths plus .squad/.gate-shadow added to both filters, and blindness.sh:1348 re-derives the same enumeration at test time so the list cannot silently drift again. Verified non-vacuous (15 refs found, 0 missing)."
+  - file: .claude/hooks/lib/artifact_attribution.py
+    line: 1
+    reason: "Three-tier attribution -- transcript ground truth, then mtime bounded by the invocation's own start, then unbounded with the method named in the return value -- answers ⚠️-3 properly rather than papering it, and returns method so callers can report provenance."
+  - file: .claude/agent-memory/reviewer-reconcile/MEMORY.md
+    line: 1
+    reason: "🔴-7 fixed exactly right: seventeen entries restored byte-identical under the new agent's name, with a provenance header explaining why historical entries keep the old name."
+  - file: .claude/hooks/enforce-reviewer-readonly.sh
+    line: 515
+    reason: "Both user-facing refusal strings now resolve: Trust Boundary 5, TM-014 and refutations.md residual R-16 all exist. That was 🔴-6's sharpest edge and it is gone."
+references:
+  - .squad/design/chore-0-squad-flow-v2-1/08-review-blind.md
+  - .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+  - .claude/enforcement/refutations.md
+  - docs/security/threat-model.md
+  - .claude/docs/principles-enforcement.md
+---
+
+# Review verdict — PR #358 round 2 (re-review after fixes)
+
+🔴 Changes Requested. 800/0 on the hook suite, verified. Five of nine round-1
+🔴 are fully fixed and three of the fixes are better than what was asked for.
+Four blockers remain: one new regression (`push_destinations` triplicated with
+a rationale the tree falsifies), one unregistered residual on the blindness
+invariant (`.claude/worktrees/**`), one partially-unfixed finding whose test
+exclusion cites a registration that does not exist, and a residual ledger whose
+`status:` fields are wrong for seven of fourteen open entries.
+
+Full reconciliation, evidence and fix directions:
+`.squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md`.
+
+
+### 2026-09-06 — reviewer-reconcile-20260906T133024Z-pr358-round3 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260906T133024Z-pr358-round3
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-06T13:30:24Z
+commit: 6e28e7403f79ed02b93d0d1f3324152e97c7b628
+targets:
+  - path: .claude/hooks/lib/git_commit_detect.py
+    lines: "259-386"
+  - path: .claude/hooks/lib/git-commit-detect.sh
+    lines: "50-140"
+  - path: .claude/hooks/enforce-review-verdict.sh
+    lines: "62-135,195-235"
+  - path: .claude/hooks/block-direct-commits-to-main.sh
+    lines: "27-105"
+  - path: .claude/hooks/enforce-review-blindness.sh
+    lines: "56-124,222,250"
+  - path: .claude/hooks/enforce-track-blindness.sh
+    lines: "68-95,244-245"
+  - path: .claude/hooks/tests/invariant-chain.sh
+    lines: "378-414,472-560"
+  - path: .claude/enforcement/refutations.md
+    lines: "336-470"
+  - path: docs/security/threat-model.md
+    lines: "33-66,104-107,116-121"
+  - path: .claude/agents/reviewer-blind.md
+    lines: "60-75"
+  - path: CLAUDE.md
+    lines: "165-200"
+blockers:
+  - file: .claude/docs/principles-enforcement.md
+    reason: "ROUND CAP REACHED — this is review round 3 of one changeset (evidence: one archived reviewer-reconcile drop for base 6e28e740, cross-checked against the Round 2 line in 09-review-verdict.md). The Merge Criterion says the changeset is now split: what passes under (a)-(c) ships, the rest is registered and becomes the next changeset. Criterion (a) is green (823/0, executed), all four round-2 blockers and all five round-2 warnings are fixed and verified, and zero regressions were introduced. Criterion (b) is not yet met because two pre-existing residuals are unregistered. NO CODE CHANGE IS REQUESTED. This blocker exists to put the split decision in front of the user, who decides whether the two registrations land before this merges or as the first act of the next changeset - both are consistent with the cap. A fourth fix round is not."
+  - file: docs/security/threat-model.md
+    line: 45
+    reason: "Trust Boundary 6 (created this round) scopes itself to Grep/Glob/Read/NotebookRead, and enforce-review-blindness.sh:250 exits 0 for every other tool. reviewer-blind's tools: line is 'Read, Grep, Glob, Bash, Write'. Verified by execution: firing EVERY hook in .claude/hooks/ with a reviewer-blind Bash payload of `cat .squad/design/<slug>/04-realist-plan.md` produced exit 0 from all of them, including enforce-review-history-channel.sh. dreamer-first-principles is unaffected (no Bash), so its blindness is genuinely structural; reviewer-blind's is not. Trust Boundary 5, written by the same specialist in the same tree, names exactly this class of omission for itself (TM-012, 'it mediates none of those tools equivalent effect via Bash') - the disclosure pattern exists and was applied one boundary over. Register a TM row on boundary 6 in TM-012's shape plus an Open Risk with owner and expires, and reword reviewer-blind.md's 'the One Thing That Remains a Promise' section, which names one residue where a Bash-holding agent has two. Pre-existing, not a regression: blocking only until registered."
+  - file: .claude/hooks/enforce-review-blindness.sh
+    line: 56
+    reason: "The sibling-worktree layout and symlinks are named 'open, deliberately' in both blindness hooks' headers and registered nowhere: `grep -n worktree .claude/enforcement/refutations.md` hits only R-5 (a session RUNNING FROM a worktree, not reading THROUGH one), and TM-014's symlink language is the verdict cache on boundary 5, not blindness on boundary 6. This is the same 'naming a gap in a header is not registering it' argument accepted for round 2's blocker B; the ancestor-direction half was closed, the sibling half kept the disclosure and never got the entry. Milder than B was - Claude Code creates worktrees nested under .claude/worktrees/ (both live ones are), and the header is right that there is no fixed path segment to deny for a true sibling - which is a reason to register rather than fix, not a reason to do neither. Pre-existing, not a regression."
+high:
+  - file: .claude/hooks/enforce-review-blindness.sh
+    line: 63
+    reason: "Both hook headers list `{a,b}`-style brace expansion as an open 'deny-closure completeness gap', while TM-015 - added by the same round, in the same tree - records it as mitigated by the D20 fail-closed escalation. Execution agrees with TM-015: Glob('{src,.claude/docs}/**/*.md') and the benign Glob('{a,b}/*.md') both exit 2 for dreamer-first-principles; Glob('src/**/*.cs') exits 0. The residual is real but has the opposite sign - over-approximation with a measured over-block cost, not a reachable gap. Reword to what the code does and cite TM-015; leave symlinks in the sentence where it is still accurate."
+medium:
+  - file: .claude/hooks/validate-phase-artifact.sh
+    line: 134
+    reason: "Carried unfixed from round 2. The comment says the Reasoning Trail section is measured 'up to the next heading of the same or higher level'; the regex (?=^\\s{0,3}#{1,6}\\s|\\Z) stops at the next heading of ANY level, so a ### subheading directly under the section truncates the measured body. Fail-closed, cosmetic in effect."
+  - file: CLAUDE.md
+    line: 168
+    reason: "Nothing asserts CLAUDE.md section 4's code-shaped list still matches enforce-review-verdict.sh's `case` list. The claim is now true (compared entry by entry) and section 4 correctly names the hook authoritative on drift, but this repository has the drift-guard pattern for exactly this (blindness.sh:1348 re-derives the CI paths: enumeration at test time) and it was not applied here."
+  - file: .claude/hooks/tests/invariant-chain.sh
+    line: 507
+    reason: "The broken-interpreter loop keys on `grep -q 'python3' \"$hookfile\"`. Coverage is correct today (only git-history-namestatus.sh is skipped, and it needs no interpreter), but the four commit-time gates now reach python3 only THROUGH `source lib/git-commit-detect.sh` and stay in the loop because their header comments happen to contain the word. Deleting a comment would drop a live gate out of the loop silently; keying on the source line as well would make it structural."
+good:
+  - file: .claude/hooks/lib/git_commit_detect.py
+    reason: "Round 2's blocker A was fixed the hard way rather than by the fallback I offered. find_push/push_destinations were extracted into the module that already had the tokenizer, find_commit/find_push now share a _find_subcommand body, and the structural assertions were added anyway. The docstring states precisely which of the two env/sudo forms the change reaches and which it does not - including that `sudo -u user` is unchanged rather than regressed."
+  - file: .claude/hooks/lib/git-commit-detect.sh
+    reason: "Round 2's blocker C was solved one level up from where it was reported: a single guard in the shared library plus a new git_commit_detect_from_payload() so JSON extraction and argv detection happen in ONE guarded python3 call. That closed the subtler half I had not separated out - each of the four gates previously ran its own UNGUARDED extraction before the shared guard could run. Verified by execution under both the broken-interpreter (stub exiting 127) and absent-interpreter shapes: all four now exit 2."
+  - file: .claude/hooks/enforce-review-verdict.sh
+    line: 116
+    reason: "The warning-A fix turned up a real bug on the way: adding a fifth field exposed that the \\t field separator was collapsing empty fields (bash treats TAB as IFS whitespace regardless of IFS), so HAS_ADD silently took the third field's value on every commit. Switched to \\x1e, with the reasoning written down where the next reader will find it."
+  - file: .claude/enforcement/refutations.md
+    line: 338
+    reason: "The Round 2 closures section appends rather than editing, explains why R-3/R-4/R-9/R-17 could carry their closure inline while these eight could not, and names the verification method per entry. R-18's closure explicitly warns that it covers only the sentence R-18 described and not the different false claim in the same paragraph - 'recorded here only so nobody reads this closure as covering the whole paragraph.' The ledger used as an instrument rather than a formality."
+  - file: .claude/enforcement/refutations.md
+    line: 433
+    reason: "B-1 is registered as the ledger's first type: bound rather than laundered as a residual: it argues why resolving $G would require running the shell's own semantics on an untrusted string, cites enforce-conventional-commits.sh's existing 'do not evaluate what you are trying to gate' posture, sets expires: N/A - structural, and says outright that command-text classification is detection, not prevention."
+  - file: .claude/hooks/tests/blindness.sh
+    line: 438
+    reason: "Round 2's blocker B ships with its collateral measured, disclosed AND asserted in both directions: line 438 pins that Track B's coarse Grep of plain .claude is now refused (the accepted cost), and line 442 pins that the collateral is narrow - .claude/skills is a sibling of .claude/worktrees, not an ancestor, and stays allowed. Pinning the limit of your own over-block is rarer than pinning the fix."
+references:
+  - reviewer-reconcile-20260906T124513Z-pr358-round2
+---
+
+Round 3 of PR #358: every round-2 finding is fixed and verified, the stated property is green at 823/0, zero regressions - and the Merge Criterion's round cap of two is now reached, so this verdict is the split rather than a fourth iteration.
+
+## Disposition
+
+Round 2's four blockers (A: duplicated push parsing; B: `.claude/worktrees/**` defeating both blindness hooks; C: four live gates fail-open under a broken python3 with a false "separately registered" claim; D: seven stale `level consequence:` fields in the ledger) are **all fixed**, each verified the way it was originally established - by execution where the finding came from execution. Round 2's five warnings (A: `git add -A && git commit` on an untracked file; B: the charter's "four trust boundaries" claim; C: three dangling citation families; D: variable indirection unregistered; E: the false "same set" claim in CLAUDE.md) are **all fixed**. One nitpick (unbounded `relpath` slug) is fixed; one (the Reasoning Trail comment/regex mismatch) is carried.
+
+Three of the fixes are better than what was asked for, and two of them found defects the review had not separated out - see the `good:` entries.
+
+## Why NEEDS-CHANGES rather than PASS
+
+Not because anything in this changeset is wrong. Because criterion (b) requires every non-regression finding to be **registered** before the verdict, and two pre-existing residuals are not: the `Bash` read channel on the newly created Trust Boundary 6, and the sibling-worktree/symlink gap named in both hook headers.
+
+Both are closable by an append. Neither asks for a code change. The reviewer classifies, the author registers, the reviewer verifies - and by design I cannot write the entries myself.
+
+## What the user is being asked to decide
+
+The round cap says the changeset is split: what passes ships, the rest becomes the next changeset. Here the "rest" is not a slice of files - it is two ledger entries about behaviour this changeset did not introduce. So the decision is simply whether those two registrations land before this merges, or as the first act of the next changeset. Both are consistent with the cap. A fourth fix round is not, and I am not requesting one.
+
+The reason this is escalated rather than recorded as advisory: one of the two sits on the blindness invariant, which is this changeset's own centrepiece. `reviewer-blind` holds `Bash`; the deny list covers `Read`/`Grep`/`Glob`/`NotebookRead`; I fired every hook in the repository at a `reviewer-blind` `Bash` payload reading a denied artifact and none of them refused. `dreamer-first-principles` has no `Bash`, so Track A's blindness is genuinely structural. `reviewer-blind`'s is a gate with a fifth door, and its charter currently calls the prompt-quoting residue "the One Thing That Remains a Promise."
+
+
+### 2026-09-06 — reviewer-reconcile-20260906T134435Z-pr358-round3-close [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260906T134435Z-pr358-round3-close
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-06T13:44:35Z
+commit: 6e28e7403f79ed02b93d0d1f3324152e97c7b628
+targets:
+  - path: .claude/enforcement/refutations.md
+    lines: "472-544"
+  - path: docs/security/threat-model.md
+    lines: "33-77,116-120,132-136"
+  - path: .claude/hooks/enforce-review-blindness.sh
+    lines: "56-72"
+  - path: .claude/hooks/enforce-track-blindness.sh
+    lines: "68-84"
+  - path: .claude/agents/reviewer-blind.md
+    lines: "62-92"
+blockers: []
+high: []
+medium: []
+good:
+  - file: .claude/enforcement/refutations.md
+    note: "R-19 states the instruction-vs-invariant level split precisely -- invariant-level for dreamer-first-principles (the four mediated tools ARE its whole read surface), instruction-level over Bash for reviewer-blind. R-20 registers the sibling-worktree and symlink gaps the hook headers had only ever disclosed in a comment. Both carry owner, level consequence and expires. Appended under a new round-3 section; append-only rule honoured."
+  - file: .claude/enforcement/refutations.md
+    note: "The round-3 preamble explains why the third finding (brace expansion) is deliberately NOT registered -- devops corrected the headers to match TM-015's existing Mitigated row. An auditor reading 'three findings, two entries' gets the answer in the ledger instead of reconstructing it."
+  - file: docs/security/threat-model.md
+    note: "TM-016's Mitigation column reads 'None in the hooks' rather than laundering the charter instruction as partial mitigation. Trust Boundary 6's scope note concedes that its own tool list is accurate only because it is silent on the one channel differing between its two governed agents. R-19 / TM-016 / OR-010 cross-cite in all directions with agreeing expires dates."
+  - file: .claude/hooks/enforce-review-blindness.sh
+    note: "Reworded header states brace expansion is NOT open, explains the (grouped, None) -> D20 cwd escalation, cites TM-015, and discloses the over-block cost (a benign {a,b}/*.md is refused too). Documenting the cost of one's own fix is what stops a future reader 'correcting' the false positive and reopening the hole. Symlinks correctly left in the open sentence. Identical treatment in enforce-track-blindness.sh."
+  - file: .claude/agents/reviewer-blind.md
+    note: "Retitled to 'the Two Things That Remain a Promise' and gives the agent a concrete catch-yourself trigger (cat / sed -n / grep under .squad/design/) rather than an abstract prohibition. An instruction-level control is only as good as its salience."
+references:
+  - ".squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md"
+  - ".squad/design/chore-0-squad-flow-v2-1/08-review-blind.md"
+  - ".squad/decisions/archive/2026-09/2026-09-06T13-33-43-review-pr358-round3.md"
+  - ".claude/docs/principles-enforcement.md#the-merge-criterion--continuous-improvement"
+---
+
+# Review verdict — PR #358 round-3 split, closing pass
+
+**Verdict: PASS.** Round 3 reached the Merge Criterion's round cap and returned
+the split: criterion (a) green, all round-2 findings fixed, three findings that
+asked for registration rather than code. The user chose *register now, then
+merge*. This pass verifies only that the registration landed and is true of the
+tree — it is not a fourth review round, and no dimension that passed in round 3
+was reopened.
+
+## The three claims, all verified
+
+1. **`security-expert`** — R-19 and R-20 appended under a new
+   `## Residuals and bounds, round 3` section at `refutations.md:472`, both with
+   the full schema. Threat model gained a Trust Boundary 6 scope note, row
+   TM-016 and open risk OR-010.
+2. **`devops`** — brace-expansion sentence reworded in both blindness hook
+   headers to state it is mitigated, citing TM-015; symlinks correctly left
+   open.
+3. **`tech-writer`** — `reviewer-blind.md` § 62 retitled to "the Two Things
+   That Remain a Promise", naming the `Bash` channel and instructing the agent
+   to hold the rule there.
+
+## Verified by execution, not by report
+
+- **Scope:** `find -newer` against the archived round-3 drop returns exactly the
+  five claimed files plus hook-written state and my own notebook. **No scope
+  creep** — the property that makes a register-then-merge disposition safe.
+- **The `Bash` gap is still live:** all 19 hooks re-fired with a
+  `reviewer-blind` `Bash` payload of `cat .squad/design/<slug>/04-realist-plan.md`
+  — `refused: 0`. Correct: R-19 registers it, it does not fix it, and neither
+  R-19 nor TM-016 overstates a fix.
+- **The reworded headers' claim is true:** brace-grouped and climbing patterns
+  refuse (exit 2) on both hooks for both governed agents; benign `{a,b}/*.md`
+  also refuses (the disclosed cost); controls pass (exit 0). Headers, TM-015 and
+  the code now agree three ways — round 3's finding was exactly that
+  disagreement.
+- **R-20 is not over-registration:** `grep realpath` across both hooks and
+  `lib/path_containment.py` hits only the comment saying symlinks would need it,
+  never a call site.
+- **Suite:** `823 passed, 0 failed`, executed by me. Unchanged from round 3,
+  which is the expected result for a documentation-and-ledger delta — a changed
+  count would have been the finding.
+
+## Merge Criterion
+
+(a) satisfied — author-named property green at 823/0. (b) **satisfied, and this
+is what changed** — every residual now carries an owner, a level consequence and
+an `expires:`. (c) satisfied — 0 regressions. The round-cap split is complete
+and the changeset is clear to merge.
+
+## Nitpicks, non-blocking
+
+- `refutations.md:529` — R-20's embedded `grep -n worktree` evidence command is
+  self-stale: it says "finds only R-5" and now returns 8 hits including R-20's
+  own title. Meaning recoverable; fold into whichever pass next touches the
+  ledger.
+- `reviewer-blind.md` cites the residual by file rather than by id (`R-19`),
+  where the sibling charter cites "residual R-15" by number.
+- Carried from round 3 and unchanged: `validate-phase-artifact.sh:133-139`
+  heading-level comment; no assertion that CLAUDE.md § 4 matches the hook's
+  `case` list; `invariant-chain.sh:507` stub loop keyed on an incidental grep.
+- Two registered worktrees still on disk at `6e28e74`; `git worktree remove`
+  when the pass ends.
+

@@ -13,6 +13,18 @@
 
 set -uo pipefail
 
+# 🔴-4 (PR #358 review round 1): this hook's own contract is "0 -- always
+# (logging never blocks)", so a missing/broken python3 cannot be turned into
+# a refusal via exit code -- the fail-closed direction available to a
+# never-blocking hook is to write NOTHING rather than a garbled or
+# mislabeled entry (a missing log row is honest about what happened; a row
+# claiming a bogus agent/timestamp because the parser silently produced
+# empty fields is not). Checked once, here, before the payload is even read.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 session-logger.sh: python3 is required to parse this SubagentStop payload and is not on PATH -- skipping this entry rather than writing one with silently empty fields." >&2
+  exit 0
+}
+
 payload="$(cat 2>/dev/null || true)"
 
 # Parse the fields we need with one python3 call. Output is tab-separated

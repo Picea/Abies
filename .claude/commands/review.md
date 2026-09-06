@@ -35,7 +35,7 @@ reconciles against the Critic's accepted risks, and writes:
 It does **not** write `.squad/.last-review-verdict` itself — that file is
 deny-by-default for every agent. It is currently in a CI-6 shadow period that
 logs to `.squad/log/gate-shadow.md` and allows instead of refusing until
-`expires:` in `.squad/.gate-shadow` (2026-09-19), after which no action is
+`expires:` in `.squad/.gate-shadow` lapses, after which no action is
 required for it to enforce. `scribe-decision-merger.sh` writes it from the
 drop's `commit:` field on `SubagentStop`, once that field matches the
 destination's actual `HEAD`; see `.claude/agents/reviewer-reconcile.md`.

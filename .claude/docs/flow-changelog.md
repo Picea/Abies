@@ -15,6 +15,25 @@ Newest first.
 
 ---
 
+## 2026-09-06 — Interpreter-unavailable polarity: *claimed* fail-closed → actual fail-closed
+
+**Level movement:** *claimed* invariant → **actual invariant**. No new rule —
+every hook's header already asserted fail-closed on a malformed payload. What
+moved is whether that held when `python3` itself was the thing missing.
+
+`09-review-verdict.md` round 1, finding 🔴-4: 18 of 19 hooks piped their
+payload through `python3 -c '…' 2>/dev/null || true`, which swallows a
+non-zero interpreter exit the same way it swallows a parse error — an
+interpreter that is missing, wrong-versioned, or broken by an edit produced
+empty output, indistinguishable from "allow." `scribe-decision-merger.sh`
+already carried a `command -v timeout` guard for the identical reason; the
+other 17 scripts did not check for their interpreter at all. Closed by adding
+a shared `command -v python3` preamble that exits 2 rather than falling
+through, and dropping the `|| true` so a non-zero interpreter exit is no
+longer indistinguishable from a clean empty match.
+
+---
+
 ## 2026-09-04 — Observation: the split reviewer corrected itself in both directions
 
 **Level movement:** none. This is evidence, not a change.

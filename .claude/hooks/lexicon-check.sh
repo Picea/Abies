@@ -52,10 +52,36 @@
 
 set -uo pipefail
 
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export HOOKS_LIB_DIR="$HOOKS_DIR/lib"
+
+# Fail closed, not open, when the interpreter itself is unavailable. This
+# hook BLOCKS on a real finding, and the previous `2>/dev/null || true` on
+# the substitution turned a broken interpreter into an EMPTY $reason,
+# indistinguishable from "nothing to report" (allow) -- exactly the leak the
+# empty-lexicon warning three paragraphs below already refuses to let pass
+# in silence for a different reason.
+if ! command -v python3 >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+🚫 python3 is not available on PATH.
+
+This hook screens 01-track-a.md for named patterns and the grammar of
+recall using an embedded Python scan. Without python3 there is no way to run
+that scan, so refusing is the only choice that does not silently defeat the
+rule this hook exists to enforce.
+
+Install python3 (or add it to PATH) and retry.
+EOF
+  exit 2
+fi
+
 payload="$(cat 2>/dev/null || true)"
 
 reason="$(printf '%s' "$payload" | python3 -c '
 import json, os, re, sys, datetime
+
+sys.path.insert(0, os.environ["HOOKS_LIB_DIR"])
+from artifact_attribution import resolve_artifact
 
 try:
     d = json.loads(sys.stdin.read())
@@ -74,15 +100,14 @@ design = os.path.join(root, ".squad", "design")
 if not os.path.isdir(design):
     sys.exit(0)
 
-arts = []
-for slug in os.listdir(design):
-    p = os.path.join(design, slug, "01-track-a.md")
-    if os.path.isfile(p):
-        arts.append((os.path.getmtime(p), slug, p))
-if not arts:
+# Which pass THIS dreamer-first-principles invocation wrote 01-track-a.md
+# for -- see artifact_attribution.py for why this is no longer a bare
+# newest-mtime guess across every slug directory.
+transcript_path = d.get("transcript_path") or d.get("agent_transcript_path") or ""
+resolved = resolve_artifact(design, "01-track-a.md", transcript_path)
+if resolved is None:
     sys.exit(0)
-arts.sort()
-_, slug, art_path = arts[-1]
+slug, art_path, _mtime, _method = resolved
 
 
 def load_lexicon(path):
@@ -203,7 +228,31 @@ more = "\n  ... and %d more." % (len(blocked) - 12) if len(blocked) > 12 else ""
 
 print("BLOCK|%s|%s" % (slug, os.path.relpath(art_path, root)))
 print("\n".join(quoted) + more)
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+py_rc=$?
+
+# This script runs under `set -uo pipefail`, not `-e` (the artifact-shape
+# checks below use plain conditionals that are allowed to "fail"), so a
+# crashing python3 does not abort the script on its own the way it does in
+# the `-euo pipefail` blindness hooks -- it just leaves $reason empty via
+# the suppressed stderr, indistinguishable from "nothing to report" unless
+# checked explicitly. `pipefail` (in effect here) makes $? the python3 exit
+# status even though it is not the last word on the line.
+if [ "$py_rc" -ne 0 ]; then
+  cat >&2 <<EOF
+🚫 lexicon-check's embedded scan exited with an unexpected error (exit $py_rc)
+instead of a clean pass or a reported finding.
+
+This hook screens 01-track-a.md for named patterns and recall grammar and
+BLOCKS when it finds them; an internal crash is not the same thing as "found
+nothing" and must not be treated as a pass. Refusing is the only choice that
+does not silently defeat the rule this hook exists to enforce.
+
+Check python3's version and the hook's own syntax -- this is a bug in the
+hook, not in the artifact it was screening.
+EOF
+  exit 2
+fi
 
 [ -z "$reason" ] && exit 0
 

@@ -17,36 +17,46 @@ on:
   pull_request:
     paths:
       - '.claude/hooks/**'
-      # run.sh asserts ALLOWED_AGENTS equals the real .claude/agents/
-      # roster and reads decision-schema.md, so a change to either can
-      # break this suite without touching .claude/hooks/** at all.
+      # Everything below is a $REPO_ROOT-relative file the four suites
+      # (run.sh, blindness.sh, phase-gates.sh, invariant-chain.sh) read
+      # OUTSIDE .claude/hooks/**, verified by:
+      #   grep -hoE '\$(REPO_ROOT|ROOT)/[A-Za-z0-9_./*-]+' .claude/hooks/tests/*.sh
+      # minus every hit already under .claude/hooks/ (covered by the line
+      # above). Round 1 review of PR #358, 🔴-1: this enumeration went
+      # stale the moment a later suite started reading a new out-of-hooks
+      # file and nobody updated it here -- a PR that ONLY touched, say,
+      # .claude/settings.json (deleting every PreToolUse matcher, unwiring
+      # every hook this workflow tests) would not trigger this workflow at
+      # all and would merge green. The `path coverage:` assertion inside
+      # blindness.sh re-derives this same grep at test time and fails loud
+      # if it finds a path not listed here, so this list drifting again is
+      # a five-second CI failure instead of a silent gap.
       - '.claude/agents/**'
+      - '.claude/commands/**'
       - '.claude/docs/decision-schema.md'
-      # round 5 re-review (review-pr355-round4.md, should-fix): run.sh's
-      # STATUSLINE_PY tests exercise .claude/statusline.py directly
-      # ($REPO_ROOT/.claude/statusline.py), the same out-of-.claude/hooks/
-      # shape as .claude/agents/** above -- an edit here that re-breaks
-      # either MUST-NOT-RAISE path (see run.sh's own STATUSLINE section)
-      # would otherwise go green in CI and surface later on an unrelated
-      # hooks PR. Confirmed by grep: outside .claude/hooks/, run.sh's only
-      # $REPO_ROOT-relative file references are .claude/agents and
-      # .claude/statusline.py -- .claude/docs/decisions.md also appears,
-      # but only inside per-test `$sandbox/...` paths (synthetic files
-      # created by run_hook_sandbox()), never the real repo file, so it
-      # needs no filter entry of its own.
+      - '.claude/docs/memory-policy.md'
+      - '.claude/docs/pattern-lexicon.md'
+      - '.claude/docs/principles-enforcement.md'
+      - '.claude/settings.json'
+      - '.claude/skills/beast-mode-design/SKILL.md'
       - '.claude/statusline.py'
+      - '.squad/.gate-shadow'
       - '.github/workflows/claude-hooks-tests.yml'
   push:
     branches: [ "main" ]
     paths:
       - '.claude/hooks/**'
-      # run.sh asserts ALLOWED_AGENTS equals the real .claude/agents/
-      # roster and reads decision-schema.md, so a change to either can
-      # break this suite without touching .claude/hooks/** at all.
-      - '.claude/agents/**'
-      - '.claude/docs/decision-schema.md'
       # See the matching comment under pull_request above.
+      - '.claude/agents/**'
+      - '.claude/commands/**'
+      - '.claude/docs/decision-schema.md'
+      - '.claude/docs/memory-policy.md'
+      - '.claude/docs/pattern-lexicon.md'
+      - '.claude/docs/principles-enforcement.md'
+      - '.claude/settings.json'
+      - '.claude/skills/beast-mode-design/SKILL.md'
       - '.claude/statusline.py'
+      - '.squad/.gate-shadow'
       - '.github/workflows/claude-hooks-tests.yml'
   workflow_dispatch:
 

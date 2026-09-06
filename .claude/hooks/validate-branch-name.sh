@@ -19,13 +19,29 @@
 
 set -euo pipefail
 
+# 🔴-4 (PR #358 review round 1): a missing/broken python3 used to produce an
+# empty $command, which matches neither creation form below and falls
+# through to `exit 0` -- silently skipping branch-name validation instead of
+# refusing. Checked once, here, before anything else runs.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 validate-branch-name.sh: python3 is required to classify this command and is not on PATH -- refusing rather than silently skipping branch-name validation." >&2
+  exit 2
+}
+
 payload="$(cat)"
+set +e
 command="$(printf '%s' "$payload" | python3 -c 'import json,sys
 try:
     print(json.loads(sys.stdin.read()).get("tool_input",{}).get("command",""))
 except Exception:
     print("")
 ' 2>/dev/null)"
+command_py_status=$?
+set -e
+if [ "$command_py_status" -ne 0 ]; then
+  echo "🚫 validate-branch-name.sh: the command classifier exited non-zero (${command_py_status}) -- refusing rather than treating a parser failure as \"nothing to validate\"." >&2
+  exit 2
+fi
 
 # Extract a candidate branch name from one of the two creation forms.
 branch=""

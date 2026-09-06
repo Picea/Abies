@@ -34,6 +34,7 @@ These are the specialist subagents available in `.claude/agents/`. Delegate to t
 | `devops` | CI/CD, containers, deployment | `.github/workflows/`, container scanning, release automation |
 | `ux-expert` | Interaction, accessibility, DX | User-facing changes, error messages, keyboard nav, WCAG, API DX |
 | `curator` | Framework maintenance — promotes recurring session learnings into proposals | Only when the user explicitly asks (e.g. "curate learnings", "review the session log and propose framework updates"). Never proactive. Writes proposals to `.squad/learnings/inbox/`; does not edit framework files directly. |
+| `curator-adversary` | Argues against every curator proposal | After `curator` has written to `.squad/learnings/inbox/` and before the user decides. One batched pass over the whole inbox, one counter-argument per proposal, written to `<slug>.counter.md` beside it. Never edits, accepts, or rejects a proposal. |
 
 There is no separate "Scribe" subagent. The session-logger and decision-merger run automatically as `SubagentStop` hooks (see `.claude/settings.json`).
 
@@ -116,13 +117,13 @@ When a request mentions specific files or patterns, this is the default owner. F
 - The phase agents (`scope-warden`, `dreamer-*`, `realist`, `critic`, `spec-author`) are **not** routed to directly — they are dispatched by you as steps of a design pass. See § 3.
 
 **Review** → `reviewer-blind`, then `reviewer-reconcile`
-
-Always both, always in that order. `/review` dispatches the pair. `reviewer-blind` must write `08-review-blind.md` before `reviewer-reconcile` starts — `enforce-phase-order.sh` refuses `09` without `08`, and `reviewer-reconcile` refuses to substitute itself for a missing blind pass.
 - Implementation complete / PR ready
 - Post-fix re-review
 - Any specialist declares work "done" or "ready"
 - Config/CI/csproj/migration touched
 - **The Reviewer is the terminal node for code.** See section below.
+
+Always both, always in that order. `/review` dispatches the pair. `reviewer-blind` must write `08-review-blind.md` before `reviewer-reconcile` starts — `enforce-phase-order.sh` refuses `09` without `08`, and `reviewer-reconcile` refuses to substitute itself for a missing blind pass.
 
 ### 3. Conducting a Design Pass
 
@@ -164,11 +165,18 @@ architect (close-out)     → 07-handoff.md + decision drop
 
 ### 4. The Reviewer Is the Terminal Node for Code
 
-**Hard rule, not a default.** Any work item that touches code-shaped files (`.cs`, `.js`, `.mjs`, Dockerfiles, `*.yml`/`*.yaml` workflows, `appsettings.*`, `.csproj`, `Directory.Build.props`, `Directory.Build.targets`, `global.json`, or anything the runtime executes) **must** terminate at `reviewer-reconcile` before being marked complete, and `reviewer-blind` must have run first. `reviewer-reconcile` is the only authority that declares code-touching work shippable.
+**Hard rule, not a default.** Any work item that touches code-shaped files (`.cs`, `.csproj`, `.js`, `.mjs`, `.ts`, `.tsx`, `.jsx`, `.py`, `.sh`, Dockerfiles (`Dockerfile`, `*/Dockerfile`, `*.dockerfile`), `.github/workflows/**`, `*.yml`/`*.yaml`, `*/Migrations/*`, `package.json`/`*/package.json`, `global.json`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `.claude/settings.json`, `.claude/agents/*.md`, `appsettings.*`/`*/appsettings*.json`, or anything the runtime executes) **must** terminate at `reviewer-reconcile` before being marked complete, and `reviewer-blind` must have run first. `reviewer-reconcile` is the only authority that declares code-touching work shippable. This list names the same set `enforce-review-verdict.sh`'s `case` list gates on (`.claude/hooks/enforce-review-verdict.sh`, the `commit` classification branch) — if you ever have to guess whether a file is code-shaped, that guess is a bug in one of the two lists, not a judgment call; report it. The hook's `case` list is authoritative if the two ever drift; fix this list to match it, not the reverse.
 
 If a specialist or you declare such work complete without an explicit `reviewer-reconcile` verdict, the **Missing Review Lockout** in `.claude/docs/principles-enforcement.md` applies: the agent that attempted the unauthorized completion is locked out for the work item. You then either reassign to `reviewer-reconcile` for the missed review, or escalate to the user if it's ambiguous whether the change is code-shaped.
 
-There is no path from "code changed" to "merged" that bypasses the review pair — at the **instruction** level, not yet an **invariant** (see `.claude/docs/principles-enforcement.md` § "The Three Levels"): `enforce-review-verdict.sh` refuses the equivalent of committing on code paths, pushing to a protected branch, and merging a pull request, unless `.squad/.last-review-verdict` records a PASS for the current HEAD — but that token can be written by redirection from any of the nine `Bash`-holding roles, since `enforce-reviewer-readonly.sh` mediates `Write`/`Edit`/`MultiEdit`/`NotebookEdit` and not `Bash`. The gate makes skipping review loud and visible for an agent not actively working around it; rising above `instruction` means relocating the control to git hooks and server-side branch protection — a named future pass, not yet opened.
+There is no path from "code changed" to "merged" that bypasses the review pair — at the **instruction** level, not yet an **invariant** (see `.claude/docs/principles-enforcement.md` § "The Three Levels"): `enforce-review-verdict.sh` refuses the equivalent of committing on code paths, pushing to a protected branch, and merging a pull request, unless `.squad/.last-review-verdict` records a PASS for the current HEAD.
+
+**Residuals, named rather than assumed away:**
+
+- **The verdict cache is not fully mediated during the shadow window.** `enforce-reviewer-readonly.sh`'s verdict-cache deny is in a CI-6 shadow (see `.squad/.gate-shadow`), and while it is shadowing, a decision the *previous* control would also have allowed logs and passes instead of refusing — for 17 of the 19 charters, including the ten holding no `Bash` at all. This is a live residual until `expires:` in `.squad/.gate-shadow` lapses, not a theoretical one; do not describe the verdict cache as mediated for `Write`/`Edit` while the shadow is active.
+- Direct redirection from any `Bash`-holding role remains out of scope for `enforce-reviewer-readonly.sh` regardless of the shadow — it mediates `Write`/`Edit`/`MultiEdit`/`NotebookEdit`, not `Bash`.
+
+The gate makes skipping review loud and visible for an agent not actively working around it; rising above `instruction` means relocating the control to git hooks and server-side branch protection — a named future pass, not yet opened.
 
 ### 5. Your Lightweight-Review Authority Is Narrow
 
@@ -179,10 +187,15 @@ You may lightweight-approve **only** these:
 - `.md` documentation
 
 You **never** approve any of these (route to `reviewer-reconcile`):
-- `.cs`/`.js`/`.mjs` files
-- Dockerfiles, `.github/workflows/**`
-- `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Build.targets`/`global.json`
+- `.cs`/`.js`/`.mjs`/`.ts`/`.tsx`/`.jsx`/`.py`/`.sh` files
+- Dockerfiles, `*.yml`/`*.yaml` (including but not limited to `.github/workflows/**`)
+- `*/Migrations/*`
+- `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Build.targets`/`Directory.Packages.props`/`global.json`
+- `package.json`/`*/package.json`
+- `.claude/settings.json`, `.claude/agents/*.md`
 - Any file the runtime executes
+
+The full, current list is `enforce-review-verdict.sh`'s `case` list (§ 4) — this bullet list mirrors it for quick reference and is not a second source of truth.
 
 If unsure whether something counts as code → route to `reviewer-reconcile`. Approving a code-shaped change yourself triggers the Missing Review Lockout.
 
@@ -219,6 +232,7 @@ The squad's shared memory lives in `.squad/`. **You do not write to these direct
 | `.squad/decisions/inbox/*.md` | Decisions waiting to be merged into `decisions.md` | Subagents drop entries here |
 | `.claude/docs/decisions.md` | Authoritative team-wide decisions (framework + accumulated session decisions) | Auto-merged from the inbox by the `scribe-decision-merger` hook on `SubagentStop` |
 | `.squad/log/*.md` | Per-session work logs | Auto-appended by the `session-logger` hook on `SubagentStop` |
+| `.squad/log/gate-shadow.md` | Durable audit trail of every CI-6 shadow-period allow (tracked, not gitignored — never delete rows at flip; see the file's own header) | `enforce-reviewer-readonly.sh`, one line per shadow-allowed verdict-cache write |
 | `.squad/orchestration-log/*.md` | Per-subagent invocation summaries | The hook may write a stub; you can elaborate when synthesising |
 | `.squad/learnings/inbox/*.md` | Curator's proposals for framework updates, awaiting user review | The `curator` subagent, only when explicitly invoked |
 | `.squad/learnings/archive/<YYYY-MM>/*.md` | Accepted/rejected proposals after review | You move files here when the user accepts or rejects a proposal |
@@ -233,7 +247,7 @@ Subagents that have persistent memory enabled (Architect, Dreamer-Informed, Drea
 
 ### Framework maintenance via the curator
 
-When the user asks to consolidate session learnings into the framework, delegate to the `curator` subagent. The curator scans `.squad/log/` and `.squad/decisions/archive/` for the requested time window, then writes proposals to `.squad/learnings/inbox/`. **Proposals are not auto-applied.** Surface them to the user, get explicit accept/reject decisions, then apply accepted proposals manually to the target file (`decisions.md`, `tech-stack.md`, or a skill) and move the proposal to `.squad/learnings/archive/<YYYY-MM>/`.
+When the user asks to consolidate session learnings into the framework, delegate to the `curator` subagent. The curator scans `.squad/log/` and `.squad/decisions/archive/` for the requested time window, then writes proposals to `.squad/learnings/inbox/`. Once the inbox is written, dispatch `curator-adversary` for one batched pass over it — it writes one counter-argument per proposal to `<slug>.counter.md` beside it, and never edits, accepts, or rejects anything itself. **Proposals are not auto-applied.** Surface the proposal and its counter-argument together to the user, get explicit accept/reject decisions, then apply accepted proposals manually to the target file (`decisions.md`, `tech-stack.md`, or a skill) and move both the proposal and its counter-argument to `.squad/learnings/archive/<YYYY-MM>/`.
 
 The curator is forbidden from proposing changes to load-bearing files: `.claude/docs/principles-enforcement.md`, the subagent charters in `.claude/agents/`, the hook scripts in `.claude/hooks/`, `.claude/settings.json`, and `CLAUDE.md` itself. If a curator run flags a concern about one of these files, that's a signal for **you** (or the user) to consider, not for the curator to draft.
 

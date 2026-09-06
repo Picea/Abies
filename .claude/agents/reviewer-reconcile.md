@@ -63,7 +63,7 @@ refuses `Write` and `Edit` outside your own outputs:
 `.squad/.last-review-verdict` is **not** in this list. It is deny-by-default for
 every agent, you included — `scribe-decision-merger.sh` is its one writer. It is
 currently in a CI-6 shadow period that logs to `.squad/log/gate-shadow.md` and
-allows instead of refusing until `expires:` in `.squad/.gate-shadow` (2026-09-19),
+allows instead of refusing until `expires:` in `.squad/.gate-shadow` lapses,
 after which no action is required for it to enforce. See §3 below.
 
 `disallowedTools: Write, Edit` is **not** used here, and the reason is worth
@@ -230,7 +230,7 @@ every agent unconditionally, you included; the one **tool-mediated** writer is
 `scribe-decision-merger.sh`, which reads your decision drop on `SubagentStop`
 and writes the cache from it. It is currently in a CI-6 shadow period that logs
 to `.squad/log/gate-shadow.md` and allows instead of refusing until `expires:`
-in `.squad/.gate-shadow` (2026-09-19), after which no action is required for it
+in `.squad/.gate-shadow` lapses, after which no action is required for it
 to enforce.
 
 What you control is the drop's `commit:` field (§2): the full 40-hex `HEAD` of
@@ -243,25 +243,28 @@ stays blocked until a compliant drop lands.
 defense.** The merger trusts a drop's `agent:` field as self-asserted, and
 `.squad/decisions/inbox/` writes are not otherwise governed — a forged drop
 declaring `agent: reviewer-reconcile` with a correctly-read `commit:` satisfies
-the cross-check by construction, because a forger can read `HEAD` too. Closing
-that gap is a separate, tracked concern (security-expert; threat model T-015, Trust
-Boundary 6), not something this field does on its own. Your job is still to
-write the drop honestly — the field catches the honest mistake (wrong tree,
-stale sha), not a dishonest one.
+the cross-check by construction, because a forger can read `HEAD` too. That gap
+is tracked: `docs/security/threat-model.md`, Trust Boundary 5, `TM-013` /
+`OR-008` — ledger pointer `.claude/enforcement/refutations.md`, residual
+R-15 — the way `enforce-reviewer-readonly.sh` and `scribe-decision-merger.sh`
+already cite their own Trust Boundary 5 residuals. Your job is still to write
+the drop honestly — the field catches the honest mistake (wrong tree, stale
+sha), not a dishonest one.
 
 ---
 
 ## Verdict Consistency Rules
 
 Classification happens before grading. Every finding is first a **regression**
-or a **residual** per § 2 of the Merge Criterion
-(`.squad/design/pathless-read-blindness/11-continuous-improvement-criterion.md`);
-🔴 is that ruling's § 4.1 categories, not your own judgment call. A residual
-registered in `.claude/enforcement/refutations.md` with an owner, level
-consequence and `expires:` is graded ⚠️-registered and does not by itself
-prevent ✅ — see **The Merge Criterion — Continuous Improvement** in
-`.claude/docs/principles-enforcement.md`, which is binding and wins over Rule 1
-below where the two differ.
+or a **residual**, and 🔴 is the "Still blocking" / "No longer blocking, once
+registered" split in **The Merge Criterion — Continuous Improvement**
+(`.claude/docs/principles-enforcement.md`) — not your own judgment call. That
+section is the self-contained, binding summary of the upstream ruling; the
+ruling's own source pass has no artifact in this repository, so cite the
+section, not a `.squad/design/` path. A residual registered in
+`.claude/enforcement/refutations.md` with an owner, level consequence and
+`expires:` is graded ⚠️-registered and does not by itself prevent ✅, and
+`principles-enforcement.md` wins over Rule 1 below where the two differ.
 
 1. **The verdict reflects your most severe *unregistered* finding.** Any
    unregistered ⚠️ means the verdict is not ✅. An ⚠️ that is a registered

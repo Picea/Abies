@@ -124,11 +124,16 @@ printf '# Track B\n'    > "$MAIN_CO/.squad/design/demo/02-track-b.md"
 printf '# Skill\n'      > "$MAIN_CO/.claude/skills/beast-mode-design/SKILL.md"
 printf 'class Order {}\n' > "$MAIN_CO/src/Order.cs"
 
-# T-012 fixtures: a plain "docs" dir (a Glob `path` scope with no denied
-# content of its own) and "src/deep" (a deeper legitimate scope), used by
-# the Glob-composition assertions below -- `path` alone must not suppress
-# containment of a climbing `pattern` (see docs/security/threat-model.md
-# T-012).
+# Glob-composition fixtures: a plain "docs" dir (a Glob `path` scope with no
+# denied content of its own) and "src/deep" (a deeper legitimate scope),
+# used by the Glob-composition assertions below -- `path` alone must not
+# suppress containment of a climbing `pattern`. (This fix was referenced by
+# the internal shorthand "T-012" before a real row existed for it.
+# docs/security/threat-model.md, TM-015, Trust Boundary 6 -- "Dreamer/
+# reviewer blindness boundary" -- is now that row; its Test column cites
+# the `[T-012]`-tagged cases below by that label, which is why they keep
+# it rather than being renamed. PR #358 review round 2, ⚠️-C registered the
+# citation gap; security-expert closed it with TM-015 the same round.)
 mkdir -p "$MAIN_CO/docs" "$MAIN_CO/src/deep" "$MAIN_CO/other" "$MAIN_CO/.claude/agents"
 printf '# Readme\n' > "$MAIN_CO/docs/readme.md"
 printf '# devops\n' > "$MAIN_CO/.claude/agents/devops.md"
@@ -280,13 +285,15 @@ expect "track-blindness: Track A denied a Glob scoped by pattern alone into a de
   "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Glob '{"pattern":".claude/docs/*.md"}')" \
   "may not read the decision register"
 
-# --- T-012 (docs/security/threat-model.md): Glob's effective root is the
-# composition of `path` and `pattern`'s own derived root, ALWAYS -- an
-# innocuous `path` must not suppress containment of a climbing `pattern`.
-# Two independent fixes: (1) compose path with glob_root(pattern) instead
-# of using `path` alone; (2) an undetermined glob_root (a brace-group,
-# T-008) escalates to cwd rather than silently no-op-ing into `path`
-# unchanged (D20). ---
+# --- [T-012] Glob-composition fix (docs/security/threat-model.md, TM-015,
+# Trust Boundary 6 -- see enforce-track-blindness.sh's header for the
+# citation history): Glob's effective root is the composition of `path` and
+# `pattern`'s own derived root, ALWAYS -- an innocuous `path` must not
+# suppress containment of a climbing `pattern`. Two independent fixes: (1)
+# compose path with glob_root(pattern) instead of using `path` alone; (2)
+# an undetermined glob_root (a
+# brace-group, T-008) escalates to cwd rather than silently no-op-ing into
+# `path` unchanged (D20). ---
 
 expect "track-blindness: [T-012] a climbing pattern refuses even with an innocuous path -- path no longer suppresses pattern" 2 \
   "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Glob '{"pattern":"../../.claude/docs/**","path":"src/deep"}')" \
@@ -383,29 +390,57 @@ expect "track-blindness: Track A denied path=\"~\" when cwd genuinely descends f
   "$(HOME="$BLIND_TMP" fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Grep '{"pattern":"secret","path":"~","output_mode":"content"}')" \
   "may not read the decision register"
 
-# --- .claude/worktrees/ is not special-cased with a deny-list entry --
-# an earlier revision added one and got it wrong in both directions at
-# once (see git history). What actually closes the
-# exact/descendant direction is the trailing-segment-run restoration in
-# `reach_hit`'s `under` branch above: a worktree is a second full checkout
-# nested *under* cwd, so a denied pattern's true relative form can recur at
-# a deeper offset inside one, and the restored fallback finds it the same
-# way it always finds a foreign checkout's copy in the `elsewhere` branch.
-# The two assertions below are the ones that actually bind: the first is
-# red if that restoration is ever removed from `under` again (verified by
-# removing it and watching this fail, then reverting); the second is red
-# if a coarse `.claude/worktrees/**` deny entry is ever reintroduced
-# instead (verified the same way against the version that had one). The
-# ancestor direction -- rooting at the worktree/agent directory itself, or
-# the sibling worktree layout `git-advanced/SKILL.md` also documents --
-# stays open; it is a deny-closure completeness gap, not solved here. ---
+# --- .claude/worktrees/ IS now special-cased with a deny-list entry, for
+# both agents this hook governs (PR #358 review round 2, finding 🔴-B). An
+# earlier revision of this comment recorded that a coarse deny entry had
+# been tried once before and "got it wrong in both directions at once" --
+# but round 2 demonstrated, by execution against a real registered
+# worktree, that the trailing-segment-run restoration alone (below) does
+# NOT close the *ancestor* direction: `Grep(path=".claude/worktrees")` and
+# `Glob(".claude/worktrees/**/decisions.md")` both exited 0, reaching every
+# path on Track A's deny list through the nested checkout. The restoration
+# still matters -- it is what catches an EXACT/DESCENDANT worktree copy of
+# a denied file at whatever depth it recurs, the same way it catches a
+# foreign checkout's copy in the `elsewhere` branch -- but it was never
+# going to catch a query rooted coarsely AT the worktree directory itself,
+# because nothing on either deny list named that directory. The new
+# `(".claude/worktrees/**", ...)` entry closes exactly that gap. Its
+# accepted collateral cost: a read rooted exactly at plain `.claude` is now
+# refused for `dreamer-informed` too (see the flipped assertion below) --
+# `.claude` is a real ancestor of `.claude/worktrees/**`, the same way it is
+# already a real ancestor of `.claude/docs/decisions.md` for
+# `dreamer-first-principles`. The ancestor direction through a TRUE SIBLING
+# checkout -- the layout `git-advanced/SKILL.md` also documents, outside
+# this checkout entirely -- stays open; there is no fixed path segment to
+# deny for a location that is not, by that layout's own design, under this
+# tree at all. ---
 
-expect "track-blindness: Track A refused a Read of a worktree copy of decisions.md (binds: red if the under-branch restoration is removed)" 2 \
+expect "track-blindness: Track A refused a Read of a worktree copy of decisions.md (now caught by the coarse .claude/worktrees/** entry itself -- it matches at true position before the trailing-run fallback that used to be the only thing catching this ever runs)" 2 \
   "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Read '{"file_path":".claude/worktrees/agent-x/.claude/docs/decisions.md"}')" \
-  "may not read the decision register"
+  "worktree checkout"
 
-expect "track-blindness: Track B allowed path=\".claude\" -- no collateral denial (binds: red if a coarse worktrees deny entry is reintroduced)" 0 \
-  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-informed Grep '{"pattern":"anything","path":".claude","output_mode":"content"}')" ""
+expect "track-blindness: [🔴-B] Track A denied a coarse Grep rooted exactly at .claude/worktrees (the reviewer's exact probe -- was exit 0)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Grep '{"pattern":"secret","path":".claude/worktrees","output_mode":"content"}')" \
+  "worktree checkout"
+
+expect "track-blindness: [🔴-B] Track A denied a Glob rooted at .claude/worktrees/**/decisions.md (the reviewer's exact probe -- was exit 0)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Glob '{"pattern":".claude/worktrees/**/decisions.md"}')" \
+  "worktree checkout"
+
+expect "track-blindness: [🔴-B] Track A denied a Grep rooted exactly at the agent directory one level below .claude/worktrees" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Grep '{"pattern":"secret","path":".claude/worktrees/agent-x","output_mode":"content"}')" \
+  "worktree checkout"
+
+expect "track-blindness: [🔴-B] Track B (also governed) denied the same coarse .claude/worktrees Grep" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-informed Grep '{"pattern":"anything","path":".claude/worktrees","output_mode":"content"}')" \
+  "worktree checkout"
+
+expect "track-blindness: [accepted collateral cost of 🔴-B] Track B now refused a coarse Grep rooted exactly at plain .claude (was allowed before; .claude is a real ancestor of .claude/worktrees/**)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-informed Grep '{"pattern":"anything","path":".claude","output_mode":"content"}')" \
+  "worktree checkout"
+
+expect "track-blindness: [🔴-B collateral is narrow] Track B still allowed a Grep of .claude/skills -- a real sibling of .claude/worktrees, not an ancestor of it" 0 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" dreamer-informed Grep '{"pattern":"anything","path":".claude/skills","output_mode":"content"}')" ""
 
 # --- mcp__*: no fixed schema, so a call with no path-shaped argument at
 # all must be allowed (it may have no path concept whatsoever), while a
@@ -535,8 +570,9 @@ expect "review-blindness: reviewer-blind denied a Glob scoped by pattern alone i
   "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Glob '{"pattern":".squad/design/*.md"}')" \
   "may not read .squad/design/"
 
-# --- T-012 (docs/security/threat-model.md): same composed-scope fix as
-# track-blindness -- see that section's comment for the full reasoning. ---
+# --- [T-012] Glob-composition fix (docs/security/threat-model.md, TM-015,
+# Trust Boundary 6; see the track-blindness section's comment above for the
+# citation history): same composed-scope fix as track-blindness. ---
 
 expect "review-blindness: [T-012] a climbing pattern refuses even with an innocuous path -- path no longer suppresses pattern" 2 \
   "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Glob '{"pattern":"../.squad/design/**/*.md","path":"docs"}')" \
@@ -614,22 +650,33 @@ expect "review-blindness: reviewer-blind denied path=\"~\" when cwd genuinely de
   "$(HOME="$BLIND_TMP" fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Grep '{"pattern":"plan","path":"~","output_mode":"content"}')" \
   "may not read .squad/design/"
 
-# --- .claude/worktrees/ is not special-cased with a deny-list entry, for
+# --- .claude/worktrees/ IS now special-cased with a deny-list entry, for
 # the same reason as track-blindness -- see that section for the fuller
-# comment. The two assertions below are the ones that actually bind: the
-# first is red if the under-branch trailing-run restoration is ever
-# removed from reach_hit again; the second is red if a coarse
-# `.claude/worktrees/**` deny entry is ever reintroduced instead of it
-# (both verified by making each edit and watching the corresponding
-# assertion fail, then reverting). The ancestor direction stays open --
-# a deny-closure completeness gap, not solved here. ---
+# comment (PR #358 review round 2, finding 🔴-B). The trailing-run
+# restoration below still closes the exact/descendant direction; the new
+# coarse `(".claude/worktrees/**", ...)` entry additionally closes the
+# ancestor direction the restoration never reached, verified by execution
+# against a real registered worktree (`Grep(path=".claude/worktrees")` and
+# `Glob(".claude/worktrees/**/*.md")` both used to exit 0). Its accepted
+# collateral cost: reading a builder's source through a copy of it nested
+# inside another agent's worktree is now refused too, where it previously
+# was not -- reviewer-blind reviews the same source from its own cwd. ---
 
-expect "review-blindness: reviewer-blind refused a Read of a worktree copy of a denied .squad/design file (binds: red if the under-branch restoration is removed)" 2 \
+expect "review-blindness: reviewer-blind refused a Read of a worktree copy of a denied .squad/design file (now caught by the coarse .claude/worktrees/** entry itself -- it matches at true position before the trailing-run fallback that used to be the only thing catching this ever runs)" 2 \
   "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Read '{"file_path":".claude/worktrees/agent-x/.squad/design/y/plan.md"}')" \
-  "may not read .squad/design/"
+  "worktree checkout"
 
-expect "review-blindness: reviewer-blind allowed reading a builder's source inside another agent's worktree (binds: red if a coarse worktrees deny entry is reintroduced)" 0 \
-  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Read '{"file_path":".claude/worktrees/agent-x/src/Order.cs"}')" ""
+expect "review-blindness: [accepted collateral cost of 🔴-B] reviewer-blind now refused reading a builder's source through another agent's worktree (was allowed before this round; reviewer-blind reviews the same source from its own cwd instead)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Read '{"file_path":".claude/worktrees/agent-x/src/Order.cs"}')" \
+  "worktree checkout"
+
+expect "review-blindness: [🔴-B] reviewer-blind denied a coarse Grep rooted exactly at .claude/worktrees (the reviewer's exact probe -- was exit 0)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Grep '{"pattern":"plan","path":".claude/worktrees","output_mode":"content"}')" \
+  "worktree checkout"
+
+expect "review-blindness: [🔴-B] reviewer-blind denied a Glob rooted at .claude/worktrees/**/*.md (the reviewer's exact probe -- was exit 0)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Glob '{"pattern":".claude/worktrees/**/*.md"}')" \
+  "worktree checkout"
 
 # --- mcp__*: a call with no path concept at all must be allowed. ---
 
@@ -742,6 +789,34 @@ if [ -n "$WORKTREE" ]; then
     "$(fire $H "$MAIN_CO" "$WORKTREE" reviewer-blind Bash '{"command":"git log --name-status"}')" \
     "git-history-namestatus.sh"
 fi
+
+# Round 1 review, ⚠️-11: a global option's VALUE is a separate token
+# (`-c core.pager=cat` is two words, not one `-c=core.pager=cat`), so the old
+# `(?:-[^\s]+\s+)*` group consumed only `-c` and then required `log`
+# immediately after it -- `core.pager=cat` sat in between and the match
+# never fired. These are regression cases for the fix, not new coverage of
+# a hole nobody hit: every one of them was a real, silent bypass.
+expect "history-channel: git -c core.pager=cat log is still caught (was a bypass)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Bash '{"command":"git -c core.pager=cat log"}')" \
+  "git-history-namestatus.sh"
+
+expect "history-channel: git -C <dir> log is still caught (separate-token value)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Bash '{"command":"git -C /tmp/elsewhere log"}')" \
+  "git-history-namestatus.sh"
+
+expect "history-channel: git --git-dir <dir> show is still caught (long-form separate value)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Bash '{"command":"git --git-dir /tmp/elsewhere show HEAD"}')" \
+  "git show"
+
+# Mutation control in the other direction: a flag that takes NO value
+# (`--no-pager`) must not swallow the literal `log` that follows it as if it
+# were that flag's value -- the optional value branch is only safe because
+# the regex engine backtracks off it when doing so would leave no `log` to
+# match. If a future edit made the value branch greedy/non-backtracking,
+# this would start reporting "allowed" for a command this hook must deny.
+expect "history-channel: git --no-pager log is still caught (value branch does not eat the subcommand)" 2 \
+  "$(fire $H "$MAIN_CO" "$MAIN_CO" reviewer-blind Bash '{"command":"git --no-pager log"}')" \
+  "git-history-namestatus.sh"
 
 # ===========================================================================
 # enforce-reviewer-readonly.sh
@@ -1247,6 +1322,121 @@ if [ -n "$WORKTREE" ]; then
   expect "path resolution: reviewer-readonly denies with CLAUDE_PROJECT_DIR pointing elsewhere entirely" 2 \
     "$(fire enforce-reviewer-readonly.sh "$ELSEWHERE" "$WORKTREE" reviewer-reconcile Edit '{"file_path":"src/Order.cs"}')" \
     "may not write outside its own outputs"
+fi
+
+# ===========================================================================
+# Round 1 review, 🔴-5: gate 1's own output (00-warden-scan.md, written by
+# scope-warden.sh, and 00-warden.md, written by the scope-warden subagent on
+# top of it) sits in .squad/design/<slug>/ -- the exact directory Track A is
+# told to read -- and 00-warden-scan.md quotes matched lexicon terms and their
+# surrounding lines verbatim. Denied to dreamer-first-principles the same way
+# 00-knowledge.md already is.
+# ===========================================================================
+expect "track-blindness: dreamer-first-principles denied 00-warden-scan.md (quotes the lexicon verbatim)" 2 \
+  "$(fire enforce-track-blindness.sh "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Read '{"file_path":".squad/design/demo/00-warden-scan.md"}')" \
+  "gate 1"
+
+expect "track-blindness: dreamer-first-principles denied 00-warden.md" 2 \
+  "$(fire enforce-track-blindness.sh "$MAIN_CO" "$MAIN_CO" dreamer-first-principles Read '{"file_path":".squad/design/demo/00-warden.md"}')" \
+  "gate 1"
+
+expect "track-blindness: dreamer-informed may still read 00-warden-scan.md (not on its own deny list)" 0 \
+  "$(fire enforce-track-blindness.sh "$MAIN_CO" "$MAIN_CO" dreamer-informed Read '{"file_path":".squad/design/demo/00-warden-scan.md"}')" ""
+
+# ===========================================================================
+# Round 1 review, ⚠️-7: enforce-track-blindness.sh and
+# enforce-review-blindness.sh used to carry ~100 byte-identical lines of
+# containment logic (leaves/segs/resolve/classify/reaches/reach_hit/
+# glob_root/truthy_str). Both now import that logic from one sourced module,
+# lib/path_containment.py, instead of each defining its own copy that
+# nothing asserted agreed with the other. Checked structurally in both
+# directions: the import is present, and the function bodies are gone from
+# the hook files themselves (a stale copy left behind after a partial
+# extraction would defeat the point as completely as never extracting it).
+# ===========================================================================
+for h in enforce-track-blindness.sh enforce-review-blindness.sh; do
+  if grep -q 'from path_containment import' "$HOOKS_DIR/$h"; then
+    report "shared containment: $h imports lib/path_containment.py" 1
+  else
+    report "shared containment: $h imports lib/path_containment.py" 0 \
+      "no 'from path_containment import' line found"
+  fi
+  for fn in reach_hit glob_root leaves; do
+    if grep -qE "^def ${fn}\\(" "$HOOKS_DIR/$h"; then
+      report "shared containment: $h has no inline redefinition of $fn" 0 \
+        "found 'def $fn(' inside the hook itself -- the extraction did not stick, and a fix to lib/path_containment.py would not reach this copy"
+    else
+      report "shared containment: $h has no inline redefinition of $fn" 1
+    fi
+  done
+done
+
+if [ -f "$HOOKS_DIR/lib/path_containment.py" ]; then
+  report "shared containment: lib/path_containment.py exists" 1
+else
+  report "shared containment: lib/path_containment.py exists" 0 "file not found"
+fi
+
+# ===========================================================================
+# Round 1 review, 🔴-1: claude-hooks-tests.yml's `paths:` filter is a
+# hand-maintained enumeration of every $REPO_ROOT-relative file the four
+# suites (run.sh, blindness.sh, phase-gates.sh, invariant-chain.sh) read
+# OUTSIDE .claude/hooks/** (that one glob already covers everything under
+# it). The filter drifted once already -- six files plus .squad/.gate-shadow
+# were read by the suites and absent from it, so a PR touching ONLY one of
+# them (e.g. deleting every PreToolUse matcher from .claude/settings.json,
+# unwiring every hook this workflow exists to test) would not have
+# triggered the workflow at all and would have merged green. This
+# re-derives the same enumeration the fix's own comment documents having
+# used, at test time, so a future drift is a loud local failure instead of
+# a CI job silently not running.
+# ===========================================================================
+ci_workflow="$REPO_ROOT/.github/workflows/claude-hooks-tests.yml"
+if [ -f "$ci_workflow" ]; then
+  ci_missing="$(python3 -c '
+import glob, os, re, sys
+
+workflow_path, tests_dir = sys.argv[1], sys.argv[2]
+
+with open(workflow_path, encoding="utf-8") as fh:
+    workflow = fh.read()
+
+filtered = set(re.findall(r"^\s*-\s*'"'"'([^'"'"']+)'"'"'\s*$", workflow, re.M))
+
+refs = set()
+for path in glob.glob(os.path.join(tests_dir, "*.sh")):
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        content = fh.read()
+    for m in re.finditer(r"\$(?:REPO_ROOT|ROOT)/([A-Za-z0-9_./*-]+)", content):
+        rel = m.group(1)
+        if rel == ".claude/hooks" or rel.startswith(".claude/hooks/"):
+            continue  # already covered by the .claude/hooks/** glob
+        refs.add(rel)
+
+
+def covered(rel, patterns):
+    for p in patterns:
+        if p == rel:
+            return True
+        if p.endswith("/**"):
+            base = p[:-3]
+            if rel == base or rel.startswith(base + "/"):
+                return True
+    return False
+
+
+missing = sorted(r for r in refs if not covered(r, filtered))
+print("\n".join(missing))
+' "$ci_workflow" "$SCRIPT_DIR")"
+
+  if [ -z "$ci_missing" ]; then
+    report "CI path coverage: every out-of-hooks path the suites read is in claude-hooks-tests.yml's paths: filter" 1
+  else
+    report "CI path coverage: every out-of-hooks path the suites read is in claude-hooks-tests.yml's paths: filter" 0 \
+      "not covered by the workflow's paths: filter: $(printf '%s' "$ci_missing" | tr '\n' ' ')"
+  fi
+else
+  report "CI path coverage: claude-hooks-tests.yml exists" 0 "$ci_workflow not found"
 fi
 
 # ===========================================================================

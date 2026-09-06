@@ -40,8 +40,18 @@
 
 set -euo pipefail
 
+# 🔴-4 (PR #358 review round 1): a missing/broken python3 used to produce
+# empty stdout via `|| true`, indistinguishable from "this artifact has no
+# phase-order rule" -- silently allowing a Write this hook exists to refuse.
+# Checked once, here, before anything else runs.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 enforce-phase-order.sh: python3 is required to evaluate phase order and is not on PATH -- refusing rather than silently allowing an artifact whose predecessors cannot be checked." >&2
+  exit 2
+}
+
 payload="$(cat)"
 
+set +e
 reason="$(printf '%s' "$payload" | python3 -c '
 import json, os, re, sys
 
@@ -110,7 +120,14 @@ for pred in needed:
 if missing:
     print("%s|%s|%s|%s" % (base, os.path.relpath(pass_dir, cwd),
                            ", ".join(missing), WHY[base]))
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+phase_py_status=$?
+set -e
+
+if [ "$phase_py_status" -ne 0 ]; then
+  echo "🚫 enforce-phase-order.sh: the phase-order classifier exited non-zero (${phase_py_status}) -- refusing rather than treating a parser failure as \"no predecessor rule applies\"." >&2
+  exit 2
+fi
 
 [ -z "$reason" ] && exit 0
 

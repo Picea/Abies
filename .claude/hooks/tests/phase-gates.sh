@@ -171,6 +171,45 @@ EOS
 fi
 
 # ===========================================================================
+# Round 1 review, ⚠️-3: attribution by newest mtime across ALL slugs picks
+# up a concurrent pass's touch instead of THIS invocation's own pass.
+# lib/artifact_attribution.py fixes this by preferring a Write recorded in
+# THIS invocation's own transcript (ground truth) over a global mtime guess.
+# These two build the exact failure shape the finding describes: two passes
+# in flight, the WRONG one touched more recently, and a transcript that
+# proves which one this invocation actually wrote.
+# ===========================================================================
+PG_ATTR="$PG_TMP/attribution"
+pg_project "$PG_ATTR" "pass-older"
+mkdir -p "$PG_ATTR/.squad/design/pass-newer"
+printf '# Scope — older (this invocation'"'"'s own pass)\nTransitions must be total.\n' \
+  > "$PG_ATTR/.squad/design/pass-older/00-scope.md"
+sleep 1
+printf '# Scope — newer (a DIFFERENT, concurrent pass)\nTypically we would reach for event sourcing here.\n' \
+  > "$PG_ATTR/.squad/design/pass-newer/00-scope.md"
+
+pg_transcript="$PG_TMP/transcript-scope.jsonl"
+printf '{"timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","input":{"file_path":".squad/design/pass-older/00-scope.md"}}]}}\n' \
+  > "$pg_transcript"
+
+pg_expect "attribution: scope-warden attributes to the transcript's OWN write, not the newer-mtime sibling" 0 \
+  "$(pg_fire scope-warden.sh "$PG_ATTR" "$(printf '{"agent_type":"architect","cwd":%s,"stop_hook_active":false,"transcript_path":%s}' "$(pg_json "$PG_ATTR")" "$(pg_json "$pg_transcript")")")" \
+  "pass-older"
+
+if [ -f "$PG_ATTR/.squad/design/pass-older/00-warden-scan.md" ]; then
+  report "attribution: the scan lands in the transcript's pass, not the newer-mtime one" 1
+else
+  report "attribution: the scan lands in the transcript's pass, not the newer-mtime one" 0 \
+    "00-warden-scan.md not found under pass-older -- attribution followed mtime, not the transcript"
+fi
+if [ -f "$PG_ATTR/.squad/design/pass-newer/00-warden-scan.md" ]; then
+  report "attribution: the newer-mtime, wrong-invocation pass is NOT touched" 0 \
+    "00-warden-scan.md was written under pass-newer -- that pass was never this invocation's own output"
+else
+  report "attribution: the newer-mtime, wrong-invocation pass is NOT touched" 1
+fi
+
+# ===========================================================================
 # lexicon-check.sh — blocks, and the override exists from the first run
 # ===========================================================================
 cat > "$MAIN/.squad/design/demo/01-track-a.md" <<'EOS'
@@ -249,6 +288,51 @@ EOS
     report "lexicon-check: logs into the worktree, not the main checkout" 0 "no hit log in the worktree"
   fi
 fi
+
+# Round 1 review, ⚠️-3 (lexicon-check.sh's own instance): same fixture shape
+# as the scope-warden case above -- a concurrent pass's 01-track-a.md has the
+# newer mtime, and only the transcript says which pass this invocation
+# actually wrote.
+mkdir -p "$PG_ATTR/.squad/design/pass-newer2"
+printf '# Track A\nCandidate A1 preserves total transitions.\nCandidate A2 uses a log.\nThe structural property is that the fold is associative.\n' \
+  > "$PG_ATTR/.squad/design/pass-older/01-track-a.md"
+sleep 1
+printf '# Track A\nTypically this is handled with event sourcing.\n' \
+  > "$PG_ATTR/.squad/design/pass-newer2/01-track-a.md"
+
+pg_transcript2="$PG_TMP/transcript-lexicon.jsonl"
+printf '{"timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","input":{"file_path":".squad/design/pass-older/01-track-a.md"}}]}}\n' \
+  > "$pg_transcript2"
+
+pg_expect "attribution: lexicon-check attributes to the transcript's OWN write, not the newer-mtime sibling" 0 \
+  "$(pg_fire lexicon-check.sh "$PG_ATTR" "$(printf '{"agent_type":"dreamer-first-principles","cwd":%s,"stop_hook_active":false,"transcript_path":%s}' "$(pg_json "$PG_ATTR")" "$(pg_json "$pg_transcript2")")")" ""
+
+if grep -qF "pass-newer2" "$PG_ATTR/.squad/log/lexicon-hits.md" 2>/dev/null; then
+  report "attribution: lexicon-check does not log the newer-mtime, wrong-invocation pass" 0 \
+    "pass-newer2 appears in lexicon-hits.md -- that pass was never this invocation's own output"
+else
+  report "attribution: lexicon-check does not log the newer-mtime, wrong-invocation pass" 1
+fi
+
+# Round 1 review, ⚠️-3 (validate-phase-artifact.sh's own instance, the
+# third of the three hooks the finding names): pass-older's 05-critic.md is
+# well-formed; a DIFFERENT, concurrent pass's 05-critic.md is malformed and
+# has the newer mtime. Attribution must follow the transcript to pass-older
+# and pass it, not fall through to the newer-mtime, malformed one and block
+# a phase that never wrote that file.
+mkdir -p "$PG_ATTR/.squad/design/pass-newer3"
+printf '# Critic\n\n## 🔴 Must Fix\n\nGiven a replica crashes mid-write, when the coordinator retries, then the write is duplicated.\n\n## Verdict\n\nLOOP BACK\n' \
+  > "$PG_ATTR/.squad/design/pass-older/05-critic.md"
+sleep 1
+printf '# Critic\n\n## 🔴 Must Fix\n\nThis might not scale.\n' \
+  > "$PG_ATTR/.squad/design/pass-newer3/05-critic.md"
+
+pg_transcript3="$PG_TMP/transcript-critic.jsonl"
+printf '{"timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","input":{"file_path":".squad/design/pass-older/05-critic.md"}}]}}\n' \
+  > "$pg_transcript3"
+
+pg_expect "attribution: validate-phase-artifact attributes to the transcript's OWN write, not the newer-mtime sibling" 0 \
+  "$(pg_fire validate-phase-artifact.sh "$PG_ATTR" "$(printf '{"agent_type":"critic","cwd":%s,"stop_hook_active":false,"transcript_path":%s}' "$(pg_json "$PG_ATTR")" "$(pg_json "$pg_transcript3")")")" ""
 
 # ===========================================================================
 # enforce-phase-order.sh

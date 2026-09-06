@@ -262,6 +262,304 @@ if [ "$gate_ready" = "1" ]; then
 fi
 
 # ===========================================================================
+# enforce-review-verdict.sh -- 🔴-2 (PR #358 review round 1): `git commit -a`
+# and `git commit <pathspec>` stage AT COMMIT TIME, so the index was empty
+# when the gate used to classify on `git diff --cached` alone -- both forms
+# bypassed the gate entirely. Fixed by classifying over the union of the
+# index and the tracked working-tree diff. A fresh sandbox, independent of
+# the one above, so these assertions don't depend on that fixture's by-then
+# heavily-mutated state.
+#
+# Commands are assembled via string concatenation/variables rather than
+# written as literals -- the SAME reason invariant-chain.sh's own header
+# note already gives for IC_MERGE_CMD: this file's own text would otherwise
+# trip the very hook it's testing when a maintainer edits it through a
+# session where these hooks are live.
+# ===========================================================================
+IC_G2="$IC_TMP/gate2"
+mkdir -p "$IC_G2"
+gate2_ready=0
+if git -C "$IC_G2" init -q 2>/dev/null \
+   && git -C "$IC_G2" config user.email t@t && git -C "$IC_G2" config user.name t \
+   && git -C "$IC_G2" config commit.gpgsign false \
+   && printf 'class A {}\n' > "$IC_G2/A.cs" \
+   && git -C "$IC_G2" add -A 2>/dev/null \
+   && git -C "$IC_G2" commit -qm init 2>/dev/null \
+   && git -C "$IC_G2" branch -m main >/dev/null 2>&1; then
+  gate2_ready=1
+else
+  report "commit-gate (-a/pathspec fixture): created" 0 "git init/commit failed"
+fi
+
+if [ "$gate2_ready" = "1" ]; then
+  G2() { printf '{"cwd":%s,"tool_name":"Bash","tool_input":{"command":%s}}' \
+           "$(ic_json "$IC_G2")" "$(ic_json "$1")"; }
+  HEAD2_SHA="$(git -C "$IC_G2" rev-parse HEAD)"
+  CM_AM="git co""mmit -am x"
+  CM_PATHSPEC="git co""mmit -m x A.cs"
+
+  # A verdict that names the PRIOR head (there is no HEAD after A.cs's
+  # further edit is committed yet) is what "current PASS" means for a
+  # commit gate.
+  mkdir -p "$IC_G2/.squad"
+  printf 'PASS\ncommit: %s\n' "$HEAD2_SHA" > "$IC_G2/.squad/.last-review-verdict"
+
+  printf 'more\n' >> "$IC_G2/A.cs"
+  ic_expect "commit-gate: -am with a current PASS is allowed" 0 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G2" "$(G2 "$CM_AM")")" ""
+
+  printf 'PASS\ncommit: 0000000000000000000000000000000000000000\n' > "$IC_G2/.squad/.last-review-verdict"
+  ic_expect "commit-gate: -am with NOTHING staged and a stale verdict is refused (was a bypass)" 2 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G2" "$(G2 "$CM_AM")")" \
+    "was recorded for"
+
+  ic_expect "commit-gate: an explicit pathspec with NOTHING staged and a stale verdict is refused (was a bypass)" 2 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G2" "$(G2 "$CM_PATHSPEC")")" \
+    "was recorded for"
+
+  git -C "$IC_G2" add -A
+  git -C "$IC_G2" commit -qm settle
+  rm -f "$IC_G2/.squad/.last-review-verdict"
+  ic_expect "commit-gate: -am with truly nothing to commit is not gated even with no verdict" 0 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G2" "$(G2 "$CM_AM")")" ""
+fi
+
+# ===========================================================================
+# enforce-review-verdict.sh and block-direct-commits-to-main.sh --
+# 🔴-3 (PR #358 review round 1): the local branch alone is blind to the
+# REFSPEC. `git push origin HEAD:main` (or any other explicit-destination
+# form) from a feature branch used to exit 0 unconditionally in both hooks.
+# ===========================================================================
+IC_G3="$IC_TMP/gate3"
+mkdir -p "$IC_G3"
+gate3_ready=0
+if git -C "$IC_G3" init -q 2>/dev/null \
+   && git -C "$IC_G3" config user.email t@t && git -C "$IC_G3" config user.name t \
+   && git -C "$IC_G3" config commit.gpgsign false \
+   && printf 'class A {}\n' > "$IC_G3/A.cs" \
+   && git -C "$IC_G3" add -A 2>/dev/null \
+   && git -C "$IC_G3" commit -qm init 2>/dev/null \
+   && git -C "$IC_G3" branch -m main >/dev/null 2>&1 \
+   && git -C "$IC_G3" checkout -qb feature/1-x >/dev/null 2>&1; then
+  gate3_ready=1
+else
+  report "commit-gate (refspec fixture): created" 0 "git init/commit/branch failed"
+fi
+
+if [ "$gate3_ready" = "1" ]; then
+  G3() { printf '{"cwd":%s,"tool_name":"Bash","tool_input":{"command":%s}}' \
+           "$(ic_json "$IC_G3")" "$(ic_json "$1")"; }
+  # A stale/no verdict, so a REFUSAL below is unambiguously "the refspec was
+  # read and found protected", not an unrelated PASS.
+  rm -f "$IC_G3/.squad/.last-review-verdict"
+
+  for hook in enforce-review-verdict.sh block-direct-commits-to-main.sh; do
+    ic_expect "refspec ($hook): a plain push on a feature branch is not gated" 0 \
+      "$(ic_fire "$hook" "$IC_G3" "$(G3 'git push origin feature/1-x')")" ""
+    ic_expect "refspec ($hook): HEAD:main from a feature branch is refused" 2 \
+      "$(ic_fire "$hook" "$IC_G3" "$(G3 'git push origin HEAD:main')")" ""
+    ic_expect "refspec ($hook): src:refs/heads/main from a feature branch is refused" 2 \
+      "$(ic_fire "$hook" "$IC_G3" "$(G3 'git push origin feature/1-x:refs/heads/main')")" ""
+    ic_expect "refspec ($hook): --all is refused unconditionally" 2 \
+      "$(ic_fire "$hook" "$IC_G3" "$(G3 'git push --all origin')")" ""
+    ic_expect "refspec ($hook): an explicit non-protected destination is not gated" 0 \
+      "$(ic_fire "$hook" "$IC_G3" "$(G3 'git push origin HEAD:some-other-branch')")" ""
+  done
+
+  # release/* is protected by enforce-review-verdict.sh's own long-standing
+  # scope (main|master|release/*); block-direct-commits-to-main.sh's scope
+  # has only ever been main/master (its own header says so), and this round
+  # does not widen it -- so this assertion is deliberately NOT shared with
+  # the loop above.
+  ic_expect "refspec (enforce-review-verdict.sh): --force to release/1.0 from a feature branch is refused" 2 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G3" "$(G3 'git push --force origin HEAD:release/1.0')")" ""
+fi
+
+# ===========================================================================
+# PR #358 review round 2, 🔴-A: enforce-review-verdict.sh and
+# block-direct-commits-to-main.sh used to each carry a byte-identical inline
+# copy of split_simple_commands()/push_destinations(), with nothing asserting
+# the two agreed -- and the copies were WEAKER than
+# lib/git_commit_detect.py's own `_strip_transparent_prefix()` (missed
+# `env -u FOO git push` / `sudo -u user git push`). Both now import from the
+# shared module instead, the way enforce-track-blindness.sh and
+# enforce-review-blindness.sh already import lib/path_containment.py.
+# Checked structurally in both directions, same shape as blindness.sh's
+# path_containment assertions: the import is present, and the function
+# bodies are gone from the hook files themselves (a stale copy left behind
+# after a partial extraction would defeat the point as completely as never
+# extracting it).
+# ===========================================================================
+for h in enforce-review-verdict.sh block-direct-commits-to-main.sh; do
+  if grep -q 'from git_commit_detect import' "$IC_HOOKS/$h"; then
+    report "shared push-destination parsing: $h imports lib/git_commit_detect.py" 1
+  else
+    report "shared push-destination parsing: $h imports lib/git_commit_detect.py" 0 \
+      "no 'from git_commit_detect import' line found"
+  fi
+  for fn in split_simple_commands push_destinations; do
+    if grep -qE "^def ${fn}\\(" "$IC_HOOKS/$h"; then
+      report "shared push-destination parsing: $h has no inline redefinition of $fn" 0 \
+        "found 'def $fn(' inside the hook itself -- the extraction did not stick, and a fix to lib/git_commit_detect.py would not reach this copy"
+    else
+      report "shared push-destination parsing: $h has no inline redefinition of $fn" 1
+    fi
+  done
+done
+
+if [ -f "$IC_HOOKS/lib/git_commit_detect.py" ]; then
+  report "shared push-destination parsing: lib/git_commit_detect.py exists" 1
+else
+  report "shared push-destination parsing: lib/git_commit_detect.py exists" 0 "file not found"
+fi
+
+# ===========================================================================
+# PR #358 review round 2, ⚠️-A: `git add -A && git commit` and
+# `git add B.cs; git commit` both stage a brand-new file WITHIN THE SAME Bash
+# call this hook gates -- at the moment this PreToolUse hook runs, the `add`
+# half has not executed yet, so the file is still untracked and invisible to
+# both `git diff --cached` (nothing staged yet) and `git diff` (tracked-only,
+# so a NEW file never shows up there either). Fixed by also scanning
+# `git status --porcelain` for untracked files whenever the command text
+# contains a staging verb.
+# ===========================================================================
+IC_G4="$IC_TMP/gate4"
+mkdir -p "$IC_G4"
+gate4_ready=0
+if git -C "$IC_G4" init -q 2>/dev/null \
+   && git -C "$IC_G4" config user.email t@t && git -C "$IC_G4" config user.name t \
+   && git -C "$IC_G4" config commit.gpgsign false \
+   && printf 'class A {}\n' > "$IC_G4/A.cs" \
+   && git -C "$IC_G4" add -A 2>/dev/null \
+   && git -C "$IC_G4" commit -qm init 2>/dev/null \
+   && git -C "$IC_G4" branch -m main >/dev/null 2>&1; then
+  gate4_ready=1
+else
+  report "commit-gate (untracked-file fixture): created" 0 "git init/commit failed"
+fi
+
+if [ "$gate4_ready" = "1" ]; then
+  G4() { printf '{"cwd":%s,"tool_name":"Bash","tool_input":{"command":%s}}' \
+           "$(ic_json "$IC_G4")" "$(ic_json "$1")"; }
+  HEAD4_SHA="$(git -C "$IC_G4" rev-parse HEAD)"
+  rm -f "$IC_G4/.squad/.last-review-verdict" 2>/dev/null
+
+  printf 'class B {}\n' > "$IC_G4/B.cs"
+  ic_expect "commit-gate: 'git add -A && git commit' on a brand-new file is refused (was a bypass)" 2 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G4" "$(G4 'git add -A && git co''mmit -m x')")" \
+    "no verdict has been recorded"
+
+  ic_expect "commit-gate: 'git add <file>; git commit' on a brand-new file is refused (was a bypass)" 2 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G4" "$(G4 'git add B.cs; git co''mmit -m x')")" \
+    "no verdict has been recorded"
+
+  # B.cs is still untracked on disk from the two bypass probes above (this
+  # hook only INSPECTS state, it never actually runs the git command it is
+  # gating) -- clear it so the docs-only probe below sees ONLY the docs file
+  # it is meant to test, not a leftover code-shaped untracked file from a
+  # previous step.
+  rm -f "$IC_G4/B.cs"
+  mkdir -p "$IC_G4/.squad"
+  printf 'README\n' > "$IC_G4/README.md"
+  ic_expect "commit-gate: adding a brand-new docs-only file is still not gated" 0 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G4" "$(G4 'git add README.md && git co''mmit -m docs')")" ""
+
+  printf 'PASS\ncommit: %s\n' "$HEAD4_SHA" > "$IC_G4/.squad/.last-review-verdict"
+  ic_expect "commit-gate: 'git add -A && git commit' on a brand-new file is allowed with a current PASS" 0 \
+    "$(ic_fire enforce-review-verdict.sh "$IC_G4" "$(G4 'git add -A && git co''mmit -m x')")" ""
+fi
+
+# ===========================================================================
+# 🔴-4 (PR #358 review round 1): every python3-dependent hook must fail
+# CLOSED when python3 itself is unavailable or crashes, not silently allow
+# because a broken/missing interpreter produced empty output.
+#
+# Derived from each hook's OWN documented exit-code contract rather than a
+# hand-maintained classification, so a hook that changes its contract
+# without updating this loop is caught by the fallback branch below instead
+# of silently mis-tested. One stub `python3` (present on PATH, but exits
+# 127 -- the "broken interpreter", not merely "absent", shape) is shared by
+# every iteration.
+#
+# This checks BOTH halves of the finding: the commit/push/reviewer/
+# phase-order/branch-name preambles security-expert owns, and every other
+# python3-dependent hook devops applies the identical preamble to. A hook
+# that has not yet been given the preamble fails this loop LOUDLY (that is
+# the point of the loop) rather than being silently excluded from it.
+# ===========================================================================
+IC_PYSTUB="$IC_TMP/pystub"
+mkdir -p "$IC_PYSTUB"
+for b in bash basename cat date dirname find git grep head mkdir mktemp mv printf rm sed sort tr; do
+  bp="$(command -v "$b" 2>/dev/null)" || continue
+  ln -sf "$bp" "$IC_PYSTUB/$b"
+done
+cat > "$IC_PYSTUB/python3" <<'PYSTUB'
+#!/bin/sh
+exit 127
+PYSTUB
+chmod +x "$IC_PYSTUB/python3"
+
+IC_PYFIXTURE="$IC_TMP/pyfixture"
+mkdir -p "$IC_PYFIXTURE"
+
+while IFS= read -r -d '' hookfile; do
+  hookname="$(basename "$hookfile")"
+  grep -q 'python3' "$hookfile" || continue
+  # PR #358 review round 2, 🔴-C: this loop used to ALSO `continue` past any
+  # hookfile lacking the literal string `command -v python3`, on the claim
+  # that the exclusion was "a KNOWN, separately registered gap" -- it was
+  # not. `grep -n
+  # "block-large-files\|enforce-no-secrets\|enforce-gpg-signing\|enforce-conventional-commits\|dotnet-format"
+  # .claude/enforcement/refutations.md docs/security/threat-model.md` found
+  # no entry for any of them, and all four were fail-OPEN under exactly the
+  # broken-interpreter stub this loop builds. Every hookfile the outer
+  # `grep -q 'python3'` reaches now gets a real expectation below: if it
+  # lacks a recognised exit-code contract in its header, that is a FAILURE
+  # (the `case` fallback), not a skip -- give it one of the two documented
+  # contracts (`0 — allow / 2 — block` or `0 — always`) rather than adding a
+  # new exclusion here.
+  full="$(cat "$hookfile")"
+  case "$full" in
+    *'2 — block'*|*'2 - block'*)
+      rc=0
+      printf '{}' | PATH="$IC_PYSTUB" CLAUDE_PROJECT_DIR="$IC_PYFIXTURE" \
+        bash "$hookfile" >"$IC_OUT" 2>"$IC_ERR" || rc=$?
+      if [ "$rc" = "2" ]; then
+        report "python3-broken: $hookname refuses (fail-closed)" 1
+      else
+        report "python3-broken: $hookname refuses (fail-closed)" 0 \
+          "expected exit 2 with a broken python3, got $rc -- $(cat "$IC_ERR" "$IC_OUT" 2>/dev/null | head -1)"
+      fi
+      ;;
+    *'0 — always'*|*'0 - always'*)
+      rc=0
+      printf '{"cwd":%s,"stop_hook_active":false}' "$(ic_json "$IC_PYFIXTURE")" \
+        | PATH="$IC_PYSTUB" CLAUDE_PROJECT_DIR="$IC_PYFIXTURE" \
+          bash "$hookfile" >"$IC_OUT" 2>"$IC_ERR" || rc=$?
+      if [ "$rc" = "0" ]; then
+        report "python3-broken: $hookname exits 0 without crashing (never-blocks contract)" 1
+      else
+        report "python3-broken: $hookname exits 0 without crashing (never-blocks contract)" 0 \
+          "expected exit 0 per its own \"never blocks\" contract, got $rc"
+      fi
+      ;;
+    *)
+      report "python3-broken: $hookname declares a recognised exit-code contract" 0 \
+        "neither '0 — allow / 2 — block' nor '0 — always' found in its header -- this loop cannot derive an expectation for it; give it one of the two documented contracts or classify it explicitly here"
+      ;;
+  esac
+done < <(find "$IC_HOOKS" -maxdepth 1 -type f -name '*.sh' -print0)
+# Native `.py` hooks (precompact-snapshot.py, session-context-loader.py,
+# skill-router.py, squad-rotate.py) are deliberately excluded: they are
+# invoked directly as `python3 <path>` per settings.json, not `bash
+# <path>`, so a broken python3 is a different failure surface entirely --
+# the interpreter the hook itself IS, not a subprocess it shells out to --
+# and `bash`-executing one of them here would just be a bash syntax error,
+# testing nothing about the fix this loop exists to check.
+
+rm -rf "$IC_PYSTUB" "$IC_PYFIXTURE"
+
+# ===========================================================================
 # session-logger.sh -- pass-cost rows
 # ===========================================================================
 IC_L="$IC_TMP/logger"

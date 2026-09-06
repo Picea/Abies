@@ -19,7 +19,8 @@
 # .squad/.last-review-verdict IS DENY-BY-DEFAULT FOR EVERY AGENT, NOT
 # ALLOW-LISTED FOR ANY — architect ruling
 # arch-verdict-cache-and-gate-classification (INV-5, "single writer") plus
-# security-expert's T-013 (docs/security/threat-model.md, Trust Boundary 6):
+# security-expert's TM-012 (docs/security/threat-model.md, Trust Boundary 5;
+# ledger pointer: .claude/enforcement/refutations.md, residual R-14):
 # `reviewer-reconcile` used to be allow-listed to write this file directly,
 # and every OTHER agent fell through this hook's passthrough default
 # (`allowed = ALLOW.get(agent); if allowed is None: sys.exit(0)`) untouched,
@@ -39,7 +40,7 @@
 # moment the shadow lapses.
 #
 # What this closes and what it does not, stated as an object, not a
-# capability (T-013's own framing) — and stated as what the MATCHER
+# capability (TM-012's own framing) — and stated as what the MATCHER
 # delivers, not what would be nice to claim: a wording like "no agent can
 # write this path", or the refusal's own "no tool call may write this
 # path, ever", both overclaim what a textual `os.path.normpath` match can
@@ -57,18 +58,19 @@
 # entry sharing an inode, not a symbolic reference — there is nothing in
 # the path text for `realpath` to follow) and a case-spelling variant on a
 # case-insensitive filesystem (this matcher is case-sensitive; it does not
-# fold). Both remain open and are tracked as a residual pending
-# security-expert's `T-` row — docs/security/threat-model.md, Trust
-# Boundary 6, T-017 (ledger pointer: refutations.md entry 10) — named here
-# rather than silently claimed closed.
+# fold). Both remain open and are tracked as TM-014 —
+# docs/security/threat-model.md, Trust Boundary 5 (ledger pointer:
+# .claude/enforcement/refutations.md, residual R-16) — named here rather
+# than silently claimed closed.
 #
 # What remains open, unscheduled, named rather than silently passed:
 # the `Bash` redirection channel (`echo ... > .squad/.last-review-verdict`)
 # for the 9 agents holding `Bash` is NOT closed by this hook — `Write`/`Edit`
 # are the only tools it mediates. `enforce-review-verdict.sh`'s Q2
 # classification stages gate `git`/`gh` verbs, not arbitrary shell
-# redirections, and closing that channel is T-013's fix direction (3), an
-# unscheduled follow-on referencing T-010's precedent, not attempted here.
+# redirections, and closing that channel is TM-012's fix direction (see
+# docs/security/threat-model.md and refutations.md residual R-14), an
+# unscheduled follow-on, not attempted here.
 # The claim this hook can make is therefore "no TOOL-MEDIATED write except
 # the merger's, for every path spelling this matcher can canonicalise", not
 # "no write" — object-not-capability, same discipline as the rest of this
@@ -139,15 +141,32 @@
 
 set -euo pipefail
 
+# 🔴-4 (PR #358 review round 1): a missing/broken python3 used to produce
+# empty stdout, indistinguishable from "nothing to refuse" -- the exact
+# opposite of what a deny-by-default confinement hook must do on its own
+# failure. Checked once, here, before anything else runs, so a missing
+# interpreter is a loud refusal rather than a silent widening of every
+# reviewer's and the warden's write access.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 enforce-reviewer-readonly.sh: python3 is required to evaluate this Write/Edit/MultiEdit/NotebookEdit and is not on PATH -- refusing rather than silently allowing an unclassified write past the reviewer/warden confinement." >&2
+  exit 2
+}
+
 payload="$(cat)"
 
+# `set -e` would abort THIS script on the substitution's own exit status
+# before the explicit check below ever ran -- suppressed for exactly the one
+# command it matters for, and restored immediately after, so a non-zero
+# python3 exit is inspected deliberately rather than surfaced as whatever
+# unrelated message `set -e` would have produced.
+set +e
 reason="$(printf '%s' "$payload" | python3 -c '
 import datetime, json, os, re, sys
 
 # The three-agent object confinement. .squad/.last-review-verdict is
 # DELIBERATELY not in any of these lists any more -- it is governed
 # unconditionally below, for every agent, before this table is even
-# consulted. See the header for why (INV-5 / T-013).
+# consulted. See the header for why (INV-5 / TM-012).
 ALLOW = {
     "reviewer-blind": [
         ".squad/design/*/08-review-blind.md",
@@ -378,8 +397,9 @@ def candidates(raw):
     # happened). It does NOT resolve a hardlink (a distinct directory entry
     # sharing an inode, not a symbolic reference -- there is nothing in the
     # path text to follow) and it does NOT fold case -- both left open,
-    # named in the header, tracked as a residual (threat-model.md T-017;
-    # ledger pointer refutations.md entry 10).
+    # named in the header, tracked as TM-014 (docs/security/threat-model.md,
+    # Trust Boundary 5; ledger pointer: .claude/enforcement/refutations.md,
+    # residual R-16).
     real_p = os.path.realpath(p)
     if real_p != p:
         real_cwd = os.path.realpath(cwd)
@@ -448,7 +468,24 @@ if not target_escapes_repo and any(rx.match(c) for rx in RX for c in cands):
     sys.exit(0)
 
 print("OWN|%s|%s|%s|%s" % (agent, tool, target, "; ".join(allowed)))
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+py_status=$?
+set -e
+
+# 🔴-4 (PR #358 review round 1): distinguishing "python3 ran and found
+# nothing to refuse" (empty stdout, exit 0 -- genuinely allow) from
+# "python3 crashed" (non-zero exit, e.g. a syntax error introduced by an
+# edit, or an unhandled exception) used to be impossible: `|| true` on the
+# substitution discarded the exit status entirely, so both cases produced
+# the same empty `$reason` and both fell through to `exit 0`. The `try/except`
+# at the top of the embedded script already handles malformed JSON by
+# printing nothing and exiting 0 deliberately -- that path is unaffected;
+# this check only fires on a python3 failure the script's own error handling
+# did not anticipate.
+if [ "$py_status" -ne 0 ]; then
+  echo "🚫 enforce-reviewer-readonly.sh: the confinement classifier exited non-zero (${py_status}) -- refusing rather than treating a parser failure as \"nothing to refuse\"." >&2
+  exit 2
+fi
 
 [ -z "$reason" ] && exit 0
 
@@ -475,8 +512,8 @@ enforcing today, said deliberately; this message only prints when no
 shadow is active or ${agent} is shadow-exempt.) (This governs
 a path spelling, not the file itself: a hardlink to this file, or a case
 variant on a case-insensitive filesystem, is not covered by this check --
-see docs/security/threat-model.md, Trust Boundary 6, T-017 — ledger
-pointer refutations.md entry 10.) The cache reflects a review that actually
+see docs/security/threat-model.md, Trust Boundary 5, TM-014 — ledger
+pointer .claude/enforcement/refutations.md, residual R-16.) The cache reflects a review that actually
 happened; a direct write is the review that didn't.
 
 If reviewer-reconcile has just finished, its decision drop
@@ -484,7 +521,7 @@ If reviewer-reconcile has just finished, its decision drop
 write the drop, not the cache.
 
 See .claude/docs/principles-enforcement.md (Missing Review Lockout) and
-docs/security/threat-model.md (Trust Boundary 6, T-013).
+docs/security/threat-model.md (Trust Boundary 5, TM-012).
 EOF
   exit 2
 fi

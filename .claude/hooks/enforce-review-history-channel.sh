@@ -12,10 +12,10 @@
 # Denied for `reviewer-blind`:  git log, git show, git blame,
 #                               gh pr view, gh issue view
 #
-# `reviewer-blind` is introduced in a later stage of this work (WP-5, which
-# splits agents/reviewer.md into reviewer-blind and reviewer-reconcile).
-# This hook is written now, keyed by name, and is inert until that charter
-# lands.
+# `reviewer-blind` is live: `agents/reviewer.md` has been split into
+# `reviewer-blind` and `reviewer-reconcile`, and this hook fires on every
+# `Bash` call reviewer-blind makes — it blocked reviewer-blind's own `git
+# log` probe during round 1's review of this very changeset.
 #
 # Identity comes from `agent_type` in the payload, which Claude Code
 # populates when a hook fires inside a subagent. Any other agent — including
@@ -40,18 +40,63 @@
 
 set -euo pipefail
 
+# Fail closed, not open, when the interpreter itself is unavailable. The
+# python3 call below is wrapped in a top-level try/except that refuses on a
+# malformed payload -- but an interpreter that is missing, the wrong
+# version, or broken by a bad edit never reaches that except at all, and the
+# previous `2>/dev/null || true` on the substitution turned that failure into
+# an EMPTY $reason, indistinguishable from "nothing to report" (allow).
+if ! command -v python3 >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+🚫 python3 is not available on PATH.
+
+This hook enforces reviewer-blind's git-history channel using an embedded
+Python command matcher. Without python3 there is no way to evaluate the
+command, so refusing is the only choice that does not silently defeat the
+rule this hook exists to enforce.
+
+Install python3 (or add it to PATH) and retry.
+EOF
+  exit 2
+fi
+
 payload="$(cat)"
 
+# `set -e` alone does not get this to exit 2: under `-euo pipefail`, a
+# failing substitution aborts the SCRIPT immediately with WHATEVER exit
+# code the failing command returned (127 for "command not found" inside a
+# broken interpreter stub, for instance) -- and Claude Code only treats
+# exit 2 from a PreToolUse hook as "block"; any other nonzero code is a
+# non-blocking error that lets the tool call proceed, which is fail-OPEN.
+# `-e` is suspended for exactly this one substitution so the exit code can
+# be inspected and converted to a real, deliberate `exit 2` below, instead
+# of leaking whatever raw code the interpreter happened to return.
+set +e
 reason="$(printf '%s' "$payload" | python3 -c '
 import json, re, sys
 
 AGENT = "reviewer-blind"
 
 # (regex, what it would leak)
+#
+# The repeated group matches a run of global options before the subcommand
+# word, one option at a time: a dash-prefixed token (`-c`, `-C`, `--git-dir`,
+# ...), optionally followed by a SEPARATE, non-dash-prefixed value token
+# (`-c core.pager=cat`, `-C /path`, `--git-dir /path`) -- not just an
+# inline `--opt=value` on one token, which `-[^\s]+` alone already covers.
+# Without the optional separate-value branch, `git -c core.pager=cat log`
+# does not match at all: `-c` consumes the flag, but the next token,
+# `core.pager=cat`, does not start with `-`, so the old pattern required
+# `log` to appear immediately after `-c` and never found it. The value
+# branch is optional and backtracks: `git --no-pager log` still matches
+# with `log` recognised as the subcommand, not swallowed as the value of
+# `--no-pager`, because the engine backs off the optional value when
+# consuming it would leave no literal `log` to match afterwards.
+_OPT = r"-[^\s]+(?:\s+(?!-)[^\s]+)?"
 DENIED = [
-    (r"\bgit\s+(?:-[^\s]+\s+)*log\b",   "git log"),
-    (r"\bgit\s+(?:-[^\s]+\s+)*show\b",  "git show"),
-    (r"\bgit\s+(?:-[^\s]+\s+)*blame\b", "git blame"),
+    (r"\bgit\s+(?:%s\s+)*log\b" % _OPT,   "git log"),
+    (r"\bgit\s+(?:%s\s+)*show\b" % _OPT,  "git show"),
+    (r"\bgit\s+(?:%s\s+)*blame\b" % _OPT, "git blame"),
     (r"\bgh\s+pr\s+view\b",             "gh pr view"),
     (r"\bgh\s+issue\s+view\b",          "gh issue view"),
 ]
@@ -74,7 +119,25 @@ for rx, label in DENIED:
     if re.search(rx, cmd):
         print(label)
         break
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+py_rc=$?
+set -e
+
+if [ "$py_rc" -ne 0 ]; then
+  cat >&2 <<EOF
+🚫 this hook's embedded Python command matcher exited with an unexpected
+error (exit $py_rc) instead of a clean allow or a reported denial.
+
+This hook enforces reviewer-blind's git-history channel; an internal crash
+is not the same thing as "nothing to report" and must not be treated as an
+allow. Refusing is the only choice that does not silently defeat the rule
+this hook exists to enforce.
+
+Check python3's version and the hook's own syntax -- this is a bug in the
+hook, not in the command it was evaluating.
+EOF
+  exit 2
+fi
 
 [ -z "$reason" ] && exit 0
 

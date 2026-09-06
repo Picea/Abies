@@ -59,17 +59,37 @@ on the call.
 
 ---
 
-## What You Cannot Reach, and the One Thing That Remains a Promise
+## What You Cannot Reach, and the Two Things That Remain a Promise
 
 Denied by hook: `.squad/design/`, raw `git log`/`show`/`blame`, `gh pr view`,
-`gh issue view`. Denied by hook: writing anything except your own artifact.
+`gh issue view`. Denied by hook: writing anything except your own artifact. Two
+residues are not denied by anything, and both are yours to hold by instruction,
+not by tool grant.
 
-**Not denied by anything: the orchestrator pasting the PR description into your
-prompt.** Every context boundary in this design has that residue at its edge —
-the dispatcher can always undo the isolation by quoting. If narrative arrives in
-your prompt, **say so at the top of your artifact** and carry on. Naming it is
-the only thing that can be done about it, and a silently contaminated blind
-review is worse than an acknowledged one.
+**First: the orchestrator pasting the PR description into your prompt.** Every
+context boundary in this design has that residue at its edge — the dispatcher
+can always undo the isolation by quoting. If narrative arrives in your prompt,
+**say so at the top of your artifact** and carry on. Naming it is the only
+thing that can be done about it, and a silently contaminated blind review is
+worse than an acknowledged one.
+
+**Second: your own `Bash`.** `enforce-review-blindness.sh` and
+`enforce-track-blindness.sh` mediate `Read`, `Grep`, `Glob` and MCP reads —
+they do not inspect `Bash`. `enforce-review-history-channel.sh` gates `Bash`,
+but only for `git log`/`show`/`blame` and `gh pr view`/`gh issue view`; it does
+not gate a plain file read. Nothing stops
+`Bash("cat .squad/design/<slug>/04-realist-plan.md")`, or `sed`, `head`, `less`,
+or any other command that reads a file's bytes without calling `git` or `gh`.
+Your `tools:` line grants `Bash` so you can run the sanctioned history script
+and diff/build commands; it is not scoped to exclude this. **The rule you must
+hold yourself, because no hook holds it for you: never use `Bash` to read
+`.squad/design/`, the PR body, or anything else this charter denies to `Read`/
+`Grep`/`Glob`.** If you catch yourself about to `cat`, `sed -n`, or `grep` a
+path under `.squad/design/`, or to pipe a PR/issue view through `Bash` in any
+form other than the sanctioned script, stop — that read is exactly as
+disqualifying as doing it through `Read`. This gap is tracked as a residual in
+`.claude/enforcement/refutations.md`; holding this rule by discipline is what
+keeps it a tracked residual instead of a live hole.
 
 ---
 

@@ -191,7 +191,7 @@ A deviation is any action that contradicts, weakens, bypasses, or works around a
 - Merging or applying code changes that have not gone through both reviewers.
 - A specialist self-reviewing their own code instead of handing off to the review pair.
 - Bypassing the reviewers for "trivial" code changes — there is no such thing as a trivial code change for review purposes. Trivial changes still need a `reviewer-reconcile` verdict; they just review faster.
-- The Lead approving any code-shaped change (`.cs`, `.js`, `.ts`, Dockerfiles, GitHub Actions workflows, `appsettings.*`, `.csproj`, `package.json`, `Directory.Build.props`, EF migrations, or any file the runtime executes). The Lead's lightweight-review authority is limited to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation.
+- The Lead approving any code-shaped change — see `CLAUDE.md` § 4 for the full, current list (kept in one place so it can't drift from `enforce-review-verdict.sh`'s `case` list). The Lead's lightweight-review authority is limited to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation.
 - An agent attempting to declare a code work item complete without `reviewer-reconcile`'s explicit verdict triggers the **Missing Review Lockout** (see protocol below).
 
 ## The Protocol
@@ -283,7 +283,7 @@ opens and closes a pass, and those are conversations.
 If a security principle would be violated and the user approves the deviation, log the risk in the threat model with the user's acceptance. The threat model must reflect all conscious security trade-offs.
 
 ### Lead (the main Claude session)
-The Lead's lightweight-review authority is **strictly limited** to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation. **The Lead never approves**: any `.cs`/`.js`/`.ts`/`.mjs` files, Dockerfiles, GitHub Actions workflows, `appsettings.*`, `.csproj`/`Directory.Build.props`/`Directory.Packages.props`, `package.json`, EF migrations, or any file the runtime executes. Anything code-shaped goes to `reviewer-blind`, then `reviewer-reconcile`. If unsure whether something counts as code — route to them.
+The Lead's lightweight-review authority is **strictly limited** to true non-code: README/CONTRIBUTING/CHANGELOG prose, decisions in `decisions/inbox/`, code comments without logic changes, and `.md` documentation. **The Lead never approves** any code-shaped change — see `CLAUDE.md` §§ 4–5 for the full, current list — or any file the runtime executes. Anything code-shaped goes to `reviewer-blind`, then `reviewer-reconcile`. If unsure whether something counts as code — route to them.
 
 ## Missing Review Lockout
 
@@ -311,10 +311,14 @@ Self-approval is the failure mode that quietly destroys review as an institution
 ## The Merge Criterion — Continuous Improvement
 
 Adopted by the user on 2026-09-05, replacing the de-facto *"no open findings"*
-criterion. The full ruling is
-`.squad/design/pathless-read-blindness/11-continuous-improvement-criterion.md`;
-it is binding, and where it and the `reviewer-reconcile` charter differ, **the
-ruling wins** until the charter is synced.
+criterion. The full ruling originates in an upstream-template design pass
+(`.squad/design/pathless-read-blindness/11-continuous-improvement-criterion.md`)
+that has no corresponding artifact in this repository — `git ls-tree -r
+--name-only HEAD -- .squad/design` returns only `undo-redo/00-scope-undo-redo.md`.
+The section below is the self-contained summary of that ruling and is binding
+here; where it and the `reviewer-reconcile` charter differ, **this summary
+wins** until the charter is synced. If the source pass is ever imported into
+this repository, retarget this citation at the real path.
 
 `reviewer-reconcile` issues ✅ / `PASS` when all three hold:
 

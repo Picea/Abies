@@ -31,8 +31,8 @@
 # passes any test that has no worktree in it.
 #
 # Exit codes:
-#   0 — artifact well-formed, or not this hook's business
-#   2 — malformed (Claude sees stderr as the reason)
+#   0 — allow (artifact well-formed, or not this hook's business)
+#   2 — block (artifact malformed; Claude sees stderr as the reason)
 #
 # Reads the standard Claude Code hook payload on stdin:
 #   {
@@ -43,12 +43,36 @@
 
 set -uo pipefail
 
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export HOOKS_LIB_DIR="$HOOKS_DIR/lib"
+
+# Fail closed, not open, when the interpreter itself is unavailable. This
+# hook BLOCKS a malformed artifact, and the previous `2>/dev/null || true`
+# on the substitution turned a broken interpreter into an EMPTY $reason,
+# indistinguishable from "artifact is well-formed" (allow).
+if ! command -v python3 >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+🚫 python3 is not available on PATH.
+
+This hook validates each design-pass phase artifact's shape using an
+embedded Python parser. Without python3 there is no way to run that check,
+so refusing is the only choice that does not silently defeat the rule this
+hook exists to enforce.
+
+Install python3 (or add it to PATH) and retry.
+EOF
+  exit 2
+fi
+
 payload="$(cat 2>/dev/null || true)"
 
 reason="$(printf '%s' "$payload" | python3 -c '
 import json, os, re, sys
 
-# agent_type -> (artifact, [(label, test, remedy)])
+sys.path.insert(0, os.environ["HOOKS_LIB_DIR"])
+from artifact_attribution import resolve_artifact
+
+# agent_type -> artifact filename this hook validates for that phase
 AGENTS = {
     "dreamer-first-principles": "01-track-a.md",
     "dreamer-informed":         "02-track-b.md",
@@ -74,15 +98,14 @@ design = os.path.join(root, ".squad", "design")
 if not os.path.isdir(design):
     sys.exit(0)
 
-found = []
-for slug in os.listdir(design):
-    p = os.path.join(design, slug, artifact)
-    if os.path.isfile(p):
-        found.append((os.path.getmtime(p), slug, p))
-if not found:
+# Which pass THIS invocation wrote its artifact for -- see
+# artifact_attribution.py for why this is no longer a bare newest-mtime
+# guess across every slug directory.
+transcript_path = d.get("transcript_path") or d.get("agent_transcript_path") or ""
+resolved = resolve_artifact(design, artifact, transcript_path)
+if resolved is None:
     sys.exit(0)
-found.sort()
-_, slug, path = found[-1]
+slug, path, _mtime, _method = resolved
 pass_dir = os.path.dirname(path)
 text = open(path, encoding="utf-8", errors="replace").read()
 low = text.lower()
@@ -106,11 +129,21 @@ if artifact == "01-track-a.md":
             "      constraint experience would have caught`. From the outside those look\n"
             "      identical, and the derivation is the only evidence separating them.\n"
             "      Without it the artifact cannot do the one job it exists for.")
-    elif len(re.sub(r"\s+", " ", low.split("reasoning trail", 1)[1])) < 200:
-        problems.append(
-            "The **Reasoning Trail** section is present but almost empty.\n"
-            "      It is not a heading to satisfy a checker. Write the derivation:\n"
-            "      how you got from the constraints to the candidates.")
+    else:
+        # Measure only the Reasoning Trail SECTION itself -- up to the next
+        # heading of the same or higher level -- not "everything after the
+        # heading" (the previous `low.split("reasoning trail", 1)[1]`),
+        # which let a heading near the top of a long document pass on the
+        # strength of unrelated content much further down.
+        m = re.search(
+            r"^\s{0,3}#{1,6}\s*[^\n]*reasoning trail[^\n]*\n(.*?)(?=^\s{0,3}#{1,6}\s|\Z)",
+            low, re.M | re.S)
+        section_body = m.group(1) if m else ""
+        if len(re.sub(r"\s+", " ", section_body)) < 200:
+            problems.append(
+                "The **Reasoning Trail** section is present but almost empty.\n"
+                "      It is not a heading to satisfy a checker. Write the derivation:\n"
+                "      how you got from the constraints to the candidates.")
     if not re.search(r"candidate\s*a\s*2", low):
         problems.append(
             "Fewer than two candidates. The method asks for at least two derived\n"
@@ -134,14 +167,20 @@ elif artifact == "02-track-b.md":
 elif artifact == "05-critic.md":
     # Each 🔴/🟠 finding needs a concrete failure scenario. "This might not
     # scale" is not a finding.
-    findings = re.findall(r"^#{2,5}\s*(?:🔴|🟠)?[^\n]*\n(.*?)(?=^#{2,5}\s|\Z)",
-                          text, re.M | re.S)
     blocker_section = ""
     m = re.search(r"^#{2,4}\s*🔴[^\n]*\n(.*?)(?=^#{2,4}\s*(?:🟠|🟡|🟢)|\Z)", text, re.M | re.S)
     if m:
         blocker_section = m.group(1)
+    # A bare `given\b` matched ANY prose use of the word ("given the current
+    # state of the plan...") and was, in practice, unfailable -- see round 1
+    # review, ⚠️-8. Require an actual Given/When/Then triple in sequence
+    # (case-insensitive, Given and When and Then each appearing, in that
+    # order, within a bounded span of each other) instead of accepting any
+    # one of the three words on its own; "failure scenario" and "reproduc"
+    # stay as their own, already-concrete, alternatives.
     if blocker_section.strip() and not re.search(
-            r"failure scenario|given\b|when\b.*then\b|reproduc", blocker_section, re.I | re.S):
+            r"failure scenario|reproduc|\bgiven\b.{0,200}?\bwhen\b.{0,200}?\bthen\b",
+            blocker_section, re.I | re.S):
         problems.append(
             "Blockers are listed with no concrete failure scenario.\n"
             "      Every finding needs specific inputs or state leading to a specific\n"
@@ -184,7 +223,29 @@ if problems:
     print("%s|%s|%s" % (agent, os.path.relpath(path, root), slug))
     for p in problems:
         print("  - " + p)
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+py_rc=$?
+
+# This script runs under `set -uo pipefail`, not `-e`, so a crashing python3
+# does not abort the script on its own -- it just leaves $reason empty via
+# the suppressed stderr, indistinguishable from "artifact is well-formed"
+# unless checked explicitly. `pipefail` (in effect here) makes $? the
+# python3 exit status even though it is not the last word on the line.
+if [ "$py_rc" -ne 0 ]; then
+  cat >&2 <<EOF
+🚫 validate-phase-artifact's embedded parser exited with an unexpected error
+(exit $py_rc) instead of a clean pass or a reported finding.
+
+This hook BLOCKS a malformed phase artifact; an internal crash is not the
+same thing as "well-formed" and must not be treated as a pass. Refusing is
+the only choice that does not silently defeat the rule this hook exists to
+enforce.
+
+Check python3's version and the hook's own syntax -- this is a bug in the
+hook, not in the artifact it was validating.
+EOF
+  exit 2
+fi
 
 [ -z "$reason" ] && exit 0
 

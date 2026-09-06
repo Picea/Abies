@@ -2753,8 +2753,13 @@ if [ "$wt_ready" = "1" ]; then
   # doing exactly the job the ruling assigns it: catching a review that
   # examined a different tree than the one this session is sitting in.
   #
-  # Architect ruling 10-architect-ruling-classifier.md, Q-E's "attached
-  # items": this fixture was previously
+  # Architect ruling, Q-E's "attached items" (cited in this file's history
+  # as `10-architect-ruling-classifier.md`; that ruling originates in an
+  # upstream-template design pass that has no corresponding artifact in
+  # this repository -- `git ls-tree -r --name-only HEAD -- .squad/design`
+  # returns only `undo-redo/00-scope-undo-redo.md`. PR #358 review round 2,
+  # ⚠️-C. If the source pass is ever imported here, retarget this citation
+  # at the real path): this fixture was previously
   # `0000000000000000000000000000000000dead`, which is 38 characters, not
   # 40 -- it exercised the LENGTH-check branch (7c/7d's territory), never
   # the HEAD-EQUALITY branch, which is the one the entire `commit:` field

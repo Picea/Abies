@@ -43,10 +43,28 @@
 
 set -uo pipefail
 
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export HOOKS_LIB_DIR="$HOOKS_DIR/lib"
+
+# Unlike the blocking hooks in this directory, this one's own contract is
+# "exit is always 0" (see the header) -- a missing interpreter must not
+# become a silent block, but it also must not become a silent no-op: without
+# python3 this hook cannot write 00-warden-scan.md at all, and gate 1
+# downstream (the scope-warden SUBAGENT) depends on that file existing. Say
+# so loudly on stderr and still exit 0, rather than leaving no trace of why
+# the scan never appeared.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "scope-warden: python3 is not on PATH -- could not run the mechanical scan; 00-warden-scan.md was NOT written. Gate 1 still requires the scope-warden subagent's own read." >&2
+  exit 0
+fi
+
 payload="$(cat 2>/dev/null || true)"
 
 printf '%s' "$payload" | python3 -c '
 import json, os, re, sys
+
+sys.path.insert(0, os.environ["HOOKS_LIB_DIR"])
+from artifact_attribution import resolve_artifact
 
 try:
     d = json.loads(sys.stdin.read())
@@ -69,16 +87,14 @@ design = os.path.join(root, ".squad", "design")
 if not os.path.isdir(design):
     sys.exit(0)
 
-# The pass this architect run belongs to: the most recently modified scope.
-scopes = []
-for slug in os.listdir(design):
-    p = os.path.join(design, slug, "00-scope.md")
-    if os.path.isfile(p):
-        scopes.append((os.path.getmtime(p), slug, p))
-if not scopes:
+# Which pass THIS architect invocation wrote 00-scope.md for -- see
+# artifact_attribution.py for why this is no longer a bare newest-mtime
+# guess across every slug directory.
+transcript_path = d.get("transcript_path") or d.get("agent_transcript_path") or ""
+resolved = resolve_artifact(design, "00-scope.md", transcript_path)
+if resolved is None:
     sys.exit(0)
-scopes.sort()
-_, slug, scope_path = scopes[-1]
+slug, scope_path, _mtime, _method = resolved
 
 lexicon_path = os.path.join(root, ".claude", "docs", "pattern-lexicon.md")
 

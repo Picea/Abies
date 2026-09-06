@@ -85,9 +85,10 @@
 # not and cannot verify that the agent named in a drop is the agent that
 # actually produced it. Closing that gap means authenticating the drop's
 # `agent:` field, or gating who may write the inbox, and both are a
-# write-side sibling of T-013 (the read-side-mirrored write-side residual on
-# this same file) -- routed to security-expert as threat-model row T-015
-# (Trust Boundary 6, docs/security/threat-model.md).
+# write-side sibling of TM-012 (the read-side-mirrored write-side residual on
+# this same file) -- tracked as TM-013, docs/security/threat-model.md, Trust
+# Boundary 5 (ledger pointer: .claude/enforcement/refutations.md, residual
+# R-15).
 #
 # `worktree_for_sha()` and `--replay` (a prior revision of this hook) are
 # DELETED, not fixed. A CLI that mints a verdict-cache entry from a file on
@@ -162,6 +163,21 @@
 #   readers.
 
 set -uo pipefail
+
+# 🔴-4 (PR #358 review round 1): every code path below that reads a drop's
+# fields, or writes the verdict cache, goes through python3. A missing or
+# broken interpreter used to produce empty stdout wherever `|| true`
+# swallowed its exit status, indistinguishable from "nothing to validate" or
+# "nothing to write" -- this hook's OWN exit-code contract is "0 -- always"
+# (it never blocks a tool call, there being no tool call to block), so the
+# fail-closed direction available to it is not a non-zero exit but simply
+# REFUSING TO TOUCH ANYTHING: no merge, no quarantine, no verdict-cache
+# write, loud on stderr instead. Checked once, here, before the inbox or the
+# cache is touched at all.
+command -v python3 >/dev/null 2>&1 || {
+  echo "🚫 scribe-decision-merger.sh: python3 is required to validate decision drops and derive the verdict cache, and is not on PATH -- refusing to process the inbox or write the cache rather than doing either with an interpreter that cannot be trusted to be there." >&2
+  exit 0
+}
 
 # Validator. Returns:
 #   0 + stdout="VALID|<agent>|<verdict>|<scope>|<id>|<created>|<commit>"  for valid front-matter drops
@@ -965,7 +981,10 @@ agent = fields["agent"]
 verdict = fields["verdict"]
 scope = fields["scope"]
 
-# Q-E (architect ruling 10-architect-ruling-classifier.md): decision-schema.md
+# Q-E (architect ruling 10-architect-ruling-classifier.md -- an
+# upstream-template design pass that has no corresponding artifact in this
+# repository; see principles-enforcement.md's "Merge Criterion" section for
+# the same disclosure and its verifying command): decision-schema.md
 # documents `commit:` as "Required when agent: reviewer-reconcile and scope:
 # review", but this validator did not enforce it -- a compliant-looking drop
 # missing the field archived clean (appended=1, quarantined=0) and only
@@ -1049,7 +1068,13 @@ PY
 
 payload="$(cat 2>/dev/null || true)"
 
-read -r STOP_ACTIVE PAYLOAD_CWD <<<"$(
+# 🔴-4: captured separately from `read` so a non-zero python3 exit (broken
+# interpreter, not merely a missing one -- the `command -v python3` preamble
+# above already covers absence) is distinguishable from a legitimate empty
+# parse. `read`'s own exit status reflects only whether it filled both
+# fields, never the nested command substitution's -- collapsing the two
+# steps hid exactly the failure this check exists to catch.
+parsed_stop="$(
   printf '%s' "$payload" | python3 -c '
 import json,sys
 try:
@@ -1059,10 +1084,18 @@ except Exception:
 print("true" if d.get("stop_hook_active") else "false", d.get("cwd",""))
 ' 2>/dev/null
 )"
+stop_py_status=$?
+if [ "$stop_py_status" -ne 0 ]; then
+  echo "🚫 scribe-decision-merger.sh: could not parse the SubagentStop payload (python3 exited ${stop_py_status}) -- refusing to process the inbox or write the verdict cache rather than guessing stop_hook_active/cwd from a failed parse." >&2
+  exit 0
+fi
+read -r STOP_ACTIVE PAYLOAD_CWD <<<"$parsed_stop"
 
 [ "${STOP_ACTIVE:-false}" = "true" ] && exit 0
 
-# Q-E (architect ruling 10-architect-ruling-classifier.md): the
+# Q-E (architect ruling 10-architect-ruling-classifier.md -- upstream-template
+# design pass, no corresponding artifact in this repository; see this file's
+# first Q-E citation, above, for the full disclosure): the
 # `${CLAUDE_PROJECT_DIR:-${PAYLOAD_CWD:-$PWD}}` fallback chain is REMOVED,
 # not narrowed. `project_dir` is the ownership check's identity anchor
 # (`own_common` below); when `CLAUDE_PROJECT_DIR` is unset it used to
@@ -1071,11 +1104,37 @@ print("true" if d.get("stop_hook_active") else "false", d.get("cwd",""))
 # and always passed. Reconcile executed this: a PASS written into a
 # brand-new unrelated scratch repository with `CLAUDE_PROJECT_DIR` unset.
 # A check that always passes is worse than an absent one, because it reads
-# as coverage. `enforce-review-verdict.sh` refuses outright in the
-# identical condition ("CLAUDE_PROJECT_DIR is unset or not a directory --
-# refusing rather than guessing"); two hooks taking opposite directions on
-# the same environment condition cannot both be right, and this hook's
-# direction is the one that writes an authorisation token.
+# as coverage.
+#
+# ⚠️-1 (PR #358 review round 1): an earlier version of this paragraph
+# claimed `enforce-review-verdict.sh` "refuses outright in the identical
+# condition", citing it as a sibling that already got this right. That is
+# false, and citing it did the opposite of what a citation should: a
+# maintainer reading it would have no reason to go looking further.
+# `enforce-review-verdict.sh` (and `enforce-reviewer-readonly.sh`) never
+# read `CLAUDE_PROJECT_DIR` AT ALL -- their own headers say so directly
+# ("Paths resolve against the `cwd` field in the payload, never against
+# `${CLAUDE_PROJECT_DIR}`") -- so there is no "CLAUDE_PROJECT_DIR is unset"
+# condition for either of them to refuse on in the first place; the
+# "identical condition" this paragraph used to name never existed on that
+# side.
+#
+# The two hooks are not actually in tension, once each one's job is stated
+# precisely. `project_dir` below anchors the REGISTER this hook owns
+# (`.squad/decisions/inbox`/`decisions.md`/`archive`/`log`) -- deliberately
+# project-global (Q-E, endorsed design), which is exactly the one thing a
+# per-tree `cwd` cannot give it: a single register a worktree session and
+# the main checkout both feed. The verdict CACHE this hook also writes is a
+# different anchor entirely -- `$T`, derived from `PAYLOAD_CWD` further
+# below in the cache-write block -- and THAT matches `enforce-review-verdict.sh`'s
+# and `enforce-reviewer-readonly.sh`'s own per-tree, `cwd`-based resolution
+# of the identical file. So: one register, project-global by design;
+# one cache, per-tree by design and consistent with every other hook that
+# reads or writes it; an ownership check (below) ties the two together by
+# refusing a cache write whose `$T` is not this project or one of its linked
+# worktrees. There was never a second hook to be consistent WITH on the
+# `CLAUDE_PROJECT_DIR`-unset question specifically -- this hook's refusal
+# here is the whole answer, load-bearing on its own.
 #
 # `CLAUDE_PROJECT_DIR` is now the SOLE anchor for `project_dir`, with no
 # fallback of any kind -- the inbox/`decisions.md`/archive/log register
@@ -1273,8 +1332,10 @@ if [ -n "$last_reviewer_verdict" ]; then
   fi
 
   if [ -n "$refusal" ]; then
-    # Q-F (architect ruling 10-architect-ruling-classifier.md): "A refusal
-    # message must never render a command that writes, creates or modifies
+    # Q-F (architect ruling 10-architect-ruling-classifier.md -- same
+    # upstream-template design pass as this file's Q-E citations above, no
+    # corresponding artifact in this repository): "A refusal message must
+    # never render a command that writes, creates or modifies
     # the object the refusal is protecting. Not as an instruction, not as an
     # example, not addressed to a human, not in a log line." The PREVIOUS
     # revision violated this: it printed a `printf ... > .../.last-review-

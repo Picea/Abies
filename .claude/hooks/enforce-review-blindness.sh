@@ -15,8 +15,8 @@
 # through untouched.
 #
 # THE RULE, IN ONE SENTENCE: refuse any read whose effective scope is at or
-# above a denied path -- `.squad/design`. That covers what would otherwise
-# look like three separate rules:
+# above a denied path -- `.squad/design`, or another agent's worktree
+# checkout. That covers what would otherwise look like three separate rules:
 #   - exact:    Read/Grep/Glob targeting something inside .squad/design/.
 #   - ancestor: Grep/Glob rooted at a real directory that contains it, e.g.
 #               `path: ".squad"` reaches .squad/design even though ".squad"
@@ -53,18 +53,45 @@
 # which is what actually keeps a worktree copy's exact/descendant form
 # caught under the new containment rule (see that function).
 #
-# What remains open, deliberately: the *ancestor* direction through a
-# worktree copy -- e.g. `path=".claude/worktrees"` or the agent directory
-# one level below it -- reaches nothing, the same as it reached nothing at
-# base. Neither does the sibling worktree layout `git-advanced/SKILL.md`
-# also documents, which resolves to the `elsewhere` branch below and only
-# ever gets the same exact/descendant trailing-run treatment, not the
-# ancestor one. Also open: symlinks (would need `os.path.realpath`) and
-# `{a,b}`-style brace expansion in a `Glob` pattern. These are a
-# deny-closure completeness gap -- not an existing INV-3 instance; INV-3
-# (`04-realist-plan.md:2054`) closes over `WRITER` edges, and a worktree
-# copy has no writer edge, so that derivation would not reach this even if
-# run. Tracked for the design pass's own planning, not solved here.
+# What remains open, deliberately: the sibling worktree layout
+# `git-advanced/SKILL.md` also documents -- a second checkout that is a true
+# sibling directory rather than nested under `.claude/worktrees/` -- resolves
+# to the `elsewhere` branch below and only ever gets the exact/descendant
+# trailing-run treatment, not an ancestor one; there is no fixed path segment
+# to put on a deny list for a location that is, by that layout's own design,
+# outside this checkout entirely. Also open: symlinks (would need
+# `os.path.realpath`). `{a,b}`-style brace expansion in a `Glob` pattern is
+# NOT open -- `glob_root()` returns `("grouped", None)` for it and the
+# caller escalates to `cwd` (D20, fail-closed), so a brace-grouped pattern
+# cannot reach a denied path; the measured cost is the opposite of a gap, a
+# benign `{a,b}/*.md` is refused too. See docs/security/threat-model.md,
+# TM-015, which marks this ✅ Mitigated. The sibling-worktree layout above
+# and symlinks remain a deny-closure completeness gap -- not an existing
+# INV-3 instance; INV-3 is cited in an upstream-template design pass as
+# `04-realist-plan.md:2054`, which has no corresponding artifact in this
+# repository (`git ls-tree -r --name-only HEAD -- .squad/design` returns
+# only `undo-redo/00-scope-undo-redo.md`; if that pass is ever imported here,
+# retarget this citation at the real path). INV-3 closes over `WRITER`
+# edges, and a worktree copy has no writer edge, so that derivation would
+# not reach this even if run. Tracked for the design pass's own planning,
+# not solved here.
+#
+# CLOSED (PR #358 review round 2, finding 🔴-B): the *ancestor* direction
+# through a worktree NESTED under this checkout -- rooting a search AT
+# `.claude/worktrees` itself, or at the agent directory one level below it,
+# rather than at one of its descendants -- used to reach nothing, the same
+# as it reached nothing at base, even after the descendant-direction fix
+# above. Verified by execution against a real registered worktree:
+# `Grep(path=".claude/worktrees")` and `Glob(".claude/worktrees/**/*.md")`
+# both exited 0 for `reviewer-blind`, reaching `.squad/design/**` through
+# it. Closed below by an explicit `(".claude/worktrees/**", ...)` entry in
+# RULES -- `reviewer-blind` has no legitimate reason to read another
+# agent's checkout; it reviews the diff and the tree it was invoked
+# against, not a different agent's isolated worktree. Accepted collateral
+# cost of that entry: reading a builder's source through a copy of it
+# nested inside `.claude/worktrees/<agent>/` is now refused too, where it
+# previously was not -- `reviewer-blind` reviews the same source from its
+# own cwd instead.
 #
 # Two things containment must get right or it creates new holes of its own
 # (see enforce-track-blindness.sh for the fuller version of this argument;
@@ -88,9 +115,17 @@
 #      cost stays visible rather than being rediscovered as a bug report.
 #   2. Grep's `pattern` is content, not a path, and must never be tested as
 #      one; Grep's only scope-bearing argument is `path`. Glob is the
-#      mirror image: its `pattern` is always scope-bearing (T-012), so the
+#      mirror image: its `pattern` is always scope-bearing, so the
 #      effective root composes `path` with `glob_root(pattern)` rather
-#      than using `path` alone whenever it is given.
+#      than using `path` alone whenever it is given. (This fix was
+#      referenced by the internal shorthand "T-012" before a real row
+#      existed for it. `docs/security/threat-model.md`, TM-015, Trust
+#      Boundary 6 -- "Dreamer/reviewer blindness boundary" -- is now that
+#      row; its Test column cites `.claude/hooks/tests/blindness.sh`'s
+#      `[T-012]` cases by that label, which is why the label stays
+#      `[T-012]` rather than being renamed. PR #358 review round 2, ⚠️-C
+#      registered the citation gap; security-expert closed it with TM-015
+#      the same round. See enforce-track-blindness.sh for the fuller note.)
 #
 # `mcp__*` tools have no fixed schema, so neither is knowable in general.
 # This hook keeps the same, more conservative choice as
@@ -140,16 +175,56 @@
 
 set -euo pipefail
 
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export HOOKS_LIB_DIR="$HOOKS_DIR/lib"
+
+# Fail closed, not open, when the interpreter itself is unavailable. Every
+# python3 invocation below is wrapped in a top-level try/except that refuses
+# on a malformed PAYLOAD -- but an interpreter that is missing, the wrong
+# version, or broken by a bad edit never reaches that except at all, and the
+# previous `2>/dev/null || true` on the substitution turned that failure into
+# an EMPTY $reason, indistinguishable from "nothing to report" (allow). That
+# is the same silent-leak shape the payload-parsing fail-closed argument
+# above exists to prevent, one level up.
+if ! command -v python3 >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+🚫 python3 is not available on PATH.
+
+This hook enforces reviewer-blind's independence using an embedded Python
+containment check. Without python3 there is no way to evaluate a read against
+the denied path, so refusing is the only choice that does not silently defeat
+the rule this hook exists to enforce -- the same fail-closed posture this hook
+already takes for a malformed JSON payload.
+
+Install python3 (or add it to PATH) and retry.
+EOF
+  exit 2
+fi
+
 payload="$(cat)"
 
+# `set -e` alone does not get this to exit 2: under `-euo pipefail`, a
+# failing substitution aborts the SCRIPT immediately with WHATEVER exit
+# code the failing command returned (127 for "command not found" inside a
+# broken interpreter stub, for instance) -- and Claude Code only treats
+# exit 2 from a PreToolUse hook as "block"; any other nonzero code is a
+# non-blocking error that lets the tool call proceed, which is fail-OPEN.
+# `-e` is suspended for exactly this one substitution so the exit code can
+# be inspected and converted to a real, deliberate `exit 2` below, instead
+# of leaking whatever raw code the interpreter happened to return.
+set +e
 reason="$(printf '%s' "$payload" | python3 -c '
 import json, os, sys
+
+sys.path.insert(0, os.environ["HOOKS_LIB_DIR"])
+from path_containment import reach_hit, glob_root, leaves, truthy_str
 
 RS = "\x1e"
 
 AGENT = "reviewer-blind"
 RULES = [
     (".squad/design/**",   ".squad/design/"),
+    (".claude/worktrees/**", "another agent’s worktree checkout"),
 ]
 
 # Everything needed to even ask "is this reviewer-blind" lives inside this
@@ -180,139 +255,9 @@ if agent != AGENT:
 if tool not in ("Read", "Grep", "Glob", "NotebookRead") and not tool.startswith("mcp__"):
     sys.exit(0)
 
-
-def leaves(v):
-    if isinstance(v, str):
-        yield v
-    elif isinstance(v, dict):
-        for x in v.values():
-            yield from leaves(x)
-    elif isinstance(v, list):
-        for x in v:
-            yield from leaves(x)
-
-
-def segs(rel):
-    if rel in ("", "."):
-        return []
-    return [s for s in rel.split("/") if s not in ("", ".")]
-
-
-def resolve(raw, base):
-    expanded = os.path.expanduser(raw)
-    if os.path.isabs(expanded):
-        return os.path.normpath(expanded)
-    return os.path.normpath(os.path.join(base, expanded))
-
-
-def classify(raw, cwd):
-    abs_path = resolve(raw, cwd)
-    if abs_path == cwd:
-        return ("under", [])
-    cwd_slash = cwd.rstrip("/") + "/"
-    if abs_path.startswith(cwd_slash):
-        return ("under", segs(os.path.relpath(abs_path, cwd)))
-    if cwd.startswith(abs_path.rstrip("/") + "/"):
-        return ("above", None)
-    return ("elsewhere", abs_path)
-
-
-def reaches(rseg, pat):
-    pseg = pat.split("/")
-    for i, r in enumerate(rseg):
-        if i >= len(pseg):
-            return False
-        p = pseg[i]
-        if p == "**":
-            return True
-        if p == "*":
-            continue
-        if r != p:
-            return False
-    return True
-
-
-def reach_hit(raw, cwd, rules):
-    """The first (pattern, label) in rules that a read/search rooted at raw
-    can reach, or None. A root that resolves under (or above) cwd is tested
-    first at its own true position; if nothing matched there, every shorter
-    trailing run of it is tried too -- the same fallback the `elsewhere`
-    branch below already needs for a foreign absolute path, and for the
-    same underlying reason: a worktree is a second full checkout nested
-    *under* cwd (see .gitignore), so a denied pattern’s real relative form
-    can recur at a deeper offset inside one. `.claude/worktrees/agent-x/
-    .squad/design/x/plan.md` is not itself an ancestor of `.squad/design`
-    -- its segments diverge at "worktrees" vs "design" -- but its tail,
-    past the nested checkout’s own root, is exactly that path. This
-    restores what the pre-containment version of this hook did
-    unconditionally for every candidate (see NOT HANDLED HERE, ABOVE); it
-    does not attempt the ancestor direction of the same problem (e.g.
-    rooting at ".claude/worktrees" itself, which matches nothing here
-    either) -- that stays open."""
-    kind, payload = classify(raw, cwd)
-    if kind == "above":
-        payload = []
-    if kind in ("under", "above"):
-        for pat, label in rules:
-            if reaches(payload, pat):
-                return (pat, label)
-        # Starts at 1: index 0 is the check just made. An empty `payload`
-        # (root is cwd itself, or above it) has no further suffixes to try,
-        # so range(1, 0) is empty and this is correctly a no-op for that case.
-        for start in range(1, len(payload)):
-            for pat, label in rules:
-                if reaches(payload[start:], pat):
-                    return (pat, label)
-        return None
-    parts = payload.strip("/").split("/")
-    for i in range(len(parts)):
-        for pat, label in rules:
-            if reaches(parts[i:], pat):
-                return (pat, label)
-    return None
-
-
-def glob_root(pattern):
-    """See enforce-track-blindness.sh for the full derivation (round-2
-    defect: this used to return at the first wildcard segment and never
-    scan past it, so a `..` or brace group behind that point was
-    invisible -- `*/../../.squad/design/**` genuinely resolved and was
-    allowed). The scan for danger markers now covers every segment,
-    independent of where the literal prefix is cut.
-
-    Returns ("ok", prefix): a literal prefix of segments up to the first
-    plain wildcard (`*?[`) -- possibly empty (composes safely with a real
-    `path`; with none, resolves to cwd itself), PROVIDED no later segment
-    is a post-wildcard "..". Returns ("grouped", None) when a brace-group
-    marker (`{`, `}`, `,`; T-008) appears in any segment, at any position.
-    Returns ("climb", None) when a ".." segment appears anywhere after the
-    first plain wildcard -- unpredictable, since the wildcard match is
-    unknown. Returns ("missing", None) for an empty/non-string pattern.
-    None of "grouped"/"climb"/"missing" may be silently absorbed by
-    os.path.join as "nothing to add" (T-012 fix 2 / D20): the caller
-    refuses these on the pattern’s shape alone, before any denied-path
-    check runs -- an accepted false-positive class, not a desired
-    behaviour, distinct from a genuine denied-path match."""
-    if not isinstance(pattern, str) or not pattern:
-        return ("missing", None)
-    out = []
-    prefix_open = True
-    for seg in pattern.split("/"):
-        if any(ch in seg for ch in "{},"):
-            return ("grouped", None)
-        if any(ch in seg for ch in "*?["):
-            prefix_open = False
-            continue
-        if prefix_open:
-            out.append(seg)
-        elif seg == "..":
-            return ("climb", None)
-    return ("ok", "/".join(out))
-
-
-def truthy_str(v):
-    return isinstance(v, str) and bool(v.strip())
-
+# leaves/reach_hit/glob_root/truthy_str: see path_containment.py, imported
+# above. Shared with enforce-track-blindness.sh -- see that module’s header
+# for why (review round 1 of PR #358, ⚠️-7).
 
 hit = None
 target = None
@@ -328,9 +273,9 @@ if tool == "Grep":
         hit = reach_hit(".", cwd, RULES)
 elif tool == "Glob":
     is_search_tool = True
-    # T-012: Glob’s effective root is the composition of `path` and
-    # `pattern`’s own derived root, ALWAYS -- see
-    # enforce-track-blindness.sh for the full reasoning.
+    # Glob’s effective root is the composition of `path` and `pattern`’s own
+    # derived root, ALWAYS -- see enforce-track-blindness.sh for the full
+    # reasoning. docs/security/threat-model.md, TM-015, Trust Boundary 6.
     p = tool_input.get("path")
     pattern = tool_input.get("pattern")
     g_reason, pattern_root = glob_root(pattern)
@@ -362,7 +307,25 @@ if hit:
     shown_target = target if target is not None else "(none given -- defaults to this entire checkout)"
     scope_flag = "SCOPE" if is_search_tool else "-"
     print(RS.join([tool, shown_target, label, scope_flag]))
-' 2>/dev/null || true)"
+' 2>/dev/null)"
+py_rc=$?
+set -e
+
+if [ "$py_rc" -ne 0 ]; then
+  cat >&2 <<EOF
+🚫 this hook's embedded Python containment check exited with an unexpected
+error (exit $py_rc) instead of a clean allow or a reported denial.
+
+This hook enforces reviewer-blind's independence; an internal crash is not
+the same thing as "nothing to report" and must not be treated as an allow.
+Refusing is the only choice that does not silently defeat the rule this
+hook exists to enforce.
+
+Check python3's version and the hook's own syntax -- this is a bug in the
+hook, not in the tool call it was evaluating.
+EOF
+  exit 2
+fi
 
 if [ "$reason" = "UNREADABLE" ]; then
   cat >&2 <<'EOF'
