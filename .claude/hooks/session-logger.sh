@@ -117,4 +117,97 @@ fi
   printf '\n'
 } >> "$log_file"
 
+# ---------------------------------------------------------------------------
+# Pass cost — wall-clock per design phase, keyed by slug.
+#
+# dreamer-convergence's memory is the only place that answers whether the dual
+# track earns what it costs, and until now the novelty hit rate had no
+# denominator: half an answer. This supplies the other half.
+#
+# Timing comes from the transcript's own first and last timestamps rather than
+# from a wrapper, because a SubagentStop hook only ever sees the end. If the
+# transcript carries no timestamps the row is still written with a blank
+# duration -- a row that records the phase ran is worth more than no row.
+#
+# Only the design-pass phase agents are recorded. Builders run in worktrees on
+# their own schedule and their cost is a different question.
+# ---------------------------------------------------------------------------
+case "${AGENT_TYPE:-}" in
+  architect|scope-warden|dreamer-first-principles|dreamer-informed|\
+  dreamer-convergence|realist|critic|spec-author|reviewer-blind|reviewer-reconcile)
+    cost_file="$log_dir/pass-cost.md"
+
+    # Slug: the design pass whose directory was touched most recently.
+    slug="$(python3 -c '
+import os, sys
+root = sys.argv[1]
+design = os.path.join(root, ".squad", "design")
+best, name = None, ""
+if os.path.isdir(design):
+    for d in os.listdir(design):
+        p = os.path.join(design, d)
+        if not os.path.isdir(p):
+            continue
+        try:
+            m = max((os.path.getmtime(os.path.join(p, f)) for f in os.listdir(p)), default=None)
+        except OSError:
+            m = None
+        if m is not None and (best is None or m > best):
+            best, name = m, d
+print(name)
+' "$project_dir" 2>/dev/null || true)"
+    [ -z "$slug" ] && slug="(no pass)"
+
+    duration=""
+    if [ -n "${TRANSCRIPT_PATH:-}" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+      duration="$(python3 -c '
+import json, sys, datetime
+path = sys.argv[1]
+stamps = []
+try:
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            t = obj.get("timestamp") or (obj.get("message") or {}).get("timestamp") \
+                if isinstance(obj.get("message"), dict) else obj.get("timestamp")
+            if isinstance(t, str):
+                try:
+                    stamps.append(datetime.datetime.fromisoformat(t.replace("Z", "+00:00")))
+                except Exception:
+                    pass
+except Exception:
+    pass
+if len(stamps) >= 2:
+    secs = int((max(stamps) - min(stamps)).total_seconds())
+    print("%dm %02ds" % (secs // 60, secs % 60) if secs >= 60 else "%ds" % secs)
+' "$TRANSCRIPT_PATH" 2>/dev/null || true)"
+    fi
+
+    if [ ! -s "$cost_file" ]; then
+      {
+        printf '# Pass cost\n\n'
+        printf 'Wall-clock per design phase, keyed by slug. Appended by\n'
+        printf '`.claude/hooks/session-logger.sh` on every `SubagentStop` from a phase agent.\n\n'
+        printf 'Read by `dreamer-convergence`, whose memory is the only place that answers\n'
+        printf 'whether the dual track earns its cost. The novelty hit rate is a numerator;\n'
+        printf 'this is the denominator. **If the novelty hit rate stays at zero, the\n'
+        printf 'charter requires convergence to say so plainly** — a topology that cannot\n'
+        printf 'report its own uselessness will never be dismantled.\n\n'
+        printf 'A blank duration means the transcript carried no usable timestamps. The row\n'
+        printf 'still records that the phase ran.\n\n'
+        printf '| when | slug | phase | wall-clock |\n'
+        printf '|---|---|---|---|\n'
+      } >> "$cost_file"
+    fi
+    printf '| %sT%s | %s | `%s` | %s |\n' \
+      "$today" "$ts" "$slug" "${AGENT_TYPE}" "${duration:-—}" >> "$cost_file"
+    ;;
+esac
+
 exit 0

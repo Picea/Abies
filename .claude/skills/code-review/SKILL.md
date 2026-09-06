@@ -5,7 +5,7 @@ description: Pattern catalog for reviewing C#/.NET code in functional-DDD codeba
 
 # Code Review Pattern Catalog
 
-This is a **reference catalog** the Reviewer consults during reviews. It is not the review process itself — that lives in the Reviewer charter (`.claude/agents/reviewer.md`), which defines the steps, dimensions, output format, and verdict consistency rules.
+This is a **reference catalog** the Reviewer consults during reviews. It is not the review process itself — that lives in the `reviewer-reconcile` charter (`.claude/agents/reviewer-reconcile.md`), which defines the steps, dimensions, output format, and verdict consistency rules.
 
 These patterns are distilled from real C#/.NET maintainer review feedback (originally from dotnet/runtime, adapted for the team's stack). They represent what experienced .NET reviewers actually flag in practice. Each pattern includes the principle, why it matters, and what to suggest when you find a violation.
 
@@ -210,7 +210,7 @@ These patterns complement the Reviewer charter's testing dimension and the team'
 
 ## What This Skill Does NOT Cover
 
-- **The review process itself** (Steps 0-3, Holistic Assessment, Verdict Consistency Rules) — see `.claude/agents/reviewer.md`
+- **The review process itself** (Steps 0-3, Holistic Assessment, Verdict Consistency Rules) — see `.claude/agents/reviewer-reconcile.md`
 - **The squad's principles** (functional DDD, namespaces, observability, security) — see `.claude/docs/decisions.md` and `.claude/docs/principles-enforcement.md`
 - **The Definition of Done checklist** — see `.claude/docs/decisions.md`
 - **Threat model maintenance** — see the Security Expert charter and `security-toolchain` skill

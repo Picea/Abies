@@ -157,7 +157,7 @@ The body that follows the front-matter is the full prose threat model / finding 
 ## Defer To
 
 - Architectural decisions → `architect`.
-- Code review verdicts → `reviewer` (you feed them context; they hold the gate).
+- Code review verdicts → `reviewer-reconcile` (you feed them context; they hold the gate).
 - Implementation → `csharp-dev` / `js-dev`.
 - Documentation prose → `tech-writer`.
 

@@ -24,6 +24,7 @@ Exit codes: always 0 (this hook never blocks startup).
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
@@ -144,6 +145,107 @@ def last_verdict(repo: Path) -> str:
         return v[0] if v else "–"
     except Exception:
         return "–"
+
+
+def _parse_ledger_entries(path: Path) -> list[tuple[str, str]]:
+    """(label, expires_iso) pairs, one per ENTRY in a ledger file shaped
+    like `.claude/enforcement/refutations.md` -- never one per `expires:`
+    line. A numbered entry heading ("### N") is the unit counted, using
+    the first `expires:` line found inside it; any other heading (an
+    "Extension of entry N" section, a "## ..." section header) closes the
+    current entry without starting a new one, so an extension block's own
+    fields -- which this ledger's own convention keeps free of a fresh
+    `expires:` -- can never be miscounted as a second entry. Missing file
+    or any read error yields an empty list rather than raising."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    out: list[tuple[str, str]] = []
+    current: str | None = None
+    counted = False
+    for line in text.splitlines():
+        m_entry = re.match(r"^###\s+(\d+)\s*$", line)
+        if m_entry:
+            current = f"{path.name}#{m_entry.group(1)}"
+            counted = False
+            continue
+        if re.match(r"^#{1,6}\s", line):
+            current = None
+            continue
+        m_expires = re.match(r"^\s*expires:\s*(\S+)", line)
+        if m_expires and current and not counted:
+            out.append((current, m_expires.group(1)))
+            counted = True
+    return out
+
+
+def _parse_gate_shadow_entry(path: Path) -> list[tuple[str, str]]:
+    """One entry for .squad/.gate-shadow, using its LAST `expires:` line --
+    an appended extension governs over the first one it extends, the same
+    rule enforce-reviewer-readonly.sh's own shadow check applies -- never
+    one entry per `expires:` line, so an extended shadow is not
+    double-counted. Missing file or any read error yields an empty list."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    last: str | None = None
+    for line in text.splitlines():
+        m = re.match(r"^\s*expires:\s*(\S+)", line)
+        if m:
+            last = m.group(1)
+    return [(".squad/.gate-shadow", last)] if last else []
+
+
+def expiring_summary(repo: Path) -> str | None:
+    """The three soonest `expires:` dates across
+    `.claude/enforcement/refutations.md`,
+    `.claude/enforcement/accepted-orphans.md` (may not exist), and
+    `.squad/.gate-shadow`, each with days remaining, plus a count of
+    already-lapsed entries. Read-only, best-effort: any failure returns
+    None so the caller skips the line entirely rather than fail the hook.
+    Falsifier: an entry whose `expires:` is not a parseable ISO date is
+    silently skipped rather than raising; an "Extension of entry N"
+    section must not be counted as a distinct entry from the one it
+    extends."""
+    try:
+        entries: list[tuple[str, str]] = []
+        entries += _parse_ledger_entries(
+            repo / ".claude" / "enforcement" / "refutations.md"
+        )
+        entries += _parse_ledger_entries(
+            repo / ".claude" / "enforcement" / "accepted-orphans.md"
+        )
+        entries += _parse_gate_shadow_entry(repo / ".squad" / ".gate-shadow")
+
+        today = datetime.date.today()
+        upcoming: list[tuple[int, str]] = []
+        lapsed_count = 0
+        for label, raw in entries:
+            try:
+                d = datetime.date.fromisoformat(raw)
+            except ValueError:
+                continue
+            days = (d - today).days
+            if days < 0:
+                lapsed_count += 1
+            else:
+                upcoming.append((days, label))
+
+        if not upcoming and lapsed_count == 0:
+            return None
+
+        upcoming.sort(key=lambda t: t[0])
+        bits = []
+        if upcoming:
+            bits.append(
+                ", ".join(f"{label} in {days}d" for days, label in upcoming[:3])
+            )
+        bits.append(f"lapsed={lapsed_count}")
+        return "; ".join(bits)
+    except Exception:
+        return None
 
 
 def write_hooks_sentinel(repo: Path) -> None:
@@ -304,7 +406,10 @@ def render(payload: dict, repo: Path) -> str:
         f"**Inbox:** decisions={decisions_inbox}, quarantine={decisions_quarantine}, "
         f"learnings={learnings_inbox}"
     )
-    parts.append(f"**Last reviewer verdict:** `{verdict}`")
+    expiring = expiring_summary(repo)
+    if expiring:
+        parts.append(f"**Expiring:** {expiring}")
+    parts.append(f"**Last reviewer-reconcile verdict:** `{verdict}`")
 
     last_log = latest_session_log_tail(repo)
     if last_log:

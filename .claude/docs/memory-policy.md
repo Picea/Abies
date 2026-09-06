@@ -39,7 +39,27 @@ This file documents the policy. The mechanical execution lives in `.claude/hooks
 
 ### `.squad/design/`
 
-- **Per-pass directories** `<slug>/` holding the numbered phase artifacts (`00-scope.md` through `07-handoff.md`).
+- **Per-pass directories** `<slug>/` holding the numbered phase artifacts:
+
+  | artifact | written by |
+  |---|---|
+  | `00-knowledge.md` | `architect` — the knowledge scan |
+  | `00-scope.md` | `architect` — problem, hard constraints in plain language, `INV-n`, degrees of freedom |
+  | `00-warden-scan.md` | `scope-warden.sh` — the mechanical half of gate 1 |
+  | `00-warden.md` | `scope-warden` — the judgement half, and the gate question |
+  | `01-track-a.md` | `dreamer-first-principles` |
+  | `02-track-b.md` | `dreamer-informed` |
+  | `03-convergence.md` | `dreamer-convergence` |
+  | `04-realist-plan.md` | `realist` |
+  | `05-critic.md` | `critic` |
+  | `06-spec.md` | `spec-author` |
+  | `07-handoff.md` | `architect` — close-out |
+  | `08-review-blind.md` | `reviewer-blind` |
+  | `09-review-verdict.md` | `reviewer-reconcile` |
+
+  `00-knowledge.md` is split out of the scope deliberately — it carries decision ids and pattern names, and `dreamer-first-principles` is denied it by hook so that Track A derives rather than recalls.
+
+  `08` and `09` live here rather than beside the code because the split reviewer depends on `08` existing on disk *before* any narrative is read; `enforce-phase-order.sh` refuses `09` when `08` is absent. A review of a change with no design pass behind it uses the branch name as its slug.
 - **Not auto-rotated.** Design artifacts are the reasoning trail behind decisions in `decisions.md` — when someone asks "why is it built this way", the decision drop is the summary and this is the evidence. Manual prune only.
 - A pass whose decision drop has been archived is a candidate for manual archival too, but the drop must keep a working reference. If you move a design directory, update the `references` in its decision.
 

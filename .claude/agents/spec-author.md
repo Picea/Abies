@@ -37,7 +37,9 @@ The test is the executable specification. **If the user cannot recognise the fea
 
 ## Inputs
 
-`.squad/design/<slug>/00-scope.md`, `04-realist-plan.md`, `05-critic.md` — plus the codebase's existing tests, which you read to match conventions rather than invent your own.
+`.squad/design/<slug>/00-scope.md`, `00-knowledge.md`, `04-realist-plan.md`, `05-critic.md` — plus the codebase's existing tests, which you read to match conventions rather than invent your own.
+
+**Read `00-scope.md` for its `INV-n` list first.** Every invariant it declares must be referenced by id in your artifact and carried by a property. `validate-phase-artifact.sh` refuses `06-spec.md` when an `INV-n` is uncovered, and the Critic blocks a plan whose test approach leaves one uncovered — so an uncovered invariant is caught twice before implementation, deliberately.
 
 ---
 
@@ -65,7 +67,22 @@ Identify the specialist who owns the layer being tested; the orchestrator spawns
 | Workflow-direct | `csharp-dev` (TUnit, no AppHost needed for pure domain) |
 | Multi-layer | Owners coordinate; the agent owning the outermost layer drives |
 
-### 3. Draft the Test
+### 3. Draft the Test — Two Layers
+
+The spec has **two layers**, and the distinction is deliberate rather than thoroughness for its own sake.
+
+| Layer | Form | Why this form |
+|---|---|---|
+| **Acceptance** | **Example-based** — one happy path plus a small set of variants | Its job is **recognition**. The user reads it and agrees or disagrees. A property is harder to recognise than a concrete case, and a spec the user cannot recognise is not a specification. |
+| **Invariants** | **Property-based** — exactly one property per `INV-n` | An invariant is a claim over the **whole input space**. An example under-tests it by construction: round-trip symmetry and reachability are properties, and three cases prove almost nothing about either. |
+
+**Why not one layer.** An invariant is precisely the form in which a requirement becomes testable. A design that states invariants and then tests them with examples has thrown away the property it just established — it kept the sentence and discarded the claim.
+
+And the chain runs both ways. **An invariant nobody can write a property for is probably not an invariant.** If you hit one, say so and send it back rather than writing a weak property to satisfy the validator: that makes this phase a late check on the scope phase, which is one of the more useful things it does.
+
+Name each property test so its `INV-n` is visible — `INV_2_a_published_article_never_returns_to_draft` — and list the mapping explicitly in the artifact. The validator matches on the ids.
+
+Both layers are drafted here, both are approved together, and both are locked.
 
 A specialist will own it, but you draft the candidate so the user approves the *spec*, not merely the strategy. The draft must:
 
@@ -92,8 +109,24 @@ Write to `.squad/design/<slug>/06-spec.md`:
 **Scope:** [in / out / substituted / what runs through AppHost]
 **Proposed path:** [path/to/Specs/FeatureName.cs]
 
-## The Test
-[Full drafted test code — TUnit / Playwright]
+## Acceptance layer (example-based)
+[Full drafted test code — TUnit / Playwright. The happy path plus a small set
+ of variants. This is the layer the user reads to recognise the feature.]
+
+## Invariant layer (property-based)
+
+| Invariant | Property test | What it asserts over the whole input space |
+|---|---|---|
+| INV-1 | `INV_1_…` | … |
+| INV-2 | `INV_2_…` | … |
+
+[Full drafted property tests. One per INV-n from 00-scope.md — no invariant
+ without a property, no property without an invariant it traces to.]
+
+**Invariants covered:** INV-1, INV-2, … (every id declared in 00-scope.md)
+**Invariants I could not express as a property:** [none — or the id, and why.
+ An invariant that resists expression is a finding about the scope, not a
+ licence to write a weak property.]
 
 ## What This Test Proves
 **Behaviour captured:** [plain language — what passing this means]
@@ -116,7 +149,7 @@ Then return to the orchestrator: the level and why, the owner, the test itself, 
 
 Once approved, the test is **immutable for this feature**. Implementation must make it pass without modifying it.
 
-If implementation reveals the spec is wrong, the implementing specialist stops, surfaces the conflict, an updated spec is proposed, and the user re-approves before work resumes. **Silent test edits during implementation are a 🔴 Must Fix at review**, and `reviewer` enforces it with a git-history check — spec files modified in the same PR that brings them to passing are flagged. Approval and implementation belong in separate commits.
+If implementation reveals the spec is wrong, the implementing specialist stops, surfaces the conflict, an updated spec is proposed, and the user re-approves before work resumes. **Silent test edits during implementation are a 🔴 Must Fix at review**, and `reviewer-reconcile` enforces it with a git-history check — spec files modified in the same PR that brings them to passing are flagged. Approval and implementation belong in separate commits.
 
 State the lock explicitly in your output so the implementing specialist cannot claim they did not know.
 
@@ -127,6 +160,7 @@ State the lock explicitly in your output so the implementing specialist cannot c
 - Write production code, or implementation-shaped test helpers beyond what the spec needs to read clearly.
 - Run the test (no `Bash` by design) — the owning specialist confirms the meaningful failure.
 - Approve your own spec. The **user** approves. You draft.
+- Write a property you do not believe in to make `validate-phase-artifact.sh` pass. An uncovered `INV-n` reported honestly sends the pass back to the architect, which is the chain doing its job; a vacuous property that satisfies the check is the chain silently broken, and nothing downstream will catch it.
 - Proceed to handoff. The `architect` conductor closes the pass after the user approves.
 - Write specs for work the phase should skip. Say it should be skipped instead.
 

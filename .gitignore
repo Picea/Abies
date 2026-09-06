@@ -39,8 +39,16 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
-[Ll]og/
-[Ll]ogs/
+# Anchored to repo root (added by the squad-flow v2.1 delta): an
+# unanchored [Ll]og/ / [Ll]ogs/ pattern matches a directory with that
+# name ANYWHERE in the tree, including .squad/log/ -- which defeats the
+# !.squad/log/*.md exceptions added below, since git cannot re-include a
+# file whose parent directory is already excluded. The template fixed
+# this same latent bug for the same reason; see its .gitignore. Anchoring
+# to root keeps the original intent (.NET build diagnostics dumped to
+# <root>/log/) without swallowing .squad/log/.
+/[Ll]og/
+/[Ll]ogs/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -481,6 +489,18 @@ nohup.out
 .squad/log/transcripts/
 .squad/log/snapshots/
 .squad/log/*.log
+
+# Explicit keep for files the squad-flow v2.1 delta introduces under
+# .squad/log/: session-logger.sh's pass-cost.md, lexicon-check.sh's
+# lexicon-hits.md, and the CI-6 shadow audit trail gate-shadow.md (see
+# .squad/.gate-shadow and enforce-reviewer-readonly.sh). None of the
+# three rules above match these filenames, so they are not ignored by
+# this repository's existing rules today -- these lines pin that so a
+# future, broader .squad/log/ ignore rule (as the template itself later
+# adopted) cannot silently swallow them without an explicit decision.
+!.squad/log/lexicon-hits.md
+!.squad/log/pass-cost.md
+!.squad/log/gate-shadow.md
 
 # Per-rotation tarballs
 .squad/decisions/archive/cold/

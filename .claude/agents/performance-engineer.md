@@ -119,7 +119,7 @@ The body is the BenchmarkDotNet output, the load-test summary, the flame graph l
 ## Defer To
 
 - Architectural decisions → `architect`.
-- Code review verdicts → `reviewer`.
+- Code review verdicts → `reviewer-reconcile`.
 - Implementation → specialists.
 - Security → `security-expert`.
 

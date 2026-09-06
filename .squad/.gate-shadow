@@ -1,0 +1,56 @@
+created: 2026-09-06
+expires: 2026-09-20
+# CI-6 (11-continuous-improvement-criterion.md § 6): enforce-reviewer-readonly.sh's
+# cache deny began refusing writes it previously allowed (round 4's fix, T-013 /
+# INV-5), so it ships with a shadow period per CI-6's default rather than a clean
+# flip -- the user was not available to record a clean-flip decision, and CI-6
+# applies its default when no such decision is recorded.
+#
+# During this shadow period, ONLY for the verdict-cache deny in
+# enforce-reviewer-readonly.sh: a decision the PREVIOUS control (the one in
+# effect before round 4's fix) would ALSO have allowed logs one line to
+# .squad/log/gate-shadow.md and exits 0 instead of refusing. Constraint 1 of
+# CI-6: this never affects a decision the previous control already refused --
+# not a literal-spelling match (already denied before round 4) and never a
+# Block from a failed verdict check. Missing file, or a missing, malformed, or
+# lapsed expires:, means NOT shadowing -- enforcing, per CI-6's own text.
+#
+# This repository (Abies) receives enforce-reviewer-readonly.sh's verdict-cache
+# deny for the first time as part of the squad-flow v2.1 delta, so it opens its
+# own 14-day shadow period here rather than inheriting the template's -- the
+# template's own shadow governs only the template repository's copy of the
+# hook. expires: is 14 days from created:, the CI-6 maximum for an initial
+# shadow. See the template's `.claude/docs/flow-changelog.md` for the fuller
+# history of this control (round 4 introduction, round 5/6 fixes below).
+#
+# 09-review-verdict.md round 5, finding 4: this file previously claimed "the
+# shadow logic ... is not yet implemented" and "this changeset was built under
+# a no-shadow decision" and "this file is inert" -- none of that was true; no
+# such decision is recorded anywhere else in this repository, and it shipped a
+# 30-day expires: against CI-6's 14-day maximum. Both are fixed here: the
+# log-and-allow path is implemented in enforce-reviewer-readonly.sh, and
+# expires: is 14 days from created:, the CI-6 maximum for an initial shadow.
+#
+# The user -- and only the user -- may extend this once, by at most 14 more
+# days, as an appended entry below this line (per CI-6 constraint 3). An agent
+# extending its own expiry has built the laundering shape CI-6 exists to
+# prevent.
+#
+# 09-review-verdict.md round 6, finding B: the extension above is now
+# actually read. enforce-reviewer-readonly.sh takes the LAST expires: line
+# in this file (the appended extension, if one exists), not the first --
+# a prior revision `break`d at the first match and silently ignored any
+# extension appended per the paragraph above. It also now reads created:
+# and refuses to shadow (enforces instead) when the LAST expires: is more
+# than 28 days after created:, or more than 14 days after the FIRST
+# expires: -- CI-6 constraint 3's absolute ceiling, checked rather than
+# merely documented.
+#
+# SQUAD_NOW: enforce-reviewer-readonly.sh and its tests support an ISO
+# YYYY-MM-DD override of the wall clock used to evaluate this file,
+# TEST-ONLY and honoured only when SQUAD_TEST_HARNESS=1 is ALSO set (only
+# tests/blindness.sh exports that combination). Setting SQUAD_NOW to a
+# date before the expires: above -- under that same test harness --
+# revives an otherwise-lapsed shadow; nothing in a normal agent or
+# maintainer shell can do this, since SQUAD_TEST_HARNESS is never set
+# outside the test suite.
