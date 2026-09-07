@@ -1,6 +1,6 @@
 ---
 name: undo-redo-withhistory-decision
-description: Undo/redo shipped as WithHistory with refusal at the effect boundary (ADR-030); what it deliberately excluded and which triggers would reopen it
+description: Undo/redo decided as WithHistory with refusal at the effect boundary; ADR-030 not yet written; what it deliberately excluded and which triggers would reopen it
 metadata:
   type: project
 ---

@@ -37,9 +37,9 @@ for the `undo-redo` pass.
 **Level movement:** none. This is evidence for gate 1, not a change to it.
 
 The pre-hook draft `.squad/design/undo-redo/00-scope-undo-redo.md` was
-reviewed by a human and passed. `scope-warden`, reading `00-warden.md`'s
-category — prior work presented as reference material, the one no regex
-reaches — found two leaks in it: a sentence presenting the existing
+reviewed by a human and passed. `scope-warden`, reading `00-warden-scan.md`
+and adding the category no regex reaches — prior work presented as reference
+material — found two leaks in it: a sentence presenting the existing
 debug-only machinery as "the starting point," and a sentence referring to
 "the well-known conventional answer" as though a comparison shape were
 already decided.

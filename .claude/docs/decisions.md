@@ -2162,7 +2162,7 @@ id: architect-20260907T120000Z-undo-redo
 agent: architect
 verdict: INFO
 scope: architecture
-created: 2026-09-07T12:00:00Z
+created: 2026-09-07T08:03:52Z
 targets:
   - path: Picea.Abies/History/
   - path: Picea.Abies.Tests/History/
@@ -2229,7 +2229,7 @@ Five 🟠 accepted, none needing a revision 5 — S25 (two false sentences survi
 
 Two judgement calls upheld: **S23** — origin re-basing keeps its behaviour and corrects its description, because the one-line alternative would make pre-record navigations recorded stops that restore a model without its URL; **item 6** — SEC-3(b)'s reachability set is not widened to name the held anchor, because a clause discharged by `Scrub` cannot name a site `Scrub` must not reach. In both cases a specialist overruled the Critic and the record says so.
 
-Security: SEC-1 … SEC-7, Trust Boundary 7 (three retention shapes, each with the bound that actually applies), two threat-model rows with the anchor and superseded-branch bullets, and two hardening-backlog fast-follows.
+Security: SEC-1 … SEC-7, with ADR-030 landing as `tech-writer`'s plan step 13 deliverable. Trust Boundary 7 (three retention shapes, each with the bound that actually applies), two threat-model rows with the anchor and superseded-branch bullets, and two hardening-backlog fast-follows land as `security-expert`'s plan step 16 deliverables.
 
 ## Spec test
 
@@ -2249,7 +2249,7 @@ id: architect-20260907T184500Z-undo-redo-navigation
 agent: architect
 verdict: INFO
 scope: architecture
-created: 2026-09-07T18:45:00Z
+created: 2026-09-07T09:34:55Z
 targets:
   - path: Picea.Abies.History
   - path: .squad/design/undo-redo/
@@ -2306,4 +2306,89 @@ Of the four classification rows against an incoming `UrlChanged` once `Origin` i
 - **A framework-side SEC-2 rule for `UrlChanged`'s URL** — declined by the user in favour of the documented limitation above.
 
 Full artifacts: `.squad/design/undo-redo/`. The rule and its derivation are `04-realist-plan.md` § *The classification rule* `[R4-nav]`; the confirmation is `05-critic.md` § *confirmation pass, 2026-09-07* (CONFIRMED WITH A BOUNDED LIST — two 🔴, four 🟠, seven 🟡, all thirteen mitigations accepted by the user); the execution contract is `07-handoff.md` § 2.5, standing decision 7, § 5.3 and § 6.1.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T121500Z-pr359-undo-redo-design-record [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T121500Z-pr359-undo-redo-design-record
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T10:25:28Z
+commit: 66379e7e2f9e7e5cbd5c3554369f1d5177fca176
+targets:
+  - path: .claude/enforcement/refutations.md
+    lines: "544-590"
+  - path: .claude/docs/flow-changelog.md
+    lines: "35-56"
+  - path: .claude/docs/decisions.md
+    lines: "2158-2290"
+  - path: .squad/design/undo-redo/
+  - path: Picea.Abies.Conduit.ServiceDefaults/Extensions.cs
+    lines: "32"
+blockers:
+  - file: .claude/enforcement/refutations.md
+    line: 550
+    reason: "R-21's source: cites 00-warden.md section 'Findings on Adjacent Artifacts', which exists in no file in the tree. The committed 00-warden.md is the re-run, verdict CLEAN, 0 findings, and git log --all shows a single version, so no earlier copy is recoverable. The Merge Criterion makes refutations.md a gating document; an entry whose evidence pointer does not resolve cannot be audited. R-21's substance is independently sound (enforce-track-blindness.sh:277-290 has no docs/adr/** DENY glob) so the fix is the citation, not the entry."
+  - file: .claude/docs/flow-changelog.md
+    line: 40
+    reason: "The entry certifying gate 1's effectiveness says scope-warden reads 00-warden.md. The warden writes 00-warden.md and reads 00-warden-scan.md, per both artifacts' own text, CLAUDE.md section 3 rule 2, and memory-policy.md. As written the judgement half of the gate reads its own output, in the one governance entry whose purpose is to grade that split. The claim it certifies is true (verified against the deleted 00-scope-undo-redo.md:25,74 at f0cb682), which is why the sentence describing it should be too."
+  - file: .claude/enforcement/refutations.md
+    reason: "Merge Criterion clause (b) unmet: four verified findings are registered nowhere with owner, level consequence and expires: — the decision-drop created: field that critic and architect cannot produce (no Bash tool; pre-existing since the 2026-09-02 pr355 drops), the six unregistered ActivitySources in ServiceDefaults, pass-cost.md's header stating units its cumulative data does not have, and session-logger.sh recording orchestrator intentions at 25:214 signal-to-noise for a second consecutive day. All four are pre-existing and therefore registrable rather than fixable here; registration is the remedy, and enforce-reviewer-readonly.sh forbids the reviewer from writing it."
+high:
+  - file: .claude/docs/decisions.md
+    line: 2172
+    reason: "The architect drop's Security paragraph lists Trust Boundary 7, two threat-model rows and two hardening-backlog fast-follows as produced. They are plan step 16 deliverables, unchecked, and docs/security/ is untouched by this commit. Settled against 04-realist-plan.md:1805,1865 and 07-handoff.md:273,406 and section 5.1 — these ARE deliverables and the record says so clearly, two documents away. Every other forward-looking item in the same drop is marked as such, so these read as accomplished by contrast. One clause fixes it. targets: listing ADR-030 is within schema (paths the drop pertains to) and is not flagged."
+  - file: .claude/agent-memory/architect/MEMORY.md
+    line: 6
+    reason: "Index line presents ADR-030 as the settled authority ('ADR-030's decision') for a file that does not exist and is step 13's deliverable. A memory index is what a future session believes without checking."
+  - file: Picea.Abies.Conduit.ServiceDefaults/Extensions.cs
+    line: 32
+    reason: "Six declared ActivitySources are collected nowhere — Picea.Abies.Runtime, Picea.Abies.Subscriptions, Picea.Abies.Server.Page, Picea.Abies.Server.Session, and the two Server.Kestrel sources — and no ActivitySource in the repository is named exactly 'Picea.Abies', so the one framework registration matches nothing at all. Wider than either the design record or the blind reading states. Pre-existing, out of scope for a docs-only PR, and correctly named in 07-handoff.md section 9 — but that section is headed 'named, not scheduled' and there is no issue, backlog entry or ledger entry. Violates the team's observability principle and dimension 8's no-dark-services rule."
+  - file: .squad/decisions/archive/2026-09/2026-09-07T09-34-55-arch-undo-redo-navigation.md
+    line: 6
+    reason: "Five of seven new drops carry unreadable-clock created: values; two are dated after the commit that introduces them (architect claims 18:45:00Z against a 09:56:59Z commit). Root cause is structural, not dishonesty: critic and architect declare no Bash tool and cannot run date -u, and the correlation with clock access is exact across all seven drops. Pre-existing (2026-09-02 pr355-round5 is future-dated by 36 minutes). Two of the blind reading's three harms do not materialise — squad-rotate.py ages by mtime and decisions.md lists in merge order — but id collision does: two drops already use T000000Z and the schema requires global uniqueness. Do not rewrite the ids (documented stable anchors, cited from three places); correct the two impossible created: values and let scribe-decision-merger.sh stamp the field from the clock it already reads at :1202."
+medium:
+  - file: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+    reason: "Recommends 'ISensitiveCause : Message' as cross-session guidance. Gate-4 decision 5 removed the I prefix (07-handoff.md:206); revision 4 uses the prefixed form nowhere. One token, plus half a sentence recording that the prefixed form was rejected."
+  - file: .claude/agent-memory/critic/picea-xml-is-the-kernel-contract.md
+    reason: "Sends future agents to Picea.xml without naming the version trap. Verified: 1.0.0's Picea.xml is 1369 lines and documents AutomatonRuntime's members; 1.0.27-rc-0002's is 477 lines and mentions AutomatonRuntime exactly once, the type declaration, with zero members. Four projects reference the rc. Same fix needed in realist/picea-package-xml-answers-kernel-questions.md."
+  - file: .squad/log/pass-cost.md
+    line: 3
+    reason: "Header says 'wall-clock per design phase'; the column is cumulative and monotonic and does not reset across slugs. The correction lives only in dreamer-convergence's private notebook, and the header itself declares this file the denominator for whether the dual track earns its cost."
+  - file: .squad/design/undo-redo/00-warden.md
+    reason: "Framework observation: CLAUDE.md section 3 rule 2 prescribes a warden re-run on scope rework, and the warden writes to the same path, so the first report is overwritten. Both R-21's citation and flow-changelog's two-leaks claim point at a report that no longer exists. Both claims are nonetheless true — verified independently against f0cb682's deleted draft and the hook source — but a governance record whose evidence is destroyed by the documented happy path deserves registering."
+good:
+  - file: .squad/design/undo-redo/07-handoff.md
+    lines: "452-453"
+    reason: "Both blockers from the Critic's confirmation pass are discharged with the residue named rather than absorbed: B10's mitigation (1) landed as 06-spec.md obligations line 17, (2) is recorded as still owed to tech-writer at step 13, (3) is explicitly out of pass. B11 corrected in both places marked 'implement from this', with 'Do not implement from any copy that still carries it'."
+  - file: .squad/design/undo-redo/07-handoff.md
+    lines: "517-524"
+    reason: "S25 registered as an unresolved risk in the author's own words with its failure mode stated: 'This is a documented precedence rule, not a resolution; if an implementer reads only the plan, they will implement the wrong narrative.' Authors rarely write that sentence about their own artifact."
+  - file: .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+    reason: "The commit-boundary confirmation is a pure append (zero deletions), labelled 'not a re-review', carries the verdict forward unchanged, and distinguishes what it diffed from what it inferred in an explicit 'Claims I could not verify' section. Correct shape for amending a closed verdict artifact."
+  - file: .squad/design/undo-redo/
+    reason: "Citation discipline holds inside the design directory as well as outside it. The blind reviewer found twenty of twenty drop citations accurate; B10, B11, S25, S29, S31 and S20 dispositions each check out against the artifact and line they name. Mechanically clean besides: seven drops archived and merged exactly once each, R-21 the next unused id in a gap-free ledger, zero orphaned memory notes, zero dangling wikilinks, all seven INV ids covered by the spec, Track A's Reasoning Trail and Track B's Known Failure Modes present, lexicon gate passed with no override."
+references:
+  - architect-20260907T120000Z-undo-redo
+  - architect-20260907T184500Z-undo-redo-navigation
+  - reviewer-reconcile-20260906T134928Z-pr358-commit-confirm
+---
+
+# Review — PR #359, `undo-redo` design record
+
+🔴 **Changes Requested.** Docs-only, 67 files, all `.md`, +11738/−86; nothing the
+runtime executes is in the range. The changeset's stated property is green
+(`bash .claude/hooks/tests/run.sh` → 823 passed, 0 failed at this HEAD).
+
+The engineering is not in question. The record's own metadata and provenance are.
+Three blockers: a residual-ledger citation that resolves to nothing, a governance
+entry that misstates the control it grades, and four verified findings that the
+Merge Criterion requires registered before ✅ and which the reviewer is forbidden
+to register itself.
+
+Full reasoning, the reconciliation against `08-review-blind.md`, and the Critic's
+accepted-risk audit are in
+`.squad/design/undo-redo-design-record/09-review-verdict.md`.
 

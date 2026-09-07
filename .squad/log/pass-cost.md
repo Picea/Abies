@@ -57,3 +57,7 @@ still records that the phase ran.
 | 2026-09-07T09:55:00Z | undo-redo | `realist` | 1359m 45s |
 | 2026-09-07T09:56:23Z | undo-redo | `architect` | 1362m 02s |
 | 2026-09-07T10:03:32Z | undo-redo-design-record | `reviewer-blind` | 1366m 05s |
+| 2026-09-07T10:13:42Z | undo-redo | `reviewer-blind` | 1373m 01s |
+| 2026-09-07T10:27:11Z | undo-redo | `reviewer-reconcile` | 1380m 52s |
+| 2026-09-07T10:28:35Z | undo-redo | `architect` | 1394m 43s |
+| 2026-09-07T10:28:59Z | undo-redo | `architect` | 1395m 34s |

@@ -588,6 +588,137 @@ row, which already covers it.
 
 ---
 
+### Correction to R-21 — `source:` citation repointed to surviving evidence
+
+Appended text only; does **not** edit R-21's `source:` field in place, per
+this file's own append-only rule (R-21 is not the `## Extensions` case below —
+this is a citation correction on an already-registered, still-`open` entry,
+the same shape as the "Round 2 closures" section above, which
+`security-expert` also authored directly rather than routing through the
+user, because it corrects a pointer rather than extends an `expires:` or
+otherwise widens what the entry licenses).
+
+R-21's `source:` field cites `` `.squad/design/undo-redo/00-warden.md` §
+"Findings on Adjacent Artifacts" `` — a heading that exists in no committed
+version of that file. Per `09-review-verdict.md` (PR #359 review round 1,
+🔴-2): the committed `00-warden.md` is titled "Scope Warden — undo-redo
+(re-run)", verdict CLEAN, sections "Nothing found in" and the gate question
+only, closing "0 findings"; `git log --all -- .squad/design/undo-redo/00-warden.md`
+returns a single commit, so no earlier version survives to recover. This is
+the documented happy path, not data loss: `CLAUDE.md` § 3 rule 2 has the
+warden re-run and overwrite the same path when the user sends a scope back,
+and that is what happened here.
+
+The entry's *substance* is unaffected and independently verified — the
+citation is what fails to resolve, not the finding. Read R-21's `source:`
+together with this correction as pointing instead at:
+
+- the deleted draft scope, at the commit before `00-scope.md` was rewritten:
+  `git show f0cb682:.squad/design/undo-redo/00-scope-undo-redo.md` line 25 —
+  "It is **the starting point** for this work, not something to replace or
+  duplicate" — and line 74 — "The problem has **a well-known conventional
+  answer**…". Both are the leaked framings gate 1's re-run corrected; the
+  final `00-scope.md:64` inverts the first outright and drops the second
+  entirely.
+- `09-review-verdict.md` (PR #359 review round 1), § "08's P7, and what only
+  I could check", which independently re-derives both quotations from the
+  same commit and states "Gate 1 did what the entry says it did."
+- `enforce-track-blindness.sh:277-290` (`DENY["dreamer-first-principles"]`),
+  already cited under R-21's `level consequence:`, confirmed to have no
+  `docs/adr/**` entry — this half of R-21's citation was never in question.
+
+R-21 is otherwise unchanged by this correction: `status: open`,
+`expires: 2026-10-04`, owner `devops`, closure route unchanged.
+
+---
+
+## Residuals and bounds, security-expert (2026-09-07, PR #359 review round 1)
+
+Registered per `09-review-verdict.md` (PR #359 review round 1, 🔴 "Merge
+Criterion (b), repo-wide"), which names ⚠️-1, ⚠️-3, ⚠️-5 and ⚠️-6 as verified
+findings registered nowhere. All four are pre-existing defects in files
+outside this docs-only PR's own file-set (Conduit `ServiceDefaults` and two
+`.claude/hooks/*.sh` scripts owned by `devops`), so registration is the
+remedy, not a fix landed here. ⚠️-2, ⚠️-4's changelog half, ⚠️-7 and ⚠️-8 are
+not registered here: each names a direct edit to a specific file owned by an
+agent other than `security-expert` (`decisions.md`/agent-memory index lines,
+`flow-changelog.md`, this agent's own memory note, and the `critic`/`realist`
+memory notes respectively) and are fixable in place rather than requiring a
+residual.
+
+### R-22 — Decision-drop `created:` timestamps are author-asserted at a moment they cannot be reliably known, producing two impossible values and same-day `id` collisions
+- type: residual
+- source: PR #359 review round 1, ⚠️-1
+- files: `.claude/docs/decisions.md`, `.squad/decisions/archive/2026-09/`, `.claude/hooks/scribe-decision-merger.sh`
+- owner: devops
+- level consequence: five of the seven drops in this pass carry
+  unreadable-clock `created:` values (`critic` ×3 and `architect` ×2 hold no
+  `Bash` and cannot run `date -u`), two of them dated after the commit that
+  introduces them. The residual harm is `id` collision: two drops in this
+  commit already share `T000000Z`, and `decision-schema.md` requires `id`
+  globally unique, so a third same-slug drop on either day collides outright.
+  Root cause is broader than "Bash-less roles": `reviewer-reconcile`'s own
+  round-1 drop reproduced the defect while holding `Bash`, off by 1h50m,
+  because the schema asks every author for a value only reliably knowable at
+  merge time, and `scribe-decision-merger.sh` already computes that exact
+  value to name the archive file — it just does not stamp it back onto
+  `created:`.
+- expires: 2026-09-21
+- status: open
+
+### R-23 — Six declared `ActivitySource`s are collected nowhere; the one framework registration in Conduit's `ServiceDefaults` matches none of them
+- type: residual
+- source: PR #359 review round 1, ⚠️-3
+- files: `Picea.Abies.Conduit.ServiceDefaults/Extensions.cs:32`,
+  `Picea.Abies/Runtime.cs:88`, `Picea.Abies/Subscriptions/Manager.cs:32`,
+  `Picea.Abies.Server/Page.cs:57`, `Picea.Abies.Server/Session.cs:111`,
+  `Picea.Abies.Server.Kestrel/WebSocketTransport.cs:54`,
+  `Picea.Abies.Server.Kestrel/Endpoints.cs:44`
+- owner: devops
+- level consequence: `AddSource` matches exact names only (wildcards require
+  an explicit `*`), and no `ActivitySource` in this repository is named
+  exactly `"Picea.Abies"` — so the framework's runtime, subscription,
+  server-page, session and WebSocket-transport traces are dropped on the
+  floor in Conduit today. Live violation of the team's own OTEL
+  `ActivitySource`-registration principle and of the Reviewer's
+  observability dimension. Pre-existing and out of scope for the docs-only
+  PR that surfaced it; probable one-line remedy
+  (`.AddSource("Picea.Abies*")`) belongs to its own PR and review pair.
+- expires: 2026-09-21
+- status: open
+
+### R-24 — `pass-cost.md`'s header states units the underlying data does not have
+- type: residual
+- source: PR #359 review round 1, ⚠️-5
+- files: `.squad/log/pass-cost.md`, `.claude/hooks/session-logger.sh`
+- owner: devops
+- level consequence: the header states "wall-clock per design phase, keyed
+  by slug"; the column is cumulative-since-session-start and monotonic, and
+  does not reset across slugs — a later slug's rows continue an earlier
+  slug's running total. The header itself states this file is the
+  denominator for whether the dual-Dreamer-track design costs its keep, so a
+  reader who trusts the header computes the wrong answer. The correction
+  (take deltas between consecutive rows) exists only in one agent's private
+  memory note, not in the file itself.
+- expires: 2026-09-21
+- status: open
+
+### R-25 — Session log signal-to-noise: the log records the orchestrator's intentions, not the agents' results
+- type: residual
+- source: PR #359 review round 1, ⚠️-6
+- files: `.squad/log/2026-09-07-session.md`, `.claude/hooks/session-logger.sh`
+- owner: devops
+- level consequence: established by `reviewer-blind`'s independent pass at
+  roughly a 25:214 signal-to-noise ratio; confirmed here as the second
+  consecutive day with the same shape, which makes it a `session-logger.sh`
+  defect rather than a one-off. `CLAUDE.md` directs the Lead to read these
+  files when continuing prior work, so the defect degrades exactly the
+  cross-session handoff mechanism it exists to support.
+- expires: 2026-09-21
+- status: open
+
+---
+
 ## Extensions
 
 Extensions are appended here, never edited in place, per the append-only
