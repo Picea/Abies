@@ -30,3 +30,4 @@ at the time and rewriting it would misrepresent the historical record.
 - [The round cap is a verdict shape](the-round-cap-is-a-verdict-shape.md) — count the rounds before grading; at round 3 the verdict is the split, not another 🔴.
 - [A new trust boundary must name its widest channel](a-new-trust-boundary-must-name-its-widest-channel.md) — diff the boundary's tool list against every governed agent's `tools:` line.
 - [Verify a registration pass by scope, not substance](verify-a-registration-pass-by-scope-not-substance.md) — after the split, measure what changed with `find -newer`; don't re-derive findings the cap ruled out.
+- [A confirmation pass invalidates its own cache](a-confirmation-pass-invalidates-its-own-cache.md) — committing the confirmation's artifacts moves HEAD and re-blocks the merge; say where to stop.

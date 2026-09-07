@@ -1810,3 +1810,500 @@ and the changeset is clear to merge.
 - Two registered worktrees still on disk at `6e28e74`; `git worktree remove`
   when the pass ends.
 
+
+### 2026-09-06 — reviewer-reconcile-20260906T134928Z-pr358-commit-confirm [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260906T134928Z-pr358-commit-confirm
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-06T13:49:28Z
+commit: 9b71b1813b11a412702ac14c0e7f5f2cedd67b29
+targets:
+  - path: .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+    lines: "246-320"
+  - path: .squad/log/2026-09-06-session.md
+    lines: "361-367"
+  - path: .claude/docs/decisions.md
+    lines: "tail-64"
+  - path: .gitignore
+    lines: "473,496"
+blockers: []
+high: []
+medium: []
+good:
+  - file: .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+    note: "Commit-boundary confirmation only -- the eleven dimensions were NOT re-run and nothing is reopened. git rev-parse 9b71b18^ is exactly 6e28e7403f79ed02b93d0d1f3324152e97c7b628, so the commit is a single boundary over the passed working tree with no intervening history. Verdict carried forward unchanged: PASS."
+  - file: .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+    note: "git diff 6e28e74..9b71b18 --stat is 69 files, +5336/-730. Larger than the 55 files / +3330 recorded at the top of 09 because that figure was git diff HEAD -- working-tree-only, blind to the two then-untracked lib/ modules (artifact_attribution.py, path_containment.py) and to the artifacts the hooks wrote across rounds 2-4. The delta is accounted for entirely by those, not by new work. No .cs, .js, .mjs, .csproj, appsettings.* or Dockerfile in the diff: still squad-framework-only, as reviewed."
+  - file: .squad/log/2026-09-06-session.md
+    note: "git status --porcelain shows exactly one line, this file modified. The delta is four appended session-logger.sh SubagentStop lines at 13:46:41Z-13:48:01Z, after the 13:46:13Z commit -- append-only hook state, no content change. --untracked-files=all adds nothing further."
+  - file: .gitignore
+    note: ".claude/worktrees/ is ignored at line 496 and carries 0 tracked files, so the two live agent worktrees (each containing a full copy of the hook set) did not enter the commit. .squad/.last-review-verdict is ignored at line 473, so the verdict cache token was correctly kept out of the tree it certifies."
+  - file: .claude/docs/decisions.md
+    note: "Only governed document with a post-verdict mtime (15:45:14, vs the verdict at 15:44:32), so it was checked rather than assumed: its last 64 lines are byte-identical to the body of ...round3-close.md (diff clean modulo one leading/trailing blank line). The change is scribe-decision-merger.sh mechanically merging a drop I authored -- not new content, not a hand edit."
+  - file: .claude/hooks/tests/run.sh
+    note: "823 passed, 0 failed, executed by me at 9b71b18. Unchanged from rounds 3 and 4, which is the expected result for a commit that changed no file content -- a changed count would have been the finding."
+  - file: .squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md
+    note: "Scope audit recorded honestly: six committed files carry a post-verdict mtime and all six are hook-written state or the reviewer notebook -- none is a hook script, charter, doc-under-review or CI config. The residual limit is named rather than papered over: the reviewed working tree was not snapshotted, so byte-for-byte identity is inferred from the single-parent commit, the mtime audit and the reproduced suite, not diffed."
+references:
+  - ".squad/design/chore-0-squad-flow-v2-1/09-review-verdict.md"
+  - ".squad/design/chore-0-squad-flow-v2-1/08-review-blind.md"
+  - ".squad/decisions/archive/2026-09/2026-09-06T13-45-14-review-pr358-round3-close.md"
+  - ".claude/docs/principles-enforcement.md#the-merge-criterion--continuous-improvement"
+---
+
+# Review verdict — PR #358, commit-boundary confirmation at `9b71b18`
+
+The round-4 pass approved a **working tree** on top of `6e28e740`. The merge gate
+keys on a commit, so this pass exists for one question only: **is the committed
+tree the tree that was passed?** It is. The eleven dimensions were not re-run,
+and this drop reopens nothing.
+
+## The three claims, all verified
+
+1. **The diff matches.** `git diff 6e28e74..9b71b18 --stat` → 69 files,
+   +5336/−730; `git rev-parse 9b71b18^` → `6e28e740` exactly. One commit, no
+   intervening history. The file set is the reviewed control delta plus exactly
+   the four categories the commit was expected to carry — review artifacts,
+   session log, merged decision drops, reviewer notebook. No runtime-executed
+   file of any kind appears.
+
+2. **`git status` is clean apart from hook state.** One modified file, the
+   session log, appended to by `session-logger.sh` *after* the commit.
+
+3. **The suite is unchanged.** `823 passed, 0 failed`, run by me at this HEAD.
+
+## Why the stat is bigger than the number in `09`
+
+`09` records `55 files, +3330/−730`, which was `git diff HEAD` — working-tree
+only. It could not see `artifact_attribution.py` and `path_containment.py`
+(untracked at the time, tracked now) or the artifacts written during the review
+rounds themselves. The difference is bookkeeping, not scope creep.
+
+## The one thing worth checking rather than assuming
+
+Six committed files have an mtime later than the verdict. Five are unambiguous
+hook state or my own notebook. The sixth, `.claude/docs/decisions.md`, is a
+governed document — so it was diffed: its tail is verbatim the body of the
+round-3-close drop, merged by `scribe-decision-merger.sh` from a drop I wrote
+myself.
+
+## Residual, stated plainly
+
+The reviewed working tree no longer exists and was not snapshotted. "Byte-for-byte
+identical" is therefore **inferred** — from the single-parent commit, the mtime
+audit, and the reproduced 823/0 — not diffed. That inference would miss an edit
+made before `15:44:32` that I did not read, which is the exposure every review
+carries and which the commit boundary neither widens nor narrows.
+
+## Merge Criterion
+
+(a) satisfied — author-named property green at 823/0. (b) satisfied — every
+residual carries owner, level consequence and `expires:`; unchanged since
+round 4. (c) satisfied — 0 regressions. **`9b71b18` is clear to merge.**
+
+## Nitpicks, carried and non-blocking
+
+- Carried unchanged from round 4: R-20's self-stale `grep -n worktree` evidence
+  command; `reviewer-blind.md` citing its residual by file rather than by `R-19`;
+  the three carried from round 3.
+- Now checkable and still open: **both registered worktrees remain on disk**
+  under the ignored, untracked `.claude/worktrees/`. `git worktree remove` when
+  the pass ends. 💡, not a merge condition.
+
+
+### 2026-09-06 — lead-20260906T150129Z-undo-redo-adr-008-left-as-is [lead · INFO]
+
+---
+id: lead-20260906T150129Z-undo-redo-adr-008-left-as-is
+agent: lead
+verdict: INFO
+scope: decision
+created: 2026-09-06T15:01:29Z
+targets:
+  - path: docs/adr/ADR-008-immutable-state.md
+    lines: "85"
+blockers: []
+high: []
+medium: []
+good: []
+references: []
+---
+
+User decided to leave `docs/adr/ADR-008-immutable-state.md:85` exactly as written, declining to edit it for the `undo-redo` design pass gate 1.
+
+## Context
+
+`docs/adr/ADR-008-immutable-state.md:85`, in the Consequences → Positive section, states: "Undo/redo: Trivial to implement by storing state snapshots." This line is reachable by `dreamer-first-principles` as ordinary codebase reading (see the companion `flow-changelog.md` entry on the `docs/adr/` deny-list gap) and pre-answers a central open question of the `undo-redo` scope: at what level undo operates, and what the unit of a single undoable step is.
+
+## Decision
+
+Leave the line as written. Do not edit the ADR to shape what Track A can or cannot derive.
+
+## Reason (the user's words)
+
+Editing a production ADR to make the blind track derive independently would be a constructed result. Whether Track A copies the ADR or reasons past it is the experiment; convergence classifies it.
+
+## For dreamer-convergence
+
+Track A's read of ADR-008 is unmodified from its accepted form. When classifying Track A's output, treat agreement with ADR-008:85 as either independent derivation or reliance on the reachable text — the classification is the point of leaving the line in place, not a defect to route around.
+
+
+### 2026-09-06 — critic-20260906T184500Z-undo-redo [critic · NEEDS-CHANGES]
+
+---
+id: critic-20260906T184500Z-undo-redo
+agent: critic
+verdict: NEEDS-CHANGES
+scope: architecture
+created: 2026-09-06T18:45:00Z
+targets:
+  - path: .squad/design/undo-redo/04-realist-plan.md
+  - path: .squad/design/undo-redo/00-scope.md
+    lines: "182-190"
+  - path: Picea.Abies/Runtime.cs
+    lines: "212-220, 288-291, 465-500"
+blockers:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 284
+    reason: "Bare-event drift: a model change arriving outside the Decide envelope (interpreter feedback, decided-error, later events of a multi-event Decide, or a policy-excluded message) moves Present without pushing a Step, so the next undo silently discards it. Conduit: a profile fetch landing mid-typing is erased by one undo press. INV-1, INV-2 and INV-3 all pass while the feature loses user data."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 291
+    reason: "Redo is unreachable in any application with a live subscription: record and continue both clear Future, so a 250 ms tick (SubscriptionsDemo/Program.cs:110) caps redo's lifetime at 250 ms, and DefaultHistoryPolicy (IsUndoable => true) fills the 100-entry history with ticks in 25 s. The plan states this outcome at line 578 as an argument for the projection lens, then proceeds with the lens deferred and no substitute. Open question 4 is therefore unanswered against the scope's Done-means."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 396
+    reason: "INV-7 claimed vacuous/by-construction but falsified by any undo sequence of length >= 2 over a subscription-toggling model: reconciling at a passed-through state starts a subscription (Subscriptions/Manager.cs:51-66) which a Subscription.Create can deliver from deterministically. The saving reading -- each undo press is its own destination -- is unstated and load-bearing, and it forecloses any future multi-step undo. INV-7 also has no test vehicle: it is a Runtime.Render property, not a WithHistory property, and step 7 places all seven properties in workflow-direct domain tests."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 279
+    reason: "The late-NothingToUndo path delegates UndoRefused to TProgram.Transition, so undo with nothing left to undo delivers a message that may change state or emit a command -- INV-4's stated falsifier. Reachable by two fast clicks: dispatch is fire-and-forget (Runtime.cs:288-291) and _decisionGate is released at :474 before the transition is awaited at :494, so no threading is required. Fix is one branch: NothingToUndo returns (h, Command.None)."
+high:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 444
+    reason: "HistoryStack 'amortised O(1)' is unachievable for a persistently-used bounded stack (Okasaki: amortisation and persistence are incompatible without laziness/scheduling), and the history IS used persistently. Restate as O(Depth) worst case and pick the array copy-on-write representation."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 88
+    reason: "INV-2 'by construction' is by instruction: History<TModel> and Step<TModel> are constructible with arbitrary Past. Principles gate -- Make Illegal States Unrepresentable is cited as constraining. Needs internal constructors plus a test seam, or explicit user approval as a deviation."
+  - file: .github/workflows/pr-validation.yml
+    line: 211
+    reason: "1500-line hard PR-size limit fails the build; docs are exempt, source and tests are not. The plan has no PR decomposition and § Parallelisable implies one branch."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 472
+    reason: "No demo adopts WithHistory, so js-framework-benchmark measures a non-adopting application and its 5% gate is structurally silent on this pass. Step 10 must be an explicit BenchmarkDotNet A/B with a derived budget, and must run after step 6 and before steps 7-9."
+  - file: Picea.Abies.Conduit.ServiceDefaults/Extensions.cs
+    line: 32
+    reason: "AddSource matches exact names, so Picea.Abies.History (and, already, Picea.Abies.Runtime and Picea.Abies.Subscriptions) is collected nowhere. Step 9's acceptance criterion is unverifiable, and fixing it touches files the plan declares unchanged."
+medium: []
+good:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 297
+    reason: "IsSilent must be a type test, not reference equality -- Commands.None allocates a fresh Command.None() per call (Command.cs:12). Caught at plan time; would otherwise have marked every edge committed and made the feature refuse everything."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 148
+    reason: "INV-4 and INV-5 routed through two runtime paths that already exist and already behave differently (Runtime.cs:465-468 vs :482-489), verified rather than assumed."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 213
+    reason: "Overrules 01-track-a.md and 03-convergence.md on RingBuffer<T> reuse after reading Debugger/RingBuffer.cs and finding a mutable class. Corrects inherited material in public rather than propagating it."
+references: []
+---
+
+Critic verdict on the `undo-redo` design pass: LOOP BACK TO REALIST. Four blockers, all in the mechanism rather than the direction; H1/`WithHistory` remains the right shape.
+
+## Why realist and not Dreamer
+
+Nothing found reopens the H1 ranking. The two-track convergence holds, the kernel does force the zipper shape, and every alternative still pays in runtime seams or reflection. Three of the four blockers share one root — the wrapper has no story for model changes that did not arrive through the `Decide` envelope — and the instrument that was going to supply that story, A3's projection lens, was deferred at gate 3 without its concrete consequences having been put in front of the user. The fourth is a one-branch defect inside an otherwise correct rule.
+
+## What the loop-back owes
+
+1. A chosen resolution for bare-event drift: un-defer the lens, record bare changes as a refusing barrier reusing the INV-5/INV-6 machinery, or state plainly that this pass ships undo without usable redo for applications with subscriptions or asynchronous effects. Rebasing (re-applying the delta onto the restored model) is not admissible — it computes a model rather than moving to one and destroys INV-2-by-construction, which is H1's principal claim.
+2. An explicit reading of INV-7's "state the user asked for" across a run of undo presses, plus a `Runtime`-level test vehicle with an instrumented subscription. The reading may be an `architect` amendment to `00-scope.md` rather than a `realist` fix.
+3. `NothingToUndo` returning a true no-op from `Transition`, and the same recompute treatment extended to `Redo` and `Clear`.
+4. The principles deviation on `History`/`Step` constructibility either fixed or approved.
+
+## Spawns
+
+`security-expert` — a change from the knowledge scan's "not summoned". `Step.Cause` retains raw messages for up to `Depth` entries; the DEBUG snapshot path now needs `JsonTypeInfo<History<TModel>>`, dragging the 2026-03-29 `JsonPolymorphic` obligation onto the application's whole message hierarchy, which in Conduit contains three credential-bearing message types; and `DebuggerMachine.ExportSession`/`ImportSession` is a reachable export surface. The scan's own re-summon trigger is met.
+
+`performance-engineer` and `ux-expert` as the plan already asks, with re-sequencing and three added questions respectively.
+
+
+### 2026-09-06 — critic-20260906T000000Z-undo-redo-pass-2 [critic · NEEDS-CHANGES]
+
+---
+id: critic-20260906T000000Z-undo-redo-pass-2
+agent: critic
+verdict: NEEDS-CHANGES
+scope: architecture
+created: 2026-09-06T00:00:00Z
+targets:
+  - path: .squad/design/undo-redo/04-realist-plan.md
+  - path: .squad/design/undo-redo/00-scope.md
+    lines: "183-194"
+  - path: Picea.Abies/Runtime.cs
+    lines: "200-220"
+  - path: Picea.Abies.Conduit.App/Model.cs
+    lines: "82-96"
+blockers:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 248
+    reason: "B5 — the transit hold guarantees INV-7 only for undo presses closer together than SettleWindow (default 250 ms) and only while no held subscription delivers. Two presses 350 ms apart are two runs, so subscriptions reconcile against the intermediate state; a held anchor subscription that delivers ends the run mid-movement. Step 9's property runs with SettleWindow = null, an explicit terminal Settle and a non-autonomous source, so it cannot falsify any of it."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 512
+    reason: "B6 — HistoryMessage.Settle carries no ordinal. DispatchFromSubscription is fire-and-forget (Runtime.cs:288-291), so a settle already dispatched by the window being cancelled ends the run that replaced it. Fix is one field plus a guard in Decide and Transition."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 472
+    reason: "B7 — SEC-1/SEC-2 redact Step.Cause, but Conduit's passwords are model fields bound to controlled inputs (Model.cs:82-96, Pages/Settings.cs:49), so the retained secret arrives via Step.Model, which nothing scrubs. SEC-3 as worded in the plan is unsatisfiable for any model carrying the value, and SEC-6's threat row would claim a mitigation that does not cover the threat."
+high:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 538
+    reason: "S9 — under the default policy redo still dies silently: barrier clears Future and Decide(Redo) returns the INV-4 no-op, so a lost redo is indistinguishable from nothing to redo."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 415
+    reason: "S10 — the identity default blocks undo at the most recent world change permanently, not merely at the most recent tick; in Conduit that is every fetch and every navigation."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 569
+    reason: "S11 — HistoryEvent.Continue is unconditionally transparent, so a projection change carried by the second event of a multi-event Decide is neither recorded nor barriered. Reachable shape, evidenced at Picea.Abies.Tests/RuntimeIsolationAndSubscriptionFaultTests.cs:218."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 542
+    reason: "S12 — IsUndoable's entire remaining effect is to turn a record into a barrier; the name says the opposite. Remove it or rename it."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 148
+    reason: "S13 — the erasure removed the guarantee that SameUndoable is an equivalence relation; L1-L4 do not restore symmetry."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 838
+    reason: "S15 — a real 50 ms wall-clock settle test, five commits after ca2519d removed sleep-based subscription tests from this project. Use TPolicy.Time with a test-owned deterministic TimeProvider."
+  - file: .squad/design/undo-redo/00-scope.md
+    line: 128
+    reason: "S16 — INV-1 is stated unconditionally and is falsified by the gate-2 refusal policy the pass settled; its property needs an availability precondition, which is an architect clause."
+medium: []
+good:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 166
+    reason: "The transit anchor is seam-free and every link verifies: Runtime.cs:214 asks the wrapper, Manager.cs:51-66 keys the diff, and Runtime.cs:212-220 reconciles outside the patch guard. Zero lines of Runtime.cs."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 716
+    reason: "S2 fixed rather than deviated; InternalsVisibleTo Picea.Abies.Tests already exists at Picea.Abies.csproj:24, so the principles gate closed for free."
+references: []
+---
+
+Second Critic pass on design `undo-redo`: LOOP BACK TO REALIST with three blockers — INV-7 is still falsifiable through the new transit machinery, and the folded-in security mitigation misses the field the secret actually travels in.
+
+## Why this is a loop-back and not a mitigation list
+
+Revision 2 closed B1, B2, B4 and all of S1–S8 with mechanisms I verified in the code, and the H1 direction is untouched. But B3 — the invariant that caused the first loop-back — is not closed. The transit hold is correct for the scenario it was designed against and is defeated by the shipped default: a settle window sized from editing-coalescence literature (250 ms) is shorter than a deliberate user's inter-press interval, a held anchor subscription delivering during a run collapses the run onto an intermediate state, and the settle signal carries no identity so a cancelled window's in-flight message ends the wrong run.
+
+Compounding it, the planned property runs with `SettleWindow = null`, an explicit terminal `Settle` and a source that never dispatches on its own — a mode no application ships in and which excludes all three triggers by construction. That is the invariant-coverage gate: a property that excludes the clock from a clock-driven mechanism is not coverage of that mechanism.
+
+B7 is independent. The security room's own worked example — Conduit's password fields — reaches the history through `Step.Model`, not `Step.Cause`, because a controlled input requires the value to be in the model. `SensitiveCause` cannot see it. The fix is small (`Scrub` on the policy, plus the law `Restore(Scrub(a), b) = Restore(a, b)`), but it must land before the threat-model row claims mitigation.
+
+## Recurrence
+
+Third pass in a row where a claim of the form "X is closed by construction" turned out to be closed by a mechanism with a precondition the artifact does not state. Revision 1: INV-2 by construction, actually by instruction. Revision 1: INV-7 vacuous, actually false for runs. Revision 2: INV-7 held by transit, actually held only within a window.
+
+
+### 2026-09-07 — critic-20260907T000000Z-undo-redo-pass3 [critic · NEEDS-CHANGES]
+
+---
+id: critic-20260907T000000Z-undo-redo-pass3
+agent: critic
+verdict: NEEDS-CHANGES
+scope: architecture
+created: 2026-09-07T00:00:00Z
+targets:
+  - path: .squad/design/undo-redo/04-realist-plan.md
+    lines: "605-665"
+  - path: .squad/design/undo-redo/04-realist-plan.md
+    lines: "342-365"
+  - path: Picea.Abies/Runtime.cs
+    lines: "288-291"
+blockers:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 618
+    reason: "B8 — an application's Decide Err message reaches Transition bare (Runtime.cs:460,484; Picea.xml:1229-1239 shows AutomatonRuntime.Dispatch does not call Decide), so apply classifies it as seal/SealedByWorld. A validation rejection permanently blocks undo and redo and names the wrong category of reason, violating INV-5's identify-which-reason clause. Fix: Err(e) -> Err(HistoryEvent.Enveloped(m,[e]))."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 352
+    reason: "B9 — subscription-delivered messages are indistinguishable from user actions at the wrapper (Runtime.cs:288-291 and :332 are the same delegate), so a timer tick is enveloped and records, clearing Future. The plan's default-policy narrative claims the opposite (a typed refusal naming FastTick). In SubscriptionsDemo redo is silently destroyed every 250 ms — S9's opacity and B2's harm on the record path. Requires a corrected narrative, a step-8 autonomous-source property, and a user decision on whether a discarded redo branch should refuse with a reason."
+high:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "S18 — the Enveloped fold also changes error semantics (Runtime.cs:353-365 aborts the batch after the model is fully folded); the user approved the ordering change only."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "S19 — L5 forces Scrub to the identity under WholeModelHistoryPolicy; an adopter overriding Scrub alone silently deletes the field on undo."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "S20 — Movement.Held(Anchor) is a live unscrubbed model outside SEC-3(b)'s 'reachable via any Step.Model' set. Third occurrence of the wrong-field shape in this pass."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "S21 — step 9 assertion (4) describes a hold left open settling, which the design cannot do."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "S22/S23/S24 — INV-7's protection is confined to bracketed runs and no button chrome can bracket; the origin re-basing exception is stated far more narrowly than the rule behaves; the recommended keydown/keyup bracket loses its Settle on a lost key-up."
+medium: []
+good:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "Deleting the settle clock closed B5 and B6 by subtraction rather than by guard; the edge algebra is consistent under Pop; Scrub survives the INV-3 derivation via L5."
+references: []
+---
+
+Third Critic pass on `undo-redo` revision 3: LOOP BACK TO REALIST with two blockers, both in the classification of who moved the model.
+
+Revision 3 closes B5, B6, B7 and all seventeen 🟠/🟡 from pass 2, verified in the code rather than in
+its own disposition table. What survives is the four-row record/pass/seal table's first question,
+"came through the envelope?", whose real answer — interpreter feedback and `Decide` errors, and
+nothing else — is never stated. B8 misclassifies a validation rejection as the world moving; B9
+misclassifies a subscription delivery as a user action, which silently destroys redo in the
+`SubscriptionsDemo` shape and contradicts the default-policy narrative the user approved.
+
+Neither needs new mechanism. `05-critic.md` § *What revision 4 must contain* lists nine bounded
+items; nothing goes back to the Dreamer and H1 is untouched.
+
+
+### 2026-09-07 — architect-20260907T120000Z-undo-redo [architect · INFO]
+
+---
+id: architect-20260907T120000Z-undo-redo
+agent: architect
+verdict: INFO
+scope: architecture
+created: 2026-09-07T12:00:00Z
+targets:
+  - path: Picea.Abies/History/
+  - path: Picea.Abies.Tests/History/
+  - path: docs/adr/ADR-030-undo-redo-as-a-history-program.md
+  - path: docs/adr/ADR-008-immutable-state.md
+    lines: "85"
+  - path: docs/security/threat-model.md
+blockers: []
+high:
+  - reason: "Undo REFUSES at an effect boundary rather than crossing it. This is a product decision selecting between two defensible engineering positions, not a finding that the industry-standard cross-with-a-documented-contract answer is wrong. ADR-030 must say so in those words."
+  - reason: "An application with a model-mutating subscription must declare a projection or redo will not function, and under the whole-model policy undo's reach also expires on a wall clock at Depth / the subscription's rate — 25 seconds in SubscriptionsDemo's shape. First-class behaviour, not a footnote."
+  - reason: "Spec file Picea.Abies.Tests/History/UndoRedoSpec.cs cannot compile until the end of plan step 6 (PR 3), which collides with the lock protocol's 'lands before step 1' reading and with reviewer-reconcile's same-PR check. Needs a user answer on commit placement before the first push. See 07-handoff.md section 8 item 1."
+  - reason: "04-realist-plan.md revision 4 still carries the two sentences Critic S25 found false and will not be revised again; 06-spec.md lines 4 and 15 are authoritative over plan :195-199 and :408-410. An implementer reading only the plan implements the wrong narrative."
+medium:
+  - reason: "The step-8 review brief must state that reviewer-blind reads Generators.cs and DocumentComparer with the same weight as the spec — they sit outside the lock and can make a locked property vacuous without the locked file changing."
+  - reason: "This pass's INV-5 and INV-7 collide by name with the verdict-cache invariants in .claude/hooks/; disambiguation depends on a qualifier on the id line, because the artifact validator reads INV-<n> and nothing else."
+good:
+  - reason: "The withheld preference — one dispatch = one undoable step — was derived independently by both blind Dreamer tracks before the user revealed it. The strongest dual-track result this repository has produced."
+  - reason: "ADR-025 was examined and found NOT to require superseding. Nothing moves out of #if DEBUG; zero lines of Runtime.cs change; the runtime-seams-anchor-replay-gating revisit trigger does not fire."
+references:
+  - lead-20260906T150129Z-undo-redo-adr-008-left-as-is
+---
+
+Undo/redo ships as `WithHistory` — a higher-order `Program` over a `(Past, Present, Future)` zipper — with undo refusing, by typed and pre-announced value, to cross an action that already spoke to the world.
+
+## Decision
+
+Adopt **H1**: `Picea.Abies.History`, a new bounded context inside `Picea.Abies`, opt-in by composition at an application's call site. `WithHistory<TProgram, TPolicy, TModel, TArgument>` wraps the application's model into a history value and forwards everything else, in the same static-forwarding shape `WithView` already uses. Undo and redo are ordinary `Message`s whose transitions return `Command.None`.
+
+Full design at `.squad/design/undo-redo/` — `00-scope.md` (INV-1 … INV-7), `01-track-a.md`, `02-track-b.md`, `03-convergence.md`, `04-realist-plan.md` rev. 4, `05-critic.md` fourth pass, `06-spec.md`, `room-security.md`, `07-handoff.md`.
+
+Load-bearing consequences of the shape:
+
+- **Zero lines of `Runtime.cs`, `Program.cs`, any head adapter, or any `.js` file.** The wrapper only *answers* the question `Runtime.Render` already asks at `Runtime.cs:214`. No fifth seam; the `runtime-seams-anchor-replay-gating` revisit trigger does not fire.
+- **No reflection, no serializer, no `JsonTypeInfo`, no `TrySetCoreState`.** Release-safe under trimming and AOT.
+- **ADR-025 examined and found not to require superseding.** Nothing moves out of `#if DEBUG`, including `RingBuffer<T>`, which is mutable and cannot be a field of a model value under ADR-008.
+- Heads: InteractiveServer, InteractiveWasm and Native, identical implementation. Static excluded — no MVU loop. Under InteractiveAuto the history *begins* at the client handoff.
+
+## Convergence verdict
+
+Both Dreamer tracks derived the same object without contact — a higher-order program over a past/present/future triple, undo as an ordinary message, the undo transition returning `Command.None`, a bounded past, and *both tracks independently named `WithView` as the local precedent*. The right reading is not that two tracks liked a zipper: the kernel's single dispatch funnel, effect-isolating `Transition`, model-derived subscriptions and existing `WithView` composition **jointly force** the shape. Track A shows it is forced here; Track B's citations show it works elsewhere.
+
+Both tracks also killed event-sourced replay, from opposite directions — Track B on cost (constructor-time `replay` flag, serialization obligations, ADR-025 partially superseded), Track A on correctness (`Transition` reads the wall clock in a shipped app in this repository, so replay cannot reproduce the walk and INV-3 fails as a matter of fact). Both rejected computed inverses as the primary mechanism on INV-2.
+
+**The withheld preference.** The user named "at what level undo operates" the central question and deliberately withheld their own answer so it would be derived. Both tracks landed independently on **one dispatch = one undoable step**, and the user then confirmed it. Optional 500 ms coalescing is off by default and separable.
+
+**The ADR-008 experiment.** `ADR-008:85` — *"Undo/redo: Trivial to implement by storing state snapshots"* — was left reachable by Track A on the user's explicit decision, to test whether Track A would copy or reason past it. Convergence classified it: **reasoned past**, on five pieces of evidence — it contradicts the line's central adjective, declines its vocabulary ("snapshot", which it uses only to rule the mechanism out), arrives at storing as the survivor of three recorded rejections, and produces a cost model ("a history does not allocate — it defers collection") the ADR does not contain and arguably points away from. The deny-list gap that made the file reachable is registered as **R-21**, owned by `devops`.
+
+## The effect boundary — a product call, recorded as one
+
+Track A derived **refusal**: the observable state is `model ⊗ world`, the cursor moves over the first factor only, and INV-2 as written cannot catch the divergence because both models were literally visited. Concrete falsifiers in this codebase: undo across `LoginSubmitted` double-posts; undo across `FavoriteArticle` disagrees with the server.
+
+Track B evidenced **crossing with a documented non-recall contract**: the industry's settled answer, mitigated by compensation and by deferral.
+
+**The user chose refusal**, with the refusal typed, explained, and answerable before the press. Track B's position is excluded by product decision, **not** by analysis — a later reader must not mistake the one for the other.
+
+Gate 2's "discard the forward branch" rule was subsequently **superseded** by *refuse across the superseded branch*: the branch is preserved, its first edge sealed with `SupersededByNewAction(cause)`, and `Forward(h)` refuses by name in advance. The original rule's reason — a retained branch makes redo a relation, which has no inverse, so INV-3 becomes unstatable — is about a branch that is retained *and crossable*, and does not reach a sealed one. The Critic verified independently that no edge ever returns to `Crossable`. Price: retention bounded at `2 × Depth`, and (S29) session-lifetime rather than `Depth`-dispatch-bounded. It buys diagnosability, not reach.
+
+## Accepted risks and mitigations (Critic, fourth pass — APPROVED WITH MITIGATIONS)
+
+Three user-approved Cleanness compromises: the projection lens trades INV-2's by-construction status for L1–L6 plus a reachability assumption the framework cannot test; a wrapped multi-event decision interleaves effects **and fails** differently from an unwrapped one ("complete model, partial effects" replacing "partial model, no later effects"); and a superseded branch is retained though it can never be crossed.
+
+Five 🟠 accepted, none needing a revision 5 — S25 (two false sentences survive in the plan; `06-spec.md` lines 4 and 15 win), S26 (the missing superseded-branch line, now spec line 14), S27 (generator alphabet partition — the autonomous source belongs to property 8(k) alone, or INV-1 and INV-3 are falsified by correct behaviour), S28 (`TaskCompletionSource` ordering, no sleeps — `ca2519d`), S29 (retention *lifetime*, answered by `security-expert`'s third follow-up as Trust Boundary 7 wording). Five 🟡 carried in `07-handoff.md` § 6.1.
+
+Two judgement calls upheld: **S23** — origin re-basing keeps its behaviour and corrects its description, because the one-line alternative would make pre-record navigations recorded stops that restore a model without its URL; **item 6** — SEC-3(b)'s reachability set is not widened to name the held anchor, because a clause discharged by `Scrub` cannot name a site `Scrub` must not reach. In both cases a specialist overruled the Critic and the record says so.
+
+Security: SEC-1 … SEC-7, Trust Boundary 7 (three retention shapes, each with the bound that actually applies), two threat-model rows with the anchor and superseded-branch bullets, and two hardening-backlog fast-follows.
+
+## Spec test
+
+`Picea.Abies.Tests/History/UndoRedoSpec.cs` — workflow-direct through a real in-process `Runtime`, no AppHost, no Playwright, no new dependency. **Immutable for this feature from the approval commit; implementation passes when this test passes without modification.** Seven properties for seven invariant ids, each with a named falsifier that must be observed before its step closes. Amended at approval: spec line 12 (undo out of a terminal state) moved into the lock as A9. `Picea.Abies.Tests/SpecAttribute.cs` is an addition to the plan's file table, flagged by `spec-author` rather than slipped in.
+
+The lock's known hole — `Generators.cs` and `DocumentComparer` sit outside it and can make a locked property vacuous — is closed at review, not by locking more files. The step-8 review brief must say so.
+
+## Standing exclusions
+
+A3(b) crossable-iff-inverse (owes its own invariant when it returns); deferral / hold windows (a fifth seam); `NavigationCommand.Replace`; durable undo; DOM-owned state; no demo or template adopts `WithHistory` this pass, which makes the CI benchmark gate structurally silent — step 7's report must say so, and a green integer-MB size gate is not evidence either.
+
+
+### 2026-09-07 — architect-20260907T184500Z-undo-redo-navigation [architect · INFO]
+
+---
+id: architect-20260907T184500Z-undo-redo-navigation
+agent: architect
+verdict: INFO
+scope: architecture
+created: 2026-09-07T18:45:00Z
+targets:
+  - path: Picea.Abies.History
+  - path: .squad/design/undo-redo/
+blockers: []
+high:
+  - reason: "Adopter obligation (06-spec.md obligations line 17): incoming navigation reaches a WebAssembly program through an application-supplied converter (Picea.Abies/Navigation.cs:17-29), so the seal fires only for the framework's Picea.Abies.UrlChanged. An application composing WithHistory must pass `url => new UrlChanged(url)`; one that names its own navigation message gets no seal, its navigations become ordinary undo stops, and undo restores a model whose URL the browser is not showing — with every property in the spec still green. No framework property can quantify over this."
+  - reason: "Accepted, documented limitation (room-security.md § Follow-up 2026-09-07 (III), S33): the seal makes the whole Url — path, query string and fragment — the stored EdgeState cause of every post-record navigation, returned by Backward/Forward and rendered by the chrome on every render the edge stays refused. UrlChanged is sealed and framework-owned, so no adopter can mark it SensitiveCause. A password-reset or magic-link token in the query string is displayed in plain text. Rendered-chrome exposure, not a retention one; disposition is accepted-and-documented rather than a framework-side SEC-2 rule."
+  - file: README.md
+    reason: "README.md:183-190 is this repository's own counter-example to the obligation above — it hands an adopter `url => new UrlChangedTo(url)`. tech-writer fixes it at plan step 13, noting that the README example is not itself a WithHistory adopter."
+medium:
+  - reason: "Cite 00-scope.md by invariant id and quoted clause, never by line range. The amendment lengthened INV-2 and staled four line-range citations across the plan and the spec at once. The scope is a file that moves; the ids exist to make it citable."
+  - reason: "00-scope.md now reads 'at least one property per id' — INV-2 carries two properties, and validate-phase-artifact.sh reports only missing ids, with no count and no cap. Plan step 8(a) reads the same."
+good:
+  - reason: "The seal is derivable rather than agreed: of the four classification rows, only `seal` survives the amended INV-2. The Critic re-derived it independently instead of accepting the account, and confirmed the amendment with no revision 5, no gate reopened and no mechanism added."
+references:
+  - architect-20260907T120000Z-undo-redo
+---
+
+Incoming browser navigation is a commitment in both directions: INV-2's world now includes the browser's location, and a post-record `UrlChanged` seals the history on both edges instead of recording an undo stop.
+
+Amends `architect-20260907T120000Z-undo-redo` (`WithHistory`, refusal at the effect boundary). The direction, the mechanism and every gate decision in that drop stand; this is one classification row and its consequences.
+
+## What was wrong
+
+Only navigation *before* anything was recorded had a rule (origin re-basing). After `Origin` becomes `Established`, a `UrlChanged` delivered by the browser on a **back or forward press** was enveloped like any other message and took the `record` row. Undo across it restored a model carrying the previous page's `Route` while the browser stayed where the user put it, and the browser's own back/forward stack walked away from the application's history. Raised by the user after close-out; no phase caught it.
+
+The reason no phase caught it is worth more than the bug: `00-scope.md`'s INV-2 said *"application state"* and its falsifier said **model**, so every downstream property quantified over the model alone and was green for this whole class of violation. Track A had already named the shape — `model ⊗ world` — in `01-track-a.md`; the scope had not.
+
+## Decision
+
+**INV-2 amended** (the pass's third `00-scope.md` amendment): the state it quantifies over is the model **together with the location the user is at**, on any head where the application has one. A navigation is a commitment in both directions — one the application asked for, and one the browser delivered. The two move together or not at all. Falsifier extended with the navigation case and with the browser-stack divergence case; id and falsifier shape kept.
+
+**One classification rule, a standing constraint on implementation:**
+
+> `origin is UrlChanged && Origin is Established -> seal, SealedByWorld(UrlChanged)` — both incident edges. `Backward(h)` and `Forward(h)` refuse with the navigation as cause.
+
+## Why the seal is forced, not chosen
+
+Of the four classification rows against an incoming `UrlChanged` once `Origin` is `Established`: `record` mints an undo stop whose crossing produces a `(model, location)` pair no ordinary interaction produced — the amended INV-2's new falsifier verbatim; `pass` leaves the *earlier* stop crossable and hits the same falsifier one press later; `rebase` is `Fresh`-only by construction and unavailable in this window; `seal` satisfies the invariant exactly, because `Present.Route` moves with the location in the same transition and both edges refuse thereafter. The amended INV-2 both permits the seal and **forces** it.
+
+**INV-3 needed no location clause, and that is a finding rather than an omission.** `Present.Route` moves only on a transition whose origin is `UrlChanged`; after the first `record` every such transition seals both incident edges, and before it there is nothing to cross — so the location is **constant across any window in which a movement is permitted**. A location conjunct on INV-3 would be one no property could ever turn red on, which is worse than leaving it out.
+
+## Consequences
+
+- **The reach statement gains a third bound** — the last incoming navigation — alongside the last command feedback and `Depth` ÷ subscription rate. In a routed application it is usually the binding one: in Conduit, undo reaches back to the current page and no further.
+- ***"The world is a command's feedback and nothing else"* is no longer true unqualified.** It carries one exception in each of its four homes.
+- **`ux-expert`'s q9/q13 premise changed** and that brief is dispatched first, so the corrected premise travels with wave 0.
+- **Cost:** no new type, no new `EdgeState`, no new `MovementAvailability` case, no new `Scrub` site, no policy member, no dependency, no line of `Runtime.cs`. Doc-and-one-row.
+
+## Alternatives considered
+
+- **Qualifying INV-2 with the adopter's wiring condition** — rejected. The condition is a statement about the application's own composition, which no framework property can quantify over; it belongs in the spec's obligations table beside the lens laws, not inside an invariant that is true of the framework.
+- **Mechanism for the converter hole** (policy predicate, framework-owned `UrlChanges` wrapper, analyzer rule) — all three are new mechanism and one reverses a gate-4 deletion; none is needed to state the truth. **An analyzer rule is named as a follow-on candidate**, since an obligation a compiler can check beats one a guide asserts, and `Picea.Abies.Analyzers` already exists.
+- **A framework-side SEC-2 rule for `UrlChanged`'s URL** — declined by the user in favour of the documented limitation above.
+
+Full artifacts: `.squad/design/undo-redo/`. The rule and its derivation are `04-realist-plan.md` § *The classification rule* `[R4-nav]`; the confirmation is `05-critic.md` § *confirmation pass, 2026-09-07* (CONFIRMED WITH A BOUNDED LIST — two 🔴, four 🟠, seven 🟡, all thirteen mitigations accepted by the user); the execution contract is `07-handoff.md` § 2.5, standing decision 7, § 5.3 and § 6.1.
+

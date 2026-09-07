@@ -541,6 +541,53 @@ row, which already covers it.
 
 ---
 
+## Residuals and bounds, security-expert (2026-09-06, `undo-redo` pass gate 1)
+
+### R-21 — `docs/adr/**` is reachable by `dreamer-first-principles` even though the squad-flow specification lists ADRs among the paths Track A may not read
+- type: residual
+- source: architect finding, `.claude/agent-memory/architect/adrs-are-inside-track-a-reading.md`,
+  surfaced at gate 1 for the `undo-redo` pass currently open
+  (`.squad/design/undo-redo/00-warden.md` § "Findings on Adjacent Artifacts" →
+  "Production ADR: `docs/adr/ADR-008-immutable-state.md:85`"); registered here
+  by `security-expert` after direct verification against
+  `enforce-track-blindness.sh`'s `DENY` table.
+- files: `.claude/hooks/enforce-track-blindness.sh` (`DENY["dreamer-first-principles"]`,
+  lines 278–290), `docs/adr/ADR-008-immutable-state.md:85`
+- owner: devops
+- level consequence: verified by direct code read —
+  `enforce-track-blindness.sh:278–290` denies `dreamer-first-principles` the
+  decision register, the archived decision register, the tech-stack record,
+  the pattern lexicon, agent memories, worktrees, decision drops,
+  `00-knowledge.md`, `02-track-b.md`, and both `00-warden-scan.md` and
+  `00-warden.md`. It has no entry for `docs/adr/**`, so ADRs are read as
+  ordinary codebase, not as the recorded-conclusions register they carry
+  (their Consequences sections). Concretely,
+  `docs/adr/ADR-008-immutable-state.md:85` states "Undo/redo: Trivial to
+  implement by storing state snapshots," which directly pre-answers the
+  `undo-redo` pass's central open question ("At what level undo operates —
+  what the history consists of, and what the unit of a single undoable step
+  is," `00-scope.md` per the warden report). At gate 1 for this pass the user
+  chose to leave both the ADR and the hook as they are, so the experiment is
+  not disturbed mid-run. Net: Track A's blindness to ADRs is
+  instruction-level for the `undo-redo` pass — nothing in
+  `enforce-track-blindness.sh` refuses the read; only the pass's own gate-1
+  record and `dreamer-first-principles`'s charter ask it to derive
+  independently rather than cite the line — and would become invariant-level
+  only once the hook's `DENY` table actually covers `docs/adr/**` (or an
+  equivalent per-pass override analogous to `.lexicon-override` is built for
+  the cases, per `adrs-are-inside-track-a-reading.md`, where an ADR is
+  genuinely relevant reading and should stay open).
+- closure route: a `DENY` entry for `docs/adr/**` (or a scoped equivalent) in
+  `enforce-track-blindness.sh`, plus corresponding assertions in
+  `.claude/hooks/tests/blindness.sh`, through its own review pair. Deferred
+  deliberately until the `undo-redo` pass closes, so amending the hook
+  mid-pass does not retroactively alter what Track A already had available to
+  read in this run.
+- expires: 2026-10-04
+- status: open
+
+---
+
 ## Extensions
 
 Extensions are appended here, never edited in place, per the append-only

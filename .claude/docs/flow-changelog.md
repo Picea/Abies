@@ -15,6 +15,47 @@ Newest first.
 
 ---
 
+## 2026-09-06 — Observation: `docs/adr/` is reachable by Track A and not on its deny list
+
+**Level movement:** none. Spec/implementation gap, flagged for its own review
+pair after this pass rather than fixed inline.
+
+`docs/adr/ADR-008-immutable-state.md:85` is reachable by
+`dreamer-first-principles` as ordinary codebase reading —
+`enforce-track-blindness.sh`'s `DENY` list for that agent does not cover
+`docs/adr/`. The flow specification lists ADRs among the paths denied to
+Track A; the hook does not enforce that line.
+
+Recorded generically here; `security-expert` is registering the same gap in
+`.claude/enforcement/refutations.md` in parallel. Closing it is out of scope
+for the `undo-redo` pass.
+
+---
+
+## 2026-09-06 — Observation: gate 1 caught two prior-work leaks a human review passed
+
+**Level movement:** none. This is evidence for gate 1, not a change to it.
+
+The pre-hook draft `.squad/design/undo-redo/00-scope-undo-redo.md` was
+reviewed by a human and passed. `scope-warden`, reading `00-warden.md`'s
+category — prior work presented as reference material, the one no regex
+reaches — found two leaks in it: a sentence presenting the existing
+debug-only machinery as "the starting point," and a sentence referring to
+"the well-known conventional answer" as though a comparison shape were
+already decided.
+
+Neither leak is a decision id, a pattern name, or a denied path — the three
+things the mechanical scan already covers. Both are prose asserting a
+conclusion before Track A has had the chance to reach one. The final scope
+corrects both; the draft has been removed by `git rm` and is not being
+dispatched.
+
+This is what gate 1's mechanical-plus-judgement split is for: the mechanical
+scan is exhaustive over what it can name, and the category it cannot name is
+exactly the one that got past a human reader.
+
+---
+
 ## 2026-09-06 — Interpreter-unavailable polarity: *claimed* fail-closed → actual fail-closed
 
 **Level movement:** *claimed* invariant → **actual invariant**. No new rule —
