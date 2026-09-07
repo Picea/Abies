@@ -528,3 +528,6 @@ nohup.out
 .squad/decisions/archive/cold/
 .squad/decisions/cold-quarantine/
 .squad/learnings/cold/
+
+# Conference demo bundle: its authored hook-activity log is content, not a build log
+!Picea.Abies.Presentation/content/demo/**/*.log

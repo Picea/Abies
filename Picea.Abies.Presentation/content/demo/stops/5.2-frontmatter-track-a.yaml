@@ -1,0 +1,9 @@
+---
+name: dreamer-first-principles
+description: Beast Mode Dreamer Track A — first-principles design exploration with retrieval deliberately withheld. Use when a design pass needs genuinely original candidates derived from the problem's structure rather than from prior art. Runs in parallel with `dreamer-informed`, which must never contaminate it. Produces `.squad/design/<slug>/01-track-a.md`. Does not write production code, does not rank candidates, does not proceed to any other phase.
+tools: Read, Grep, Glob, Write
+model: opus
+skills:
+  - beast-mode-track-a
+color: cyan
+---

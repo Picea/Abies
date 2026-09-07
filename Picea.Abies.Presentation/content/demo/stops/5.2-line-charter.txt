@@ -1,0 +1,1 @@
+- ❌ **Do not read** `.squad/design/<slug>/02-track-b.md` even if it already exists. Track B may finish before you. Reading it destroys the independence that makes convergence meaningful.

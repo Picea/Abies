@@ -1,0 +1,11 @@
+---
+name: dreamer-informed
+description: Beast Mode Dreamer Track B — informed design exploration with full retrieval. Surveys prior art, published architectures, research papers, benchmarks, and the codebase's own accumulated decisions to produce production-proven candidate approaches. Runs in parallel with `dreamer-first-principles`. Produces `.squad/design/<slug>/02-track-b.md`. Does not write production code, does not rank across tracks, does not proceed to any other phase.
+tools: Read, Grep, Glob, WebSearch, WebFetch, Write
+model: opus
+memory: project
+skills:
+  - beast-mode-design
+  - functional-ddd
+color: blue
+---

@@ -1,0 +1,49 @@
+Hook activity during the undo-redo pass (2026-09-06/07), compiled from the
+tracked evidence files at 07607bf71152ef8d224352e2d2a737d8312dcb2d. This is a
+compiled index with citations, not a single verbatim source — no consolidated
+hook-firing log exists in the repository. Every line below is checkable
+against the cited file.
+
+## Checks that produced output
+
+- `scope-warden.sh` (mechanical scan), run 1 — `.squad/design/undo-redo/00-warden-scan.md`
+  at the pre-amendment scope: verdict CLEAN, 0 decision ids, 0 pattern names,
+  0 denied paths found.
+- `scope-warden` (subagent judgement), run 1 — `.squad/design/undo-redo/00-warden.md`
+  (original): CLEAN, gate 1 passed. This artifact was later overwritten by run 2;
+  its content survives only as partial quotation elsewhere (see
+  `.squad/log/2026-09-06-session.md:391` and `.claude/enforcement/refutations.md:546-570`).
+- `scope-warden.sh` (mechanical scan), run 2 — `.squad/design/undo-redo/00-warden-scan.md`
+  at the amended (254-line) scope: verdict CLEAN.
+- `scope-warden` (subagent judgement), run 2 — `.squad/design/undo-redo/00-warden.md`
+  (re-run, current at this commit): CLEAN, 0 findings, gate 1 passed.
+- `lexicon-check.sh` on `01-track-a.md` — no block. `.squad/log/lexicon-hits.md`
+  is 0 bytes at this commit: no hit and no override was ever recorded for this
+  pass (or any prior pass).
+- `enforce-reviewer-readonly.sh` CI-6 shadow accounting — `.squad/log/gate-shadow.md`
+  carries its header comment only, no `SHADOW-ALLOW` rows: no shadow-period
+  write was ever allowed through this control during the pass.
+- `validate-phase-artifact.sh:192-220` — cited by the Critic's confirmation
+  pass (`.squad/design/undo-redo/05-critic.md:444`) among the files re-opened
+  to verify the navigation amendment; no failure recorded against it.
+- `session-logger.sh` — fired on every `SubagentStop` for a phase agent;
+  see `.squad/log/pass-cost.md` (filtered to this pass in
+  `content/demo/timing/pass-cost.md`) and `.squad/log/2026-09-06-session.md` /
+  `2026-09-07-session.md` for the narration rows.
+- `scribe-decision-merger.sh` — merged eight `undo-redo`/PR-#359 decision drops
+  into `.claude/docs/decisions.md`; see `content/demo/full/decision-drops/`.
+
+## Checks with no evidence of ever firing a refusal
+
+- `enforce-track-blindness.sh` (`DENY["dreamer-first-principles"]`,
+  `DENY["dreamer-informed"]`) — no refusal line exists in any log at this
+  commit. Both tracks stayed inside their own reading rules; the hook's
+  refusal path (`print("BLOCKED: ...")`) was never exercised as far as the
+  tracked logs show. See the README row for `5.2-refusal.log` and
+  `5.6-refusal.log`.
+
+## Not evidenced at all
+
+- No log at this commit records `enforce-review-verdict.sh` refusing a
+  commit, push, or merge during this pass — PR #359 went through two review
+  rounds ending ⚠️ Needs Human Review, not a hard block.
