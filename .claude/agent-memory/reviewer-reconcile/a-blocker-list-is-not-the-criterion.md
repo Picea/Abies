@@ -39,3 +39,27 @@ enumeration*, not in the fix pass. At round 2 of a 2-round cap that is expensive
 Related: [[audit-the-residual-ledger-in-both-directions]] — the same round's
 other lesson, and the one that catches a registration written *before* its own
 commit's fix landed.
+
+## Round-2 addendum, `presentation-demo` (2026-09-07): stating it as a rule is not enough either
+
+I applied this note's advice literally on `presentation-demo` round 1 — the
+blocker was written as a rule, with "*Instances I found:*" and an explicit
+warning that "an enumeration will be read as the scope and these are examples,
+not the criterion." **The author still fixed exactly the four instances and did
+not sweep.** Fixing all four, well, and stopping is the rational reading of any
+blocker that ships with a list, however the list is framed.
+
+So the framing fix is necessary but insufficient. The load-bearing move is:
+**run the sweep yourself and say the list is exhaustive.** On round 2 I checked
+every numeric citation in the index (27), every claim about the pinned commit's
+own metadata (1), and every "this fragment is X's summary" claim against the
+fragment's content — found two more, and wrote *"this list is exhaustive, and I
+say so deliberately … round 3 closes this."* That converts an open-ended rule
+into a bounded fix list and is what keeps the cap reachable.
+
+Do the sweep in **round 1** where the finding is enumerable. If it is genuinely
+not enumerable in round 1, say *that* in the blocker — "I have not swept; the
+rule, not my four examples, is the criterion" — so the author knows the sweep is
+theirs and unbounded, rather than inferring a four-item scope from four items.
+See [[prefix-stripping-fixes-are-unbounded]] for the same shape from the other
+direction.

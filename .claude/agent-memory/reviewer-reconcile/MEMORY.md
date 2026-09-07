@@ -35,3 +35,10 @@ at the time and rewriting it would misrepresent the historical record.
 - [The clock field is a toolchain job](the-clock-field-is-a-toolchain-job.md) — five roles have no Bash to read a clock, and I got `created:` wrong myself while holding one.
 - [A blocker list is not the criterion](a-blocker-list-is-not-the-criterion.md) — the author reads your enumeration as the scope; enumerate by rule or (b) comes back unmet.
 - [State which grades criterion (b) binds on](state-which-grades-criterion-b-binds-on.md) — read literally, (b) sweeps in nitpicks and never closes; name the grades in the verdict.
+- [Measure each guard item separately](measure-each-guard-item-separately.md) — a four-item MSBuild Remove group held two no-ops and one that hid the tree from the IDE.
+- [Inherited or introduced decides the verdict](inherited-or-introduced-decides-the-verdict.md) — for copy bundles, `git show <pinned-sha>:` separates a faithful copy of a bad source from an error made here.
+- [The drop validator is not a YAML parser](the-drop-validator-is-not-a-yaml-parser.md) — invalid front-matter merges instead of quarantining; use quoted heredocs and `>-` block scalars.
+- [Squash-merge rewrites the quoted timestamp](squash-merge-rewrites-the-quoted-timestamp.md) — a pinned bundle can faithfully quote the pre-squash commit's author date; check commit metadata separately.
+- [Untracked bundles need a check-ignore sweep](untracked-bundles-need-a-check-ignore-sweep.md) — byte-perfect files still ship incomplete; `git add` skips ignored paths silently.
+- [State the finding, not the remedy](state-the-finding-not-the-remedy.md) — twice in one changeset the override beat my prescription; a menu of remedies is not an open fix.
+- [The merger eats the drop immediately](the-merger-eats-the-drop-immediately.md) — an inbox path that vanishes means merged, not failed; check the archive and the cache.
