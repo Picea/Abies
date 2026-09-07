@@ -755,3 +755,229 @@ against that commit — do not commit the artifacts first and the fixes after, o
 `enforce-review-verdict.sh` re-blocks in the gap between them.
 
 Working tree at re-review time: clean.
+
+---
+
+# ⚖️ Confirmation — round-2 residue, commit `756bf4d`
+
+**Confirmed:** `730c7daf4039057335c432cf1a9c50f77114fef0..756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8`
+**HEAD of this checkout:** `756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8` (`git rev-parse HEAD`, read live)
+**Kind of pass:** the confirmation the round cap prescribes after path 1 — a
+**scope-and-truth check**, not round 3. No new dimension sweep, no re-derivation
+of findings the cap ruled out of scope. The user chose to land the residue with
+no override, so what is checked is: did the four items land, are they true of
+*this* tree, and did anything else ride along.
+**`08-review-blind.md`:** not re-run, per the charter. Re-read in the committed
+form. It is the round-1 independent reading and nothing in this delta touches
+what it read; it is neither confirmed nor disturbed here.
+**Verdict:** ✅ **Approved**
+
+## Scope, measured
+
+`git diff --numstat 730c7da..756bf4d` → **9 files, +567 / −2**. Every one is a
+named remedy, a round-2 review artifact, or hook-written state:
+
+| file | +/− | why it is here |
+|---|---|---|
+| `.claude/enforcement/refutations.md` | +55/−0 | item 1 (R-22 note), item 2 (R-26) |
+| `.claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md` | +4/−2 | item 3 (⚠️-7) |
+| `.squad/design/undo-redo-design-record/09-review-verdict.md` | +286/−0 | round-2 section |
+| `.squad/decisions/archive/2026-09/2026-09-07T10-41-14-review-pr359-round2.md` | +78/−0 | round-2 drop |
+| `.claude/docs/decisions.md` | +82/−0 | merged round-2 drop, appended at `:2393` |
+| `.claude/agent-memory/reviewer-reconcile/` ×2 | +42/−0 | my notebook |
+| `.squad/log/2026-09-07-session.md`, `pass-cost.md` | +20/−0 | `session-logger.sh` |
+
+**No scope creep.** The only deletion in the whole range is the two lines of the
+`security-expert` memory note that item 3 replaces. Nothing code-shaped entered
+the range — no `.cs`, `.js`, `.csproj`, `.sh`, workflow or `appsettings.*` — so
+this remains a docs-and-ledger changeset, and `enforce-review-verdict.sh`'s
+code-shaped commit branch was correctly silent on it.
+
+The fix and the artifacts landed in **one commit**, which is what round 2's
+"where to stop" asked for: there is no gap in which the cache names a commit
+that has the fixes but not the verdict, or the reverse.
+
+**Stated property, re-executed at `756bf4d`:** `bash .claude/hooks/tests/run.sh`
+→ **823 passed, 0 failed.** Unchanged from `730c7da` and `66379e7`, which is the
+correct result for a documentation-and-ledger delta — a moved assertion count
+would have meant behaviour changed and the pass was not what it claimed. Noting
+what this does *not* establish: `invariant-chain.sh` mentions `refutations.md`
+only inside a comment, so the suite contains **no structural validator for the
+ledger**. The green run is evidence about behaviour, not about R-26's shape; the
+shape below is checked by hand.
+
+## The four items, checked against the tree
+
+### Item 1 — the appended note under R-22 → **confirmed**
+
+`refutations.md:668-684`, headed `#### Note appended to R-22 (2026-09-07, PR #359
+review round 2, ⚠️-9)`, sitting between R-22's `status: open` and R-23. Verified
+as a **pure insertion**: the hunk is `@@ -666,6 +666,23 @@` with no deleted
+lines, so R-22's `level consequence:`, `owner:`, `expires:` and `status:` are
+byte-identical to `730c7da`. It is inside `## Residuals and bounds`, not inside
+the user-only `## Extensions` section, and it extends no expiry and widens no
+scope — the same shape as the `Correction to R-21` this file already accepted.
+
+Its substance re-derived rather than read:
+
+- "At `730c7da`, three drops carry unreadable-clock `created:` values" — I
+  re-read `id:`/`created:` across all nine drops in the branch's archive delta.
+  Exactly three: `critic-20260906T184500Z` (`18:45:00Z`),
+  `critic-20260906T000000Z-undo-redo-pass-2` and
+  `critic-20260907T000000Z-undo-redo-pass3` (both `00:00:00Z`). ✅
+- "none is dated after its commit" — the two architect drops now read
+  `08:03:52Z` and `09:34:55Z`, matching their archive filenames. ✅
+- **Still true at `756bf4d`, not only at the commit it pins.** This commit adds
+  one drop, `reviewer-reconcile-20260907T104055Z`, `created: 2026-09-07T10:40:55Z`
+  against an archive stamp of `10-41-14` — a 19-second gap, consistent with an
+  actual `date -u` read, so the round-1 defect (my own drop, off by 1h50m) is
+  **not reproduced next to its own fix**. The count of three is unchanged.
+- "The entry stays `open`" — correct, and it is the point. The process defect
+  (authors without `Bash` asserting a field `scribe-decision-merger.sh:1202`
+  already computes) is untouched by a wording correction.
+
+### Item 2 — R-26 → **confirmed, and audited in both directions**
+
+`refutations.md:737-770`. Appended at the end of `## Residuals and bounds`,
+before `## Extensions`. Ids **R-1…R-26 gap-free with no duplicates**
+(`grep -o '^### R-[0-9]*' | sort -V | uniq -d` → empty). Carries every field the
+section's own preamble requires: `type: residual`, `source:`, `files:`, `owner:`,
+`level consequence:`, `expires: 2026-09-21`, `status: open`.
+
+It absorbs all three, as round 2's option 1 explicitly permitted:
+
+| sub-item | claim | checked |
+|---|---|---|
+| (1) ⚠️-4 framework half | a warden re-run overwrites `00-warden.md` at the same path | `CLAUDE.md:153` — "the `architect` fixes it and the warden runs again", writing `00-warden.md` (`:20`, `:135`, `:149`). `.claude/agents/scope-warden.md` untouched across `66379e7~1..756bf4d`. **Still open.** ✅ |
+| (2) ⚠️-7 | closed in this commit | true — see item 3. Recorded as closed **inline** rather than registered as open, so this is not over-registration. ✅ |
+| (3) ⚠️-8 | the `critic` and `realist` notes still omit the version trap | `grep` on both notes: `Picea.xml` cited at `critic/…:11` and `realist/…:14`, and neither file contains `1.0.27` or any mention of the trap. `~/.nuget/packages/picea/1.0.27-rc-0002/lib/net10.0/Picea.xml` is **477 lines**, as the entry states. **Still open.** ✅ |
+
+**Both directions.** Nothing in R-26 registers something the same tree has
+already fixed — the one sub-item that *was* fixed is stated as closed in the
+body rather than carried as open. That is the handling this file's own preamble
+prescribes ("marked `status: closed` with what was verified, rather than
+removed"), applied to a sub-item of a bundled entry.
+
+R-26 also records the reading that produced the round-2 ⚠️: that Merge Criterion
+(b) binds by its own text and not by a blocker's enumeration. Putting that in the
+ledger rather than only in a verdict is the right place for it — the ledger is
+what the next round grades against.
+
+### Item 3 — the `security-expert` memory note → **confirmed**
+
+`state-retention-features-need-sensitivity-marker.md:30` now reads
+`` `SensitiveCause : Message` — no `I` prefix ``, and the replacement carries
+half a sentence recording that `ISensitiveCause` was proposed and rejected, with
+its citation. `grep -rn ISensitiveCause` across `.claude/` now returns **no
+surviving recommendation**: the four remaining hits are this note's own
+record-of-rejection, R-26's body, and two verbatim quotations of the round-1
+finding inside decision drops. The design artifacts that still use the prefixed
+name (`room-security.md`) are the superseded source the note now points away
+from, and `04-realist-plan.md:847` / `07-handoff.md:206` both carry the
+unprefixed form.
+
+One thing a later reader will trip on, checked so they do not have to: the note
+cites "gate-4 decision **5**" while the row at `07-handoff.md:206` is numbered
+**6** in the *Standing decisions* table. Not a defect — "gate-4 decision 5" is
+the pass's own established vocabulary for this decision, used identically at
+`04-realist-plan.md:847`, `:2189` and `07-handoff.md:527`. The line number
+resolves and the quoted rule is exact.
+
+### Item 4 — nothing else changed → **confirmed**
+
+The nine files above are the whole delta. Working tree at confirmation time
+carries one modification, `.squad/log/2026-09-07-session.md`, which is three
+rows appended by `session-logger.sh` after the commit — hook-written state, not
+an edit by any agent.
+
+## Merge Criterion at `756bf4d`
+
+- **(a) stated properties green** — `823 passed, 0 failed`, unchanged. ✅
+- **(b) every non-regression finding registered** — ✅. Round-1 ⚠️-1…⚠️-8 are
+  now each either fixed (⚠️-1, ⚠️-2, ⚠️-4 evidence half, ⚠️-7) or registered
+  with owner, level consequence and expiry (⚠️-3 → R-23, ⚠️-5 → R-24, ⚠️-6 →
+  R-25, ⚠️-4 framework half / ⚠️-8 → R-26). Round-2 ⚠️-9 is fixed by item 1 and
+  ⚠️-10 is discharged by item 2. **The reading I am applying, stated so the next
+  round does not have to guess:** (b) binds on 🔴 and ⚠️ findings; the two
+  round-2 💡 items are not registered and do not block, because neither asserts a
+  defect requiring a remedy — one observes that `CLAUDE.md`'s `devops` routing
+  entry is silent about `.claude/hooks/**` (recorded permanently in the merged
+  round-2 drop at `decisions.md`), and the other observes that an append-only
+  file cannot carry a backward pointer, which is a property of the format. Both
+  are findable in the record. A reading under which every 💡 must reach the
+  ledger regresses without limit, since each registration pass produces 💡s of
+  its own.
+- **(c) nothing published above its computed level** — not in question; no level
+  claim moved. ✅
+
+## Findings (confirmation)
+
+### 🔴 Must Fix
+
+None.
+
+### ⚠️ Should Fix
+
+None unregistered. R-26 and R-22…R-25 remain `status: open` with
+`expires: 2026-09-21`; as registered residuals they are ⚠️-registered and do not
+block, per **The Merge Criterion** and the charter's Rule 1.
+
+### 💡 Nitpicks
+
+- **R-26 bundles three sub-items with two statuses.** An auditor grepping
+  `status: open` re-checks the ⚠️-7 sub-item that the body already reports
+  closed. The inline disclosure handles it and unbundling would cost two more
+  ids; noting the shape, not asking for a change.
+- **The R-22 note pins `730c7da`, one commit behind the commit it lands in.**
+  Conservative rather than wrong — I re-derived the same three-drop count at
+  `756bf4d` above, so nothing misleads, and a commit-pinned claim is the durable
+  form.
+
+### ✅ What's Good
+
+- **The residue landed as one commit with its own review artifacts**, exactly as
+  round 2's stop instruction asked. That is the shape that keeps
+  `enforce-review-verdict.sh` from re-blocking in the gap between the fixes and
+  the verdict that clears them, and it is the reason this pass has a single sha
+  to confirm.
+- **The correction chose append over edit twice, and said why both times.**
+  R-22's note argues its own permissibility against the append-only rule and
+  names the precedent it follows before using it.
+- **The one sub-item that was fixed is disclosed as fixed inside the entry that
+  registers the other two**, instead of being quietly dropped from the list or
+  registered as open. Over-registration is a ledger failure too, and this avoids
+  it without deleting anything.
+- **The new drop does not reproduce the defect its own commit registers.** A
+  `created:` 19 seconds off its archive stamp, in the commit that lands R-22's
+  correction, is the cheapest possible evidence that the author read a clock.
+
+## Metrics (confirmation)
+
+- **Files confirmed:** 9 / 9 · **Lines:** +567 / −2 · **Code-shaped files:** 0
+- **Stated property:** `bash .claude/hooks/tests/run.sh` → **823 passed, 0 failed**
+  at `756bf4d` ✅ (unchanged; the expected result)
+- **Ledger:** R-1…R-26 gap-free, no duplicate ids, R-26 field-complete by hand
+  (no structural validator exists — see above)
+- **Dimensions reopened:** none. This is a scope-and-truth confirmation, not a
+  fourth pass over the eleven; the cap forbids converting it into one, and
+  nothing in a 9-file docs-and-ledger delta can disturb 1, 2, 4, 5, 7, 8 or 10.
+  Dimensions 3, 6, 9 and 11 were re-run at round 2 against the same ledger and
+  are re-confirmed only where this delta touched them.
+
+## Where to stop
+
+**Push and merge at `756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8`.** The decision
+drop below pins that sha, and `scribe-decision-merger.sh` writes
+`.squad/.last-review-verdict` from it (the cache currently still reads
+`NEEDS-CHANGES / 730c7da`, so the gate is closed until the drop merges).
+
+**Do not commit this confirmation section, this round's drop, or the hook log
+churn before the merge.** `enforce-review-verdict.sh` scopes its *commit* branch
+to code-shaped paths and would allow such a commit, but its *push* and *merge*
+branches compare the cache against `git rev-parse HEAD` unconditionally — so an
+artifact commit moves HEAD past `756bf4d` and re-blocks the very merge this pass
+exists to clear. Fold these artifacts into a housekeeping commit **after** the
+merge, or accept that they cost another confirmation pass.
+
+Working tree at confirmation time: one hook-appended session-log modification;
+otherwise clean.

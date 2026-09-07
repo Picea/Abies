@@ -2474,3 +2474,62 @@ checked against the binding clause, and the stop instruction for the closing
 pass are in `.squad/design/undo-redo-design-record/09-review-verdict.md`
 § *Re-review — round 2*.
 
+
+### 2026-09-07 — reviewer-reconcile-20260907T105656Z-pr359-confirm-undo-redo-design-record [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260907T105656Z-pr359-confirm-undo-redo-design-record
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-07T10:56:56Z
+commit: 756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8
+targets:
+  - path: .claude/enforcement/refutations.md
+    lines: "668-770"
+  - path: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+    lines: "28-33"
+  - path: .claude/docs/decisions.md
+    lines: "2393-2474"
+  - path: .squad/decisions/archive/2026-09/2026-09-07T10-41-14-review-pr359-round2.md
+  - path: .squad/design/undo-redo-design-record/09-review-verdict.md
+blockers: []
+high: []
+medium:
+  - file: .claude/enforcement/refutations.md
+    line: 737
+    reason: "R-26 bundles three sub-items carrying two statuses - items 1 and 3 open, item 2 (round-1 W-7) reported closed in the same commit. An auditor grepping 'status: open' re-checks a sub-item the body already reports closed. The inline disclosure handles it and unbundling would cost two more ids, so this is a note on the shape rather than a requested change; it is also the handling this file's own preamble prescribes, applied to a sub-item."
+  - file: .claude/enforcement/refutations.md
+    line: 668
+    reason: "The note appended under R-22 pins commit 730c7da, one commit behind the commit it lands in. Conservative rather than wrong - the three-drop count it states was re-derived at 756bf4d and is unchanged, because the one drop this commit adds (reviewer-reconcile-20260907T104055Z) carries a readable created: value 19 seconds off its archive stamp. A commit-pinned claim is the durable form."
+good:
+  - file: .claude/enforcement/refutations.md
+    lines: "668-684"
+    reason: "Item 1 confirmed. The note under R-22 is a pure insertion (hunk @@ -666,6 +666,23 @@, zero deleted lines), so R-22's level consequence, owner, expires and status are byte-identical to 730c7da. It sits inside Residuals and bounds, not the user-only Extensions section, extends no expiry and widens no scope, and argues its own permissibility against the append-only rule before using it. Substance re-derived: exactly three drops in the branch's archive delta carry unreadable-clock created: values (critic 18:45:00Z and two 00:00:00Z), and none is dated after its commit - the two architect drops now read 08:03:52Z and 09:34:55Z, matching their archive filenames. The entry correctly stays open; the process defect it registers is untouched by a wording correction."
+  - file: .claude/enforcement/refutations.md
+    lines: "737-770"
+    reason: "Item 2 confirmed and audited in both directions. R-26 lands with type, source, files, owner, level consequence, expires 2026-09-21 and status open; ids R-1 through R-26 are gap-free with no duplicates. Sub-item 1 verified still open - CLAUDE.md:153 has the warden re-run and overwrite 00-warden.md at the same path, and .claude/agents/scope-warden.md is untouched across 66379e7~1..756bf4d. Sub-item 3 verified still open - neither the critic nor the realist Picea.xml note mentions 1.0.27 or the version trap, and the package's Picea.xml is 477 lines as stated. Sub-item 2 is reported closed inline rather than registered as open, so nothing already fixed is registered as a residual. R-26 also records the binding reading of Merge Criterion (b) in the ledger, which is where the next round grades from."
+  - file: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+    line: 30
+    reason: "Item 3 confirmed. The note now recommends 'SensitiveCause : Message' with no I prefix and records that the prefixed form was proposed and rejected, citing 07-handoff.md:206. grep -rn ISensitiveCause across .claude/ returns no surviving recommendation - the remaining hits are this note's own record of rejection, R-26's body, and two verbatim quotations of the round-1 finding inside decision drops. The note's 'gate-4 decision 5' is not an off-by-one against the standing-decisions table row 6: it is the pass's own established vocabulary, used identically at 04-realist-plan.md:847 and :2189 and 07-handoff.md:527, and the cited line number resolves to the row stating the rule."
+  - file: .squad/design/undo-redo-design-record/09-review-verdict.md
+    reason: "Item 4 confirmed - nothing else changed. git diff --numstat 730c7da..756bf4d is 9 files, +567/-2, and the only deletion in the range is the two lines of the security-expert memory note that item 3 replaces. Every file is a named remedy, a round-2 review artifact, or session-logger.sh state. No .cs, .js, .csproj, .sh, workflow or appsettings file entered the range. The fixes and the round-2 review artifacts landed in one commit, which is what round 2's stop instruction asked for and the reason this pass has a single sha to confirm."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Stated property re-executed at 756bf4d: 823 passed, 0 failed - unchanged from 730c7da and 66379e7, the correct result for a documentation-and-ledger delta. Stated for honesty: this establishes behaviour is unchanged and nothing more. invariant-chain.sh mentions refutations.md only inside a comment, so the suite contains no structural validator for the ledger; R-26's field completeness was checked by hand."
+references:
+  - reviewer-reconcile-20260907T104055Z-pr359-round2-undo-redo-design-record
+  - reviewer-reconcile-20260907T121500Z-pr359-undo-redo-design-record
+---
+
+# Confirmation — PR #359 round-2 residue, commit 756bf4d
+
+PASS. The four residue items landed, each is true of this tree, and nothing else rode along.
+
+This is the confirmation the round cap prescribes after the user chose path 1 with no override — a scope-and-truth check, not a third round. No dimension was reopened, and no finding the cap ruled out of scope was re-derived.
+
+**Merge Criterion at 756bf4d.** (a) green — `bash .claude/hooks/tests/run.sh` → 823 passed, 0 failed, unchanged. (b) met — round-1 W-1 through W-8 are each now fixed (W-1, W-2, W-4's evidence half, W-7) or registered with owner, level consequence and expiry (W-3 → R-23, W-5 → R-24, W-6 → R-25, W-4's framework half and W-8 → R-26); round-2 W-9 is fixed by the R-22 note and W-10 is discharged by R-26. The reading applied, stated so the next round need not guess: (b) binds on blocking and advisory findings; the two round-2 nitpicks are not registered and do not block, because neither asserts a defect requiring a remedy, both are findable in the merged round-2 drop, and a reading under which every nitpick must reach the ledger regresses without limit. (c) not in question — no level claim moved.
+
+**Where to stop.** Push and merge at 756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8. `.squad/.last-review-verdict` currently still reads NEEDS-CHANGES / 730c7da, so the gate is closed until this drop merges and `scribe-decision-merger.sh` writes the cache from it. Do not commit the confirmation section, this drop or the hook log churn before the merge: `enforce-review-verdict.sh` scopes its commit branch to code-shaped paths and would allow such a commit, but its push and merge branches compare the cache against `git rev-parse HEAD` unconditionally, so an artifact commit moves HEAD past 756bf4d and re-blocks the merge this pass exists to clear.
+
+Full reasoning, the both-directions ledger audit and the per-item evidence are in `.squad/design/undo-redo-design-record/09-review-verdict.md` § *Confirmation — round-2 residue, commit `756bf4d`*.
+
