@@ -27,8 +27,10 @@ any debugger involvement.
 
 **How to apply:** when reviewing or threat-modeling any feature that retains `Message` values
 (history, undo/redo, replay, time-travel debugging, audit logging of dispatched messages), require
-a type-level marker interface (e.g. `ISensitiveCause : Message`, mirrored after this codebase's
-existing `Message`/`Command` marker-interface idiom — no attributes, no reflection, trim/AOT-safe)
+a type-level marker interface (e.g. `SensitiveCause : Message` — no `I` prefix; the prefixed form
+`ISensitiveCause` was proposed here originally and rejected at the `undo-redo` pass's gate-4
+decision 5 in favour of this codebase's *No I-Prefix* register rule, `07-handoff.md:206` — mirrored
+after this codebase's existing `Message`/`Command` marker-interface idiom — no attributes, no reflection, trim/AOT-safe)
 that application authors opt sensitive message types into, and require the retaining mechanism to
 substitute a redacted sentinel (type name only) before storing, not merely document the risk or
 rely on an unrelated policy flag (e.g. `IsUndoable`) as a stand-in for redaction — those are

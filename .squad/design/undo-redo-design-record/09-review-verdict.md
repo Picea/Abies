@@ -469,3 +469,289 @@ or the gate re-blocks between them.
 Working tree at review time: `M .squad/design/undo-redo-design-record/08-review-blind.md`,
 `M .squad/log/2026-09-07-session.md`, `M .squad/log/pass-cost.md` — all expected
 hook or blind-reviewer output, none of it drift.
+
+---
+
+# ⚖️ Re-review — round 2
+
+**Fixes reviewed:** `66379e7e2f9e7e5cbd5c3554369f1d5177fca176..730c7daf4039057335c432cf1a9c50f77114fef0`
+**HEAD of this checkout:** `730c7daf4039057335c432cf1a9c50f77114fef0`
+**Round:** 2 of 2 before the cap applies. Evidence: one archived
+`reviewer-reconcile` drop for base `66379e7`
+(`.squad/decisions/archive/2026-09/2026-09-07T10-25-28-review-pr359.md`),
+cross-checked against the `**Round:** 1` line above. Both agree.
+**`08-review-blind.md`:** not re-run, per the charter. Re-read in the committed
+form; its `Reviewed:` line names the same range I reviewed at round 1 and its
+"~25% of the changeset" caveat is unchanged, so the independent reading it
+carries is the one this verdict still reconciles against.
+**Verdict:** ⚠️ **Needs Human Review**
+
+**All three 🔴 blockers are closed.** What keeps this off ✅ is narrower and it
+is partly my own doing: Merge Criterion (b) is met for the four findings my
+blocker *enumerated* and unmet for three it did not, and my round-1 text asked
+for one of those three to be registered in its own body. The residue is four
+one-line items. Whether that is worth a third round — which is the cap, and
+therefore a split — is a proportionality call, and it is the user's.
+
+## Scope of the fix commit
+
+Measured, not assumed. `git diff --stat 66379e7..730c7da` → 15 files. Every one
+is either a named remedy, a review artifact, or hook-written state:
+
+| file | why it is here |
+|---|---|
+| `.claude/enforcement/refutations.md` (+131) | 🔴-1 (R-22…R-25), 🔴-2 (R-21 correction) |
+| `.claude/docs/flow-changelog.md` (±3) | 🔴-3 |
+| `.claude/docs/decisions.md` (+91/−3) | ⚠️-1(a), ⚠️-2, and the merged round-1 drop |
+| 2 archive drops (±2) | ⚠️-1(a) |
+| `.claude/agent-memory/architect/` ×2 | ⚠️-2 |
+| `08-review-blind.md`, `09-review-verdict.md`, `2026-09-07T10-25-28-review-pr359.md` | review artifacts |
+| `.claude/agent-memory/reviewer-reconcile/` ×3 | my notebook |
+| `.squad/log/2026-09-07-session.md`, `.squad/log/pass-cost.md` | `session-logger.sh` |
+
+**No scope creep.** Nothing outside the claimed remedies rode along; no `.cs`,
+`.js`, `.csproj`, workflow or `appsettings.*` entered the range, so this is still
+a docs-only changeset.
+
+**Stated property, re-executed:** `bash .claude/hooks/tests/run.sh` at `730c7da`
+→ **823 passed, 0 failed**. Identical to `66379e7`, which is the correct result
+for a documentation-and-ledger delta — a moved assertion count would have meant
+behaviour changed and the pass was not what it claimed.
+
+## Blocker disposition
+
+### 🔴-1 — Merge Criterion (b), four findings registered nowhere → **closed as enumerated**
+
+`R-22`…`R-25` land at `.claude/enforcement/refutations.md:649`, `:669`, `:690`,
+`:706`, each with `owner: devops`, a `level consequence:`, `expires: 2026-09-21`
+and `status: open`. They are the next unused ids in a still gap-free ledger
+R-1…R-25, appended under a dated section header that follows the
+`## Round 2 closures (security-expert, PR #358 review round 2)` precedent, and
+they map 1:1 onto ⚠️-1, ⚠️-3, ⚠️-5, ⚠️-6.
+
+**Audited in both directions**, per the practice this repository's round-2
+history already cost me once — is anything registered that the same tree has
+already fixed?
+
+| entry | the check its `level consequence:` implies | result |
+|---|---|---|
+| R-23 | `grep -rn ActivitySource --include=*.cs` / `grep -rn AddSource` | **Still open, and exact.** Seven `ActivitySource` declarations; `ServiceDefaults/Extensions.cs:32-34` registers `Picea.Abies`, `…Conduit.Api`, `…ReadStore.PostgreSQL`. No source is named exactly `"Picea.Abies"`. The six named in the entry are collected nowhere; `…Kestrel.OtlpProxy` is registered in templates only. |
+| R-24 | read `pass-cost.md` header and column | **Still open.** Header still reads "Wall-clock per design phase"; the column is still cumulative and monotonic and still does not reset — the four rows this commit appends continue at 1373m01s → 1395m34s from the previous slug's total. |
+| R-25 | read the session log's new rows | **Still open, and demonstrated by the fix commit itself.** The 51 lines appended here are 3 named-agent rows and 48 opaque-hex rows, every one of them carrying a truncated restatement of the orchestrator's plan rather than the agent's result. |
+| R-22 | re-read every `created:` in the pass | **Open in substance, stale in wording — see ⚠️-9.** |
+
+### 🔴-2 — R-21's `source:` cites a section that exists in no file → **closed**
+
+The correction is appended at `:591` as `### Correction to R-21`, sitting between
+R-21 and `## Extensions` — outside the Extensions section, which the file
+reserves to the user, and not an in-place edit: the diff is a pure insertion
+(`@@ -588,6 +588,137 @@`) and R-21's own body, `status:`, `expires:` and owner
+are byte-identical. It widens nothing the entry licenses, which is the property
+the user-only rule protects.
+
+I re-ran its evidence rather than reading it:
+
+- `git show f0cb682:.squad/design/undo-redo/00-scope-undo-redo.md | sed -n '25p;74p'`
+  returns, verbatim, "It is the starting point for this work, not something to
+  replace or duplicate" and "The problem has a well-known conventional answer".
+  Both quotations in the correction are exact and both line numbers resolve.
+- `grep -n "docs/adr" .claude/hooks/enforce-track-blindness.sh` → no output.
+  R-21's substance is unchanged and still true.
+
+A citation that resolves to a commit-pinned deleted file is strictly better than
+the one it replaces, because `f0cb682` is immutable while `00-warden.md` is
+overwritten by a documented happy path. This is the durable form.
+
+### 🔴-3 — `flow-changelog.md` misstates gate 1's data flow → **closed**
+
+`:40-41` now reads "`scope-warden`, reading `00-warden-scan.md` and adding the
+category no regex reaches — prior work presented as reference material". That is
+the flow `CLAUDE.md` § 3 rule 2 prescribes and that both artifacts describe in
+their own text. The entry no longer has the judgement half of the gate reading
+its own output.
+
+## ⚠️ disposition
+
+| # | status |
+|---|---|
+| ⚠️-1 | **Closed.** The two impossible `created:` values are corrected to their archive timestamps (`T120000Z` → `08:03:52Z`, `T184500Z` → `09:34:55Z`) in both the archive file and the merged entry; my own is corrected to `10:25:28Z`. All five `id:` values untouched — the anchors held. Fix (b), the merger stamping the field, is R-22. |
+| ⚠️-2 | **Closed.** `decisions.md:2232` now reads "…land as `security-expert`'s plan step 16 deliverables", with ADR-030 named as step 13's. The memory index line reads "ADR-030 is still an unwritten step-13 deliverable" and the note's `description:` says "ADR-030 not yet written". `grep -rn ADR-030 .claude/` finds no surviving sentence that presents the file as existing. |
+| ⚠️-3, ⚠️-5, ⚠️-6 | **Registered** as R-23, R-24, R-25. Verified still-open above. |
+| ⚠️-4 | **Half discharged, half open** — see below. |
+| ⚠️-7, ⚠️-8 | **Neither fixed nor registered** — see ⚠️-10. |
+| 💡 nitpicks | Unaddressed, correctly. They were advisory and I am not reopening them. |
+
+### The ⚠️-4 reading, checked
+
+`security-expert`'s preamble at `:641` states that ⚠️-4's changelog half is "not
+registered here… fixable in place rather than requiring a residual", and the
+dispatch summary reports it declined ⚠️-4 on the ground that my Merge Criterion
+blocker did not list it.
+
+**On the enumeration, it is right about the text and wrong about the rule.** My
+🔴-1 did name only ⚠️-1, ⚠️-3, ⚠️-5, ⚠️-6, and that enumeration was
+under-inclusive. But the binding clause is `principles-enforcement.md` § *The
+Merge Criterion*, (b): "**every** finding that is not a regression of a stated
+property is registered". The reviewer's list is a pointer to the criterion, not a
+substitute for it, and the criterion's own "no longer blocking, **once
+registered**" line puts advisory findings inside its scope explicitly. So the
+correct reading is the criterion's, not my enumeration's.
+
+**On the two halves of ⚠️-4, it is right about one and silent about the other.**
+
+- **The evidence half — discharged, by a better route than I suggested.** I asked
+  for the two leaked sentences quoted inline in the changelog. What landed
+  instead is the R-21 correction carrying both quotations *with their commit and
+  line numbers* in an append-only ledger. That is more durable than the changelog
+  edit I proposed, and I verified it resolves. Discharged.
+- **The framework half — open.** "Consider whether a warden re-run should append
+  or write `00-warden-2.md`. The latter is a framework change, not this PR's
+  business — **register it**." That is a registration instruction inside the
+  finding's own body, it names no file to edit, and `security-expert`'s stated
+  ground for declining — "fixable in place" — does not apply to it. It is
+  unregistered. The observation is not hypothetical: `CLAUDE.md` § 3 rule 2
+  prescribes a re-run on scope rework, the warden writes to the same path, and
+  this pass is the instance where it destroyed the evidence for two governance
+  claims.
+
+## Findings (round 2)
+
+### 🔴 Must Fix
+
+None. All three round-1 blockers are closed, and I am not escalating a
+previously-⚠️ item to 🔴 in the round that answered my 🔴 — that is the
+goalpost-moving the round cap exists to stop.
+
+### ⚠️ Should Fix
+
+9. **[`.claude/enforcement/refutations.md`:649, R-22]** — **The
+   `level consequence:` states in the present tense a condition the same commit
+   removed.** It reads "five of the seven drops in this pass carry
+   unreadable-clock `created:` values… two of them dated after the commit that
+   introduces them". At `730c7da` **three** do — `critic-20260906T184500Z`,
+   `critic-20260906T000000Z-undo-redo-pass-2`, `critic-20260907T000000Z-undo-redo-pass3`
+   — and **none** is dated after its commit, because ⚠️-1(a) landed in this same
+   commit. Everything else in the entry is exact and I verified it: the root
+   cause, the `Bash`-holding-reviewer counter-example, the `id`-collision
+   residual (two ids share the `T000000Z` component, distinct only by date, so a
+   third same-day same-slug drop collides), and the remedy pointer at
+   `scribe-decision-merger.sh:1202`.
+   **Why it matters, and why it is not 🔴.** `refutations.md` is append-only and
+   is the instrument the *next* round grades against. Once this is history,
+   nobody can tell "open because unfixed" from "open because written before the
+   fix in its own commit landed" — the exact confusion I have already paid for
+   once on PR #358 round 2. It is not 🔴 because every required field is present
+   and well-formed, so criterion (b) is satisfied structurally; what is wrong is
+   the accuracy of one clause.
+   **Suggested fix:** one appended line under R-22 — "as of `730c7da` the two
+   impossible values were corrected in the same commit; three unreadable-clock
+   values remain, all `critic`" — never an in-place edit.
+   *Evidence: `created:` re-read across all eight drops in the branch's archive
+   delta; `id:` re-read across the same set.*
+
+10. **[Merge Criterion (b) — three findings still unregistered]** —
+    **⚠️-4's framework half, ⚠️-7 and ⚠️-8 are neither fixed nor registered.**
+    Each is pre-existing, out of scope for a docs-only PR, and therefore
+    registrable rather than fixable-here — except that two of them are one-token
+    edits their owners could simply have made.
+    - **⚠️-7 is the sharp one.** `security-expert`'s own preamble classifies
+      `.claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md`
+      as "this agent's own memory note", fixable in place rather than
+      registrable — and then does not fix it. `grep -n SensitiveCause` on that
+      file still returns `` `ISensitiveCause : Message` `` at `:30`. It is the
+      owner, it was in the pass, it named the file, and the note still carries
+      cross-session guidance recommending the name gate-4 decision 5 explicitly
+      rejected — for the review that will police that name.
+    - **⚠️-8** — `critic/picea-xml-is-the-kernel-contract.md` and
+      `realist/picea-package-xml-answers-kernel-questions.md` still send future
+      agents to `Picea.xml` with no mention of the version trap. Neither agent
+      was dispatched, so this is a routing gap, not a refusal.
+    - **⚠️-4's framework half** — as above.
+    **Suggested fix:** one more ledger entry (R-26) for the warden-overwrite
+    property with an owner and an `expires:`, plus the two one-token memory-note
+    edits by their owning agents. If the user would rather not spend a round on
+    it, R-26 can absorb all three as a single "round-1 advisory residue" entry —
+    what (b) requires is that they be findable with an owner and an expiry, not
+    that they be fixed.
+
+### 💡 Nitpicks
+
+- **R-22…R-25 all carry `owner: devops` and `expires: 2026-09-21`.** Correct per
+  my own round-1 suggestion, and inside a sane window. Worth noting that R-22's
+  remedy is a hook plus `decision-schema.md`, and `devops`'s routing entry in
+  `CLAUDE.md` names `.github/workflows/**` rather than `.claude/hooks/**` — the
+  assignment is right, the routing table is what is silent. Not this PR's
+  business.
+- **The `Correction to R-21` section has no forward pointer from R-21 itself.**
+  Adjacency carries it here, and an in-place pointer would violate the
+  append-only rule, so this is a property of the format rather than a defect in
+  the fix. Noting it because a reader arriving by `grep` on `R-21` gets both.
+
+### ✅ What's Good
+
+- **The R-21 correction chose the durable citation over the one I asked for.**
+  I suggested repointing at the deleted draft; what landed quotes both sentences
+  inline *and* pins the commit and line numbers, then re-derives the same
+  conclusion from a second independent source (`enforce-track-blindness.sh`).
+  That is the form a governance record should take, and it is the form a
+  `reviewer-blind` can check — which was the whole point of the finding.
+- **The append-only rule was reasoned about rather than obeyed by reflex.** The
+  correction's own preamble argues why it is not the user-only `## Extensions`
+  case, cites the precedent it follows, and states what it does not do
+  (extend an expiry, widen what the entry licenses). An agent that explains why
+  it believes it is permitted to write in a restricted file is doing the thing
+  that makes the restriction survivable.
+- **The `id:` anchors were left alone under pressure to tidy them.** Correcting
+  `created:` while leaving five wrong-looking `id:` values in place is the
+  uncomfortable half of ⚠️-1's fix, and it is the half that keeps three external
+  citations resolving.
+- **`security-expert` disclosed its scope boundary in the register itself**
+  (`:641`) rather than silently omitting four findings. I disagree with half the
+  reasoning, and I could only check it *because* it was written down. The
+  disclosure is what made the disagreement reviewable.
+- **The fix commit is exactly its remedies.** Fifteen files, every one accounted
+  for, no opportunistic edits, unchanged test count.
+
+## Metrics (round 2)
+
+- **Files re-reviewed:** 15 / 15 · **Lines:** +1142 / −301
+- **Stated property:** `bash .claude/hooks/tests/run.sh` → **823 passed, 0 failed**
+  at `730c7da` ✅ (unchanged from `66379e7`, the expected result)
+- **Ledger audit:** R-22…R-25 checked in both directions; 3 of 4 exact, 1 stale
+  in wording (⚠️-9)
+- **Dimensions reopened:** 3 (consistency), 6 (security — the ledger is the
+  security-residual register), 9 (documentation), 11 (DoD / Merge Criterion).
+  **Not reopened, and why:** 1, 2, 4, 5, 7, 8, 10 — no file in this delta can
+  disturb them, and re-running them on a documentation-and-ledger delta
+  manufactures findings the round cap has already ruled out of scope.
+
+## Where this stands, and where to stop
+
+Merge Criterion (a) is green and (c) is not in question. (b) is met for four
+findings and unmet for three, one of which my own round-1 text asked to be
+registered and my own round-1 blocker then failed to list. That is a defect in
+my round-1 verdict, not in the fix pass, and it is why this is ⚠️ rather than 🔴.
+
+**This is round 2 of 2.** A third review round triggers the cap, and under the
+cap the verdict at round 3 *is the split*, not another fix request. So there are
+two honest paths and the choice is the user's:
+
+1. **Land the residue now.** One appended line under R-22, one new R-26 covering
+   ⚠️-4's framework half, ⚠️-7 and ⚠️-8, and — if their owners are cheap to
+   dispatch — the two one-token memory-note edits. Then (b) is met in full and
+   the closing pass is a scope-and-truth check, not a finding sweep.
+2. **Override and merge.** The residue is two stale memory notes and one
+   unregistered framework observation, none of which touches the runtime or the
+   record's substance. The user is the final arbiter (Review Rule 6); log the
+   override with this concern and the rationale.
+
+What I will **not** do is convert ⚠️-9 and ⚠️-10 into blockers to force option 1.
+
+**Where to stop, mechanically.** Committing this section, this round's decision
+drop and the hook-written log churn moves `HEAD` away from `730c7da`, and the
+drop below pins `730c7da`. If option 1 is chosen, land the ledger and note edits
+**in the same commit** as these review artifacts and request the closing pass
+against that commit — do not commit the artifacts first and the fixes after, or
+`enforce-review-verdict.sh` re-blocks in the gap between them.
+
+Working tree at re-review time: clean.

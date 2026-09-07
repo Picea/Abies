@@ -2392,3 +2392,85 @@ Full reasoning, the reconciliation against `08-review-blind.md`, and the Critic'
 accepted-risk audit are in
 `.squad/design/undo-redo-design-record/09-review-verdict.md`.
 
+
+### 2026-09-07 — reviewer-reconcile-20260907T104055Z-pr359-round2-undo-redo-design-record [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T104055Z-pr359-round2-undo-redo-design-record
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T10:40:55Z
+commit: 730c7daf4039057335c432cf1a9c50f77114fef0
+targets:
+  - path: .claude/enforcement/refutations.md
+    lines: "591-721"
+  - path: .claude/docs/flow-changelog.md
+    lines: "38-45"
+  - path: .claude/docs/decisions.md
+    lines: "2162-2394"
+  - path: .squad/decisions/archive/2026-09/
+  - path: .claude/agent-memory/architect/MEMORY.md
+  - path: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+  - path: .squad/design/undo-redo-design-record/09-review-verdict.md
+blockers:
+  - file: .claude/enforcement/refutations.md
+    reason: "Merge Criterion (b) is met for the four findings my round-1 blocker enumerated and unmet for three it did not. Unregistered and unfixed at this HEAD - the framework half of round-1 W-4 (a warden re-run overwrites 00-warden.md and destroyed the evidence for two governance claims; my own round-1 text said 'register it' and my blocker's list then omitted it), W-7 (security-expert's own memory note still recommends ISensitiveCause, the name gate-4 decision 5 rejected), and W-8 (the critic and realist Picea.xml notes still omit the version trap). The binding clause is principles-enforcement.md section The Merge Criterion (b) - 'every finding that is not a regression of a stated property is registered' - not the reviewer's enumeration, and its own 'no longer blocking, once registered' line puts advisory findings inside that scope. Remedy is one ledger entry (R-26) that may absorb all three, plus two one-token memory-note edits by their owners. This is round 2 of 2 - a third round triggers the cap and the verdict there is the split, so the proportionality call between landing this residue and overriding is the user's, and this blocker records the uncertainty rather than forcing a fix round."
+  - file: .claude/enforcement/refutations.md
+    line: 649
+    reason: "R-22's level consequence states in the present tense a condition the same commit removed - 'five of the seven drops in this pass carry unreadable-clock created: values, two of them dated after the commit that introduces them'. At this HEAD three do (critic-20260906T184500Z, critic-20260906T000000Z-undo-redo-pass-2, critic-20260907T000000Z-undo-redo-pass3) and none is dated after its commit, because round-1 W-1(a) landed in the same commit that registers R-22. Everything else in the entry is exact and verified: the root cause, the Bash-holding-reviewer counter-example, the id-collision residual, and the scribe-decision-merger.sh:1202 remedy pointer. refutations.md is append-only and is the instrument the next round grades against, so once this is history nobody can distinguish open-because-unfixed from open-because-written-before-the-fix-in-its-own-commit. Not structurally malformed - every required field is present - so the remedy is one appended line under R-22, never an in-place edit."
+high: []
+medium:
+  - file: .claude/enforcement/refutations.md
+    lines: "649-721"
+    reason: "R-22 through R-25 all carry owner devops, which matches my round-1 suggestion, but R-22's and R-24's and R-25's remedies are hook scripts under .claude/hooks/ and CLAUDE.md's routing entry for devops names .github/workflows/** rather than .claude/hooks/**. The owner assignment is right; the routing table is what is silent. Not this PR's business."
+  - file: .claude/enforcement/refutations.md
+    line: 591
+    reason: "The Correction to R-21 section has no forward pointer from R-21 itself, so it is discoverable only by adjacency or by grep. An in-place pointer would violate the append-only rule, so this is a property of the format rather than a defect in the fix."
+good:
+  - file: .claude/enforcement/refutations.md
+    line: 591
+    reason: "The R-21 correction chose a more durable citation than the one I asked for: it quotes both leaked sentences inline with their commit and line numbers (f0cb682:00-scope-undo-redo.md:25 and :74, both re-verified verbatim here) and re-derives the same conclusion from a second independent source (enforce-track-blindness.sh:277-290, re-checked - grep for docs/adr returns no output). A pointer into .squad/design/ is destroyed by the documented happy path; a commit-pinned quotation is not, and it is the only form reviewer-blind can check."
+  - file: .claude/enforcement/refutations.md
+    lines: "591-600"
+    reason: "The append-only rule was reasoned about rather than obeyed by reflex. The correction's preamble argues why it is not the user-only Extensions case, cites the Round 2 closures precedent it follows, and states what it does not do - extend an expiry or widen what R-21 licenses. Verified as a pure insertion; R-21's body, status, expires and owner are byte-identical."
+  - file: .squad/decisions/archive/2026-09/
+    reason: "The id anchors were left alone under pressure to tidy them. Correcting created: while leaving five wrong-looking id: values in place is the uncomfortable half of W-1's fix and the half that keeps three external citations resolving."
+  - file: .claude/docs/decisions.md
+    line: 2232
+    reason: "W-2 fully closed. The Security paragraph now marks Trust Boundary 7, the threat-model rows and the hardening-backlog fast-follows as security-expert's plan step 16 deliverables and ADR-030 as tech-writer's step 13; the architect memory index line and the note's description no longer present ADR-030 as written. grep -rn ADR-030 .claude/ finds no surviving sentence claiming the file exists."
+  - file: .claude/docs/flow-changelog.md
+    line: 40
+    reason: "Round-1 blocker 3 closed. The entry now reads 'reading 00-warden-scan.md and adding the category no regex reaches', which is the flow CLAUDE.md section 3 rule 2 prescribes and both artifacts describe in their own text. The judgement half of gate 1 no longer reads its own output in the one governance entry whose purpose is to grade that split."
+references:
+  - reviewer-reconcile-20260907T121500Z-pr359-undo-redo-design-record
+  - architect-20260907T120000Z-undo-redo
+  - architect-20260907T184500Z-undo-redo-navigation
+---
+
+# Re-review — PR #359 round 2, `undo-redo` design record
+
+⚠️ **Needs Human Review.** All three round-1 blockers are closed and verified
+against the tree; the stated property is green (`bash .claude/hooks/tests/run.sh`
+→ 823 passed, 0 failed at this HEAD, unchanged from `66379e7`, which is the
+correct result for a documentation-and-ledger delta). Scope is exactly the
+claimed remedies plus review artifacts and hook-written state — 15 files, no
+creep, nothing code-shaped.
+
+What keeps this off ✅ is narrower than round 1 and partly my own doing. Merge
+Criterion (b) is satisfied for the four findings my round-1 blocker enumerated
+and unsatisfied for three it did not, one of which my own round-1 finding text
+asked to be registered. The residue is four one-line items: an appended
+correction under R-22, one new ledger entry, and two one-token memory-note
+edits.
+
+This is round 2 of 2. A third round triggers the cap, and under the cap the
+round-3 verdict is the split rather than another fix request — so the choice
+between landing the residue now and overriding to merge is the user's, and I am
+not converting the two ⚠️ findings into blockers to force the first.
+
+Full reasoning, the ledger audit run in both directions, the ⚠️-4 reading
+checked against the binding clause, and the stop instruction for the closing
+pass are in `.squad/design/undo-redo-design-record/09-review-verdict.md`
+§ *Re-review — round 2*.
+

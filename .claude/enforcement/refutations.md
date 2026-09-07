@@ -666,6 +666,23 @@ residual.
 - expires: 2026-09-21
 - status: open
 
+#### Note appended to R-22 (2026-09-07, PR #359 review round 2, ⚠️-9)
+
+Appended text only; does not edit R-22's `level consequence:` in place, per
+this file's append-only rule (same shape as the "Correction to R-21" section
+above — a stale-wording correction on an already-registered, still-`open`
+entry, not an extension of its `expires:` or scope). As of commit `730c7da`,
+R-22's `level consequence:` above is accurate in every clause except one: it
+states "two of them dated after the commit that introduces them," and that
+impossibility was corrected in the same commit that registered R-22
+(⚠️-1(a)'s two `created:` fixes landed alongside R-22 itself). At `730c7da`,
+three drops carry unreadable-clock `created:` values —
+`critic-20260906T184500Z`, `critic-20260906T000000Z-undo-redo-pass-2`,
+`critic-20260907T000000Z-undo-redo-pass3` — and none is dated after its
+commit. The entry stays `open`: the process defect it registers (authors
+without `Bash` asserting a field that `scribe-decision-merger.sh` already
+computes) is unchanged and unfixed by this correction.
+
 ### R-23 — Six declared `ActivitySource`s are collected nowhere; the one framework registration in Conduit's `ServiceDefaults` matches none of them
 - type: residual
 - source: PR #359 review round 1, ⚠️-3
@@ -714,6 +731,44 @@ residual.
   defect rather than a one-off. `CLAUDE.md` directs the Lead to read these
   files when continuing prior work, so the defect degrades exactly the
   cross-session handoff mechanism it exists to support.
+- expires: 2026-09-21
+- status: open
+
+### R-26 — Round-1 advisory residue: scope-warden re-run destroys gate-1's only evidence (framework question), and two memory notes route agents to superseded or stale guidance
+- type: residual
+- source: PR #359 review round 2, ⚠️-4 (framework half), ⚠️-7, ⚠️-8
+- files: `.claude/agents/scope-warden.md`, `CLAUDE.md` § 3 rule 2,
+  `.claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md`,
+  `.claude/agent-memory/critic/picea-xml-is-the-kernel-contract.md`,
+  `.claude/agent-memory/realist/picea-package-xml-answers-kernel-questions.md`
+- owner: devops (framework half, item 1 below); `critic` and `realist` each
+  own their own memory-note fix for item 3 below
+- level consequence: Merge Criterion (b) requires every finding that is not a
+  regression of a stated property to be registered — advisory (⚠️) findings
+  included — not only those a blocker's own enumeration names; round 1's
+  blocker naming only ⚠️-1, ⚠️-3, ⚠️-5 and ⚠️-6 was a defensible reading of
+  that blocker's own text and an incorrect reading of the criterion itself,
+  which this entry now satisfies for the three items the round-1 enumeration
+  missed. (1) **Framework, open.** `CLAUDE.md` § 3 rule 2 has the
+  `scope-warden` re-run and overwrite `00-warden.md` at the same path when the
+  user sends a scope back; in this pass that overwrite destroyed the only
+  evidence for gate 1's effectiveness claim — both R-21's original citation
+  and `flow-changelog.md`'s two-leaks claim pointed at a report that no
+  longer existed (recovered only because the deleted draft scope survived at
+  a prior commit). Open question: should a re-run append to `00-warden.md`
+  or write a numbered file (`00-warden-2.md`) instead of overwriting. (2)
+  ⚠️-7, **closed in this commit** — `security-expert`'s own memory note
+  recommended `ISensitiveCause`, the name gate-4 decision 5 explicitly
+  rejected in favour of `SensitiveCause`; corrected directly in
+  `state-retention-features-need-sensitivity-marker.md` as part of the same
+  commit that registers this entry, so this sub-item does not carry forward
+  as open. (3) ⚠️-8, open — `critic/picea-xml-is-the-kernel-contract.md` and
+  `realist/picea-package-xml-answers-kernel-questions.md` still send future
+  agents to `Picea.xml` with no mention that
+  `picea/1.0.27-rc-0002/…/Picea.xml` (477 lines, `AutomatonRuntime` mentioned
+  once, zero documented members) is a version trap that defeats the
+  instruction; neither owning agent was dispatched in this pass to fix its
+  own note.
 - expires: 2026-09-21
 - status: open
 

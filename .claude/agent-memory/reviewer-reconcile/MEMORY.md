@@ -33,3 +33,4 @@ at the time and rewriting it would misrepresent the historical record.
 - [A confirmation pass invalidates its own cache](a-confirmation-pass-invalidates-its-own-cache.md) — committing the confirmation's artifacts moves HEAD and re-blocks the merge; say where to stop.
 - [A record is checkable only where its evidence survives](a-record-is-checkable-only-where-its-evidence-survives.md) — design-record PRs fail on provenance; re-run flows overwrite the artifacts governance documents cite.
 - [The clock field is a toolchain job](the-clock-field-is-a-toolchain-job.md) — five roles have no Bash to read a clock, and I got `created:` wrong myself while holding one.
+- [A blocker list is not the criterion](a-blocker-list-is-not-the-criterion.md) — the author reads your enumeration as the scope; enumerate by rule or (b) comes back unmet.
