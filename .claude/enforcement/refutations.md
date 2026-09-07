@@ -774,6 +774,128 @@ computes) is unchanged and unfixed by this correction.
 
 ---
 
+## Residuals and bounds, security-expert (2026-09-07, PR 0 review verdict, `undo-redo-pr0`)
+
+Registered per `.squad/design/undo-redo-pr0/09-review-verdict.md` (round 1):
+⚠️-8 and ⚠️-9 are the verdict's own two items marked *"pre-existing framework
+gap — register"* / *"pre-existing — register"*, both owed to `devops`. The
+third item below is not in that verdict's text; it is the reviewer's tooling
+note on this same round's dispatch, surfaced independently and registered
+here as a new entry rather than as an appended note to B-1 — see that entry's
+own explanation of why.
+
+### R-27 — A second read path around both blindness hooks: `Picea.Abies.Presentation/content/demo/full/` carries byte-identical design-pass and review-verdict artifacts the hooks allow through
+- type: residual
+- source: PR 0 review verdict, ⚠️-9 (confirming and making precise
+  `08-review-blind.md`'s item 8)
+- files: `.claude/hooks/enforce-review-blindness.sh`,
+  `.claude/hooks/enforce-track-blindness.sh`,
+  `Picea.Abies.Presentation/content/demo/full/**` (introduced PR #360,
+  commit `7d32cdb`, merged)
+- owner: devops
+- level consequence: verified by firing `enforce-review-blindness.sh` with a
+  `reviewer-blind` payload — `Picea.Abies.Presentation/content/demo/full/06-spec.md`,
+  `.../05-critic.md`, and a decision-drop copy of a previous review verdict
+  all return exit 0 (allowed), while `.squad/design/undo-redo/06-spec.md`
+  returns exit 2 (denied) for the identical agent. The files are
+  byte-identical: `md5sum` matches for `00-scope`, `03-convergence`,
+  `04-realist-plan`, `05-critic`, `06-spec` and `07-handoff`. The tree also
+  carries two previous review verdicts (`review-pr359`,
+  `review-pr359-round2`) and a `stops/` composite. The deny list is
+  `.squad/design/**` plus one worktree pattern, so a directory that mirrors
+  `.squad/design/` content for presentation purposes is never denied. This is
+  distinct from **R-19** (the unmediated `Bash` channel — closing it would
+  not touch this path, since `Read`/`Grep`/`Glob` are the mediated tools
+  reaching it) and from **R-20** (sibling-worktree/symlink deny-closure gaps
+  in the containment check — this is not a worktree or a symlink, it is a
+  second, ordinary, tracked directory the deny list never named). Not this
+  changeset's fault; the copy was committed a prior PR.
+- expires: 2026-09-21
+- status: open
+
+### R-28 — `dotnet-format-on-save.sh` has no exclusion for a file a locked spec declares immutable, and it already stripped a `using` directive from one on first write
+- type: residual
+- source: PR 0 review verdict, ⚠️-8
+- files: `.claude/hooks/dotnet-format-on-save.sh`,
+  `Picea.Abies.Tests/History/UndoRedoSpec.cs`
+- owner: devops
+- level consequence: `dotnet-format-on-save.sh` fires `PostToolUse` on every
+  `Write`/`Edit`/`MultiEdit` of a `.cs` file, with no exclusion for a file a
+  spec-approval process declares locked. On first write of the newly
+  transcribed `UndoRedoSpec.cs` (locked text, approved per `06-spec.md`'s
+  Approval Request), the hook's analyzer-fix pass applied `IDE0005`
+  (`.editorconfig:268`, severity `warning` — *"Remove unnecessary using
+  directive"*) and silently stripped `using Picea.Abies.History;`. Caught and
+  restored before commit — verified present at `UndoRedoSpec.cs:13` — so this
+  changeset ships clean, but the mechanism is unchanged and the catch was a
+  human/agent noticing, not a control. Currently neutralised only because the
+  file sits outside the project's compile set (a `<Compile Remove>` in the
+  csproj that plan step 6 is scheduled to delete): `dotnet format
+  Picea.Abies.Tests.csproj --include History/UndoRedoSpec.cs` reports
+  *"Formatted 0 of 27 files"* today, verified by execution, because a file
+  outside the Roslyn workspace cannot be touched by `dotnet format`. That
+  protection disappears the moment step 6 removes the exclusion, after which
+  every subsequent edit to the file goes back through the hook's unmodified
+  fix pass. Closure route: the hook skips files a spec's lock names, or the
+  lock mechanism records locked files somewhere `dotnet-format-on-save.sh`
+  can read and skip before running.
+- expires: 2026-09-21
+- status: open
+
+### B-2 — Command-text classification over-matches quoted/heredoc content; the false-positive mirror of B-1's under-matching
+- type: bound
+- source: reviewer-reconcile's tooling note, PR 0 review round 1 (this round's
+  dispatch of `reviewer-reconcile`, not stated in `09-review-verdict.md`'s own
+  text)
+- files: `.claude/hooks/enforce-review-verdict.sh` (same regex shape shared
+  by `.claude/hooks/block-direct-commits-to-main.sh` and
+  `.claude/hooks/enforce-review-history-channel.sh`, per B-1)
+- owner: security-expert — matching B-1's own ownership and the precedent of
+  R-14 through R-17, all registered against this same
+  `enforce-review-verdict.sh` family by security-expert rather than devops.
+  The fix direction here is the same architectural one B-1 already defers
+  (execution-time argv inspection, not a regex patch), not a routine
+  implementation task.
+- level consequence: during this round's dispatch, `reviewer-reconcile`'s own
+  decision-drop write quoted the literal text `git commit -a` inside a
+  heredoc body, as part of a finding's prose (this same verdict's ⚠️-12
+  discusses exactly that risk — `.squad/log/` churn riding along on a
+  `git commit -a`). No `git` command was invoked; the outer command was the
+  decision-drop file write. `enforce-review-verdict.sh` classifies by
+  matching a `\bgit\s+...\b`-shaped pattern anywhere in the raw command TEXT
+  (per B-1's own description of the family), not anchored to an actual
+  invocation position, so the quoted content inside the heredoc matched. This
+  is the mirror image of B-1: B-1 documents **under**-matching (indirection
+  defeats the regex — a command that should be blocked is not); this
+  documents **over**-matching (data that should not be blocked is). Both
+  share B-1's own named root cause — classifying command TEXT via regex
+  without evaluating the shell's own parsing (quoting, heredocs, variable
+  expansion) can be fooled in either direction by construction. An
+  over-matching false positive is a lower-severity failure than an
+  under-matching false negative (it degrades workflow rather than security),
+  but it is the same structural gap and it trains operators to route around
+  the hook's refusals, which is its own hazard.
+- why this is a new entry, not an appended note to B-1: this file's
+  append-only rule reserves the formal Extensions mechanism — adding new
+  evidence or widening an existing entry's scope, which is what this does
+  (B-1's text is framed entirely around the false-negative/indirection case;
+  this adds the previously-undocumented false-positive/over-matching case) —
+  for **the user only** (*"may be authored only by the user"*). The
+  ledger's own precedent (the "Note appended to R-22" section) draws the same
+  line, stating explicitly that it is a wording correction and *"not an
+  extension … of its scope."* security-expert holds no authority in this
+  session to widen B-1's scope, so the false-positive class is registered as
+  its own entry rather than folded into B-1's text.
+- expires: N/A — structural, for the same reason B-1 is: anchoring the regex
+  to an invocation position narrows but does not close this gap (a heredoc
+  body containing `git commit` at the start of a line inside the quoted text
+  would still match an anchored pattern), and fully closing it requires the
+  same execution-time argv inspection B-1 already names as a different,
+  not-yet-opened control.
+- status: open
+
+---
+
 ## Extensions
 
 Extensions are appended here, never edited in place, per the append-only

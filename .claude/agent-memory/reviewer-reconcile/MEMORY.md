@@ -42,3 +42,6 @@ at the time and rewriting it would misrepresent the historical record.
 - [Untracked bundles need a check-ignore sweep](untracked-bundles-need-a-check-ignore-sweep.md) — byte-perfect files still ship incomplete; `git add` skips ignored paths silently.
 - [State the finding, not the remedy](state-the-finding-not-the-remedy.md) — twice in one changeset the override beat my prescription; a menu of remedies is not an open fix.
 - [The merger eats the drop immediately](the-merger-eats-the-drop-immediately.md) — an inbox path that vanishes means merged, not failed; check the archive and the cache.
+- [Extract the spec fences and diff](extract-the-spec-fences-and-diff.md) — reassembling `06-spec.md`'s code blocks decides whether a defect is the spec-author's or the transcriber's.
+- [A locked file was never type-checked](a-locked-file-was-never-type-checked.md) — an excluded spec is frozen with its typos; compile-probe the assertion shapes before the approval commit closes the lock.
+- [A copy outside the deny list defeats blindness](a-copy-outside-the-deny-list-defeats-blindness.md) — the hook denies `.squad/design/**`, not the byte-identical copy someone committed elsewhere.

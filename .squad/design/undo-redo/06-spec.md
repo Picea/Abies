@@ -37,6 +37,23 @@ decision, no new type, no fixture change, no property change. The navigation obl
 line 16** (`05-critic.md` S31 — 16 is right; the plan's row renumbers to match, which is the
 realist's, not this file's). § *Approval Request* carries the record.
 
+**Amended a fourth time, and this one is a re-opening rather than a pre-lock amendment.** PR 0's
+review — `.squad/design/undo-redo-pr0/08-review-blind.md` and `09-review-verdict.md`, verdict
+🔴 *Changes Requested* — compiled and executed this file's assertion **shapes** against the pinned
+**TUnit 1.19.57** and established that the defects it found are in the **approved text of this
+file**, not in `csharp-dev`'s transcription: the reviewer extracted every `csharp` fence from this
+document, reassembled it and diffed it against the committed `UndoRedoSpec.cs`. So the route is a
+`spec-author` amendment with **user re-approval**, not a `csharp-dev` correction. Fixed below:
+`.Or.That(…)` (does not compile), A6's and A7's order-insensitive `IsEquivalentTo` (cannot fail for
+the reason they exist), three comments claiming coverage the code did not implement, unguarded
+`continue`s that let five properties pass having asserted nothing, and `[NotInParallel]` on a class
+built on process-wide static state, plus `[Timeout(30_000)]` on the same argument. § *Approval
+Request* carries the full record and the 🛑 **re-approval question — answered and re-approved on
+2026-09-07 with three decisions**: re-approved as amended and immutable in assertions and claims
+from the approval commit; INV-6 keeps its feedback interpreter, because narrowing the claim to the
+old fixture would be adjusting the spec to the code; and `[Timeout]` lands before the commit,
+generous and sized from a measured seed run.
+
 ---
 
 ## 🧪 TEST STRATEGY ROOM — undo/redo across the whole of an Abies application's state
@@ -193,6 +210,11 @@ public sealed class EditorProgram : Program<EditorModel, Unit>
             BatchSecond     => (m with { Zoom = m.Zoom + 1 }, new MarkCommand()),
             CloseEditor     => (m with { Zoom = 0 }, Commands.None),
             UrlChanged u    => (m with { Route = u.Url.ToRelativeUri() }, Commands.None),
+            // The fall-through is LOAD-BEARING, not a default. `MovementRefused` arrives here,
+            // and it must be SILENT: under plan rule S7 a refusal takes the `pass` row, and
+            // `pass` calls `sealTops(SealedByEffect(...))` whenever the command is not silent —
+            // which would seal both edges under INV-5's once-snapshotted `Both(...)` loop and
+            // make its second iteration assert against a stale availability. ⚠️-5(f).
             _               => (m, Commands.None)
         };
     }
@@ -248,7 +270,12 @@ meaning anything:
 
 1. **Per-test isolation.** TUnit runs tests in parallel and `EditorProgram` is static. The
    recorder must be flowed per test (`AsyncLocal`), or every test in this file must be
-   `[NotInParallel]`. `csharp-dev` picks; leaking state between tests is not an option.
+   `[NotInParallel]`. ~~`csharp-dev` picks~~ — **amendment 4 picks, because the attribute site is
+   inside the lock and `csharp-dev` could not add it later without a hand-back.** The class now
+   carries `[NotInParallel("history-editor-log")]`, matching the six sibling classes in this
+   project that already do it for process-wide state. An `AsyncLocal`-backed `EditorLog` remains
+   welcome and would let the key be relaxed later, but it is no longer load-bearing. Leaking
+   state between tests was never an option and now cannot happen by default.
 2. **`WhenApplied` is the only ordering mechanism (S28).** `Runtime.cs:288-291` is
    `DispatchFromSubscription(Message) => _ = _replay ? default : Dispatch(message);` — the
    `ValueTask` is discarded, so a delivery has no completion signal and *"then redo"* has no
@@ -321,6 +348,35 @@ namespace Picea.Abies.Tests.History;
 using Picea.Abies.History;
 
 [Spec("Undo and redo over the whole of an Abies application's state")]
+// ⚠️-6, amendment 4. `Picea.Abies.Tests` has no assembly-level parallel configuration and no
+// `.runsettings`, so TUnit's default is parallel; every test in this class reads and writes the
+// process-wide static `EditorLog`, and the class calls `EditorLog.Clear()` a dozen times with
+// emptiness assertions after it. Six sibling classes in this same project already carry the
+// class-level form for exactly this reason — `DiffTests.cs:27`, `RenderTests.cs:24`,
+// `HeadDiffTests.cs:15`, `UiComponentRenderTests.cs:8`, `UiAccessibilityContractTests.cs:7`,
+// `HotReloadTests.cs:8` — and `NavigationTests.cs` uses the method-level form four times. The
+// attribute site is the class declaration, which is INSIDE the lock: it cannot be added at
+// step 6 without a `// SPEC CONFLICT:` hand-back, which is why it lands now.
+[NotInParallel("history-editor-log")]
+// 💡 → taken, amendment 4. Same argument as `[NotInParallel]` above: the attribute site is inside
+// the lock, so a hang discovered at step 6 would be a `// SPEC CONFLICT:` hand-back rather than a
+// one-line fix. The number is MEASURED, then deliberately over-shot.
+//
+//   Measurement. `csharp-dev` timed a proxy in the shape of
+//   `RuntimeIsolationAndSubscriptionFaultTests.cs` — a real `Runtime` per seed, 24–32 dispatches,
+//   a subscription toggling every third dispatch. One seed 0.22 ms; 200 seeds 41.8 ms. Machine:
+//   an unshared Ryzen 9 9950X on .NET 10.0.110, so this is a FLOOR, not CI.
+//
+//   Derivation. 42 ms × 8 properties × 10 = 3,360 ms. The ×10 covers CI slowdown plus what the
+//   proxy does not model: the real properties' per-step `Because` string interpolation, the
+//   nested `Both(h)` loops, generator construction, and INV-7's extra named seeds.
+//
+//   Why 30 s and not 3.4 s. The value is INSIDE THE LOCK, so it can only be raised by a
+//   re-approval and can never be lowered by a hand-back that matters. Over-shooting costs
+//   nothing — a green suite never reaches the timeout — while under-shooting costs a
+//   false red on a loaded CI runner and a hand-back on the pass's most load-bearing file.
+//   Asymmetric, so round generously. If it ever fires, that is a real hang, not a slow machine.
+[Timeout(30_000)]
 public sealed class UndoRedoSpec
 {
     // ── A1 ───────────────────────────────────────────────────────────────────────
@@ -502,11 +558,18 @@ public sealed class UndoRedoSpec
         await bare.Dispatch(new BeginBatch());
         var bareOrder = EditorLog.Timeline;
 
-        await Assert.That(wrappedOrder).IsEquivalentTo([
+        // 🔴-2, amendment 4. These were `IsEquivalentTo`, which is ORDER-INSENSITIVE on TUnit
+        // 1.19.57 — and the two expected sequences below are permutations of the same four
+        // strings, so both assertions passed whichever interleaving actually occurred. The test
+        // could not fail for the reason it exists. `IsEqualTo` on a collection IS
+        // order-sensitive on this version (the reviewer verified both by execution), and
+        // `IsEquivalentTo(expected, CollectionOrdering.Matching)` does not exist here — so the
+        // remedy is a different assertion, not a parameter.
+        await Assert.That(wrappedOrder).IsEqualTo([
             "applied:BatchFirst", "applied:BatchSecond",
             "interpreted:FailingCommand", "interpreted:MarkCommand"]);
 
-        await Assert.That(bareOrder).IsEquivalentTo([
+        await Assert.That(bareOrder).IsEqualTo([
             "applied:BatchFirst", "interpreted:FailingCommand",
             "applied:BatchSecond", "interpreted:MarkCommand"]);
     }
@@ -572,7 +635,12 @@ public sealed class UndoRedoSpec
         // Stated rather than softened: this is legal. An un-bracketed press is a complete
         // movement with no states passed through, so INV-7 is satisfied by definition and
         // the magnifier really does start and stop.
-        await Assert.That(EditorLog.SubscriptionActivity).IsEquivalentTo([
+        //
+        // 🔴-2's third instance, amendment 4. This was `IsEquivalentTo` too, and *"reconcile
+        // twice"* is an ORDERING claim: under `IsEquivalentTo` a *stop then start* — the
+        // magnifier surviving the first press and being torn down on the second — passed
+        // identically. `IsEqualTo` pins the sequence.
+        await Assert.That(EditorLog.SubscriptionActivity).IsEqualTo([
             $"start:{EditorLog.MagnifierKey}", $"stop:{EditorLog.MagnifierKey}"]);
     }
 
@@ -852,6 +920,14 @@ the exclusion as required and preserve it for the wrong reason.
     [Property("Invariant", "INV-1")]
     public async Task INV_1_a_single_undo_returns_the_state_before_the_most_recent_action_whichever_region_it_came_from()
     {
+        // 🔴-3's closing paragraph, amendment 4. The two `continue` guards below are correct in
+        // themselves, but nothing recorded that ANY seed reached the assertion — so a `Gen` that
+        // regressed to trivial scripts would leave this property green and empty. One counter,
+        // one floor assertion after the loop. The same shape is applied to INV-3, INV-4 and
+        // INV-5; INV-6 and INV-2's second property get the stronger coverage assertions their
+        // own prose already promised.
+        var reached = 0;
+
         foreach (var seed in Gen.Corpus)
         {
             var script = Gen.UserActions(seed, length: 24);     // S27: no deliveries here
@@ -872,12 +948,17 @@ the exclusion as required and preserve it for the wrong reason.
             if (beforeMostRecentAction is null) continue;
 
             await runtime.Dispatch(new HistoryMessage.Undo());
+            reached++;
 
             await Assert.That(runtime.Model.Present)
                 .IsEqualTo(beforeMostRecentAction)
                 .Because($"seed {seed}: one history for the application, regardless of which " +
                          $"region the most recent action came from");
         }
+
+        await Assert.That(reached > 0).IsTrue()
+            .Because($"no seed in the corpus reached an available undo, so this property is " +
+                     $"green having asserted nothing (0 of {Gen.Corpus.Length} seeds)");
     }
 
     // ── INV-2 ────────────────────────────────────────────────────────────────────
@@ -890,16 +971,43 @@ the exclusion as required and preserve it for the wrong reason.
             var script = Gen.UserActions(seed, length: 24);
 
             // The reachable set, computed by REPLAYING the ordinary actions of the script
-            // through the UNWRAPPED program — no history, no undo, no redo.
+            // through the UNWRAPPED program — no history, no undo, no redo. Policy-independent,
+            // so it is computed once and used for both lenses below.
             var reachable = ReachableByOrdinaryActionsAlone(script);
 
-            using var runtime = await Start<Editor>(NoFeedback);
-            foreach (var step in script)
+            // 🔴-3(b), amendment 4. The prose below this property has always said "INV-2 runs
+            // twice, over Editor (whole-model) and ProjectedEditor", and the INV-n table has
+            // always said "under BOTH the whole-model and the projection policy". It ran once,
+            // over Editor; `ProjectedEditor` appeared nowhere in the invariant layer. The claim
+            // is load-bearing rather than decorative — under the whole-model lens undo MOVES to
+            // a remembered model and the invariant holds by construction, whereas under a
+            // projection undo COMPUTES `Restore(remembered, present)` and the invariant holds
+            // only up to L1–L6 plus independent reachability. Testing only the lens where it
+            // holds by construction is testing the half that cannot fail. So the code is made
+            // true to the claim rather than the claim weakened to the code.
+
+            using (var wholeModel = await Start<Editor>(NoFeedback))
             {
-                await runtime.Dispatch(step.Message);
-                await Assert.That(reachable).Contains(runtime.Model.Present)
-                    .Because($"seed {seed}: undo may not put the application into a state it " +
-                             $"was never in and could never have been in");
+                foreach (var step in script)
+                {
+                    await wholeModel.Dispatch(step.Message);
+                    await Assert.That(reachable).Contains(wholeModel.Model.Present)
+                        .Because($"seed {seed}, whole-model lens: undo may not put the " +
+                                 $"application into a state it was never in and could never " +
+                                 $"have been in");
+                }
+            }
+
+            using (var projected = await Start<ProjectedEditor>(NoFeedback))
+            {
+                foreach (var step in script)
+                {
+                    await projected.Dispatch(step.Message);
+                    await Assert.That(reachable).Contains(projected.Model.Present)
+                        .Because($"seed {seed}, projection lens: `Restore(remembered, present)` " +
+                                 $"may not compose a model out of two states that produces one " +
+                                 $"the application was never in");
+                }
             }
         }
     }
@@ -913,6 +1021,12 @@ the exclusion as required and preserve it for the wrong reason.
 > are — `Title`/`Zoom` and `LoadedFrom`/`Ticks` move independently. **That assumption is not
 > property-testable by the framework** (Cleanness compromise 1) and this property does not claim
 > to test it; it is spec line 2's obligation on the application.
+>
+> **This paragraph was true as intent and false as a description of the code until amendment 4**
+> (🔴-3(b)): the property ran once, over `Editor`, and `ProjectedEditor` appeared nowhere in the
+> invariant layer. The body now walks both lenses. Note which half that added — the whole-model
+> half is the one that holds *by construction*, so what was being tested was the half that cannot
+> fail.
 
 **INV-2 has a second property, and why it is a second one rather than a wider alphabet.** The
 2026-09-07 finding is that the browser's location is part of the world, and therefore part of the
@@ -932,6 +1046,14 @@ as approver on 2026-09-07.
     [Property("Invariant", "INV-2")]
     public async Task INV_2_no_movement_lands_on_a_model_whose_url_is_not_the_one_the_browser_shows()
     {
+        // 🔴-3(c), amendment 4. The note below this property has always said "the property is
+        // not done until both branches have been observed taken at least once" — and nothing
+        // counted them. A corpus in which `Future` was always empty left the property green
+        // having checked one edge, which is exactly the outcome the note claims it prevents.
+        // The two flags below are that claim, made mechanical.
+        var pastEdgeChecked = false;
+        var futureEdgeChecked = false;
+
         foreach (var seed in Gen.Corpus)
         {
             // Whole-model policy DELIBERATELY: it is the policy that remembers Route, and so
@@ -979,17 +1101,34 @@ as approver on 2026-09-07.
                     // equal and the assertion would be flaky for a reason that has nothing to
                     // do with the mechanism.
                     if (runtime.Model.Past.Count > 0)
+                    {
+                        pastEdgeChecked = true;
                         await Assert.That(History.Backward(runtime.Model))
                             .IsEqualTo(new MovementAvailability.BlockedByWorld(mostRecentNavigation))
                             .Because($"seed {seed}: the past edge is sealed by the navigation");
+                    }
 
                     if (runtime.Model.Future.Count > 0)
+                    {
+                        futureEdgeChecked = true;
                         await Assert.That(History.Forward(runtime.Model))
                             .IsEqualTo(new MovementAvailability.BlockedByWorld(mostRecentNavigation))
                             .Because($"seed {seed}: the future edge is sealed by the same navigation");
+                    }
                 }
             }
         }
+
+        // The corpus is not sufficient until BOTH branches have been taken. Without these two
+        // lines "both edges" is a sentence in a comment rather than a checked claim, and the
+        // second half of the property's named falsifier — *seal only the past edge* — could not
+        // turn it red on a corpus that never populated `Future`.
+        await Assert.That(pastEdgeChecked).IsTrue()
+            .Because("no seed navigated with a non-empty Past, so the past-edge seal was never " +
+                     "asserted");
+        await Assert.That(futureEdgeChecked).IsTrue()
+            .Because("no seed navigated with a non-empty Future, so the future-edge seal was " +
+                     "never asserted and only half of \"both edges\" has been checked");
     }
 ```
 
@@ -999,6 +1138,8 @@ as approver on 2026-09-07.
 > also why the corpus is not sufficient on its own: **the property is not done until both branches
 > have been observed taken at least once** — a run in which `Future` is always empty has checked
 > only half of "both edges", and the falsifier below is chosen so that a one-sided seal goes red.
+> **Amendment 4 made that mechanical** (🔴-3(c)): it was prose and nothing counted the branches,
+> so the corpus could have satisfied the sentence's opposite in silence.
 
 **What this property covers, said plainly: the framework's message type, and nothing else (B10).**
 The script dispatches `Picea.Abies.UrlChanged`, and the seal keys on that type. On the WebAssembly
@@ -1036,6 +1177,8 @@ settle. This file only records that no property here would go red on it.
     [Property("Invariant", "INV-3")]
     public async Task INV_3_redo_after_undo_restores_the_model_the_document_and_all_subsequent_behaviour()
     {
+        var reached = 0;                                        // 🔴-3's floor; see INV-1
+
         foreach (var seed in Gen.Corpus)
         {
             var script = Gen.UserActions(seed, length: 24);     // S27: no deliveries here
@@ -1050,6 +1193,7 @@ settle. This file only records that no property here would go red on it.
             await runtime.Dispatch(new HistoryMessage.Undo());
             if (History.Forward(runtime.Model) is not MovementAvailability.Available) continue;
             await runtime.Dispatch(new HistoryMessage.Redo());
+            reached++;
 
             var roundTripped = runtime.Model;
 
@@ -1071,6 +1215,10 @@ settle. This file only records that no property here would go red on it.
                     .Because($"seed {seed}, {m}");
             }
         }
+
+        await Assert.That(reached > 0).IsTrue()
+            .Because($"no seed in the corpus reached an undo-then-redo round trip, so this " +
+                     $"property is green having asserted nothing (0 of {Gen.Corpus.Length} seeds)");
     }
 ```
 
@@ -1089,6 +1237,8 @@ settle. This file only records that no property here would go red on it.
     [Property("Invariant", "INV-4")]
     public async Task INV_4_a_movement_at_either_end_of_the_history_faults_nothing_changes_nothing_and_emits_nothing()
     {
+        var reached = 0;                                        // 🔴-3's floor; see INV-1
+
         foreach (var seed in Gen.Corpus)
         {
             var script = Gen.UserActions(seed, length: 24);
@@ -1103,6 +1253,7 @@ settle. This file only records that no property here would go red on it.
                 EditorLog.Clear();
 
                 await runtime.Dispatch(message);               // must not throw
+                reached++;
 
                 await Assert.That(runtime.Model).IsEqualTo(before).Because($"seed {seed}, {direction}");
                 await Assert.That(EditorLog.MessagesApplied).IsEmpty().Because($"seed {seed}, {direction}");
@@ -1110,6 +1261,10 @@ settle. This file only records that no property here would go red on it.
                 await Assert.That(EditorLog.CommandsInterpreted).IsEmpty().Because($"seed {seed}, {direction}");
             }
         }
+
+        await Assert.That(reached > 0).IsTrue()
+            .Because($"no seed in the corpus ended at either end of the history, so this " +
+                     $"property is green having asserted nothing (0 of {Gen.Corpus.Length} seeds)");
     }
 
     // ── INV-5 ────────────────────────────────────────────────────────────────────
@@ -1117,6 +1272,8 @@ settle. This file only records that no property here would go red on it.
     [Property("Invariant", "INV-5")]
     public async Task INV_5_a_declined_movement_delivers_a_typed_reason_the_application_can_tell_from_a_no_op()
     {
+        var reached = 0;                                        // 🔴-3's floor; see INV-1
+
         foreach (var seed in Gen.Corpus)
         {
             // S27: THIS property, and INV-7's, are the only ones whose alphabet contains a
@@ -1126,6 +1283,20 @@ settle. This file only records that no property here would go red on it.
             using var runtime = await Start<Editor>(NoFeedback);
             foreach (var step in script) await Drive(runtime, step);   // S28 ordering inside
 
+            // ⚠️-5(f), amendment 4 — a FIXTURE OBLIGATION, stated here because this loop is
+            // the only one in the file that snapshots `Both(...)` once and then dispatches
+            // inside it. INV-6's loop re-reads `runtime.Model` per iteration and is immune; the
+            // inconsistency between the two is real and is inside the lock, so it is named
+            // rather than left to be discovered. Under plan rule S7
+            // (`04-realist-plan.md:1120` — `if e is MovementRefused -> pass(h, next, cmd,
+            // origin)`) a refusal records no step and supersedes nothing, so the RECORDING path
+            // cannot stale this snapshot. But `pass` still calls
+            // `sealTops(SealedByEffect(redact(origin)))` when the command is not silent. The
+            // obligation is therefore exact and checkable: **`EditorProgram.Transition` must
+            // return `Commands.None` for `MovementRefused`** — which the fixture's `_ =>`
+            // fall-through already does, and which must not be changed. If a later fixture
+            // gives `MovementRefused` a command, the first iteration's refusal seals both edges
+            // and the second iteration asserts against a stale `availability`.
             foreach (var (direction, message, availability) in Both(runtime.Model))
             {
                 if (availability is MovementAvailability.Available or MovementAvailability.Nothing)
@@ -1133,6 +1304,7 @@ settle. This file only records that no property here would go red on it.
 
                 EditorLog.Clear();
                 await runtime.Dispatch(message);               // must not throw
+                reached++;
 
                 // A VALUE, in the application's own vocabulary, along the SAME path that
                 // carries every other message into the application.
@@ -1146,6 +1318,10 @@ settle. This file only records that no property here would go red on it.
                     .Because($"seed {seed}: a refusal must be distinguishable from INV-4's no-op");
             }
         }
+
+        await Assert.That(reached > 0).IsTrue()
+            .Because($"no seed in the corpus produced a declined movement, so this property is " +
+                     $"green having asserted nothing (0 of {Gen.Corpus.Length} seeds)");
     }
 
     // ── INV-6 ────────────────────────────────────────────────────────────────────
@@ -1153,11 +1329,30 @@ settle. This file only records that no property here would go red on it.
     [Property("Invariant", "INV-6")]
     public async Task INV_6_availability_and_its_reason_are_computable_from_the_history_value_alone_and_agree_with_the_attempt()
     {
+        // 🔴-3(a), amendment 4 — the coverage assertion the note below this property has always
+        // claimed: *"the property asserts that coverage at the end of the loop rather than
+        // assuming the generator found them."* It did not exist; the body ended at the closing
+        // brace of the seed loop, nothing counted the five cases, nothing counted directions,
+        // and nothing failed if the corpus only ever produced `Nothing`. It matters more here
+        // than anywhere else in this file, because § The Lock names *"every property carries a
+        // named falsifier"* as one of the two things closing the support-file hole — and for
+        // INV-6 the named falsifier **is** this coverage assertion. The Lock's own stated
+        // closure was unbuilt for the property whose comment claimed it loudest.
+        var observed = new HashSet<(Direction Direction, string Case)>();
+
+        // Amendment 4 also changes this property's INTERPRETER, and the coverage assertion is
+        // why: `BlockedByWorld` is caused by a command's FEEDBACK, and under `NoFeedback` no
+        // feedback ever arrives — so that case was unreachable in both directions and the
+        // ten-combination claim could not have been satisfied by any seed. The ALPHABET is
+        // unchanged (still `Gen.UserActions`, so S27's partition table is untouched); what
+        // changes is that `LoadRequested`'s `LoadCommand` now answers, and `Drive` carries the
+        // S28 ordering for that feedback exactly as it does for a delivery. Writing the missing
+        // assertion is what exposed the unreachable case — which is the argument for writing it.
         foreach (var seed in Gen.Corpus)
         {
             var script = Gen.UserActions(seed, length: 24);
-            using var runtime = await Start<Editor>(NoFeedback);
-            foreach (var step in script) await runtime.Dispatch(step.Message);
+            using var runtime = await Start<Editor>(LoadReturns("server"));
+            foreach (var step in script) await Drive(runtime, step);   // S28 ordering inside
 
             foreach (var (direction, message, _) in Both(runtime.Model))
             {
@@ -1166,6 +1361,7 @@ settle. This file only records that no property here would go red on it.
 
                 // Computed IN ADVANCE, from the value BY ITSELF, WITHOUT causing any effect:
                 var answer = direction is Direction.Backward ? History.Backward(h) : History.Forward(h);
+                observed.Add((direction, answer.GetType().Name));
 
                 await Assert.That(runtime.Model).IsEqualTo(h).Because($"seed {seed}: answering is pure");
                 await Assert.That(EditorLog.MessagesApplied).IsEmpty().Because($"seed {seed}");
@@ -1182,10 +1378,30 @@ settle. This file only records that no property here would go red on it.
                         await Assert.That(EditorLog.MessagesApplied).IsEmpty();
                         break;
                     case MovementAvailability.Available:
-                        await Assert.That(runtime.Model.Present).IsNotEqualTo(h.Present)
-                            .Or.That(CursorMoved(h, runtime.Model)).IsTrue().Because($"seed {seed}");
-                        await Assert.That(EditorLog.MessagesApplied.OfType<MovementRefused>()).IsEmpty();
+                    {
+                        // 🔴-1, amendment 4. This assertion was written as:
+                        //
+                        //     await Assert.That(runtime.Model.Present).IsNotEqualTo(h.Present)
+                        //         .Or.That(CursorMoved(h, runtime.Model)).IsTrue()...
+                        //
+                        // which does not compile on the pinned TUnit 1.19.57 —
+                        // `error CS1061: 'OrContinuation<int>' does not contain a definition
+                        // for 'That'`. TUnit's `.Or` continues the chain on the SAME subject, so
+                        // a disjunction across two DIFFERENT values is not a wrong overload but
+                        // a wrong shape: no version of it would have compiled after step 6
+                        // delivered every missing type, and the file header's *"does not compile
+                        // until plan step 6"* would have stayed false. The CLAIM is unchanged —
+                        // an `Available` movement must actually move, either because the model
+                        // value changed or because the cursor moved between two models that
+                        // happen to be equal by value. Computed as one boolean, asserted once.
+                        var moved = runtime.Model.Present != h.Present || CursorMoved(h, runtime.Model);
+                        await Assert.That(moved).IsTrue()
+                            .Because($"seed {seed}, {direction}: `Available` promised a movement " +
+                                     $"and neither the model nor the cursor moved");
+                        await Assert.That(EditorLog.MessagesApplied.OfType<MovementRefused>()).IsEmpty()
+                            .Because($"seed {seed}, {direction}");
                         break;
+                    }
                     default:   // BlockedByEffect | BlockedByWorld | BlockedBySupersedingAction
                         await Assert.That(EditorLog.MessagesApplied.OfType<MovementRefused>().Single().Reason)
                             .IsEqualTo(answer).Because($"seed {seed}, {direction}");
@@ -1193,6 +1409,22 @@ settle. This file only records that no property here would go red on it.
                 }
             }
         }
+
+        // The corpus is not complete until all TEN (case × direction) combinations have been
+        // seen. Asserted, not assumed — this is the property's named falsifier and the Lock's
+        // stated closure for it.
+        foreach (var direction in new[] { Direction.Backward, Direction.Forward })
+            foreach (var name in new[]
+                     {
+                         nameof(MovementAvailability.Nothing),
+                         nameof(MovementAvailability.Available),
+                         nameof(MovementAvailability.BlockedByEffect),
+                         nameof(MovementAvailability.BlockedByWorld),
+                         nameof(MovementAvailability.BlockedBySupersedingAction)
+                     })
+                await Assert.That(observed.Contains((direction, name))).IsTrue()
+                    .Because($"the corpus never produced {name} in the {direction} direction, so " +
+                             $"this property is green having checked only part of its claim");
     }
 ```
 
@@ -1201,6 +1433,12 @@ settle. This file only records that no property here would go red on it.
 > corpus is not complete until every one of the ten (case × direction) combinations has been
 > observed at least once; the property asserts that coverage at the end of the loop rather than
 > assuming the generator found them.
+>
+> **Amendment 4 made that last clause true.** It was prose and nothing else (🔴-3(a)) — and
+> writing the assertion immediately exposed that `BlockedByWorld` was *unreachable in either
+> direction* under `NoFeedback`, so the ten-combination claim could never have been met. That is
+> why this property now drives `LoadReturns("server")` through `Drive`: an unimplemented
+> coverage claim had been concealing an unreachable case.
 
 ```csharp
     // ── INV-7 ────────────────────────────────────────────────────────────────────
@@ -1300,13 +1538,13 @@ named mutation, and **step 8 / step 9 are not done until each has been observed 
 | Property | Mutation that must turn it red |
 |---|---|
 | INV-1 | let one dispatch record two steps (a later event recording its own step) |
-| INV-2 | make `StepBack` compute `Restore(present, remembered)` — arguments swapped |
-| INV-2 *(second)* | **delete the `origin is UrlChanged && Origin is Established -> seal` rule** so a navigation `record`s like any other action: the property must then go red on the first undo that crosses one, with `Present.Route` holding the pre-navigation URL while `browserShows` holds the new one. And **separately, seal only the past edge** — the `History.Forward` assertion must then go red, which is what makes *"both edges"* a checked claim rather than a sentence. **Note what these falsifiers do not reach:** they delete the *rule*, not the *idiom*, so the other route to the same defect — an application-named navigation message, which never reaches the rule at all — has no falsifier here and is out of the claim by obligation 17 (B10) |
+| INV-2 | make `StepBack` compute `Restore(present, remembered)` — arguments swapped. And **separately, for the projection walk amendment 4 added**: make `EditorProjectionPolicy.Restore` also carry `remembered.Ticks + 1`, a pairing no ordinary action ever produced — the projection walk must go red where the whole-model walk stays green, which is what shows the second lens is doing work rather than decorating a comment |
+| INV-2 *(second)* | **delete the `origin is UrlChanged && Origin is Established -> seal` rule** so a navigation `record`s like any other action: the property must then go red on the first undo that crosses one, with `Present.Route` holding the pre-navigation URL while `browserShows` holds the new one. And **separately, seal only the past edge** — the `History.Forward` assertion must then go red, which is what makes *"both edges"* a checked claim rather than a sentence. **Note what these falsifiers do not reach:** they delete the *rule*, not the *idiom*, so the other route to the same defect — an application-named navigation message, which never reaches the rule at all — has no falsifier here and is out of the claim by obligation 17 (B10). **And separately, feed a corpus in which a navigation never arrives with a non-empty `Future`** — `futureEdgeChecked` must go red, which is what turns *"both edges"* from a note into a checked claim (amendment 4, 🔴-3(c)) |
 | A10 | the same first mutation. A10 is the acceptance-layer twin of the property's first falsifier: delete the seal rule and `History.Backward` returns `Available` where A10 demands `BlockedByWorld(back)`. It is not a second line of defence and is not claimed as one — it exists for recognition (🟡 7) |
 | INV-3 | make `DocumentComparer` compare raw HTML, or make `StepBack` carry the popped step's edge forward instead of pushing `Crossable` |
 | INV-4 | return `Ok([Undo])` instead of `Ok([])` when `Backward(h)` is `Nothing` |
 | INV-5 | make `record` **clear** `Future` instead of superseding it — the property must then fail with `Nothing` where it expected `BlockedBySupersedingAction` (plan step 8(k)); and separately, revert `Decide`'s `Err` branch to `Err(e)` — the property must fail with `BlockedByWorld` (plan step 8(j)) |
-| INV-6 | make `Available` carry the crossable count instead of `Depth`, or report the cause of the message that *created* the step instead of the one that sealed it |
+| INV-6 | make `Available` carry the crossable count instead of `Depth`, or report the cause of the message that *created* the step instead of the one that sealed it. **And separately, restrict `Gen.Corpus` so one (case × direction) combination is never produced** — the coverage assertion amendment 4 added must go red. That is the one falsifier in this table that is also the Lock's *stated closure mechanism*, so until it has been observed the closure is a claim rather than a fact |
 | INV-7 | **remove the anchor** — report `Subscriptions(h.Present)` during a hold. Assertions (1), (2) and (4) must all break |
 
 **How this spec first fails, honestly.** `WithHistory`, `History<TModel>` and
@@ -1317,6 +1555,19 @@ point the spec first compiles — the end of plan step 6 — every test in it mu
 the right reason before any of them is made green**, and each falsifier above must be observed
 before its step is closed. I have no `Bash` and cannot run any of this; that confirmation is the
 owner's first implementation act, not mine.
+
+**And that sentence was not enough, which is amendment 4's lesson.** PR 0's review compiled this
+file's assertion *shapes* against the pinned **TUnit 1.19.57** in a scratch project — the one
+check neither the missing types nor the missing fixtures prevented — and found two defects that
+"observe it red at the end of step 6" would not have caught, because one of them never compiles at
+all and the other passes for the wrong reason forever. `reviewer-blind` put it exactly right:
+*"A file that has never been compiled is being frozen."* The two the reviewer proved are fixed
+above. **The honest residual: the rest of this file's assertion shapes are still unverified by me**
+— I have no `Bash`, and the verification that exists is the reviewer's six probes, not a build of
+this file. Where amendment 4 had a choice of shape it took the one the reviewer had already
+executed (`IsEqualTo` on a collection; a plain boolean subject) rather than a shape that merely
+looks reasonable. `csharp-dev`'s first act at step 6 is still to compile it and observe every test
+red for the right reason — but that is now the *second* line of defence, not the first.
 
 ---
 
@@ -1445,11 +1696,35 @@ Implementation must make it pass without modifying it.
   `UrlChanged` before the first record, or that reuses one `Url`, leaves INV-2's second property
   green and empty.
 
+**The stated closure was incomplete, and here is the rest of it (⚠️-5, amendment 4).** PR 0's
+review enumerated the obligations this locked file places on the *unlocked* support files, and
+found that the generator contract plus the per-property falsifiers covered exactly one of them
+(`DocumentComparer.EqualUpToHandlerIds`). The remainder are listed now, so that PR 3's author
+inherits a list rather than a surprise, and so that `reviewer-blind` has something to check them
+against:
+
+| # | Obligation on the support files | Why the locked file cannot supply it |
+|---|---|---|
+| **(a)** | A **`global using static`** must bind the ~13 unqualified fixture calls — `Start`, `StartBare`, `NoFeedback`, `Both`, `Drive`, `Movements`, `SingleReconciliation`, `Keys`, `CursorMoved`, `ReachableByOrdinaryActionsAlone`, `LoadReturns`, `RecordingInterpreter`, `FirstCommandFails`. | `UndoRedoSpec` is `sealed`, not `partial`, and has no base type, so no other file can inject members into it. Nothing else can work. |
+| **(b)** | `EditorLog` **should** be `AsyncLocal`-flowed. | No longer load-bearing: amendment 4 put `[NotInParallel("history-editor-log")]` on the class. Kept as a preference, not a requirement. |
+| **(c)** | `EditorLog.Timeline` must return a **snapshot**, not the backing list. | A6 captures `wrappedOrder`, calls `Clear()`, then captures `bareOrder`. A live reference makes both variables alias the bare timeline and the wrapped assertion vacuous. |
+| **(d)** | `Start<…>()` must **reset the static log**. | A1 asserts `EditorLog.CommandsInterpreted` is empty with no `Clear()` anywhere in the method — the only test in the file that relies on this. |
+| **(e)** | `Gen.Corpus` must actually reach **all five availability cases in both directions**, and `Gen.UserActionsAndNavigation` must reach a navigation with a non-empty `Future`. | Was unstated and unchecked. **Amendment 4 makes both checkable from inside the lock** — INV-6's coverage assertion and INV-2's two branch flags fail loudly rather than passing quietly. |
+| **(f)** | `EditorProgram.Transition` must return `Commands.None` for `MovementRefused`. | Stated at INV-5's loop. `pass` calls `sealTops(SealedByEffect(…))` on a non-silent command, which would stale that loop's once-taken `Both(…)` snapshot. |
+
+**On byte-faithfulness (⚠️-8).** The lock is on the **assertions and their claims**, not on
+whitespace. `.claude/hooks/dotnet-format-on-save.sh` fires on every `.cs` write with no exclusion
+for a file the process declares immutable, and `.editorconfig`'s
+`csharp_preserve_single_line_statements = false` will split this file's `if (…) continue;` lines
+the moment it re-enters the compile set. That is **not** a `// SPEC CONFLICT:` and must not be
+handed back as one. Any change that alters what is asserted, or what a comment claims, is. (The
+hook's lack of an exclusion is `devops`', not this file's.)
+
 Stated here explicitly so the implementing specialist cannot claim they did not know.
 
 ---
 
-## 🛑 Approval Request — **answered 2026-09-07**
+## 🛑 Approval Request — answered 2026-09-07, **re-opened by amendment 4 (see the end of this file)**
 
 > **This test is the executable specification for undo/redo. If this test passes, do you consider
 > the feature done? Anything missing? Anything wrong?**
@@ -1518,8 +1793,9 @@ new decision — both are consequences of the navigation amendment that had not 
   property: its refusal assertions run only on the step whose message **is** the navigation, so a
   later action overwriting the cause never falls under them, and the property is unaffected.
 
-**Nothing else changed.** The four questions below are kept as the record of what was asked and how
-it was answered.
+**Nothing else changed in amendments 1–3.** The four questions below are kept as the record of what
+was asked and how it was answered. **Amendment 4 is recorded separately, at the end of this file,
+because it is a re-opening rather than a pre-lock amendment and it carries its own 🛑.**
 
 Four things worth looking at before you answer:
 
@@ -1553,3 +1829,132 @@ Four things worth looking at before you answer:
    generator contract and a falsifier per property rather than by locking more files, because
    locking generators would freeze a debugging tool. Tell me if you would rather they were locked
    too.
+
+   **Partly answered by amendment 4** — the closure was incomplete, and ⚠️-5's six obligations are
+   now enumerated in § *The Lock*. The support files are still not locked; the difference is that
+   three of the six are now *checkable from inside* the lock rather than merely hoped for.
+
+---
+
+## 🔧 Amendment 4 — the PR-0 review, 2026-09-07
+
+**Why this is a re-opening and not a fourth pre-lock amendment.** Amendments 1–3 were the user
+finding gaps while still holding the approver's pen, before the approval commit. This one comes
+from **outside**: `csharp-dev` transcribed the approved text into
+`Picea.Abies.Tests/History/UndoRedoSpec.cs`, `reviewer-blind` read the changeset with the narrative
+out of reach, and `reviewer-reconcile` returned **🔴 Changes Requested**.
+
+**The evidence, and why it settles who acts.** The reviewer did the one check that neither the
+missing feature types nor the missing fixtures prevented: it compiled and executed this file's
+assertion **shapes** against the pinned **TUnit 1.19.57** in a scratch project — six probes — and
+then extracted every `csharp` fence from *this document* (`06-spec.md`), reassembled them and diffed
+the reassembly against the committed `.cs`. The finding is the whole verdict: **both compile-verified
+defects originate in the approved text of this file, verbatim, not in the transcription.**
+`.Or.That(…)` was `06-spec.md:1186`; A6's two `IsEquivalentTo` calls were `:505` and `:509`; the
+third was `:575`. `csharp-dev` may not correct approved text — that is *"editing it to match what
+the code does"*, a 🔴 by the lock's own terms — so the route is a `spec-author` amendment with **user
+re-approval**, and **PR 0 is the approval commit**, which makes this the last cheap moment.
+
+Every change below stays **inside the approved-text fences**, so `csharp-dev` re-transcribes the
+fences verbatim rather than hand-patching the `.cs`.
+
+### The reviewer's list, and what each one did to this file
+
+| id | Finding | Disposition here |
+|---|---|---|
+| **🔴-1** | `.Or.That(…)` — `error CS1061: 'OrContinuation<int>' does not contain a definition for 'That'`. TUnit's `.Or` continues on the **same** subject, so a disjunction across two different values is a wrong *shape*, not a wrong overload; it would still not compile after step 6 delivered every missing type. | **Taken.** INV-6's `Available` case computes one boolean — `runtime.Model.Present != h.Present \|\| CursorMoved(h, runtime.Model)` — and asserts it once. The claim is unchanged. The **file-header sentence** the reviewer also faults is `csharp-dev`'s, not approved text (`grep -c "Locked spec for undo/redo" 06-spec.md` → `0`); it is theirs to correct either way. |
+| **🔴-2** | A6's two `IsEquivalentTo` calls are order-insensitive and the two expected sequences are permutations of the same four strings, so the ordering test could not fail for the reason it exists. `CollectionOrdering` does not exist on 1.19.57; `IsEqualTo` on a collection **is** order-sensitive (both executed). | **Taken, and the third instance with them** — A7's second test asserts `["start:…","stop:…"]`, and *"reconcile twice"* is an ordering claim that *stop-then-start* satisfied. **Deliberately left as `IsEquivalentTo`:** INV-7's assertion (1) (a reconciliation **set**) and assertion (4) (a one-element **distinct** set). The reviewer explicitly does not flag those; they are order-insensitive *by intent*, and this note exists so nobody "fixes" them later. |
+| **🔴-3(a)** | INV-6's comment claims a coverage assertion at the end of the loop. There is none. **This is the Lock's own named closure for this property.** | **Taken**, and it cost more than a line: writing the assertion showed that `BlockedByWorld` was **unreachable in either direction** under `NoFeedback`, so the ten-combination claim could never have been met by any seed. INV-6 therefore now drives `LoadReturns("server")` through `Drive`. The **alphabet is unchanged** — S27's partition table is untouched; only the interpreter moved. |
+| **🔴-3(b)** | *"INV-2 runs twice, over `Editor` and `ProjectedEditor`."* It ran once; `ProjectedEditor` appeared nowhere in the invariant layer. **The reviewer found this; `08` did not.** | **Taken by making the code true to the claim, not by weakening the claim.** The claim is load-bearing: under the whole-model lens the invariant holds *by construction*, so testing only that lens tests the half that cannot fail. The property now walks the script under both lenses against one reachable set, and the falsifier table gains a projection-specific mutation. |
+| **🔴-3(c)** | INV-2's second property claims *"not done until both branches have been observed"*. Neither branch was counted. | **Taken.** Two flags, two assertions after the loop. Without them the property's own second falsifier — *seal only the past edge* — could not turn it red on a corpus that never populated `Future`. |
+| **🔴-3**, closing ¶ | Unguarded `continue` guards let INV-1, INV-3, INV-4, INV-5 and INV-6 all pass having asserted nothing. | **Taken.** A `reached` counter and a floor assertion on INV-1, INV-3, INV-4 and INV-5; INV-6 and INV-2's second property get the stronger coverage assertions instead. |
+| **🔴-4** | The route is an amendment with re-approval, and committing PR 0 as-is forecloses it. | **This section, and the 🛑 below.** |
+| **⚠️-5** | The lock places at least six obligations on the unlocked support files; the stated closure covered one. | **Taken** — enumerated as a table in § *The Lock*. (b) is downgraded by ⚠️-6's fix; (e) becomes *checkable* rather than merely stated, because 🔴-3(a) and (c) now fail loudly. |
+| **⚠️-5(f)** | INV-5 snapshots `Both(…)` once and dispatches inside the loop. The reviewer **narrowed** `08`'s P7: under plan rule S7 (`04-realist-plan.md:1120`) a refusal takes the `pass` row and records no step — but `pass` still calls `sealTops(SealedByEffect(…))` when the command is not silent. | **Taken as a stated fixture obligation**, in both places it can be read: at INV-5's loop, and on the fixture `Transition`'s `_ =>` fall-through, which is where it is actually satisfied. `EditorProgram.Transition` must return `Commands.None` for `MovementRefused`. |
+| **⚠️-6** | No `[NotInParallel]`, against six sibling classes in the same project and 25 tests on one static log. The attribute site is inside the lock. | **Taken**, and this is the clearest *"now or a hand-back"* item in the list. `[NotInParallel("history-editor-log")]`, matching the siblings' key convention. |
+| **⚠️-8** | The format-on-save hook has no exclusion for a file the process declares immutable, and already reformatted the approved text. | **Half taken.** The hook is `devops`'. What is this file's is the consequence: § *The Lock* now says plainly that the lock is on **assertions and claims**, not whitespace, so a reformatted `if (…) continue;` is **not** a `// SPEC CONFLICT:`. Without that sentence the first hand-back would have been about a line break. |
+
+**Not this file's, and left alone:** ⚠️-7 (the csproj wants `<None Include>` beside the
+`Compile Remove` — `csharp-dev`), ⚠️-9 (the design pass is readable outside `.squad/design/` —
+`devops`), ⚠️-11 (the PR body's precondition), ⚠️-12 (`.squad/log/` churn on `git commit -a`), and
+💡 `SpecAttribute` (the reviewer probed `[Property("Spec", …)]` at class level and it compiles, so
+the new public type is avoidable — but the approval trail is intact and it is not mine to reverse).
+
+**One consequence I am flagging rather than burying: ⚠️-10 just fired.** INV-3 exists in three
+copies, and `Picea.Abies.Presentation/content/demo/stops/5.5-property.cs` is line 36 of
+`content/demo/SHA256SUMS`. Amendment 4 adds a counter and a floor assertion to INV-3, so that copy
+and its checksum now diverge in **content**, not only in the whitespace the reviewer already
+measured. The decision the reviewer asks for — which copy is canonical, and whether the demo copy
+should be a generated excerpt — is now due rather than merely advisable.
+
+### Offered, and taken — `[Timeout(30_000)]`
+
+The user directed it in. It sits on the **class**, beside `[NotInParallel]`, on the same argument:
+the attribute site is inside the lock, so it can only ever land before the approval commit.
+
+`csharp-dev` measured a proxy in the shape of `RuntimeIsolationAndSubscriptionFaultTests.cs` — a
+real `Runtime` per seed, 24–32 dispatches, a subscription toggling every third dispatch: **one seed
+0.22 ms, 200 seeds 41.8 ms**, on an unshared Ryzen 9 9950X running .NET 10.0.110. That is a floor,
+not CI. The derivation is **42 ms × 8 properties × 10 = 3,360 ms**, where the ×10 covers CI
+slowdown plus what the proxy does not model — the real properties' per-step `Because` interpolation,
+the nested `Both(h)` loops, generator construction, and INV-7's extra named seeds. Rounded to
+**30 seconds**, roughly 9× the derived figure, because the number is inside the lock and the error
+is asymmetric: over-shooting is free (a green suite never reaches a timeout, and the value can only
+be *raised* by another re-approval), while under-shooting buys a false red on a loaded runner and a
+hand-back on this pass's most load-bearing file. If it ever fires, that is a hang, not a slow
+machine. The measurement and the derivation are recorded beside the attribute in the approved text,
+so the next reader can check the arithmetic instead of guessing at the intent.
+
+### Offered, not taken — say the word and either lands before the commit
+
+- **`[Arguments]` / `[MethodDataSource]` instead of the hand-rolled `foreach (var seed in …)`.**
+  One reported test per seed, no first-failure abort, per-seed isolation. This restructures all
+  eight properties and changes what the corpus *is*, so it is a design change rather than a defect
+  fix — I would want it as its own decision, not folded into an amendment about broken shapes.
+- **A named constant for `TimeSpan.FromSeconds(5)`** (four sites) — needs a fixture member, which
+  puts a locked file's behaviour behind an unlocked constant. I lean against; it is your call.
+
+---
+
+## 🛑 Re-approval Request — **answered 2026-09-07**
+
+> **This test is the executable specification for undo/redo, and it has changed since you approved
+> it. The changes are corrections, not new behaviour: two assertion shapes that TUnit 1.19.57
+> proved could never do their job, three comments that claimed coverage the code did not implement,
+> and a floor under five properties that could otherwise pass having asserted nothing. One change
+> goes further than a correction — INV-6 now runs against a feedback interpreter, because writing
+> its missing coverage assertion revealed that one of its five cases was unreachable.**
+>
+> **Do you re-approve this file as amended? Is INV-6's interpreter change what you want, or would
+> you rather the coverage assertion claimed only the combinations the old fixture could reach? And
+> does `[Timeout]` go in before the commit, given it cannot go in afterwards?**
+
+**Re-approved, with three decisions.**
+
+**Decision 1 — re-approved as amended, and the lock takes effect at the approval commit.** The file
+is immutable **in its assertions and its claims** from that commit; whitespace normalised by the
+repository's formatter is not a `// SPEC CONFLICT:` (§ *The Lock*). Everything else is: a change to
+what is asserted, or to what a comment claims, goes back through `spec-author` and this section.
+
+**Decision 2 — INV-6 keeps the feedback interpreter.** The user's reason, and it is the more
+important half of the decision: **narrowing the coverage assertion to the combinations the old
+fixture could reach would be adjusting the spec to the code** — the one move the lock exists to
+prevent, arriving by the back door as a "smaller" change. `BlockedByWorld` was always part of
+INV-6's claim; the fixture could not reach it; the fixture moved. **Alphabet and S27's partition are
+untouched** — `Gen.UserActions` still, with only the interpreter changed — so no other property's
+configuration shifts and the partition table stands as written.
+
+**Decision 3 — `[Timeout]` goes in before the commit, generous, sized from a measured seed run.**
+`[Timeout(30_000)]` on the class, with `csharp-dev`'s measurement and the ×8 × ×10 derivation
+recorded beside it in the approved text. Recorded above under *Offered, and taken*.
+
+**Also settled, outside this file.** The demo bundle stays **canonical at `07607bf`**; a re-export
+against PR 0's merge commit comes later as a new README row. That is the answer to ⚠️-10's *"which
+copy is canonical"* question — it does not change anything here, and it means the INV-3 divergence
+this amendment introduces is a scheduled re-export rather than drift.
+
+**Nothing is committed by this file.** `Picea.Abies.Tests/History/UndoRedoSpec.cs` is `csharp-dev`'s
+to re-transcribe from the fences above, and the approval commit is theirs to make.
+
+Nothing is committed. The amendment is in this artifact only; `UndoRedoSpec.cs` is
+`csharp-dev`'s to re-transcribe from the fences above once you have answered.
