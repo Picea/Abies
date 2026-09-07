@@ -541,6 +541,239 @@ row, which already covers it.
 
 ---
 
+## Residuals and bounds, security-expert (2026-09-06, `undo-redo` pass gate 1)
+
+### R-21 — `docs/adr/**` is reachable by `dreamer-first-principles` even though the squad-flow specification lists ADRs among the paths Track A may not read
+- type: residual
+- source: architect finding, `.claude/agent-memory/architect/adrs-are-inside-track-a-reading.md`,
+  surfaced at gate 1 for the `undo-redo` pass currently open
+  (`.squad/design/undo-redo/00-warden.md` § "Findings on Adjacent Artifacts" →
+  "Production ADR: `docs/adr/ADR-008-immutable-state.md:85`"); registered here
+  by `security-expert` after direct verification against
+  `enforce-track-blindness.sh`'s `DENY` table.
+- files: `.claude/hooks/enforce-track-blindness.sh` (`DENY["dreamer-first-principles"]`,
+  lines 278–290), `docs/adr/ADR-008-immutable-state.md:85`
+- owner: devops
+- level consequence: verified by direct code read —
+  `enforce-track-blindness.sh:278–290` denies `dreamer-first-principles` the
+  decision register, the archived decision register, the tech-stack record,
+  the pattern lexicon, agent memories, worktrees, decision drops,
+  `00-knowledge.md`, `02-track-b.md`, and both `00-warden-scan.md` and
+  `00-warden.md`. It has no entry for `docs/adr/**`, so ADRs are read as
+  ordinary codebase, not as the recorded-conclusions register they carry
+  (their Consequences sections). Concretely,
+  `docs/adr/ADR-008-immutable-state.md:85` states "Undo/redo: Trivial to
+  implement by storing state snapshots," which directly pre-answers the
+  `undo-redo` pass's central open question ("At what level undo operates —
+  what the history consists of, and what the unit of a single undoable step
+  is," `00-scope.md` per the warden report). At gate 1 for this pass the user
+  chose to leave both the ADR and the hook as they are, so the experiment is
+  not disturbed mid-run. Net: Track A's blindness to ADRs is
+  instruction-level for the `undo-redo` pass — nothing in
+  `enforce-track-blindness.sh` refuses the read; only the pass's own gate-1
+  record and `dreamer-first-principles`'s charter ask it to derive
+  independently rather than cite the line — and would become invariant-level
+  only once the hook's `DENY` table actually covers `docs/adr/**` (or an
+  equivalent per-pass override analogous to `.lexicon-override` is built for
+  the cases, per `adrs-are-inside-track-a-reading.md`, where an ADR is
+  genuinely relevant reading and should stay open).
+- closure route: a `DENY` entry for `docs/adr/**` (or a scoped equivalent) in
+  `enforce-track-blindness.sh`, plus corresponding assertions in
+  `.claude/hooks/tests/blindness.sh`, through its own review pair. Deferred
+  deliberately until the `undo-redo` pass closes, so amending the hook
+  mid-pass does not retroactively alter what Track A already had available to
+  read in this run.
+- expires: 2026-10-04
+- status: open
+
+---
+
+### Correction to R-21 — `source:` citation repointed to surviving evidence
+
+Appended text only; does **not** edit R-21's `source:` field in place, per
+this file's own append-only rule (R-21 is not the `## Extensions` case below —
+this is a citation correction on an already-registered, still-`open` entry,
+the same shape as the "Round 2 closures" section above, which
+`security-expert` also authored directly rather than routing through the
+user, because it corrects a pointer rather than extends an `expires:` or
+otherwise widens what the entry licenses).
+
+R-21's `source:` field cites `` `.squad/design/undo-redo/00-warden.md` §
+"Findings on Adjacent Artifacts" `` — a heading that exists in no committed
+version of that file. Per `09-review-verdict.md` (PR #359 review round 1,
+🔴-2): the committed `00-warden.md` is titled "Scope Warden — undo-redo
+(re-run)", verdict CLEAN, sections "Nothing found in" and the gate question
+only, closing "0 findings"; `git log --all -- .squad/design/undo-redo/00-warden.md`
+returns a single commit, so no earlier version survives to recover. This is
+the documented happy path, not data loss: `CLAUDE.md` § 3 rule 2 has the
+warden re-run and overwrite the same path when the user sends a scope back,
+and that is what happened here.
+
+The entry's *substance* is unaffected and independently verified — the
+citation is what fails to resolve, not the finding. Read R-21's `source:`
+together with this correction as pointing instead at:
+
+- the deleted draft scope, at the commit before `00-scope.md` was rewritten:
+  `git show f0cb682:.squad/design/undo-redo/00-scope-undo-redo.md` line 25 —
+  "It is **the starting point** for this work, not something to replace or
+  duplicate" — and line 74 — "The problem has **a well-known conventional
+  answer**…". Both are the leaked framings gate 1's re-run corrected; the
+  final `00-scope.md:64` inverts the first outright and drops the second
+  entirely.
+- `09-review-verdict.md` (PR #359 review round 1), § "08's P7, and what only
+  I could check", which independently re-derives both quotations from the
+  same commit and states "Gate 1 did what the entry says it did."
+- `enforce-track-blindness.sh:277-290` (`DENY["dreamer-first-principles"]`),
+  already cited under R-21's `level consequence:`, confirmed to have no
+  `docs/adr/**` entry — this half of R-21's citation was never in question.
+
+R-21 is otherwise unchanged by this correction: `status: open`,
+`expires: 2026-10-04`, owner `devops`, closure route unchanged.
+
+---
+
+## Residuals and bounds, security-expert (2026-09-07, PR #359 review round 1)
+
+Registered per `09-review-verdict.md` (PR #359 review round 1, 🔴 "Merge
+Criterion (b), repo-wide"), which names ⚠️-1, ⚠️-3, ⚠️-5 and ⚠️-6 as verified
+findings registered nowhere. All four are pre-existing defects in files
+outside this docs-only PR's own file-set (Conduit `ServiceDefaults` and two
+`.claude/hooks/*.sh` scripts owned by `devops`), so registration is the
+remedy, not a fix landed here. ⚠️-2, ⚠️-4's changelog half, ⚠️-7 and ⚠️-8 are
+not registered here: each names a direct edit to a specific file owned by an
+agent other than `security-expert` (`decisions.md`/agent-memory index lines,
+`flow-changelog.md`, this agent's own memory note, and the `critic`/`realist`
+memory notes respectively) and are fixable in place rather than requiring a
+residual.
+
+### R-22 — Decision-drop `created:` timestamps are author-asserted at a moment they cannot be reliably known, producing two impossible values and same-day `id` collisions
+- type: residual
+- source: PR #359 review round 1, ⚠️-1
+- files: `.claude/docs/decisions.md`, `.squad/decisions/archive/2026-09/`, `.claude/hooks/scribe-decision-merger.sh`
+- owner: devops
+- level consequence: five of the seven drops in this pass carry
+  unreadable-clock `created:` values (`critic` ×3 and `architect` ×2 hold no
+  `Bash` and cannot run `date -u`), two of them dated after the commit that
+  introduces them. The residual harm is `id` collision: two drops in this
+  commit already share `T000000Z`, and `decision-schema.md` requires `id`
+  globally unique, so a third same-slug drop on either day collides outright.
+  Root cause is broader than "Bash-less roles": `reviewer-reconcile`'s own
+  round-1 drop reproduced the defect while holding `Bash`, off by 1h50m,
+  because the schema asks every author for a value only reliably knowable at
+  merge time, and `scribe-decision-merger.sh` already computes that exact
+  value to name the archive file — it just does not stamp it back onto
+  `created:`.
+- expires: 2026-09-21
+- status: open
+
+#### Note appended to R-22 (2026-09-07, PR #359 review round 2, ⚠️-9)
+
+Appended text only; does not edit R-22's `level consequence:` in place, per
+this file's append-only rule (same shape as the "Correction to R-21" section
+above — a stale-wording correction on an already-registered, still-`open`
+entry, not an extension of its `expires:` or scope). As of commit `730c7da`,
+R-22's `level consequence:` above is accurate in every clause except one: it
+states "two of them dated after the commit that introduces them," and that
+impossibility was corrected in the same commit that registered R-22
+(⚠️-1(a)'s two `created:` fixes landed alongside R-22 itself). At `730c7da`,
+three drops carry unreadable-clock `created:` values —
+`critic-20260906T184500Z`, `critic-20260906T000000Z-undo-redo-pass-2`,
+`critic-20260907T000000Z-undo-redo-pass3` — and none is dated after its
+commit. The entry stays `open`: the process defect it registers (authors
+without `Bash` asserting a field that `scribe-decision-merger.sh` already
+computes) is unchanged and unfixed by this correction.
+
+### R-23 — Six declared `ActivitySource`s are collected nowhere; the one framework registration in Conduit's `ServiceDefaults` matches none of them
+- type: residual
+- source: PR #359 review round 1, ⚠️-3
+- files: `Picea.Abies.Conduit.ServiceDefaults/Extensions.cs:32`,
+  `Picea.Abies/Runtime.cs:88`, `Picea.Abies/Subscriptions/Manager.cs:32`,
+  `Picea.Abies.Server/Page.cs:57`, `Picea.Abies.Server/Session.cs:111`,
+  `Picea.Abies.Server.Kestrel/WebSocketTransport.cs:54`,
+  `Picea.Abies.Server.Kestrel/Endpoints.cs:44`
+- owner: devops
+- level consequence: `AddSource` matches exact names only (wildcards require
+  an explicit `*`), and no `ActivitySource` in this repository is named
+  exactly `"Picea.Abies"` — so the framework's runtime, subscription,
+  server-page, session and WebSocket-transport traces are dropped on the
+  floor in Conduit today. Live violation of the team's own OTEL
+  `ActivitySource`-registration principle and of the Reviewer's
+  observability dimension. Pre-existing and out of scope for the docs-only
+  PR that surfaced it; probable one-line remedy
+  (`.AddSource("Picea.Abies*")`) belongs to its own PR and review pair.
+- expires: 2026-09-21
+- status: open
+
+### R-24 — `pass-cost.md`'s header states units the underlying data does not have
+- type: residual
+- source: PR #359 review round 1, ⚠️-5
+- files: `.squad/log/pass-cost.md`, `.claude/hooks/session-logger.sh`
+- owner: devops
+- level consequence: the header states "wall-clock per design phase, keyed
+  by slug"; the column is cumulative-since-session-start and monotonic, and
+  does not reset across slugs — a later slug's rows continue an earlier
+  slug's running total. The header itself states this file is the
+  denominator for whether the dual-Dreamer-track design costs its keep, so a
+  reader who trusts the header computes the wrong answer. The correction
+  (take deltas between consecutive rows) exists only in one agent's private
+  memory note, not in the file itself.
+- expires: 2026-09-21
+- status: open
+
+### R-25 — Session log signal-to-noise: the log records the orchestrator's intentions, not the agents' results
+- type: residual
+- source: PR #359 review round 1, ⚠️-6
+- files: `.squad/log/2026-09-07-session.md`, `.claude/hooks/session-logger.sh`
+- owner: devops
+- level consequence: established by `reviewer-blind`'s independent pass at
+  roughly a 25:214 signal-to-noise ratio; confirmed here as the second
+  consecutive day with the same shape, which makes it a `session-logger.sh`
+  defect rather than a one-off. `CLAUDE.md` directs the Lead to read these
+  files when continuing prior work, so the defect degrades exactly the
+  cross-session handoff mechanism it exists to support.
+- expires: 2026-09-21
+- status: open
+
+### R-26 — Round-1 advisory residue: scope-warden re-run destroys gate-1's only evidence (framework question), and two memory notes route agents to superseded or stale guidance
+- type: residual
+- source: PR #359 review round 2, ⚠️-4 (framework half), ⚠️-7, ⚠️-8
+- files: `.claude/agents/scope-warden.md`, `CLAUDE.md` § 3 rule 2,
+  `.claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md`,
+  `.claude/agent-memory/critic/picea-xml-is-the-kernel-contract.md`,
+  `.claude/agent-memory/realist/picea-package-xml-answers-kernel-questions.md`
+- owner: devops (framework half, item 1 below); `critic` and `realist` each
+  own their own memory-note fix for item 3 below
+- level consequence: Merge Criterion (b) requires every finding that is not a
+  regression of a stated property to be registered — advisory (⚠️) findings
+  included — not only those a blocker's own enumeration names; round 1's
+  blocker naming only ⚠️-1, ⚠️-3, ⚠️-5 and ⚠️-6 was a defensible reading of
+  that blocker's own text and an incorrect reading of the criterion itself,
+  which this entry now satisfies for the three items the round-1 enumeration
+  missed. (1) **Framework, open.** `CLAUDE.md` § 3 rule 2 has the
+  `scope-warden` re-run and overwrite `00-warden.md` at the same path when the
+  user sends a scope back; in this pass that overwrite destroyed the only
+  evidence for gate 1's effectiveness claim — both R-21's original citation
+  and `flow-changelog.md`'s two-leaks claim pointed at a report that no
+  longer existed (recovered only because the deleted draft scope survived at
+  a prior commit). Open question: should a re-run append to `00-warden.md`
+  or write a numbered file (`00-warden-2.md`) instead of overwriting. (2)
+  ⚠️-7, **closed in this commit** — `security-expert`'s own memory note
+  recommended `ISensitiveCause`, the name gate-4 decision 5 explicitly
+  rejected in favour of `SensitiveCause`; corrected directly in
+  `state-retention-features-need-sensitivity-marker.md` as part of the same
+  commit that registers this entry, so this sub-item does not carry forward
+  as open. (3) ⚠️-8, open — `critic/picea-xml-is-the-kernel-contract.md` and
+  `realist/picea-package-xml-answers-kernel-questions.md` still send future
+  agents to `Picea.xml` with no mention that
+  `picea/1.0.27-rc-0002/…/Picea.xml` (477 lines, `AutomatonRuntime` mentioned
+  once, zero documented members) is a version trap that defeats the
+  instruction; neither owning agent was dispatched in this pass to fix its
+  own note.
+- expires: 2026-09-21
+- status: open
+
+---
+
 ## Extensions
 
 Extensions are appended here, never edited in place, per the append-only

@@ -242,3 +242,89 @@ separated round 3's ⚠️ from this ✅.
   `expires:`; this is what changed since round 3 · (c) **satisfied** — 0
   regressions introduced · **the round-cap split is complete; the changeset is
   clear to merge**
+
+---
+
+## Commit-boundary confirmation — `9b71b18`
+
+**Appended 2026-09-06, not a re-review.** The tree passed above was a *working
+tree* on top of `6e28e740`; the merge gate keys on a commit. This section
+confirms only that the committed tree is the tree that was passed. The eleven
+dimensions were not re-run and nothing here reopens them.
+
+**Confirmed HEAD:** `9b71b1813b11a412702ac14c0e7f5f2cedd67b29`
+(`fix(squad): Close the review findings on the squad-flow v2.1 delta`)
+**Verdict:** ✅ Approved — carried forward unchanged.
+
+### The three claims, verified
+
+1. **`git diff 6e28e74..9b71b18 --stat` matches what was reviewed.** 69 files,
+   +5336/−730. `git rev-parse 9b71b18^` is exactly `6e28e740` — a single commit,
+   no intervening history. The file set is the reviewed control delta (19 hooks,
+   the two new `lib/` modules now tracked rather than untracked, the charters,
+   `CLAUDE.md`, `decisions.md`, `principles-enforcement.md`, `refutations.md`,
+   `threat-model.md`, `claude-hooks-tests.yml`, `.gitignore`) plus exactly the
+   four hook-written categories the commit was expected to carry: the review
+   artifacts (`08`/`09`), the session log, the merged decision drops, and the
+   `reviewer-reconcile` notebook. **No `.cs`, `.js`, `.mjs`, `.csproj`,
+   `appsettings.*` or Dockerfile appears in the diff** — the changeset is still
+   squad-framework-only, as reviewed.
+
+   The stat is larger than the `55 files, +3330/−730` recorded at the top of this
+   document because that figure was `git diff HEAD` — working-tree-only, and so
+   blind to the two then-untracked `lib/` modules and to the artifacts the hooks
+   wrote during rounds 2–4. The delta between the two numbers is accounted for
+   entirely by those, not by new work.
+
+2. **`git status --porcelain` shows nothing unexpected.** One line:
+   `M .squad/log/2026-09-06-session.md`. The diff is four appended
+   `session-logger.sh` `SubagentStop` lines timestamped `13:46:41Z`–`13:48:01Z`,
+   i.e. after the commit at `13:46:13Z`. Hook-written state, append-only, no
+   content change. `--untracked-files=all` adds nothing: `.claude/worktrees/` is
+   ignored at `.gitignore:496` and has **0 tracked files**, and
+   `.squad/.last-review-verdict` is ignored at `.gitignore:473` — so the cache
+   token was correctly kept out of the commit.
+
+3. **`bash .claude/hooks/tests/run.sh` → `823 passed, 0 failed`**, executed by me
+   at this HEAD. Unchanged from rounds 3 and 4, which is the expected result for
+   a commit that changed no file content.
+
+### Scope check: did anything enter the tree after the verdict was written?
+
+`09-review-verdict.md` was written at `15:44:32+02:00`. Six committed files carry
+a later mtime, and all six are hook-written state or my own notebook — **none is
+a hook script, charter, doc-under-review, or CI config**:
+
+| file | mtime | writer |
+|---|---|---|
+| `.squad/decisions/archive/2026-09/…round3-close.md` | 15:45:05 | `scribe-decision-merger.sh` (drop filed) |
+| `.claude/docs/decisions.md` | 15:45:14 | `scribe-decision-merger.sh` (drop merged) |
+| `.claude/agent-memory/reviewer-reconcile/verify-a-registration-pass-….md` | 15:45:20 | me (notebook) |
+| `.claude/agent-memory/reviewer-reconcile/MEMORY.md` | 15:45:24 | me (notebook) |
+| `.squad/log/pass-cost.md` | 15:45:42 | `session-logger.sh` |
+| `.squad/log/2026-09-06-session.md` | 15:46:59 | `session-logger.sh` |
+
+`.claude/docs/decisions.md` is the only governed document in that list, so it was
+checked rather than assumed: its last 64 lines are **byte-identical** to the body
+of `…round3-close.md` (`diff` clean modulo one leading/trailing blank line). The
+post-verdict change to it is the mechanical merge of a drop I authored myself —
+not new content, and not a hand edit.
+
+### Claims I could not verify
+
+The reviewed working tree was not snapshotted and no longer exists, so
+"the committed tree is byte-for-byte the reviewed tree" is **inferred**, not
+diffed: from the single-parent commit, from the mtime audit above finding no
+post-verdict edit to any governed file, and from the suite reproducing 823/0.
+That inference would miss an edit made *before* `15:44:32` that I did not read —
+the same exposure every review carries, neither widened nor narrowed by the
+commit boundary.
+
+### Carried forward unchanged
+
+The round-4 nitpicks stand and none blocks: R-20's self-stale `grep -n worktree`
+evidence command; `reviewer-blind.md` citing its residual by file rather than by
+`R-19`; the three carried from round 3. One is now checkable and still open —
+**both registered worktrees remain on disk** under the (ignored, untracked)
+`.claude/worktrees/`; `git worktree remove` when the pass ends. 💡, not a merge
+condition.
