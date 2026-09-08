@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788873710171,
+  "lastUpdate": 1788873712281,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -12380,6 +12380,192 @@ window.BENCHMARK_DATA = {
             "value": 26024,
             "unit": "bytes",
             "extra": "Gen0: 101.0000, Gen1: 8.0000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24",
+          "message": "feat(history): Add the undo-redo history types (#363)\n\n* docs(design): Record the confirmation pass on PR #362\n\nThe reviewer's commit-boundary confirmation for the follow-ups PR, its\nmerged PASS drop, its notebook edit, and the hook-written rows.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): UX room answers for the undo-redo chrome\n\nStep 12 of the plan: thirteen questions answered, two of them\noverriding sentences the plan states: a post-navigation refusal must\nnot tell a user who pressed Back that the page changed on them, and a\nraw message type name is never default end-user text. Adjacent visible\nrefusal reasons and a held-movement indicator added to the chrome\ncontract.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Fold the UX room answers into the undo-redo plan\n\nSteps 5, 10 and 13 carry the settled refusal wording: one template,\nhumanized reasons, the raw cause never default end-user text, the\ndirection-specific navigation pair, no proactive signal at the seal,\nadjacent visible refusal text, and a held-movement indicator. Step 12\nanswered; the narrative sites that quoted an identifier as copy are\nqualified.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Step 6 namespace decision, the anchor identity test, and PR 1's review record\n\nStep 6 now carries the namespace-shadowing decision the implementer\nmust make before removing the compile exclusion, with the three options\nand their cost, and the bound that the format check only runs on files\na PR touches. Step 8 gains the anchor identity regression test and step\n16 the Trust Boundary 7 provenance clause and open risk, both from the\nsecurity room's answer on Movement.Held carrying object. PR 1's blind\nreading and round-1 verdict, the merged drop, and notebook entries\nincluded.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* feat(history): Add the undo-redo history types\n\nPR 1 of the undo-redo plan, steps 1 and 2. HistoryStack<T>: an\ninternal array copy-on-write persistent stack with structural equality,\nworst-case O(Depth) per operation, not amortised O(1). History<TModel>:\na public record with internal construction and internal init on\nPresent and Movement so no caller outside the assembly can desynchronise\nit from its stacks; Step<TModel>, EdgeState (Crossable, SealedByEffect,\nSealedByWorld, SupersededByNewAction), Movement (Settled, Held with an\nobject anchor forced by the locked spec's non-generic assertion, internal\nconstruction), and Origin. Both sum types are closed by an internal\nabstract member so no external assembly can add a case. Twenty-nine\ntests, including reflection tests on the seal and structural equality\nacross stacks. Nothing consumes these types yet; the locked spec stays\nexcluded from compilation until step 6.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n---------\n\nCo-authored-by: Claude Fable 5.1 <noreply@anthropic.com>",
+          "timestamp": "2026-09-08T15:08:47+02:00",
+          "tree_id": "9e3629c07b2211cf5f47a009aa67365a41edfb7e",
+          "url": "https://github.com/Picea/Abies/commit/dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24"
+        },
+        "date": 1788873711713,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Diffing/SmallDomDiff",
+            "value": 256,
+            "unit": "bytes",
+            "extra": "Gen0: 32.0000"
+          },
+          {
+            "name": "Diffing/MediumDomDiff",
+            "value": 784,
+            "unit": "bytes",
+            "extra": "Gen0: 12.0000"
+          },
+          {
+            "name": "Diffing/LargeDomDiff",
+            "value": 320,
+            "unit": "bytes",
+            "extra": "Gen0: 40.0000"
+          },
+          {
+            "name": "Diffing/AttributeOnlyDiff",
+            "value": 312,
+            "unit": "bytes",
+            "extra": "Gen0: 19.0000"
+          },
+          {
+            "name": "Diffing/TextOnlyDiff",
+            "value": 328,
+            "unit": "bytes",
+            "extra": "Gen0: 41.0000"
+          },
+          {
+            "name": "Diffing/NodeAdditionDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Diffing/NodeRemovalDiff",
+            "value": 368,
+            "unit": "bytes",
+            "extra": "Gen0: 46.0000"
+          },
+          {
+            "name": "Rendering/RenderSimpleElement",
+            "value": 360,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithHtmlEncoding",
+            "value": 1448,
+            "unit": "bytes",
+            "extra": "Gen0: 90.0000"
+          },
+          {
+            "name": "Rendering/RenderWithEventHandlers",
+            "value": 808,
+            "unit": "bytes",
+            "extra": "Gen0: 101.0000"
+          },
+          {
+            "name": "Rendering/RenderSmallPage",
+            "value": 1224,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000"
+          },
+          {
+            "name": "Rendering/RenderMediumPage",
+            "value": 10304,
+            "unit": "bytes",
+            "extra": "Gen0: 80.0000"
+          },
+          {
+            "name": "Rendering/RenderLargePage",
+            "value": 71280,
+            "unit": "bytes",
+            "extra": "Gen0: 69.0000"
+          },
+          {
+            "name": "Rendering/RenderDeeplyNested",
+            "value": 1264,
+            "unit": "bytes",
+            "extra": "Gen0: 79.0000"
+          },
+          {
+            "name": "Rendering/RenderWideTree",
+            "value": 9720,
+            "unit": "bytes",
+            "extra": "Gen0: 76.0000, Gen1: 2.0000"
+          },
+          {
+            "name": "Rendering/RenderComplexForm",
+            "value": 4816,
+            "unit": "bytes",
+            "extra": "Gen0: 75.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRows",
+            "value": 1154197,
+            "unit": "bytes",
+            "extra": "Gen0: 190.0000, Gen1: 190.0000, Gen2: 190.0000"
+          },
+          {
+            "name": "Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 1051851,
+            "unit": "bytes",
+            "extra": "Gen0: 149.0000, Gen1: 149.0000, Gen2: 149.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Message",
+            "value": 184,
+            "unit": "bytes",
+            "extra": "Gen0: 184.0000"
+          },
+          {
+            "name": "Handlers/CreateSingleHandler_Factory",
+            "value": 272,
+            "unit": "bytes",
+            "extra": "Gen0: 136.0000"
+          },
+          {
+            "name": "Handlers/Create10Handlers",
+            "value": 2320,
+            "unit": "bytes",
+            "extra": "Gen0: 145.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/Create50Handlers",
+            "value": 11504,
+            "unit": "bytes",
+            "extra": "Gen0: 180.0000, Gen1: 7.0000"
+          },
+          {
+            "name": "Handlers/Create100Handlers",
+            "value": 19224,
+            "unit": "bytes",
+            "extra": "Gen0: 150.0000, Gen1: 10.0000"
+          },
+          {
+            "name": "Handlers/CreateButtonWithHandler",
+            "value": 464,
+            "unit": "bytes",
+            "extra": "Gen0: 232.0000"
+          },
+          {
+            "name": "Handlers/CreateInputWithMultipleHandlers",
+            "value": 1240,
+            "unit": "bytes",
+            "extra": "Gen0: 155.0000"
+          },
+          {
+            "name": "Handlers/CreateFormWithHandlers",
+            "value": 2808,
+            "unit": "bytes",
+            "extra": "Gen0: 176.0000, Gen1: 1.0000"
+          },
+          {
+            "name": "Handlers/CreateArticleListWithHandlers",
+            "value": 26024,
+            "unit": "bytes",
+            "extra": "Gen0: 203.0000, Gen1: 16.0000"
           }
         ]
       }
