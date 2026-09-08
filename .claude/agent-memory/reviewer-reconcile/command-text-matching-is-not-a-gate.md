@@ -29,3 +29,19 @@ probes before accepting it. The fix is to parse the invocation (argv, honouring
 `-C`/`--git-dir`) rather than to add more substring cases. Related:
 [[a-disclaimer-does-not-fix-a-false-claim]] — a PR that names a defect class it
 also commits is a false claim, not a caveat.
+
+**It hit me a second time, on `enforce-review-verdict.sh` (2026-09-07,
+`undo-redo-pr0`).** I wrote my decision drop with a `cat > file <<'EOF'`
+heredoc whose *body* quoted the phrase `git commit -a` inside a finding about
+staging discipline. The hook fired and refused the whole Bash call with "🚫
+Committing code requires a PASS verdict for HEAD" — for a call that created one
+markdown file and ran no git command at all. So the false-positive half is not
+confined to the four commit hooks; the verdict gate shares it.
+
+**Practical consequence for my own outputs: write the decision drop and the
+verdict with the `Write` tool, not a Bash heredoc.** Both paths are on
+`enforce-reviewer-readonly.sh`'s allow list, so `Write` is legitimate, and it
+does not route the file's prose through a hook that reads it as a command. This
+also matters for what I can *say*: under the heredoc route I could not quote a
+git command inside a finding without tripping the gate, which is a silent
+pressure on the review's content.

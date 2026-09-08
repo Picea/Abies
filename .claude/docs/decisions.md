@@ -2474,3 +2474,1049 @@ checked against the binding clause, and the stop instruction for the closing
 pass are in `.squad/design/undo-redo-design-record/09-review-verdict.md`
 § *Re-review — round 2*.
 
+
+### 2026-09-07 — reviewer-reconcile-20260907T105656Z-pr359-confirm-undo-redo-design-record [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260907T105656Z-pr359-confirm-undo-redo-design-record
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-07T10:56:56Z
+commit: 756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8
+targets:
+  - path: .claude/enforcement/refutations.md
+    lines: "668-770"
+  - path: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+    lines: "28-33"
+  - path: .claude/docs/decisions.md
+    lines: "2393-2474"
+  - path: .squad/decisions/archive/2026-09/2026-09-07T10-41-14-review-pr359-round2.md
+  - path: .squad/design/undo-redo-design-record/09-review-verdict.md
+blockers: []
+high: []
+medium:
+  - file: .claude/enforcement/refutations.md
+    line: 737
+    reason: "R-26 bundles three sub-items carrying two statuses - items 1 and 3 open, item 2 (round-1 W-7) reported closed in the same commit. An auditor grepping 'status: open' re-checks a sub-item the body already reports closed. The inline disclosure handles it and unbundling would cost two more ids, so this is a note on the shape rather than a requested change; it is also the handling this file's own preamble prescribes, applied to a sub-item."
+  - file: .claude/enforcement/refutations.md
+    line: 668
+    reason: "The note appended under R-22 pins commit 730c7da, one commit behind the commit it lands in. Conservative rather than wrong - the three-drop count it states was re-derived at 756bf4d and is unchanged, because the one drop this commit adds (reviewer-reconcile-20260907T104055Z) carries a readable created: value 19 seconds off its archive stamp. A commit-pinned claim is the durable form."
+good:
+  - file: .claude/enforcement/refutations.md
+    lines: "668-684"
+    reason: "Item 1 confirmed. The note under R-22 is a pure insertion (hunk @@ -666,6 +666,23 @@, zero deleted lines), so R-22's level consequence, owner, expires and status are byte-identical to 730c7da. It sits inside Residuals and bounds, not the user-only Extensions section, extends no expiry and widens no scope, and argues its own permissibility against the append-only rule before using it. Substance re-derived: exactly three drops in the branch's archive delta carry unreadable-clock created: values (critic 18:45:00Z and two 00:00:00Z), and none is dated after its commit - the two architect drops now read 08:03:52Z and 09:34:55Z, matching their archive filenames. The entry correctly stays open; the process defect it registers is untouched by a wording correction."
+  - file: .claude/enforcement/refutations.md
+    lines: "737-770"
+    reason: "Item 2 confirmed and audited in both directions. R-26 lands with type, source, files, owner, level consequence, expires 2026-09-21 and status open; ids R-1 through R-26 are gap-free with no duplicates. Sub-item 1 verified still open - CLAUDE.md:153 has the warden re-run and overwrite 00-warden.md at the same path, and .claude/agents/scope-warden.md is untouched across 66379e7~1..756bf4d. Sub-item 3 verified still open - neither the critic nor the realist Picea.xml note mentions 1.0.27 or the version trap, and the package's Picea.xml is 477 lines as stated. Sub-item 2 is reported closed inline rather than registered as open, so nothing already fixed is registered as a residual. R-26 also records the binding reading of Merge Criterion (b) in the ledger, which is where the next round grades from."
+  - file: .claude/agent-memory/security-expert/state-retention-features-need-sensitivity-marker.md
+    line: 30
+    reason: "Item 3 confirmed. The note now recommends 'SensitiveCause : Message' with no I prefix and records that the prefixed form was proposed and rejected, citing 07-handoff.md:206. grep -rn ISensitiveCause across .claude/ returns no surviving recommendation - the remaining hits are this note's own record of rejection, R-26's body, and two verbatim quotations of the round-1 finding inside decision drops. The note's 'gate-4 decision 5' is not an off-by-one against the standing-decisions table row 6: it is the pass's own established vocabulary, used identically at 04-realist-plan.md:847 and :2189 and 07-handoff.md:527, and the cited line number resolves to the row stating the rule."
+  - file: .squad/design/undo-redo-design-record/09-review-verdict.md
+    reason: "Item 4 confirmed - nothing else changed. git diff --numstat 730c7da..756bf4d is 9 files, +567/-2, and the only deletion in the range is the two lines of the security-expert memory note that item 3 replaces. Every file is a named remedy, a round-2 review artifact, or session-logger.sh state. No .cs, .js, .csproj, .sh, workflow or appsettings file entered the range. The fixes and the round-2 review artifacts landed in one commit, which is what round 2's stop instruction asked for and the reason this pass has a single sha to confirm."
+  - file: .claude/hooks/tests/run.sh
+    reason: "Stated property re-executed at 756bf4d: 823 passed, 0 failed - unchanged from 730c7da and 66379e7, the correct result for a documentation-and-ledger delta. Stated for honesty: this establishes behaviour is unchanged and nothing more. invariant-chain.sh mentions refutations.md only inside a comment, so the suite contains no structural validator for the ledger; R-26's field completeness was checked by hand."
+references:
+  - reviewer-reconcile-20260907T104055Z-pr359-round2-undo-redo-design-record
+  - reviewer-reconcile-20260907T121500Z-pr359-undo-redo-design-record
+---
+
+# Confirmation — PR #359 round-2 residue, commit 756bf4d
+
+PASS. The four residue items landed, each is true of this tree, and nothing else rode along.
+
+This is the confirmation the round cap prescribes after the user chose path 1 with no override — a scope-and-truth check, not a third round. No dimension was reopened, and no finding the cap ruled out of scope was re-derived.
+
+**Merge Criterion at 756bf4d.** (a) green — `bash .claude/hooks/tests/run.sh` → 823 passed, 0 failed, unchanged. (b) met — round-1 W-1 through W-8 are each now fixed (W-1, W-2, W-4's evidence half, W-7) or registered with owner, level consequence and expiry (W-3 → R-23, W-5 → R-24, W-6 → R-25, W-4's framework half and W-8 → R-26); round-2 W-9 is fixed by the R-22 note and W-10 is discharged by R-26. The reading applied, stated so the next round need not guess: (b) binds on blocking and advisory findings; the two round-2 nitpicks are not registered and do not block, because neither asserts a defect requiring a remedy, both are findable in the merged round-2 drop, and a reading under which every nitpick must reach the ledger regresses without limit. (c) not in question — no level claim moved.
+
+**Where to stop.** Push and merge at 756bf4d04af987e70b4fc1e0f00eb08a99c3d5f8. `.squad/.last-review-verdict` currently still reads NEEDS-CHANGES / 730c7da, so the gate is closed until this drop merges and `scribe-decision-merger.sh` writes the cache from it. Do not commit the confirmation section, this drop or the hook log churn before the merge: `enforce-review-verdict.sh` scopes its commit branch to code-shaped paths and would allow such a commit, but its push and merge branches compare the cache against `git rev-parse HEAD` unconditionally, so an artifact commit moves HEAD past 756bf4d and re-blocks the merge this pass exists to clear.
+
+Full reasoning, the both-directions ledger audit and the per-item evidence are in `.squad/design/undo-redo-design-record/09-review-verdict.md` § *Confirmation — round-2 residue, commit `756bf4d`*.
+### 2026-09-07 — reviewer-reconcile-20260907T120325Z-presentation-demo [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T120325Z-presentation-demo
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T12:03:25Z
+commit: 07607bf71152ef8d224352e2d2a737d8312dcb2d
+targets:
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12-19"
+  - path: Picea.Abies.Presentation/content/demo/README.md
+  - path: Picea.Abies.Presentation/content/demo/stops/5.1-warden-report.md
+  - path: Picea.Abies.Presentation/content/demo/stops/5.2-hook-line.sh
+blockers:
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    line: 17
+    reason: >-
+      Merge-blocking. The <None Remove> item strips the 42 None items that populate the IDE
+      file tree, making a folder meant to be presented from invisible in Visual Studio and
+      Rider. Measured: with <Compile Remove> as the sole guard the build succeeds,
+      ComputeFilesToPublish yields 0 entries under content/demo, and Content/EmbeddedResource
+      match 0 items either way - so all three stated goals (never compiled, embedded, or
+      published) are met by one line, and the other three Remove items are a no-op or a net
+      cost. Fix: reduce the ItemGroup to the Compile Remove line alone.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      Talk-blocking, per CLAUDE.md's rule that Picea.Abies.Presentation factual claims
+      require reviewer-reconcile sign-off before a talk ships. Rule: every shipped fragment
+      that contradicts another shipped file, and every README rationale that asserts more
+      than its cited span contains, must be annotated to the standard the README already
+      applies elsewhere. Four instances, non-exhaustive: (a) 5.1-warden-report.md:3 says the
+      gate checked a 153-line scope while the shipped full/00-scope.md is 254 lines, and its
+      "(line 99-101)" citation resolves to unrelated prose - the quoted sentence is at 221;
+      (b) the same fragment is truncated one line before the R-21 conclusion while the README
+      flags exactly that defect on 5.2-track-b-summary.md; (c) the 5.2-hook-line.sh rationale
+      claims the span contains the refuse-for-everyone fallback when the span holds only the
+      UNREADABLE signal - the fallback is at enforce-track-blindness.sh:422, outside it;
+      (d) both 5.6 fragments cite undo-redo-design-record sources absent from full/ and
+      unmentioned in the exclusions note.
+high:
+  - file: Picea.Abies.Presentation/content/demo/
+    reason: >-
+      No divergence detector for a snapshot of living files. full/refutations.md copies an
+      appended-to ledger, and the full/* artifacts copy files the design process overwrites
+      in place. The "unedited copies" claim is true today - I verified all 19 byte-identical
+      at 07607bf - but degrades to asserted the moment anyone edits full/. A SHA256SUMS
+      generated at snapshot time would keep the claim checkable forever, including by
+      reviewer-blind, which is denied .squad/design/ by hook and could never otherwise
+      verify it.
+  - file: Picea.Abies.Presentation/content/demo/stops/5.4-critic-verdicts.md
+    reason: >-
+      Composite fragments carry no in-file provenance. Five spans from four files, ending in
+      two bare "## Verdict" headings from different passes of the same document with no
+      separator. All five spans verified exact with no authored text added, so the fragments
+      are honest - but the attribution lives only in the README table, and slide content is
+      precisely what gets separated from its index. An HTML comment naming the spans costs
+      nothing.
+medium:
+  - file: Picea.Abies.Presentation/content/demo/stops/5.2-hook-line.sh
+    reason: >-
+      Extension misleads on a projector: the content is Python lifted from a heredoc, so any
+      highlighter renders it as shell. Likewise timing/hooks-fired.log is markdown named
+      .log, and it is the one authored (not copied) file in the bundle. Renaming
+      5.5-property.cs would additionally dissolve the csproj blocker entirely, since that
+      one extension is the only reason the build guard is needed.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      Off-by-one: full/refutations.md:722 is cited for R-25, which is at 723 (722 is blank).
+      The neighbouring R-24 citation at :707 is exact. Trivial except that line-precise
+      citation is this artifact's entire premise.
+  - file: .github/workflows/pr-validation.yml
+    reason: >-
+      Informational, no action required. check-pr-size hard-fails (10,151 lines,
+      maintenanceOnly false due to six non-.md fragments plus the .csproj), but it is not a
+      required status check - the PR shows UNSTABLE, not BLOCKED, and squash-merges normally.
+      Renaming fragments would not help, since the .csproj alone keeps maintenanceOnly false.
+      The real cost is detect-changes setting docs_only=false, running the full CI matrix on
+      a documentation change. Worth a line in the PR description so the red X reads as
+      priced-in rather than missed.
+good:
+  - file: Picea.Abies.Presentation/content/demo/full/
+    reason: >-
+      All 19 whole-file copies byte-identical to their sources, verified twice - against the
+      working tree and against git show 07607bf. The blind reviewer could verify 2 of 19; the
+      remaining 17 are now confirmed. The change's central claim holds completely.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      Refuses to fabricate. Three requested fragments were not created because the text does
+      not exist at 07607bf, each row recording what was searched and the nearest genuine
+      quote; a PR #358 decision drop is excluded with a stated reason. Index integrity
+      confirmed by comm - 20 files, 23 rows, the 3 orphan rows are exactly the not-created
+      three, zero orphan files.
+  - file: Picea.Abies.Presentation/content/demo/timing/hooks-fired.log
+    reason: >-
+      Declares itself compiled-not-verbatim in its own header, separates hook runs from
+      subagent runs, and carries a "Not evidenced at all" section. Contrary to the blind
+      reading, it does not overclaim the warden's line count - it attributes the 254-line
+      figure to the mechanical scan only, which the surviving scan file supports.
+references: []
+---
+
+Every verbatim claim this change makes is true - all 19 full/ copies and all 21 stops fragments verified byte-exact at the pinned commit - but the csproj guard hides the tree from the IDE it is meant to be presented from, and the index leaves four factual discrepancies unannotated to a standard it meets everywhere else.
+
+## Reconciliation with the blind reading
+
+The blind reviewer's headline finding is resolved and partly withdrawn. The 153-vs-254 line
+discrepancy is in the source at 07607bf, not introduced here: `00-warden.md:3` says 153,
+`00-scope.md` is 254, and `00-warden-scan.md:9` says 254 - the bundle copies all of them
+faithfully. And `hooks-fired.log` does not make the contradictory claim attributed to it; it
+attributes the 254-line figure to the mechanical scan only, which is correct.
+
+What survives is a presentation hazard rather than an error: the warden report's
+`(line 99-101)` citation resolves to unrelated prose in the shipped scope (the sentence is at
+221), the 153-line scope was never committed so those citations are permanently
+unverifiable, and the README is silent on both.
+
+## Suggested fix
+
+Reduce the csproj ItemGroup to the `<Compile Remove>` line alone - proven sufficient by
+measurement - and add four annotations to README.md per the rule stated in the second
+blocker. Neither fix touches the bundle's substance; the copies and excerpts are sound.
+
+Full verdict: `.squad/design/presentation-demo/09-review-verdict.md`
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T122033Z-presentation-demo-round2 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T122033Z-presentation-demo-round2
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T12:20:33Z
+commit: 07607bf71152ef8d224352e2d2a737d8312dcb2d
+targets:
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12-15"
+  - path: Picea.Abies.Presentation/content/demo/README.md
+    lines: "80,86,87,88,97,98"
+  - path: Picea.Abies.Presentation/content/demo/stops/5.1-warden-report.md
+  - path: Picea.Abies.Presentation/content/demo/SHA256SUMS
+blockers:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    line: 97
+    reason: >-
+      Merge-blocking. The 5.6-review-headers row offers 2026-09-07T11:56:59+02:00 as "the
+      commit's own author date", citable on a slide. That is the author date of 66379e7, the
+      pre-squash branch commit 08-review-blind.md was reviewing; 07607bf, which README line 4
+      defines as "the commit" and every column header pins to, is authored
+      2026-09-07T13:00:00+02:00. The number is faithfully quoted from 08-review-blind.md:105 -
+      the attribution to 07607bf is introduced here and is false as committed. Verified with
+      git show -s --format=%aI on both commits. Fix is one clause naming 66379e7 and giving
+      07607bf's real author date.
+  - file: Picea.Abies.Presentation/content/demo/stops/5.2-track-a-summary.md
+    reason: >-
+      Talk-blocking, per CLAUDE.md's rule that Picea.Abies.Presentation factual claims require
+      reviewer-reconcile sign-off before a talk ships. The fragment named for Track A contains
+      the Lead's narration about Track B - "Track B has landed with three ranked candidates ...
+      Waiting on Track A" - a line that explicitly states Track A had not finished. Its pair,
+      5.2-track-b-summary.md, is about both tracks running, not about Track B's findings. Both
+      spans are byte-exact and both agent labels are correct; the README's R-25 caveat explains
+      whose voice the line is in but not that its subject is the other track. A slide captioned
+      "Track A's summary" showing this text states something false. Fix is one sentence per row,
+      to the standard the README already applies to the truncation flagged two clauses later.
+high:
+  - file: Picea.Abies.Presentation/content/demo/stops/
+    reason: >-
+      Carried unaddressed from round 1. The four composite fragments still carry no in-file
+      provenance naming their spans; 5.4-critic-verdicts.md is five spans from four files ending
+      in two bare "## Verdict" headings from different passes with only blank-line separators.
+      All spans re-verified byte-exact with no authored text, so the fragments are honest - but
+      the attribution lives only in the README table. Unregistered, so it prevents an approve
+      under Verdict Consistency Rule 1. Intended resolutions are four HTML comments or an
+      explicit user override, NOT registration in the enforcement residual ledger - a demo-folder
+      annotation does not belong there.
+medium:
+  - file: Picea.Abies.Presentation/content/demo/stops/5.1-warden-report.md
+    reason: >-
+      No trailing newline. Now the only file in the bundle without one; round 1 verified every
+      non-empty file newline-terminated, so this is a small regression from the hand-cut at
+      refutations.md line 572.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      Two +1 off-by-one citations. full/refutations.md:722 is cited for R-25, which is at 723
+      (722 blank) - carried unfixed from round 1. full/05-critic.md:427 is cited for the
+      navigation confirmation, whose heading is at 428 (427 blank). The other 25 numeric
+      citations resolve exactly. Also, the corrected 5.2-hook-line.sh rationale says :308-315 is
+      "too far to fold in without pulling in unrelated surrounding script" - true of :422, not
+      true of :308-315, which is contiguous and directly above.
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    reason: >-
+      Residual on the closed blocker, not a reopen. 43 of the 44 bundle files are now None items;
+      the exception is stops/5.5-property.cs, the file the comment is about - Compile Remove takes
+      it out of Compile without putting it into None. Strictly better than round 1 (0 visible to
+      43 visible) and not worth a second ItemGroup, but the comment's "the files stay visible as
+      None items" is overstated for the one file it names.
+good:
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    reason: >-
+      Blocker 1 closed and re-measured, not merely re-read. ItemGroup reduced to the single
+      Compile Remove line. Build succeeded with 0 warnings and 0 errors while the invalid
+      compilation unit stays in the tree; Compile, Content and EmbeddedResource all match 0 items
+      under content/demo; ComputeFilesToPublish yields 3 entries with 0 under content/demo; None
+      items went 0 to 43. All three stated goals met by one line, IDE visibility restored.
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    reason: >-
+      Round 1 finding 3 closed and exceeded. 39 files (19 full/ + 20 stops/), sha256sum -c gives
+      39 OK and 0 failures, and re-running the documented generation command reproduces the file
+      byte-identically. The README indexes it as authored tooling output rather than an excerpt,
+      and pre-states that a future mismatch may mean the source moved rather than the copy being
+      edited - the caveat that keeps a snapshot manifest from becoming a false guarantee later.
+  - file: Picea.Abies.Presentation/content/demo/stops/5.1-warden-report.md
+    reason: >-
+      The truncation fix chose the honest resolution. Span extended 546-570 to 546-572 so the
+      fragment reaches the "instruction-level" classification the stop exists to show; lines
+      546-571 byte-identical to refutations.md and line 572 cut mid-line, disclosed twice in the
+      index including the clause deliberately left out. Pure prefix, no authored text, and it
+      matches the precedent 5.5-inv-coverage.md already set. The warden half is byte-exact and is
+      the whole 19-line file.
+  - file: .claude/docs/decisions.md
+    reason: >-
+      Register cleanup complete and verifiable. No occurrence of the malformed drop's id anywhere
+      outside .git/, its archive file is deleted, the valid 12-03-39 drop and its decisions.md
+      entry are intact and well-formed, inbox and quarantine are both empty, and
+      .squad/.last-review-verdict correctly records NEEDS-CHANGES for 07607bf - written by the
+      merger from the valid drop, so the mechanism the cleanup protects is demonstrably working.
+  - file: Picea.Abies.Presentation/content/demo/
+    reason: >-
+      The verbatim discipline survived a second full mechanical sweep. All 19 full/ copies
+      re-verified byte-identical against git show 07607bf, all 20 stops/ fragments re-verified
+      byte-exact against their cited spans, file count 43 to 44 with SHA256SUMS the only addition
+      and nothing removed, timing/ and graphics/ untouched, .squad/ still unedited. The one file
+      that changed changed exactly as described.
+references: []
+---
+
+Blocker 1 is closed by measurement and the register cleanup is verified complete. Blocker 2's four named instances are closed - three of them well - but the rule the blocker stated is not yet met: two further instances, one an author-date attribution that is false as committed. Both predate round 1 and were missed by me, not introduced by these fixes.
+
+## What changed and how it was scoped
+
+Scope of change since round 1 established by mtime against the round-1 drop's merge time: exactly
+three paths under `content/` - `stops/5.1-warden-report.md`, `SHA256SUMS` (new) and `README.md` -
+plus the `.csproj` and the decision-register cleanup. All 40 other bundle files re-verified
+untouched rather than assumed.
+
+## The sweep is now exhaustive
+
+Round 1 stated blocker 2 as a rule with four examples, warning that the enumeration was not the
+criterion. The four were fixed; the sweep was not run. I have now run it: every numeric citation in
+the index (27, of which 25 exact and 2 off-by-one), every claim the README makes about the pinned
+commit's own metadata (one, wrong), and every "this fragment is X's summary" claim against the
+fragment's actual content (one pair, mismatched). There is no third instance. Round 3 closes this.
+
+## What round 3 needs
+
+Two one-sentence README edits (the author date, the two track-summary rows), one trailing newline,
+two `+1` citation corrections, and - for an approve rather than a needs-changes - either four HTML
+provenance comments on the composite fragments or an explicit user override recorded with their
+rationale. This is round 2 of 3.
+
+Full verdict: `.squad/design/presentation-demo/09-review-verdict.md` § *Re-review — round 2*.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T130805Z-presentation-demo-round3 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T130805Z-presentation-demo-round3
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T13:08:05Z
+commit: 07607bf71152ef8d224352e2d2a737d8312dcb2d
+targets:
+  - path: Picea.Abies.Presentation/content/demo/README.md
+    lines: "1-124"
+  - path: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    lines: "1-39"
+  - path: Picea.Abies.Presentation/content/demo/stops/5.1-warden-report.composite.md
+    lines: "1-47"
+  - path: Picea.Abies.Presentation/content/demo/timing/hooks-fired.log
+    lines: "whole file"
+blockers:
+  - file: Picea.Abies.Presentation/content/demo/timing/hooks-fired.log
+    line: 1
+    reason: >-
+      Matched by .gitignore:120 (*.log) and silently dropped by git add - the only ignored
+      file of the 44 in the bundle, and one of only two authored files. git status
+      --untracked-files=all lists 43 paths under content/ against 44 on disk. SHA256SUMS
+      covers full/ and stops/ only, so timing/ has no manifest and nothing would detect the
+      loss: the bundle would ship with a top-level README section indexing a file absent from
+      the repository, with no error and no failing check. Not a regression of these fixes -
+      round 1 checked for a demo-specific ignore rule and missed the repo-wide one, and round 2
+      repeated the omission. Two one-step resolutions, and the choice is the user's - force-add
+      the file at commit time (zero file changes; verify 44 staged paths under content/), or
+      rename it to a non-ignored extension such as hooks-fired.md (one README row edit, robust
+      for anyone who re-adds the tree later). Not a residual-ledger item; it needs a decision,
+      not an entry.
+  - file: .squad/design/presentation-demo/09-review-verdict.md
+    line: 1
+    reason: >-
+      Round 3 of the Merge Criterion's two-round cap, recorded as a blocker so the cap is
+      visible rather than inferred. Round count evidenced two ways and in agreement - archived
+      drops 2026-09-07T12-03-39 and 2026-09-07T12-23-39 both carry commit 07607bf, and the
+      round-2 section carries "Round: 2 of 3". No round 4 is requested. Stated properties are
+      green - copies only, every stops/ file a verbatim excerpt, nothing under .squad/ moved,
+      edited or deleted, all verified mechanically for the third time - so the cap does not
+      escalate to the architect. The remaining step is the user picking a resolution for the
+      hooks-fired.log blocker and then either overriding this verdict under Review Rule 6 or
+      dispatching one targeted confirmation whose entire scope is: staged paths under
+      Picea.Abies.Presentation/content/ = 44. If the bundle is committed, commit it and the
+      .csproj only - committing this verdict file, the drops or the agent-memory notes in the
+      same operation moves HEAD past the commit this verdict is pinned to and re-blocks the
+      gate on a changeset that already passed.
+high: []
+medium:
+  - file: Picea.Abies.Presentation/content/demo/stops/5.2-hook-line.sh
+    reason: >-
+      Carried unfixed from round 2 (nitpick 8). The README rationale says both out-of-span
+      items are too far from :316-330 to fold in; that is true of :422 but not of :308-315,
+      which is contiguous and directly above. Advisory, not worth a round.
+good:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      Both round-2 blockers closed and improved on. (e) The 5.6-review-headers row now
+      attributes 2026-09-07T11:56:59+02:00 to 66379e7, the pre-squash branch commit
+      08-review-blind.md was reading, and gives 07607bf's own author date as
+      2026-09-07T13:00:00+02:00 - re-verified independently with git show -s --format=%aI on
+      both commits, and against 08-review-blind.md:105. It also takes the suggested framing, so
+      the squash rewriting the blind reviewer's clock reading becomes stop material rather than
+      an erratum. (f) Both 5.2 summary rows now state each line's subject in bold, not only its
+      voice, and separate the two explicitly; both descriptions re-verified against session log
+      lines :422 and :424, both fragments still byte-exact. The two off-by-one citations are
+      corrected to refutations.md:723 and 05-critic.md:428, both re-resolved, and the
+      neighbouring citations re-resolved with them.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      The composite-provenance override is recorded to the standard Review Rule 6 asks for - a
+      new Overrides section attributed to the user and dated, quoting them verbatim with the
+      reasoning intact, and spelling out the applied consequence. It is also a better resolution
+      than the four HTML comments the finding asked for: those would have added authored bytes
+      inside verbatim fragments and broken the SHA256SUMS manifest introduced one round earlier,
+      a collision the override caught and the reviewer did not. Moving the seam marker into the
+      filename via a .composite.md suffix satisfies the finding with zero bytes added to any
+      fragment.
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    reason: >-
+      Renames verified content-neutral rather than accepted. All four composites still
+      byte-exact against their cited spans at 07607bf, with only the two disclosed mid-line cuts
+      as deltas and no authored text anywhere. sha256sum -c gives 39/39 OK, regeneration is
+      byte-identical, and the manifest's path set equals the on-disk set exactly. No stale
+      pre-rename name survives in the bundle; the only repo-wide occurrences are in historical
+      review records, correctly left as-written.
+  - file: Picea.Abies.Presentation/content/demo
+    reason: >-
+      Third consecutive clean mechanical sweep. All 19 full/ copies byte-identical to their
+      sources at 07607bf and all 20 stops/ fragments byte-exact against their cited spans,
+      across two rounds of edits and a set of renames. The trailing-newline fix was swept rather
+      than spot-fixed - 44 of 44 files newline-terminated, 0 CRLF. File count 44 to 44, four
+      renames, nothing added or removed. .csproj unchanged from round 2 and dotnet build clean
+      at 0 warnings and 0 errors. .squad/ still unedited: log diffs are 124/0 and 3/0 pure
+      appends, and decisions.md is +265/-0 at a single end-of-file hunk.
+references: []
+---
+
+Every round-2 finding is closed and verified: both blockers, all three mechanical fixes, and the composite-provenance finding by an explicit user override recorded with the user's rationale verbatim. Nothing else in the bundle changed, re-proved mechanically rather than inferred from mtimes.
+
+## Round 3 of a two-round cap
+
+The round count was checked before the findings were assembled, not after. Two archived reviewer-reconcile drops carry commit 07607bf and the round-2 verdict section carries "Round: 2 of 3"; both sources agree. No round 4 is requested. Stated properties are green, so the cap does not escalate to the architect - the shape here is the split, with the proportionality call handed to the user.
+
+## The one open item
+
+The bundle's tree is correct and complete; the open item is that `git add` will not stage all of it. `timing/hooks-fired.log` is matched by the repo-wide `*.log` rule at `.gitignore:120` - the only ignored file of 44, and one of only two authored files. It resolves by force-adding at commit time or by renaming to a non-ignored extension. It is a decision, not a fix round, and not a residual-ledger entry.
+
+## Where to stop
+
+Commit the bundle and the `.csproj` only. Committing this verdict file, the decision drops or the agent-memory notes in the same operation moves HEAD past the commit this verdict is pinned to and re-blocks the gate on a changeset that already passed.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T131514Z-review-07607bf-confirm [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260907T131514Z-review-07607bf-confirm
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-07T13:15:14Z
+commit: 07607bf71152ef8d224352e2d2a737d8312dcb2d
+targets:
+  - path: .gitignore
+    lines: "531-533"
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12-15"
+  - path: Picea.Abies.Presentation/content/demo/timing/hooks-fired.log
+blockers: []
+high: []
+medium:
+  - file: .gitignore
+    reason: >-
+      The new negation is scoped by path but open by kind — any future *.log written anywhere
+      under Picea.Abies.Presentation/content/demo/ is now tracked by default. Correct trade for
+      a curated content folder under a manifest discipline; a note, not a request.
+good:
+  - file: .gitignore
+    reason: >-
+      The chosen resolution beat both options the round-3 finding named. A force-add would have
+      left the trap armed for the next person to re-add the folder; a rename would have edited
+      README.md:44 and diverged from the user's runbook. The scoped negation fixes the folder
+      once, keeps the filename, and needs no doc change.
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    reason: >-
+      sha256sum -c passes 39/39 against the staged bytes, which re-proves the bundle content is
+      round 3's content independently of mtimes or of trusting the fix pass.
+references: []
+---
+
+The round-3 open item is closed: all 46 staged paths verify, and PASS is pinned to the tree as staged.
+
+## Scope
+
+The Lead scoped this to round 3's single named check and nothing else. No re-verification of the
+19 `full/` copies or 20 `stops/` fragments was performed; the round-3 section of
+`.squad/design/presentation-demo/09-review-verdict.md` is the evidence for those.
+
+## Verified
+
+- `git diff --cached --name-only` = **46** paths: **44** under `content/demo/`, plus the `.csproj`
+  and `.gitignore`. Sorted staged set vs files on disk under `content/demo/`: identical.
+- `git check-ignore -v` on `timing/hooks-fired.log` exits 1 with no output — un-ignored. The same
+  over all 46 staged paths via `--stdin` also exits 1: none ignored.
+- `git ls-files --others` under `content/demo/` **including ignored files** is empty — nothing
+  left behind by the staging command.
+- Staged blob equals disk bytes for all 46 (`git rev-parse :<path>` vs `git hash-object`),
+  0 mismatches. No CR bytes in any staged blob. `git diff` on the two staged prefixes is empty.
+- `sha256sum -c SHA256SUMS` → 39/39 OK. The five unmanifested files all predate the round-3
+  verdict's mtime, so the bundle is byte-for-byte the tree round 3 reviewed.
+- The negation sits at end of file, after `.gitignore:120` (`*.log`), so the later rule wins. It is
+  path-anchored; `*.log` still bites elsewhere (`.squad/log/dotnet-format-2026-09-07.log` remains
+  ignored). `hooks-fired.log` is now the only tracked `*.log` in the repository.
+- `README.md:44` still indexes the file under its original name — runbook and tree agree with no
+  doc edit.
+- The `.squad/` log appends, the `decisions.md` merger output, the agent-memory files and the three
+  archived drops are all correctly left unstaged.
+
+## Where to stop
+
+Commit the 46 staged paths and nothing else. Committing this drop, the verdict file or the
+agent-memory notes in the same operation moves HEAD past the commit this PASS is pinned to and
+re-blocks the gate on a changeset that already passed. If they are to be committed, that is a
+separate commit afterwards.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T132100Z-review-b181a15-commit-boundary [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260907T132100Z-review-b181a15-commit-boundary
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-07T13:21:00Z
+commit: b181a154a21db627b14d1618b0202a0260812401
+targets:
+  - path: .gitignore
+    lines: "531-533"
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12-15"
+  - path: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    lines: "1-39"
+blockers: []
+high: []
+medium:
+  - file: .gitignore
+    reason: >-
+      Carried unchanged from the 07607bf confirmation. The negation is scoped by path but open by
+      kind: any future *.log written anywhere under Picea.Abies.Presentation/content/demo/ is now
+      tracked by default. Correct trade for a curated content folder under a manifest discipline;
+      a note, not a request.
+good:
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    reason: >-
+      The manifest makes the commit boundary checkable without trusting mtimes or the staging step.
+      sha256sum -c passes 39/39 against the committed tree, which is the same evidence that passed
+      against the staged tree, so the commit demonstrably carried round 3's bytes.
+  - file: .gitignore
+    reason: >-
+      The negation survives the commit intact at end of file, after *.log at line 120. Verified by
+      probe rather than by reading: content/demo/**/*.log is un-ignored while content/other/x.log
+      and some/where/random.log remain ignored by line 120, and hooks-fired.log is the only tracked
+      *.log in the whole tree.
+references: []
+---
+
+The PASS pinned to `07607bf71152ef8d224352e2d2a737d8312dcb2d` carries unchanged to
+`b181a154a21db627b14d1618b0202a0260812401`. No dimensions were re-run; this is a boundary check
+only, and the round-3 plus confirmation sections of
+`.squad/design/presentation-demo/09-review-verdict.md` remain the evidence for the bundle's substance.
+
+## What was checked
+
+- **Parent.** `git rev-list --parents -n1 b181a15` gives the single parent
+  `07607bf71152ef8d224352e2d2a737d8312dcb2d`. No merge, no intervening commit.
+- **Boundary.** `git diff --name-status 07607bf..b181a15` is exactly 46 paths — 44 under
+  `Picea.Abies.Presentation/content/demo/` added, plus `.gitignore` and
+  `Picea.Abies.Presentation.csproj` modified. Nothing outside the confirmed set rode along.
+- **Blob identity.** For each of the 46, `git rev-parse b181a15:<path>` equals
+  `git hash-object <path>` — 46 compared, 0 mismatches. `git status` reports those paths clean, so
+  the committed tree, the index and the working tree are the same bytes.
+- **Independent content proof.** `sha256sum -c SHA256SUMS` at the committed tree: 39 OK,
+  0 FAILED, exit 0. This does not depend on the index, on mtimes, or on trusting the commit step.
+- **Nothing ignored, nothing left behind.** `git check-ignore -v --stdin` over all 46 committed
+  paths exits 1 with no output. `git ls-tree -r b181a15 -- content/demo` lists 44 files, matching
+  disk, and `git ls-files --others --ignored` under that prefix is empty.
+- **The .gitignore fix survived.** The negation is at line 533, end of file, after `*.log` at line
+  120. Probed both directions: `content/demo/timing/hooks-fired.log` exits 1 (un-ignored) while
+  `Picea.Abies.Presentation/content/other/x.log` and `some/where/random.log` are still caught by
+  line 120. `hooks-fired.log` is the only tracked `*.log` at HEAD.
+- **Timing.** Newest mtime under `content/demo/` is `15:01:18`; `.gitignore` is `15:12:17`; the
+  commit is authored and committed at `15:16:39`. Nothing was edited between confirmation and commit.
+- **Working tree.** Only hook-written state (`.squad/log/2026-09-07-session.md`,
+  `.squad/log/pass-cost.md`, `.claude/docs/decisions.md`, four archived drops under
+  `.squad/decisions/archive/2026-09/`) and review artifacts
+  (`.squad/design/presentation-demo/`, `.claude/agent-memory/reviewer-reconcile/`). No code-shaped
+  path is dirty.
+
+## Where to stop
+
+**Push and merge at `b181a154a21db627b14d1618b0202a0260812401`.** This drop, the appended
+confirmation line in `09-review-verdict.md`, the merger's `decisions.md` entry and the session log
+are this pass's own artifacts; committing them moves HEAD past the sha this PASS is pinned to and
+re-blocks the push and merge branches of `enforce-review-verdict.sh`, which compare against
+`git rev-parse HEAD` unconditionally. Leave them uncommitted until after the merge, or fold them
+into a separate housekeeping commit made afterwards.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T134423Z-undo-redo-pr0-locked-spec [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T134423Z-undo-redo-pr0-locked-spec
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T13:44:23Z
+commit: 3bd7af3d7e5cc79bb194912c21d45de692557e6c
+targets:
+  - path: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    lines: "1-852"
+  - path: Picea.Abies.Tests/SpecAttribute.cs
+    lines: "1-7"
+  - path: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    lines: "23-28"
+blockers:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 787
+    reason: >-
+      INV-6's Available case does not compile on TUnit 1.19.57 -- verified by
+      independent build: CS1061, OrContinuation<int> has no member That. TUnit's
+      .Or continues on the same subject, so a disjunction across two values is
+      not expressible this way at all. Origin is 06-spec.md:1186, the approved
+      text, so the route is a spec-author amendment with user re-approval, not a
+      csharp-dev fix.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 7
+    reason: >-
+      The nine-line header this changeset adds states that the file's
+      non-compilation is "expected: the types it exercises ... do not exist
+      yet". False -- line 787 will still not compile after step 6 delivers every
+      named type and fixture. The header is NOT approved spec text (it appears
+      zero times in 06-spec.md), so this sentence is the changeset's own and
+      blocks on its own account, independently of what happens to line 787.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 197
+    reason: >-
+      A6's two IsEquivalentTo expectations are permutations of the same four
+      strings, and IsEquivalentTo is order-insensitive -- verified by execution:
+      the bare expectation passes against the wrapped actual. A6's entire stated
+      purpose is to record an ORDERING difference between the wrapped and
+      unwrapped programs, so it cannot fail for the reason it exists.
+      CollectionOrdering does not exist on 1.19.57 (CS0103), so the remedy is a
+      different assertion, not an option flag. Origin is 06-spec.md:505 and :509.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 800
+    reason: >-
+      INV-6's closing comment claims "the property asserts that coverage at the
+      end of the loop rather than assuming the generator found them". It does
+      not -- the body ends at the seed loop's closing brace. This coverage
+      assertion IS the named falsifier that 06-spec.md's The Lock relies on to
+      close the unlocked-support-file hole, so the Lock's own stated closure is
+      unbuilt for this property. With the unguarded continue guards at :490,
+      :492, :642, :649, :699 and :732, INV-1, INV-3, INV-4, INV-5 and INV-6 can
+      all pass having asserted nothing.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 528
+    reason: >-
+      "INV-2 runs twice, over Editor (whole-model) and ProjectedEditor" is false
+      against the code -- both INV-2 properties start Editor (:517, :560), and
+      the second one's own comment at :555 says "Whole-model policy
+      DELIBERATELY". ProjectedEditor appears once in the file, at :315, in A8.
+      Verbatim from 06-spec.md:908. A third claim at :616-620 says the property
+      "is not done until both branches have been observed taken at least once";
+      neither the Past nor the Future branch is counted.
+high:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      The lock imposes at least six obligations on the unlocked support files
+      and the narrative's stated closure covers one. (a) a global using static
+      for ~13 unqualified fixture calls, since the class is sealed, non-partial
+      and has no base type; (b) EditorLog must be per-test-isolated; (c)
+      EditorLog.Timeline must return a snapshot, not the backing list (:190-195
+      captures, clears, captures); (d) Start<Editor>() must reset the static log
+      (A1 asserts emptiness at :52 with no Clear()); (e) Gen.Corpus must reach
+      all five availability cases in both directions, because INV-6's coverage
+      assertion is missing; (f) EditorProgram.Transition(MovementRefused) must
+      issue no command -- 04-realist-plan.md:1120's S7 transparency rule means a
+      refusal records no step, but pass() at :1128-1131 still calls sealTops
+      when the command is not silent, and INV-5 snapshots Both() once at :730
+      while INV-6 re-reads inside its loop at :766.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      No [NotInParallel] on a class of 25 tests built on a static EditorLog with
+      twelve Clear() calls and emptiness assertions at :52, :149-151, :247-248,
+      :708-710 and :773-775. Measured: no assembly-level parallel config and no
+      .runsettings in this project; TUnit defaults to parallel; six sibling
+      classes carry class-level [NotInParallel] and NavigationTests.cs uses the
+      method-level form four times. The attribute site is inside the lock, so
+      the escape is an AsyncLocal-backed EditorLog -- a step-6 choice to make
+      deliberately rather than discover when the suite goes flaky.
+  - file: .claude/hooks/dotnet-format-on-save.sh
+    reason: >-
+      PRE-EXISTING FRAMEWORK GAP, register for devops. The hook fires on every
+      Write/Edit of any .cs file with no exclusion for a file the process
+      declares immutable, and runs the analyzer-fix pass including IDE0005
+      (.editorconfig:268, severity warning) -- which is how "using
+      Picea.Abies.History;" was stripped on first write. The line is present now
+      (:13). Every whitespace divergence between the committed file and
+      06-spec.md is explained by .editorconfig:80,
+      csharp_preserve_single_line_statements = false. Currently neutralised by
+      the Compile Remove -- verified: dotnet format --include reports "Formatted
+      0 of 27 files" and leaves the file byte-identical -- and that protection
+      disappears when PR 3 removes the exclusion.
+  - file: .claude/hooks/enforce-review-blindness.sh
+    reason: >-
+      PRE-EXISTING FRAMEWORK GAP, register for devops. Picea.Abies.Presentation/
+      content/demo/full/ carries a byte-identical copy of the whole design pass
+      (md5 verified for 00-scope, 03-convergence, 04-realist-plan, 05-critic,
+      06-spec, 07-handoff) plus decision-drops/ including two previous review
+      verdicts, outside the hook's .squad/design/** deny list. Verified by
+      firing the hook with a reviewer-blind payload -- exit 0 for the demo
+      copies of 06-spec.md, 05-critic.md and the review-pr359-round2 drop, exit
+      2 for .squad/design/undo-redo/06-spec.md. This is a second PATH reachable
+      by the MEDIATED tools, so it is distinct from R-19 (Bash unmediated) and
+      R-20 (worktrees, symlinks); closing R-19 entirely would leave it standing.
+      Committed at 7d32cdb (PR #360, merged) -- not this changeset's fault.
+      Unregistered: grep for "Presentation" and "content/demo" in
+      .claude/enforcement/refutations.md returns nothing.
+medium:
+  - file: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    reason: >-
+      History/UndoRedoSpec.cs is in no MSBuild item group -- measured, Compile
+      has 20 items without it and None has zero items in this project. The SDK's
+      default None glob subtracts the Compile glob PATTERN, not the resulting
+      item list, so a Compile Remove of a .cs file lands it nowhere and IDEs
+      hide it without Show All Files, for the two PRs during which its whole
+      purpose is to be looked at.
+  - file: Picea.Abies.Presentation/content/demo/stops/5.5-property.cs
+    reason: >-
+      INV-3 now exists in three copies -- 06-spec.md, this checksummed
+      presentation stop (SHA256SUMS line 36), and the locked file -- and they
+      already disagree: the presentation copy carries the pre-format spelling.
+      A correction to INV-3 has three homes and a checksum to refresh.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      PR-body precondition unmet because no PR exists yet -- the plan's PR 0 row
+      and 07-handoff.md section 6 both require the body to state the deliberate
+      exclusion. Separately, .squad/log/2026-09-07-session.md and
+      .squad/log/pass-cost.md are tracked, not ignored (git check-ignore exits
+      1) and modified, so staging everything at once would breach the stated
+      "three files and nothing else" criterion.
+good:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      The PR-0 shape delivers the property it was designed for -- git log --all
+      on the path returns nothing, so the Lock's git-history check is satisfied
+      without a waiver, which is exactly the argument the plan and handoff make
+      for this shape over landing the spec as PR 3's first commit.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      Every Critic mitigation owed to this file landed. S27's alphabet partition
+      matches 06-spec.md's table property-for-property across all eight
+      properties (:475, :511, :559, :637, :692, :725, :759, :814); S28's
+      WhenApplied<T>().WaitAsync is used throughout with no sleeps anywhere,
+      continuing ca2519d; S25(a) is A7's third test; S26 is A3's preserved
+      forward branch; B10's scoping is stated twice; and 7-yellow is A10.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      A9, A10 and A7's third test each name their falsifier in prose AND assert
+      it -- A_terminated_program_with_no_history_left_is_terminal (:385-399)
+      exists specifically to stop IsTerminal being hardcoded false. That is the
+      discipline the INV-2 and INV-6 blockers find missing.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    reason: >-
+      The stripped "using Picea.Abies.History;" was caught and restored rather
+      than left to pass silently. That is the behaviour that makes the
+      format-on-save gap registrable instead of a post-mortem.
+references: []
+---
+
+PR 0's shape is correct and its two compile-verified defects are in the approved spec text, not the transcription -- so the fix needs a spec-author amendment and user re-approval, and this commit is the last moment at which that is cheap.
+
+## What was settled
+
+I extracted every csharp fence from `.squad/design/undo-redo/06-spec.md` and diffed the reassembly
+against the committed file. `.Or.That(...)` is `06-spec.md:1186`; A6's two `IsEquivalentTo` calls are
+`:505` and `:509`. Verbatim. The transcription is faithful; the approved text is not correct.
+
+`07-handoff.md` section 6.1, item 4-yellow states the consequence: *"After the approval commit a move
+is a `// SPEC CONFLICT:` hand-back and a re-approval, not a relocation."* PR 0 **is** the approval
+commit.
+
+## The route is the user's
+
+Two options, and I am not choosing between them: amend and re-approve before committing, or commit
+as-is and accept that PR 3 opens with a hand-back on the pass's most load-bearing file. The header
+sentence at `:7-9` is the exception -- it is not approved text and is `csharp-dev`'s to correct
+either way.
+
+## Where the blind reading and the narrative diverged
+
+08 upheld on the two compile findings and on the missing falsifiers, and extended -- I found a third
+false coverage claim it did not (`:528`, "INV-2 runs twice ... and ProjectedEditor"). 08's P7 fear is
+refuted by `04-realist-plan.md:1120`'s S7 transparency rule and replaced by a narrower unstated
+fixture obligation. 08's P4 reading of the `Picea.Abies.Presentation` precedent is half-wrong -- that
+project has 45 `None` items and its comment is true for the `.md` files it exists to keep
+presentable. 08's P10 slug complaint is refuted: `undo-redo` is the design pass, `undo-redo-pr0` is
+this review's slug. 08's test count is off by four in the acceptance layer -- 25 total, not 21.
+
+Full verdict: `.squad/design/undo-redo-pr0/09-review-verdict.md`.
+
+
+### 2026-09-07 — reviewer-reconcile-20260907T144534Z-undo-redo-pr0-round2 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260907T144534Z-undo-redo-pr0-round2
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-07T14:45:34Z
+commit: faafc8b179f3069473a4116d9232d1dce9eab8d7
+targets:
+  - path: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    lines: "1-996"
+  - path: Picea.Abies.Tests/SpecAttribute.cs
+    lines: "1-7"
+  - path: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    lines: "23-29"
+  - path: .squad/design/undo-redo/06-spec.md
+    lines: "40-56, 236-249, 314-319, 1696-1730, 1832-1960"
+blockers:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 243
+    reason: >-
+      Assert.That(<collection>).IsEqualTo([...]) compiles on the pinned TUnit
+      1.19.57 but can never pass. The collection expression is target-typed to
+      a compiler-generated <>z__ReadOnlyArray<string> and compared by Equals,
+      which is reference equality, so the assertion fails on the MATCHING
+      sequence as well as on a permutation. Verified with both controls in a
+      1.19.57 scratch project, and swept across every plausible support-file
+      return type for EditorLog.Timeline (string[], List<string>,
+      IEnumerable<string>, IReadOnlyList<string>, ImmutableArray<string>,
+      ImmutableList<string>) - all six fail on identical content. Also verified
+      against a bespoke [CollectionBuilder] type with correct IEquatable<T>
+      value equality, which fails while the subject's own Equals returns True,
+      proving no support-file choice closes it. Amendment 4 replaced an
+      assertion that passed for the wrong reason (order-insensitive
+      IsEquivalentTo) with one that fails for no reason, so step 6's
+      obligation - observe every test red for the right reason, then make it
+      green - can never be discharged for A6. This is a regression the
+      changeset introduces, not an inherited gap, so it is not registrable.
+      Two shapes that do work on 1.19.57 were executed with passing and
+      failing controls: IsEquivalentTo(expected, CollectionOrdering.Matching)
+      (using TUnit.Assertions.Enums) and
+      Assert.That(actual.SequenceEqual([...])).IsTrue(). Which one lands is
+      the spec-author's and the approver's call.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 247
+    reason: >-
+      Second instance of the same defect, A6's bare-program expectation. Same
+      evidence, same route. Named separately because a fix applied only at the
+      wrapped assertion would leave the test still unable to pass.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 318
+    reason: >-
+      Third instance, A7's subscription-activity ordering claim
+      (EditorLog.SubscriptionActivity IsEqualTo ["start:...", "stop:..."]).
+      Same evidence, same route.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 239
+    reason: >-
+      The locked comment states two false claims about TUnit 1.19.57 and cites
+      the round-1 review as their authority: that IsEqualTo on a collection is
+      order-sensitive on this version, and that
+      IsEquivalentTo(expected, CollectionOrdering.Matching) does not exist
+      here. Measured now - IsEqualTo on a collection is not order-sensitive,
+      it is unsatisfiable, and CollectionOrdering DOES exist on 1.19.57 in
+      namespace TUnit.Assertions.Enums (round 1's CS0103 was a missing using
+      directive misread as an absent type; strings on TUnit.Assertions.dll
+      lists CollectionOrdering, IsEquivalentToAssertion`2 and
+      CollectionIsInOrderAssertionExtensions). Decision 1 makes the file
+      immutable in its assertions AND ITS CLAIMS from the approval commit, so
+      correcting this paragraph after the commit is itself a hand-back. This
+      is not a duplicate of the assertion blockers: the paragraph would still
+      be present and still wrong if the three assertions were fixed alone.
+      :314-317 carries the same claim in shorter form. Both round-1 errors
+      were mine - the amendment cites my executed probe as its reason for
+      choosing this shape - and both are recorded in the verdict's opening
+      section.
+high:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 54
+    reason: >-
+      [Timeout(30_000)] emits warning TUnit0015 (Missing TimeoutAttribute
+      cancellation token parameter) on all 25 parameterless test methods,
+      verified by probe on 1.19.57. Not fatal - no TreatWarningsAsErrors in
+      Directory.Build.props, the test csproj or any workflow - so step 6 gains
+      25 warnings where round 1 recorded a clean build. Also measured: the
+      timeout DOES fire on an await-shaped body without a CancellationToken
+      parameter (a [Timeout(2_000)] test awaiting Task.Delay(6_000) failed at
+      2 s), so Decision 3 buys what it was meant to buy for these await-dense
+      seed loops; it does NOT fire on a synchronous spin (a 6 s spin passed);
+      and the timed-out body keeps running after the failure is reported,
+      which on a class built on the process-wide static EditorLog will corrupt
+      whichever test runs next - [NotInParallel] does not prevent this because
+      the orphan is a detached continuation, not a test. The remedy for the
+      warning is a signature change, which is neither an assertion nor a
+      claim, so on Decision 1's wording step 6 could make it without a
+      hand-back; that reading is not obvious enough to leave implicit.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 986
+    reason: >-
+      A seventh support-file obligation, absent from amendment 4's table of
+      six. INV-7's assertion (4),
+      Assert.That(EditorLog.ReportedKeySetsDuringHold.Distinct())
+      .IsEquivalentTo([anchorKeys]), compares ELEMENTS with Equals, so a
+      sequence-of-sets fails whenever the elements are reference-equality
+      types (HashSet<string> and string[] elements both fail on identical
+      content) and passes when they have value equality (a record element -
+      matching passes, non-matching fails, both controls run). Round 1 cleared
+      this site as order-insensitive by intent, which was right about ordering
+      and silent about element equality. This is an obligation on the UNLOCKED
+      support files rather than a lock defect - Keys(...) and
+      ReportedKeySetsDuringHold must yield a value-equality element type - so
+      it belongs in 06-spec.md section The Lock as item (g), beside (c) and
+      (d). SingleReconciliation(...) at :971 is safe if it returns a flat
+      IEnumerable<string> and has the same problem if it returns a set of sets.
+  - file: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    line: 23
+    reason: >-
+      Round 1's warning-7, carried, unfixed and unregistered - the only
+      round-1 finding in that state. Re-measured on this working tree rather
+      than carried on trust - getItem:None returns {"None": []} and
+      getItem:Compile returns 20 items, with History/UndoRedoSpec.cs in
+      neither. The SDK's default None glob subtracts the Compile glob PATTERN,
+      not the resulting item list, so a Compile Remove of a .cs file lands it
+      in no item group and neither Visual Studio nor Rider shows it without
+      Show All Files, for the two PRs during which being looked at is its
+      entire purpose. 06-spec.md section Amendment 4 assigns it to csharp-dev.
+      Merge criterion (b) is unmet on this item alone.
+  - file: .squad/log/2026-09-07-session.md
+    line: 1
+    reason: >-
+      Round 1's warning-12, still open. git status shows this tracked file
+      modified alongside the three intended paths, and the PR's stated
+      criterion is three files and nothing else, so the committer must stage
+      explicitly rather than use git commit with the all flag. Process
+      caution, not a code defect. Related, also still open - no PR exists for
+      branch test/0-undo-redo-spec (gh pr list --head returns empty), so
+      round 1's warning-11 precondition on the PR body stating that the spec
+      is deliberately excluded until step 6 remains unmet by absence.
+medium: []
+good:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 591
+    reason: >-
+      Round-1 blocker 3(b) fixed by making the code true to the claim rather
+      than the claim true to the code. INV-2 now walks the script under both
+      lenses against one reachable set computed once, with distinct Because
+      text per lens, and the falsifier table gains a projection-specific
+      mutation. The whole-model lens is the half that holds by construction,
+      so adding the projection lens added the half that can actually fail.
+      Decision 2 kept INV-6's feedback interpreter on exactly the same
+      reasoning. Both were open invitations to take the cheaper route.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 931
+    reason: >-
+      Round-1 blocker 3(a) fixed, and implementing it immediately exposed that
+      BlockedByWorld was unreachable in either direction under NoFeedback, so
+      the ten-combination claim could never have been met. That is the case
+      for named falsifiers being code rather than prose, made by the artifact
+      itself. Verified: the coverage assertion compiles and passes on 1.19.57,
+      the observed.Add call at :885 is unguarded, and GetType().Name matches
+      nameof for nested record cases.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 531
+    reason: >-
+      All four reached floors (INV-1, INV-3, INV-4, INV-5) are placed after
+      the last continue guard and before the first assertion. Getting this
+      wrong is easy and silent, and would have made the floor decorative.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 1
+    reason: >-
+      The header is fixed rather than hedged - round 1's finding was a false
+      sentence, and the response was to rewrite it as csharp-dev's own
+      accurate text instead of appending a disclaimer. Every claim in it
+      checks out, including the CS0234 behaviour, which I verified by
+      temporarily deleting the Compile Remove and restoring the csproj
+      byte-identical afterwards.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 344
+    reason: >-
+      The transcription is verifiable by construction. Re-extracting
+      06-spec.md's six csharp fences (344-829, 917-1014, 1043-1133, 1174-1223,
+      1234-1429, 1443-1489), reassembling and diffing against the working-tree
+      file yields 87 diff lines containing no assertion, no claim and no
+      whitespace reflow - the 18-line header, a 15-line bridging comment, five
+      blank lines and the class's closing brace moved to the end of the file.
+      The Gen stub is again correctly omitted. Zero formatter damage this
+      round, because the exclusion was in the csproj before the file was
+      written.
+  - file: .claude/enforcement/refutations.md
+    line: 777
+    reason: >-
+      R-27 and R-28 are real registrations - each carries an owner, an
+      expires date of 2026-09-21, and a level consequence written from
+      executed evidence, and R-27 argues explicitly why it is neither R-19
+      (unmediated Bash) nor R-20 (worktree/symlink deny-closure), which is the
+      part that usually gets skipped.
+references:
+  - .squad/design/undo-redo-pr0/09-review-verdict.md
+  - .squad/design/undo-redo-pr0/08-review-blind.md
+  - .squad/design/undo-redo/06-spec.md
+  - .squad/design/undo-redo/05-critic.md
+  - .squad/design/undo-redo/07-handoff.md
+  - .claude/docs/principles-enforcement.md
+  - .claude/enforcement/refutations.md
+---
+
+# Review verdict - undo/redo locked spec (PR 0), round 2
+
+Working tree on `test/0-undo-redo-spec`, uncommitted, over HEAD `faafc8b`. Round 2 of 2
+before the cap; a third round splits the changeset under
+`principles-enforcement.md` section *The Merge Criterion*.
+
+## What was settled
+
+Amendment 4 fixed six of the seven round-1 findings that were the spec's to fix, and fixed
+the two that mattered most in the harder direction - adding the projection lens to INV-2
+rather than deleting the sentence that claimed it, and keeping INV-6's feedback interpreter
+rather than narrowing the coverage claim to what the old fixture could reach. The
+transcription is byte-faithful to the six approved fences and the build claims check out.
+
+## What blocks
+
+The remedy amendment 4 adopted for round-1 blocker 2 does not work.
+`Assert.That(<collection>).IsEqualTo([...])` compiles on TUnit 1.19.57 and fails on the
+matching sequence, across every plausible subject type and even against a bespoke
+value-equality collection type. Three assertions in the locked text - A6 twice, A7 once -
+went from passing for the wrong reason to failing for no reason, which is strictly worse
+in this process because step 6 cannot make them green. The locked comment that explains
+the change states two false claims about TUnit and cites the round-1 review as their
+authority.
+
+## The error was mine, and it is recorded
+
+Round 1 told the spec-author that `IsEqualTo` on a collection is order-sensitive (I ran only
+the negative control - a permutation failing is equally consistent with "always fails") and
+that `CollectionOrdering` does not exist on this version (I read a `CS0103` missing-using
+error as an absent type). The amendment states that it chose this shape because the reviewer
+had already executed it. Every claim in this round carries a passing control and a failing
+control.
+
+## The route
+
+Same as round 1: a `spec-author` amendment with user re-approval, because the defects are in
+approved text and `csharp-dev` may not edit it. PR 0 is still the approval commit, so this
+is still the cheap moment - and it is the last one, because round 3 hits the cap and the
+split never ships a red stated property.
+

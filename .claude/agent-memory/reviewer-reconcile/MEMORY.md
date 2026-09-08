@@ -34,3 +34,16 @@ at the time and rewriting it would misrepresent the historical record.
 - [A record is checkable only where its evidence survives](a-record-is-checkable-only-where-its-evidence-survives.md) — design-record PRs fail on provenance; re-run flows overwrite the artifacts governance documents cite.
 - [The clock field is a toolchain job](the-clock-field-is-a-toolchain-job.md) — five roles have no Bash to read a clock, and I got `created:` wrong myself while holding one.
 - [A blocker list is not the criterion](a-blocker-list-is-not-the-criterion.md) — the author reads your enumeration as the scope; enumerate by rule or (b) comes back unmet.
+- [State which grades criterion (b) binds on](state-which-grades-criterion-b-binds-on.md) — read literally, (b) sweeps in nitpicks and never closes; name the grades in the verdict.
+- [Measure each guard item separately](measure-each-guard-item-separately.md) — a four-item MSBuild Remove group held two no-ops and one that hid the tree from the IDE.
+- [Inherited or introduced decides the verdict](inherited-or-introduced-decides-the-verdict.md) — for copy bundles, `git show <pinned-sha>:` separates a faithful copy of a bad source from an error made here.
+- [The drop validator is not a YAML parser](the-drop-validator-is-not-a-yaml-parser.md) — invalid front-matter merges instead of quarantining; use quoted heredocs and `>-` block scalars.
+- [Squash-merge rewrites the quoted timestamp](squash-merge-rewrites-the-quoted-timestamp.md) — a pinned bundle can faithfully quote the pre-squash commit's author date; check commit metadata separately.
+- [Untracked bundles need a check-ignore sweep](untracked-bundles-need-a-check-ignore-sweep.md) — byte-perfect files still ship incomplete; `git add` skips ignored paths silently.
+- [State the finding, not the remedy](state-the-finding-not-the-remedy.md) — twice in one changeset the override beat my prescription; a menu of remedies is not an open fix.
+- [The merger eats the drop immediately](the-merger-eats-the-drop-immediately.md) — an inbox path that vanishes means merged, not failed; check the archive and the cache.
+- [Extract the spec fences and diff](extract-the-spec-fences-and-diff.md) — reassembling `06-spec.md`'s code blocks decides whether a defect is the spec-author's or the transcriber's.
+- [A locked file was never type-checked](a-locked-file-was-never-type-checked.md) — an excluded spec is frozen with its typos; compile-probe the assertion shapes before the approval commit closes the lock.
+- [A copy outside the deny list defeats blindness](a-copy-outside-the-deny-list-defeats-blindness.md) — the hook denies `.squad/design/**`, not the byte-identical copy someone committed elsewhere.
+- [A negative control alone proves nothing](a-negative-control-alone-proves-nothing.md) — my one-sided probe sent an amendment to a shape that can never pass; run both controls, and never read CS0103 as an absent API.
+- [A Timeout attribute is not a hang guard](a-timeout-attribute-is-not-a-hang-guard.md) — TUnit0015 on every test, sync spins missed, and the orphaned body corrupts the next test on shared static state.

@@ -20,4 +20,14 @@
     <ProjectReference Include="..\Picea.Abies.UI\Picea.Abies.UI.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Locked undo-redo spec (PR 0, [R4-spec-commit]), awaiting the feature types it
+         exercises. Removed in plan step 6 (PR 3) once WithHistory et al. exist; see
+         .squad/design/undo-redo/06-spec.md § "The Lock" and 04-realist-plan.md § "Todo List".
+         Carried as <None> in the meantime so it stays visible in IDE solution trees and
+         `-getItem:None` rather than falling out of every MSBuild item group entirely. -->
+    <Compile Remove="History\UndoRedoSpec.cs" />
+    <None Include="History\UndoRedoSpec.cs" />
+  </ItemGroup>
+
 </Project>

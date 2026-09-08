@@ -13,7 +13,7 @@
 - [What belongs in the lock](what-belongs-in-the-lock.md) — I parked a stated behaviour in a plan step on fixture-cost grounds; the user moved it back and the fixture cost was tiny
 
 ## Re-approval events
-_None yet — no spec has been found wrong during implementation._
+- [Assertion shapes are not verified by me](assertion-shapes-are-not-verified-by-me.md) — `undo-redo` PR 0, 2026-09-07, rounds 1 and 2: `.Or` does not cross subjects, `IsEquivalentTo` ignores order, `IsEqualTo` on a collection is unsatisfiable — demand a passing *and* a failing control
 
 Amendments **before** the lock took effect (not re-approvals, and much cheaper): `undo-redo`
 2026-09-07, three times — A9 (see [[what-belongs-in-the-lock]]), INV-2's second property
@@ -23,3 +23,12 @@ holding the approver's pen; the third was the **Critic's confirmation pass** fin
 amendment's property could not see the shape the repository's own README hands an adopter. That
 window is worth keeping open explicitly — say in the approval request which things are still free to
 move, and list what you deliberately did **not** take with "say the word and it lands here".
+
+**Amendment 4 was the first real re-opening** — from outside, on the PR-0 review's evidence, not
+from the user finding a gap. Two lessons beyond the shapes themselves. (1) *"The attribute site is
+inside the lock"* is a decisive argument: `[NotInParallel]` could not be added at step 6 without a
+hand-back, so the user directed it in. Sweep every draft for attributes and declarations that can
+only ever land before the lock. (2) Writing a missing coverage assertion **found a second defect** —
+INV-6's `BlockedByWorld` was unreachable under `NoFeedback`, so its ten-combination claim could
+never have been met. Unimplemented coverage claims conceal unreachable cases; implementing them is
+how you find out.
