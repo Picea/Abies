@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786199028294,
+  "lastUpdate": 1788873590047,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -15820,6 +15820,84 @@ window.BENCHMARK_DATA = {
             "value": 57.2,
             "unit": "ms",
             "extra": "mean: 57.3ms, samples: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24",
+          "message": "feat(history): Add the undo-redo history types (#363)\n\n* docs(design): Record the confirmation pass on PR #362\n\nThe reviewer's commit-boundary confirmation for the follow-ups PR, its\nmerged PASS drop, its notebook edit, and the hook-written rows.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): UX room answers for the undo-redo chrome\n\nStep 12 of the plan: thirteen questions answered, two of them\noverriding sentences the plan states: a post-navigation refusal must\nnot tell a user who pressed Back that the page changed on them, and a\nraw message type name is never default end-user text. Adjacent visible\nrefusal reasons and a held-movement indicator added to the chrome\ncontract.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Fold the UX room answers into the undo-redo plan\n\nSteps 5, 10 and 13 carry the settled refusal wording: one template,\nhumanized reasons, the raw cause never default end-user text, the\ndirection-specific navigation pair, no proactive signal at the seal,\nadjacent visible refusal text, and a held-movement indicator. Step 12\nanswered; the narrative sites that quoted an identifier as copy are\nqualified.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Step 6 namespace decision, the anchor identity test, and PR 1's review record\n\nStep 6 now carries the namespace-shadowing decision the implementer\nmust make before removing the compile exclusion, with the three options\nand their cost, and the bound that the format check only runs on files\na PR touches. Step 8 gains the anchor identity regression test and step\n16 the Trust Boundary 7 provenance clause and open risk, both from the\nsecurity room's answer on Movement.Held carrying object. PR 1's blind\nreading and round-1 verdict, the merged drop, and notebook entries\nincluded.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* feat(history): Add the undo-redo history types\n\nPR 1 of the undo-redo plan, steps 1 and 2. HistoryStack<T>: an\ninternal array copy-on-write persistent stack with structural equality,\nworst-case O(Depth) per operation, not amortised O(1). History<TModel>:\na public record with internal construction and internal init on\nPresent and Movement so no caller outside the assembly can desynchronise\nit from its stacks; Step<TModel>, EdgeState (Crossable, SealedByEffect,\nSealedByWorld, SupersededByNewAction), Movement (Settled, Held with an\nobject anchor forced by the locked spec's non-generic assertion, internal\nconstruction), and Origin. Both sum types are closed by an internal\nabstract member so no external assembly can add a case. Twenty-nine\ntests, including reflection tests on the seal and structural equality\nacross stacks. Nothing consumes these types yet; the locked spec stays\nexcluded from compilation until step 6.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n---------\n\nCo-authored-by: Claude Fable 5.1 <noreply@anthropic.com>",
+          "timestamp": "2026-09-08T15:08:47+02:00",
+          "tree_id": "9e3629c07b2211cf5f47a009aa67365a41edfb7e",
+          "url": "https://github.com/Picea/Abies/commit/dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24"
+        },
+        "date": 1788873589271,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "01_run1k (create 1000 rows)",
+            "value": 333.5,
+            "unit": "ms",
+            "extra": "mean: 334.5ms, samples: 15"
+          },
+          {
+            "name": "02_replace1k (replace all 1000 rows)",
+            "value": 350.1,
+            "unit": "ms",
+            "extra": "mean: 349.2ms, samples: 15"
+          },
+          {
+            "name": "03_update10th1k_x16 (update every 10th row)",
+            "value": 172.3,
+            "unit": "ms",
+            "extra": "mean: 172.0ms, samples: 15"
+          },
+          {
+            "name": "04_select1k (select row)",
+            "value": 29.9,
+            "unit": "ms",
+            "extra": "mean: 30.1ms, samples: 25"
+          },
+          {
+            "name": "05_swap1k (swap two rows)",
+            "value": 81.4,
+            "unit": "ms",
+            "extra": "mean: 81.7ms, samples: 15"
+          },
+          {
+            "name": "06_remove-one-1k (remove one row)",
+            "value": 59.2,
+            "unit": "ms",
+            "extra": "mean: 60.5ms, samples: 15"
+          },
+          {
+            "name": "07_create10k (create 10,000 rows)",
+            "value": 3337.1,
+            "unit": "ms",
+            "extra": "mean: 3345.0ms, samples: 15"
+          },
+          {
+            "name": "08_create1k-after1k_x2 (append 1000 rows)",
+            "value": 381.1,
+            "unit": "ms",
+            "extra": "mean: 381.6ms, samples: 15"
+          },
+          {
+            "name": "09_clear1k_x8 (clear all rows)",
+            "value": 56,
+            "unit": "ms",
+            "extra": "mean: 56.1ms, samples: 15"
           }
         ]
       }
