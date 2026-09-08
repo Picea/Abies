@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788873593382,
+  "lastUpdate": 1788873710171,
   "repoUrl": "https://github.com/Picea/Abies",
   "entries": {
     "Rendering Engine Throughput": [
@@ -9012,6 +9012,192 @@ window.BENCHMARK_DATA = {
             "value": 8202.222248331705,
             "unit": "ns",
             "range": "± 74.21387831488"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "MCGPPeters@users.noreply.github.com",
+            "name": "Maurice CGP Peters",
+            "username": "MCGPPeters"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24",
+          "message": "feat(history): Add the undo-redo history types (#363)\n\n* docs(design): Record the confirmation pass on PR #362\n\nThe reviewer's commit-boundary confirmation for the follow-ups PR, its\nmerged PASS drop, its notebook edit, and the hook-written rows.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): UX room answers for the undo-redo chrome\n\nStep 12 of the plan: thirteen questions answered, two of them\noverriding sentences the plan states: a post-navigation refusal must\nnot tell a user who pressed Back that the page changed on them, and a\nraw message type name is never default end-user text. Adjacent visible\nrefusal reasons and a held-movement indicator added to the chrome\ncontract.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Fold the UX room answers into the undo-redo plan\n\nSteps 5, 10 and 13 carry the settled refusal wording: one template,\nhumanized reasons, the raw cause never default end-user text, the\ndirection-specific navigation pair, no proactive signal at the seal,\nadjacent visible refusal text, and a held-movement indicator. Step 12\nanswered; the narrative sites that quoted an identifier as copy are\nqualified.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* docs(design): Step 6 namespace decision, the anchor identity test, and PR 1's review record\n\nStep 6 now carries the namespace-shadowing decision the implementer\nmust make before removing the compile exclusion, with the three options\nand their cost, and the bound that the format check only runs on files\na PR touches. Step 8 gains the anchor identity regression test and step\n16 the Trust Boundary 7 provenance clause and open risk, both from the\nsecurity room's answer on Movement.Held carrying object. PR 1's blind\nreading and round-1 verdict, the merged drop, and notebook entries\nincluded.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n* feat(history): Add the undo-redo history types\n\nPR 1 of the undo-redo plan, steps 1 and 2. HistoryStack<T>: an\ninternal array copy-on-write persistent stack with structural equality,\nworst-case O(Depth) per operation, not amortised O(1). History<TModel>:\na public record with internal construction and internal init on\nPresent and Movement so no caller outside the assembly can desynchronise\nit from its stacks; Step<TModel>, EdgeState (Crossable, SealedByEffect,\nSealedByWorld, SupersededByNewAction), Movement (Settled, Held with an\nobject anchor forced by the locked spec's non-generic assertion, internal\nconstruction), and Origin. Both sum types are closed by an internal\nabstract member so no external assembly can add a case. Twenty-nine\ntests, including reflection tests on the seal and structural equality\nacross stacks. Nothing consumes these types yet; the locked spec stays\nexcluded from compilation until step 6.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01W5qDkvVS8Ebg5TRR4EbY4L\n\n---------\n\nCo-authored-by: Claude Fable 5.1 <noreply@anthropic.com>",
+          "timestamp": "2026-09-08T15:08:47+02:00",
+          "tree_id": "9e3629c07b2211cf5f47a009aa67365a41edfb7e",
+          "url": "https://github.com/Picea/Abies/commit/dc7fe7b89343a0e2cb12e3e1c0203e0aad809e24"
+        },
+        "date": 1788873709462,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "Abies.Benchmarks.Diffing/SmallDomDiff",
+            "value": 325.95861609776813,
+            "unit": "ns",
+            "range": "± 2.9210974871170663"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/MediumDomDiff",
+            "value": 2065.1619341923642,
+            "unit": "ns",
+            "range": "± 7.333122384048726"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/LargeDomDiff",
+            "value": 467.06786212921145,
+            "unit": "ns",
+            "range": "± 2.804350080097174"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/AttributeOnlyDiff",
+            "value": 603.3600004196167,
+            "unit": "ns",
+            "range": "± 3.315537879129991"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/TextOnlyDiff",
+            "value": 416.89032976967945,
+            "unit": "ns",
+            "range": "± 2.4264107112601123"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeAdditionDiff",
+            "value": 449.1013927459717,
+            "unit": "ns",
+            "range": "± 4.748665451134199"
+          },
+          {
+            "name": "Abies.Benchmarks.Diffing/NodeRemovalDiff",
+            "value": 449.35814628601076,
+            "unit": "ns",
+            "range": "± 2.6669178620753264"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSimpleElement",
+            "value": 225.004469202115,
+            "unit": "ns",
+            "range": "± 1.9440438027371598"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithHtmlEncoding",
+            "value": 787.4275847117107,
+            "unit": "ns",
+            "range": "± 6.239200859433461"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWithEventHandlers",
+            "value": 412.81892312367756,
+            "unit": "ns",
+            "range": "± 4.878064459163487"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderSmallPage",
+            "value": 712.8109202384949,
+            "unit": "ns",
+            "range": "± 4.893253057699862"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderMediumPage",
+            "value": 5717.23189086914,
+            "unit": "ns",
+            "range": "± 58.41423656992243"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderLargePage",
+            "value": 40420.002134195965,
+            "unit": "ns",
+            "range": "± 531.2000575862311"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderDeeplyNested",
+            "value": 818.5220174153645,
+            "unit": "ns",
+            "range": "± 10.416889658020066"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderWideTree",
+            "value": 5622.294291904995,
+            "unit": "ns",
+            "range": "± 39.15292355280408"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/RenderComplexForm",
+            "value": 2712.149326833089,
+            "unit": "ns",
+            "range": "± 17.605493884687323"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRows",
+            "value": 885217.9727172852,
+            "unit": "ns",
+            "range": "± 16082.024330583177"
+          },
+          {
+            "name": "Abies.Benchmarks.Rendering/Render1kBenchmarkRowsNoHandlers",
+            "value": 824722.1985058594,
+            "unit": "ns",
+            "range": "± 138213.977470021"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Message",
+            "value": 39.42085058689118,
+            "unit": "ns",
+            "range": "± 0.7401354729891507"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateSingleHandler_Factory",
+            "value": 66.63155107895533,
+            "unit": "ns",
+            "range": "± 2.0683364875789154"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create10Handlers",
+            "value": 611.2418287913005,
+            "unit": "ns",
+            "range": "± 9.91336501831887"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create50Handlers",
+            "value": 2666.1857471466064,
+            "unit": "ns",
+            "range": "± 60.38076145866024"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/Create100Handlers",
+            "value": 4043.6173103650412,
+            "unit": "ns",
+            "range": "± 148.65212641818226"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateButtonWithHandler",
+            "value": 112.11676827271779,
+            "unit": "ns",
+            "range": "± 2.104283964040689"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateInputWithMultipleHandlers",
+            "value": 299.70913011887495,
+            "unit": "ns",
+            "range": "± 5.599833242871745"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateFormWithHandlers",
+            "value": 739.5923466364543,
+            "unit": "ns",
+            "range": "± 11.859654033653303"
+          },
+          {
+            "name": "Abies.Benchmarks.Handlers/CreateArticleListWithHandlers",
+            "value": 7614.906569925944,
+            "unit": "ns",
+            "range": "± 112.17754985761238"
           }
         ]
       }
