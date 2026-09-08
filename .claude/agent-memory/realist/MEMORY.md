@@ -11,3 +11,4 @@
 - [Spec lands as PR 0 behind an exclusion](spec-lands-as-pr-zero-behind-an-exclusion.md) — a locked spec that can't compile yet gets its own PR and a `<Compile Remove>`, never a waiver in a PR body
 - [Collected lists must be a prefix of the downstream one](collected-lists-must-be-a-prefix-of-the-downstream-one.md) — a mitigation routed straight to the spec makes "obligation 14" name two behaviours
 - [An exception named by element has four sites](an-exception-named-by-element-has-four-sites.md) — slip-signal row, precondition, Done-when *and* the PR-cut table; grep the element name before calling the fix done
+- [Illustrative wording becomes shipped copy](illustrative-wording-becomes-shipped-copy.md) — a placeholder sentence in a Done-when is a test written against a guess; settle it, annotate it, or keep it out
