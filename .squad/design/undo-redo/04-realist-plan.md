@@ -1505,7 +1505,7 @@ the *2026-03-29 `JsonPolymorphic`* obligation onto the application's message hie
 | `CHANGELOG.md` | **update** | tech-writer |
 | `docs/security/threat-model.md` | **update** — two Threats rows, one Open Risk, Trust Boundary 7 (SEC-6) | security-expert |
 | `docs/security/hardening-backlog.md` | **update** — the `SerializeMessageArgs` retrofit (SEC-7) | security-expert |
-| `Picea.Abies/Runtime.cs`, `Program.cs`, `Subscriptions/**`, `Debugger/**`, `Picea.Abies.Browser/**`, `Picea.Abies.Server/**`, `Picea.Abies.WinUI/**`, `Picea.Abies.Native/**`, every `wwwroot/*.js`, `Picea.Abies.csproj` | **unchanged — deliberately.** If a step proposes touching any of these, that is a signal the design has slipped, not a detail. **`[R4-spec-commit]` One exception, named by file and element so it is not read as a slip and so no other csproj touch can shelter behind it:** `Picea.Abies.Tests/Picea.Abies.Tests.csproj` gains `<Compile Remove="History\UndoRedoSpec.cs" />` in the **PR 0** spec commit and loses it again in **step 6 (PR 3)**. That is the whole exception — one project file, one item, added once and removed once, both times as a stated expected change. Note that the test project is *not* in this row's list (the row names `Picea.Abies.csproj`, the framework project); the exception is written here because the slip-signal rule is what a reader applies to **any** csproj touch, and a reader who finds an unexplained one should still treat it as a signal. | — |
+| `Picea.Abies/Runtime.cs`, `Program.cs`, `Subscriptions/**`, `Debugger/**`, `Picea.Abies.Browser/**`, `Picea.Abies.Server/**`, `Picea.Abies.WinUI/**`, `Picea.Abies.Native/**`, every `wwwroot/*.js`, `Picea.Abies.csproj` | **unchanged — deliberately.** If a step proposes touching any of these, that is a signal the design has slipped, not a detail. **`[R4-spec-commit]` One exception, named by file and element so it is not read as a slip and so no other csproj touch can shelter behind it:** `Picea.Abies.Tests/Picea.Abies.Tests.csproj` gains **two items in one `ItemGroup`** — `<Compile Remove="History\UndoRedoSpec.cs" />` **and `<None Include="History\UndoRedoSpec.cs" />`** — in the **PR 0** spec commit (landed as **PR #361**, merge commit `70d9ae58b142039f274d4f124902a9a60b6a6186`) and loses **both** again in **step 6 (PR 3)**. The `None Include` was added during PR 0's review so the excluded file stays visible in IDE solution trees and to `-getItem:None`, and while the exclusion is in force it is **load-bearing, not decorative**: the `Compile` glob does not claim the file in that state, so the `None Include` is the only thing holding `History\UndoRedoSpec.cs` in any MSBuild item group at all. It becomes inert the other way round — when step 6 removes the exclusion and the default `Compile` glob claims the file again — which is why it comes out **with** the exclusion rather than being left behind as a stale item. That is the whole exception — one project file, two items, added once and removed once, both times as a stated expected change. Note that the test project is *not* in this row's list (the row names `Picea.Abies.csproj`, the framework project); the exception is written here because the slip-signal rule is what a reader applies to **any** csproj touch, and a reader who finds an unexplained one should still treat it as a signal. | — |
 
 **Not in this pass, deliberately** (gate-3 decision 4): no demo or template adopts `WithHistory`.
 `Picea.Abies.Counter` is load-bearing for the benchmarks, the `dotnet new` templates and four E2E
@@ -1535,22 +1535,46 @@ and **nothing else**, landing **before step 1** — which is what `06-spec.md` �
 reads *"the spec lands before plan step 1"* to mean, taken literally rather than reinterpreted as
 "authored and approved before step 1".
 
+**As landed, "nothing else" held for the commit and not for the PR.** The approval commit `b39ac58`
+is those three files and nothing else, as planned. The PR that carried it, **#361**, is not: the
+branch also held the design-record and amendment-docs commits, so its squash merge
+`70d9ae58b142039f274d4f124902a9a60b6a6186` measures **40 files / 7,669 changed lines** and
+`Check PR Size` **failed** against the 1500-line hard limit
+(`.github/workflows/pr-validation.yml:211`; the check is non-required, so the merge proceeded, and
+whether that was the right call is the user's, not this plan's). The isolation this precondition
+argues for — the approval commit standing alone, so the Lock's git-history check never has to be
+waived — is a property of the **commit**, and it survived intact. The PR-level "three files, nothing
+else" reading did not. Read the same correction in the PR-cut table's PR 0 row.
+
 `UndoRedoSpec.cs` cannot compile until the end of step 6, so the same commit adds, to
 `Picea.Abies.Tests/Picea.Abies.Tests.csproj`:
 
 ```xml
 <ItemGroup>
+  <!-- Locked undo-redo spec (PR 0, [R4-spec-commit]), awaiting the feature types it
+       exercises. Removed in plan step 6 (PR 3) once WithHistory et al. exist. Carried as
+       <None> in the meantime so it stays visible in IDE solution trees and `-getItem:None`
+       rather than falling out of every MSBuild item group entirely. -->
   <Compile Remove="History\UndoRedoSpec.cs" />
+  <None Include="History\UndoRedoSpec.cs" />
 </ItemGroup>
 ```
+
+**Landed** as **PR #361**, merge commit `70d9ae58b142039f274d4f124902a9a60b6a6186`, with **two**
+items in that `ItemGroup` rather than the one this plan originally named. The `<None Include>` was
+added during PR 0's review so the excluded file stays visible in IDE solution trees and to
+`-getItem:None` instead of falling out of every item group; it is inert (the SDK's default `None`
+glob already excludes what the `Compile` glob claims, so there is no `NETSDK1022`), and it is stale
+the moment the exclusion goes. **Both items are therefore the expected change for step 6 to remove,
+along with the `ItemGroup` and its comment, which hold nothing else.**
 
 `SpecAttribute.cs` is a five-line attribute with no dependency on anything this pass builds; it
 compiles from the moment it lands and is **not** excluded. Only `UndoRedoSpec.cs` is.
 
 It is **PR 0** — its own PR, terminating at `reviewer-blind` → `reviewer-reconcile` like every other,
-carrying the locked spec, the attribute and the one-line exclusion. The exclusion is removed in
+carrying the locked spec, the attribute and the two-item exclusion group. Both items are removed in
 **step 6 (PR 3)** as a stated, expected change (step 6's Done-when; the file table's slip-signal row
-names it by file and element).
+names them by file and element).
 
 **Why this shape and not the first commit of PR 3.** `06-spec.md` § *The Lock* has
 `reviewer-reconcile` run a git-history check that flags a spec file modified in the same PR that
@@ -1656,10 +1680,15 @@ PR 0, and removed on schedule.
          events applied and the second command uninterpreted — asserted against the unwrapped
          program's opposite behaviour (first event only, later events never applied) so the
          difference is recorded as a difference, not as a passing test;
-         AND (R4-spec-commit) the <Compile Remove="History\UndoRedoSpec.cs" /> item added to
-         Picea.Abies.Tests.csproj by the PR 0 spec commit is REMOVED in this step. This is an
+         AND (R4-spec-commit) BOTH items added to Picea.Abies.Tests.csproj by the PR 0 spec
+         commit (landed as PR #361) are REMOVED in this step —
+         <Compile Remove="History\UndoRedoSpec.cs" /> AND <None Include="History\UndoRedoSpec.cs" />,
+         the latter added during PR 0's review so the excluded file stayed visible in IDE trees —
+         together with the ItemGroup and comment that hold them and nothing else. Removing only
+         the Compile Remove would leave an inert stale item, not a build error, which is exactly
+         the kind of residue this Done-when exists to prevent. This is an
          EXPECTED change, not a slip: it is the one csproj touch the pass authorises, the file
-         table's unchanged-files row names it by file and element, and the PR 3 body states it.
+         table's unchanged-files row names both by file and element, and the PR 3 body states it.
          Removing the exclusion is not an edit to the locked file and does not touch it. The spec
          compiles and runs for the first time here and must be observed RED FOR THE RIGHT REASON
          before anything is made green — the exclusion coming off is what makes that observation
@@ -1906,7 +1935,7 @@ in content and numbering, so every reference to "PR 3" elsewhere in this artifac
 
 | PR | Steps | Note |
 |---|---|---|
-| **0** | — (precondition) | **`[R4-spec-commit]`** `Picea.Abies.Tests/History/UndoRedoSpec.cs` + `Picea.Abies.Tests/SpecAttribute.cs` as the approval commit, alone, plus `<Compile Remove="History\UndoRedoSpec.cs" />` in `Picea.Abies.Tests.csproj`. Three files, no framework code, well under the line gate. **State in the PR body** that the spec is deliberately excluded from compilation until step 6 removes the exclusion, and that this is what keeps the Lock's git-history check meaningful — the check is never waived, so the body asks the reviewer for nothing. `reviewer-blind` reviews the spec as a specification, which is the one PR where that is the whole job. |
+| **0** | — (precondition) | **`[R4-spec-commit]`** `Picea.Abies.Tests/History/UndoRedoSpec.cs` + `Picea.Abies.Tests/SpecAttribute.cs` as the approval commit, alone, plus `<Compile Remove="History\UndoRedoSpec.cs" />` **and `<None Include="History\UndoRedoSpec.cs" />`** in `Picea.Abies.Tests.csproj` (both items landed; the `None Include` was added during PR 0's review for IDE-tree visibility, and step 6 removes both). Three files, no framework code, well under the line gate — **as planned, and true of the approval commit `b39ac58` only**. **As landed:** PR **#361**, squash merge `70d9ae58b142039f274d4f124902a9a60b6a6186`; the branch also carried the design-record and amendment-docs commits, so the PR measured **40 files / 7,669 changed lines** and `Check PR Size` **failed** the 1500-line hard limit (non-required check; merged anyway). PR 0 is therefore **not** an instance of the line-gate argument that shapes PRs 1–7 below — those are code PRs and the argument stands for them; PR 0 escaped it by carrying docs the plan did not schedule into it. **State in the PR body** that the spec is deliberately excluded from compilation until step 6 removes the exclusion, and that this is what keeps the Lock's git-history check meaningful — the check is never waived, so the body asks the reviewer for nothing. `reviewer-blind` reviews the spec as a specification, which is the one PR where that is the whole job. |
 | 1 | 1, 2 | Additive only; the new types are unreferenced until PR 3. **State that in the PR body** so `reviewer-blind` is not surprised by dead code — it is reviewing a foundation, not an orphan. |
 | 2 | 3, 4, 5 | Same note. |
 | 3 | 6 | Completes the vertical; the largest single PR and the one to keep clean. |

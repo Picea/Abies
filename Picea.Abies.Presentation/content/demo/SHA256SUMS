@@ -37,3 +37,6 @@ ecfd3b5325932dae1be56d2c200497d3cb9f9706490444735b8dc245eb0bc7aa  stops/5.5-inva
 ccac1300f20d25d52a76ed34b3d47b444956f81fc9f4ac5b3658cc4a19137c6e  stops/5.6-review-headers.composite.md
 e5786796bdeaeeade2178ec2962d00a75302d80502aef8545fd75033ac36df18  stops/5.6-round-2-escalation.composite.md
 92d63175d048abebd6fa545e4e5f9d4ab8e3bf60086343c29417f3d75713a5c7  stops/6-register-why-not-caught.md
+
+# Added 2026-09-08 — INV-3 property re-exported against 70d9ae58b142039f274d4f124902a9a60b6a6186 (PR #361)
+ec8e2e89ce93bc9a3379bdc303ca7a0bf3ae762f545f724592967d2d19aa440f  stops/5.5-property.70d9ae5.cs

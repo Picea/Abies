@@ -3520,3 +3520,599 @@ approved text and `csharp-dev` may not edit it. PR 0 is still the approval commi
 is still the cheap moment - and it is the last one, because round 3 hits the cap and the
 split never ships a red stated property.
 
+
+### 2026-09-08 — reviewer-reconcile-20260908T045002Z-undo-redo-pr0-round3 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260908T045002Z-undo-redo-pr0-round3
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-08T04:50:02Z
+commit: 3baa6015d3be3a4461ece23f87150100d63647cb
+targets:
+  - path: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    lines: "1-1068"
+  - path: Picea.Abies.Tests/SpecAttribute.cs
+    lines: "1-7"
+  - path: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    lines: "23-32"
+blockers:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 2
+    reason: >-
+      Round 3 is past the cap and the split is degenerate (PR 0 is three files
+      the plan requires to land together), so this is an escalation, not a
+      rejection. The header states amendment 5 was re-approved on 2026-09-07;
+      06-spec.md:2137 records "answered 2026-09-08" and :66-67 agrees. A false
+      claim introduced by this changeset into a file the process declares
+      immutable, so it is not registrable - but unlike rounds 1 and 2 it costs
+      one line either side of the approval commit, by csharp-dev, with no
+      spec-author amendment and no re-approval, because the Lock's consequence 3
+      assigns csharp-dev's transcription commentary to csharp-dev. The user's
+      call is route 1 (correct the date in the working tree, then commit;
+      recommended) or route 2 (commit as-is and correct after). What must not
+      happen is a third spec-author amendment - no approved fence, assertion or
+      fence claim is touched by this round.
+high:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 1659
+    reason: >-
+      Step 6's Done-when names one csproj item to remove; the tree now carries
+      two after this changeset fixed round-2's warning-7 with
+      <None Include="History\UndoRedoSpec.cs" />. Left as-is, step 6 removes the
+      Compile Remove per its checklist and the None Include survives as an inert
+      stale item (no NETSDK1022 - the default None glob excludes the file once
+      the Compile glob claims it). Owner realist; inherited-shaped and the clean
+      registration for the next changeset.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 1
+    reason: >-
+      Carried and unchanged since round 1, both satisfied at PR-open and commit
+      time rather than registrable. No PR exists for test/0-undo-redo-spec
+      (gh pr list --head returns empty) and 04-realist-plan.md:1909 requires the
+      body to state the deliberate compile exclusion and the git-history check.
+      Working tree also carries a modified .squad/log/2026-09-08-session.md
+      alongside the three intended paths, so stage explicitly rather than
+      git commit -a.
+medium: []
+good:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 301
+    reason: >-
+      Round-2 blocker 5 closed by execution. The three assertions at :301, :306
+      and :381 now use IsEquivalentTo(expected, CollectionOrdering.Matching)
+      with using TUnit.Assertions.Enums; verified on the pinned TUnit 1.19.57
+      with 17 executed cases and both controls - matching order passes on
+      string[], List, IEnumerable, IReadOnlyList, ImmutableArray, ImmutableList
+      and ICollection subjects; a permutation fails on all of them; A7's exact
+      two-element shape passes forward and fails reversed; length mismatches
+      fail. The sweep is wider than the amendment's stated three subject types,
+      so no support-file choice for EditorLog.Timeline breaks it and no new Lock
+      obligation is created. INV-7's deliberately bare IsEquivalentTo at :1043
+      and :1059 is untouched and still order-insensitive - the change did not
+      over-apply.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 275
+    reason: >-
+      Round-2 blocker 6 closed. The paragraph that recorded two falsehoods as
+      fact is replaced by measurements beside the assertion, and every claim in
+      it was re-executed rather than read - bare IsEquivalentTo order-insensitive
+      but content-sensitive; IsEqualTo unsatisfiable on all six named subject
+      types on matching content; the bespoke CollectionBuilder probe reproducing
+      equals-new=True on the line before the failure; A7's stop-then-start
+      passing under bare IsEquivalentTo. All true. The evidence now sits where
+      step 6 reads it instead of in a review nobody re-opens.
+  - file: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    line: 30
+    reason: >-
+      Round-2 warning-7 fixed rather than registered, and in the codebase's own
+      idiom. -getItem:None now returns one item, History\UndoRedoSpec.cs;
+      -getItem:Compile still returns 20 without it. <None Include= matches five
+      sibling csprojs, the comment explains the lifecycle, and [R4-spec-commit]
+      is a real Realist tag (04-realist-plan.md:1508, :1531, :1909) rather than
+      an unresolved placeholder. Adding a None item does not pull the file into
+      dotnet format's Roslyn workspace, so R-28's registered analysis is
+      unchanged.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 564
+    reason: >-
+      The transcription is verifiable by construction. Re-extracting the six
+      approved csharp fences from 06-spec.md (361-897, 987-1082, 1113-1201,
+      1244-1291, 1304-1497, 1522-1566 - re-derived, since amendment 5 moved every
+      line number) and diffing gives 74 lines containing only csharp-dev's
+      30-line header, the 24-line invariant-layer bridge and the relocated
+      closing brace. No assertion, no fence claim, no whitespace reflow. The Gen
+      stub is again correctly omitted. Build green with the exclusion (0
+      warnings) and CS0234-only without it, with nothing at the new
+      TUnit.Assertions.Enums using - which the GlobalUsings.g.cs inspection shows
+      is required and therefore not at IDE0005 risk. 224/224 existing tests pass;
+      git log --all over Picea.Abies.Tests/History/ is still empty, so the Lock's
+      git-history check is never waived.
+references:
+  - .squad/design/undo-redo-pr0/09-review-verdict.md
+  - .squad/design/undo-redo-pr0/08-review-blind.md
+  - .squad/design/undo-redo/06-spec.md
+  - .claude/docs/principles-enforcement.md
+  - .claude/enforcement/refutations.md
+---
+
+# Review — undo/redo locked spec (PR 0), round 3
+
+Round 3 is past the two-round cap. Two archived drops evidence the count:
+`2026-09-07T13-46-42-review-undo-redo-pr0.md` (`commit: 3bd7af3d…`) and
+`2026-09-07T14-49-50-review-undo-redo-pr0-round2.md` (`commit: faafc8b1…`),
+cross-checked against the `**Round:** n` lines in `09-review-verdict.md`.
+
+Criterion (a) is green — every stated property of the three files as § *The Lock*
+defines them was measured this round, not carried. Criterion (c) is green.
+Criterion (b) has one item the changeset introduced and therefore cannot register:
+a false re-approval date in `csharp-dev`'s own file header.
+
+The cap's remedy is *split, what passes ships*, and the split is degenerate here:
+PR 0 is three files the plan requires to land together, and one sentence cannot be
+carved out of a file. But the property that made rounds 1 and 2 cap-forcing is
+absent — this correction costs one line before or after the approval commit, by
+`csharp-dev`, with no `spec-author` amendment and no user re-approval, because
+amendment 5 added Lock consequence 3 assigning transcription commentary to
+`csharp-dev`. So the cap escalates as a question, not as a rejection.
+
+Full findings, evidence and the two routes: `.squad/design/undo-redo-pr0/09-review-verdict.md`
+§ *Re-review — round 3, the split round*.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T050117Z-undo-redo-pr0-confirmation [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260908T050117Z-undo-redo-pr0-confirmation
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-08T05:01:17Z
+commit: 3baa6015d3be3a4461ece23f87150100d63647cb
+targets:
+  - path: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    lines: "1-3"
+  - path: Picea.Abies.Tests/SpecAttribute.cs
+    lines: "1-7"
+  - path: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    lines: "23-32"
+blockers: []
+high: []
+medium: []
+good:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 1
+    reason: >-
+      Route 1 taken and the round-3 open item is closed. The header now records
+      the original approval on 2026-09-07, amendment 4's re-approval on
+      2026-09-07 and amendment 5's on 2026-09-08, matching 06-spec.md at
+      :1831, :2023 and :2137 and the artifact summary at :66-67.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 31
+    reason: >-
+      The six approved fences are unaltered, proven against the spec rather
+      than against prior review notes. Reassembling 06-spec.md's fences at
+      361-897, 987-1082, 1113-1201, 1244-1291, 1304-1497 and 1522-1566 and
+      diffing gives one removed line, the class's closing brace moved to the
+      end of the file, and 60 added lines of which every one is a comment, a
+      blank line or that brace. No added line is code, so no assertion and no
+      claim inside a fence can have moved.
+  - file: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    line: 30
+    reason: >-
+      Unchanged since round 3 and still doing its job. Mtimes for the csproj
+      and SpecAttribute.cs precede this reviewer's round-3 drop, and
+      re-measured MSBuild items still place the spec under None and not under
+      Compile. Build of the test project succeeds with zero warnings.
+references:
+  - .squad/design/undo-redo-pr0/09-review-verdict.md
+  - .squad/design/undo-redo/06-spec.md
+  - .squad/decisions/archive/2026-09/2026-09-08T04-53-06-review-undo-redo-pr0-round3.md
+---
+
+# Confirmation — PR 0 undo/redo spec, route 1
+
+Targeted confirmation after round 3's escalation, not a fourth round. The single
+open item was the wrong amendment-5 re-approval date in `csharp-dev`'s own
+transcription commentary; route 1 corrected it in the working tree before the
+approval commit.
+
+Four scope claims verified and nothing else: the header date now agrees with the
+spec; the six approved fences are byte-faithful; `SpecAttribute.cs` and the
+csproj are untouched since round 3; the change set is still exactly three files
+under `Picea.Abies.Tests/`. The build was re-run rather than accepted.
+
+Also recorded in the verdict: round 3's own prose reported the fence diff as 74
+lines and the bridge note at :564-587, where the correct figures are 69 and
+:568-591. The artifact did not change — the line arithmetic (1,068 file lines
+against 1,009 fence lines) forces 60 added and 1 removed in both rounds — but
+the note about it was carried rather than re-derived, which is the same
+stale-number error class the closed finding named.
+
+Carried and not this changeset's to close: the PR-body precondition and the
+`.squad/log/` staging discipline, both satisfied at PR-open, and the plan
+step-6 item registered against `realist`.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T050430Z-undo-redo-pr0-commit-boundary [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260908T050430Z-undo-redo-pr0-commit-boundary
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-08T05:04:30Z
+commit: b39ac585036b344428a2202b522138ff29a3c8a9
+targets:
+  - path: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    lines: "1-1068"
+  - path: Picea.Abies.Tests/SpecAttribute.cs
+    lines: "1-7"
+  - path: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    lines: "23-32"
+blockers: []
+high: []
+medium: []
+good:
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 1
+    reason: >-
+      The commit boundary is exactly the tree this reviewer passed. b39ac58 has
+      the single parent 3baa601, and git diff --name-status 3baa601..b39ac58 is
+      exactly three paths - A History/UndoRedoSpec.cs, M
+      Picea.Abies.Tests.csproj, A SpecAttribute.cs, +1085/-0 - with no fourth
+      file and no deletion.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 2
+    reason: >-
+      The committed blobs equal the working-tree files passed at 3baa601, so
+      nothing was amended between confirmation and commit. git rev-parse
+      b39ac58:<path> matches git hash-object <path> for all three -
+      2d50430539174d070c40623ab5e1e0faed6e5ec8,
+      42c878375e73623d4f8349d2b3def340305ba22a and
+      7d6502fd0077104098707e0feb3d866faf7d64cb. In particular the header's
+      amendment-5 re-approval date, route 1's correction, is inside the
+      committed blob.
+  - file: Picea.Abies.Tests/History/UndoRedoSpec.cs
+    line: 3
+    reason: >-
+      The Lock's git-history baseline now exists and is unambiguous. git log --
+      Picea.Abies.Tests/History/ shows exactly one commit, b39ac58
+      "test(history) Lock the undo-redo executable specification", so any later
+      touch of the spec is a second commit on that path and reads as a spec
+      edit rather than as part of the approval commit - which is the property
+      the Lock's git-history check depends on.
+  - file: Picea.Abies.Tests/Picea.Abies.Tests.csproj
+    line: 30
+    reason: >-
+      The working tree left behind holds only hook-written state and review
+      artifacts, so nothing code-shaped was omitted from the commit.
+      decisions.md and decisions/archive/2026-09/ are merger-written, the
+      session log and pass-cost.md are session-logger-written, and
+      09-review-verdict.md plus agent-memory/reviewer-reconcile/ are this
+      reviewer's own. A git status --ignored sweep of Picea.Abies.Tests/ finds
+      nothing outside bin/obj but TestResults/, so no spec content was left
+      unstaged by an ignore rule.
+references:
+  - .squad/design/undo-redo-pr0/09-review-verdict.md
+  - .squad/decisions/archive/2026-09/2026-09-08T05-01-58-review-undo-redo-pr0-confirmation.md
+  - .squad/decisions/archive/2026-09/2026-09-08T04-53-06-review-undo-redo-pr0-round3.md
+---
+
+# Commit-boundary confirmation — PR 0 undo/redo spec
+
+Not a review round. The targeted confirmation at 05:01Z passed the three-file
+working tree at HEAD `3baa601` and said where to stop; this re-issues that PASS
+against the commit that tree became, so the merge gate has a cached verdict for
+the HEAD it will actually see.
+
+Four claims verified and nothing else: the diff is exactly the three paths
+against the stated parent; the committed blobs are byte-identical to the files
+confirmed; the residual working tree is hook-written state and review artifacts
+only; and `Picea.Abies.Tests/History/` now has exactly one commit in its history.
+No dimension was re-run and no finding was re-derived.
+
+Where to stop. The cache records PASS for `b39ac58`, so `b39ac58` is the head the
+merge gate accepts. The artifacts still dirty in this tree — this verdict file,
+the merged `decisions.md`, `.squad/log/`, this reviewer's memory — are not PR 0;
+committing them onto this branch moves HEAD past `b39ac58` and re-blocks the
+merge with no review left to run.
+
+Carried and not this changeset's to close: ⚠️-11 (PR body precondition) and
+⚠️-12 (`.squad/log/` staging discipline), both satisfied at PR-open, and ⚠️-14,
+registered against `realist` for plan step 6.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T053100Z-undo-redo-followups [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260908T053100Z-undo-redo-followups
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-08T05:31:00Z
+commit: eace0087b1c78cfcda7bfaa5bd895e9dce76a52b
+targets:
+  - path: Picea.Abies.Presentation/content/demo/README.md
+    lines: "3, 52-53, 66-69, 85, 72-79, 105"
+  - path: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    lines: "40-42"
+  - path: Picea.Abies.Presentation/content/demo/stops/5.5-property.70d9ae5.cs
+    lines: "1-48"
+  - path: .squad/design/undo-redo/04-realist-plan.md
+    lines: "1508, 1533, 1544-1553, 1669-1680, 1927"
+blockers:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    line: 105
+    reason: "The new fragment-index row claims both versions pass on their own commit and that TUnit reports green. Neither version has ever compiled - at 07607bf the artifact is a fenced block in 06-spec.md, at 70d9ae5 the file is Compile-Removed (0 Compile items measured), and the namespace it imports, Picea.Abies.History, does not exist anywhere in the repo. The user's decision said true, not pass."
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    line: 3
+    reason: "Sentences whose truth rested on a single pin or on 39 files are falsified by this change and left unamended - the opening paragraph at 3, the fragment-index table header at 85, and the manifest paragraph at 52-53 which says 39 files (19 + 20) where the tree now holds 40 (19 + 21) and the manifest 40 checksum lines. Fails the Definition of Done docs-in-sync item."
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    line: 40
+    reason: "The hand-appended second section makes the README's own regenerate-and-diff check report a permanent four-line false mismatch on an intact tree, because LC_ALL=C sort places 5.5-property.70d9ae5.cs before 5.5-property.cs and the blank line and comment header are not reproducible by the documented generator. The instruction at 66-69 that teaches the reader to read a mismatch as the source having moved on is unamended. sha256sum -c still exits 0."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 1927
+    reason: "The edit anchors the PR-0 record to merge commit 70d9ae58b142039f274d4f124902a9a60b6a6186 while leaving two as-planned claims that the commit falsifies - three files, no framework code, well under the line gate (PR 361 is 40 files and 7669 changed lines, and the repo's own Check PR Size job failed on it against a 1500-line hard limit), and at 1533 the approval commit is those two files and nothing else (it carries 37 more). This hunk had no independent pass."
+high:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: "Row 105 says plus the two lines amendment 4 added and same span through assertion (iii). Measured 3 statements over 7 added lines at method scope and +9 at fragment scope, and the span was extended past assertion (iii) to end-of-method because the older excerpt is brace-unbalanced."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "Line 1508 inverts the mechanism it cites - it calls the None Include inert once the Compile glob no longer claims the file, which is exactly the state in which the item is the only thing holding the file in any MSBuild item group. Measured with both controls in a scratch project. PR 0's review finding 14 states it the other way round, and the plan's own 1552 and 1677 are correct."
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    line: 12
+    reason: "The comment says content/demo contains one excerpted test method - this change makes it two - and says the files stay visible as None items, which is false of exactly the two .cs fragments it describes. The second clause is pre-existing; the count is introduced here."
+medium:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "The XML snippet at 1544-1550 drops one sentence present in the landed csproj comment, and step 6's Done-when instructs removal of that comment."
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: "Same test joins a design-doc source to a source-file source. The inference is sound - verified that the two full methods are character-identical apart from amendment 4's floor - but the join is unmarked. Also, the short-SHA filename convention has no stated rule, and step 6 will produce a third version of this property."
+good:
+  - file: Picea.Abies.Presentation/content/demo/stops/5.5-property.70d9ae5.cs
+    reason: "Byte-verbatim against UndoRedoSpec.cs at 70d9ae5 lines 779-826, and the older fragment is byte-verbatim against 06-spec.md at 07607bf lines 1034-1072. Pairing rather than replacing is the correct answer to 06-spec.md finding 10, and the review-found-it-before-the-lock claim verifies against amendment 4."
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: "Every as-landed claim about the csproj verifies - PR 361, the merge commit, both items present at 70d9ae5 and absent at parent 7d32cdb, the ItemGroup holding nothing else, no NETSDK1022, and not a build error for the post-step-6 stale item. The four-site sweep is complete and internally consistent."
+references: []
+---
+
+🔴 Changes Requested on the staged `undo-redo-followups` tree — the demo bundle's new row asserts test execution that never happened, three pre-existing README claims are falsified and unamended, the manifest's documented regeneration check now yields a permanent false mismatch, and the plan's PR-0 record anchors an as-landed commit to two as-planned claims that commit falsifies.
+
+## Context
+
+Round 1. `reviewer-blind` correctly refused the dispatching prompt's instruction to read
+`04-realist-plan.md` through `git diff`, so blocker 4 and the two `high` items against the plan are
+unwitnessed by an independent pass — flagged as such in the verdict rather than presented as
+corroborated.
+
+The narrative sharpened blocker 1 rather than softening it: the user's decision was that both
+versions are **true** on their own commit; "and both pass" was added in the drafting, and it is the
+half that is false.
+
+Two of `08`'s findings were resolved in the author's favour with evidence `08` could not reach — the
+spec-text/test-text join is verifiable and holds, and the four "out of scope" staged files are
+declared scope and are version-controlled project-scope memory by `CLAUDE.md`'s own account.
+
+Full reasoning, evidence and measurements:
+`.squad/design/undo-redo-followups/09-review-verdict.md`.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T054715Z-undo-redo-followups-round2 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260908T054715Z-undo-redo-followups-round2
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-08T05:47:15Z
+commit: eace0087b1c78cfcda7bfaa5bd895e9dce76a52b
+targets:
+  - path: Picea.Abies.Presentation/content/demo/README.md
+    lines: "3-8, 54-55, 71-91, 119"
+  - path: .squad/design/undo-redo/04-realist-plan.md
+    lines: "1508, 1538-1548, 1938"
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12"
+  - path: .claude/enforcement/refutations.md
+blockers:
+  - file: .claude/enforcement/refutations.md
+    reason: >-
+      Criterion (b) of the Merge Criterion is unmet. The ledger is byte-unchanged against HEAD,
+      so neither of the two outstanding warnings is registered. Both are registrable (neither is
+      a regression of a stated property) and either route closes this - fix them, or register
+      each with an owner, a level consequence and an expires date for the reviewer to verify.
+      Criterion (b) binds on the red and warning grades here; the nitpick items do not need
+      registration. Criterion (a) is green (sha256sum -c SHA256SUMS exits 0, 40 of 40) and
+      criterion (c) is not applicable. This is round 2 of the cap of two; a third round on this
+      base commit is the split.
+high:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    line: 71
+    reason: >-
+      The newly scoped first-section check still reports a permanent one-line mismatch on an
+      intact tree. The printed command emits 40 lines; the manifest's first section holds 39, so
+      diffing them always yields "36d35 < ... stops/5.5-property.70d9ae5.cs". The interpretation
+      offered beside it ("the source moved on") is not what that line means. This is the
+      remainder of round 1's blocker, reduced from four spurious lines to one and no longer
+      blocking on its own - the whole-file trap is now documented with its exact size and cause,
+      and the authoritative sha256sum -c path is named and verified green.
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    line: 12
+    reason: >-
+      Carried unfixed from round 1 and unregistered. The comment still says "one excerpted test
+      method" where this changeset makes it two, and its second clause ("the files stay visible
+      as None items") remains false of exactly the .cs files it describes. Doc-sync item of the
+      Definition of Done. Graded warning in round 1 and not escalated here.
+medium:
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 1543
+    reason: >-
+      The hard-limit citation reads pr-validation.yml:210; grep puts "const hardLimit = 1500" at
+      211, and 210 is the comment above it. Round 1's verdict said 210 and the author transcribed
+      it faithfully - this one is the reviewer's error, not the author's.
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 1539
+    reason: >-
+      "those three files" at :1539 refers forward - the sentence above names two, and the third
+      (the csproj) is named at :1550. The correction belongs where it sits; only the referring
+      phrase is ahead of its referent.
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    line: 119
+    reason: >-
+      "every seed takes an unguarded continue" is the one indicative behavioural clause left in a
+      row that is subjunctive everywhere else. Textually supported and its conclusion is true;
+      cheap to bring into line with its neighbours.
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    line: 1553
+    reason: >-
+      Carried from round 1. The XML snippet still drops the landed comment's cross-reference
+      sentence, so following step 6's Done-when produces a needless diff.
+good:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      All four round-1 blockers answered at the level of the stated rule rather than the quoted
+      instances. Nine counts re-derived from scratch and all nine hold; after two rounds in which
+      counts were the recurring defect, this round introduced none. The user's decision survives
+      verbatim, without the addition that falsified it.
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: >-
+      "nothing else held for the commit and not for the PR" is a sharper reading than the finding
+      asked for, and it is the one that keeps the Lock's check intact - that check is PR-scoped
+      and PR #361 does not bring the spec to passing, so the squash does not weaken it. The size
+      gate failure is recorded without being adjudicated, and the adjudication is handed to the
+      user explicitly.
+references:
+  - reviewer-reconcile-20260908T053100Z-undo-redo-followups
+---
+
+Round 2 on the undo-redo-followups changeset: all four round-1 blockers are closed and every claim added this round verifies, but the Merge Criterion's registration requirement is unmet, so the verdict is NEEDS-CHANGES rather than PASS.
+
+## What was verified
+
+The round-1 index blobs were recovered as unreachable git objects (`a7355f5` for the README, `48b7846` for the plan) so the round-2 delta could be isolated at the same base commit. Only two content files changed - `content/demo/README.md` (+34/-20, four regions) and `.squad/design/undo-redo/04-realist-plan.md` (+13/-2, three hunks). Everything else with a newer mtime is hook-written; `00-warden-scan.md` is byte-unchanged; `SHA256SUMS`, both `.cs` fragments and the Presentation csproj are untouched.
+
+Closed: the false execution claims in the fragment row, now replaced by an explicit never-ran statement whose three legs all re-derive; the one-pin and 39-file sentences, now defaulted-and-excepted with all four counts measured correct against a 40-file tree; the as-landed anchor, now separating the three-file approval commit `b39ac58` from PR #361's 40-file, 7,669-line squash merge whose non-required size check failed; the miscounted amendment delta, now stated at both scopes and correct at both; the inverted `None Include` mechanism, now restored to the polarity the original finding stated; and the unmarked cross-source join, now named and independently re-checkable.
+
+## What remains
+
+Two warning-grade findings, neither registered. Round 1's regenerate-and-diff blocker is reduced from a four-line to a one-line false positive but the interpretation sentence beside the scoped instruction still does not cover that line. The Presentation csproj comment is unfixed from round 1 and its count is now wrong by this changeset's own addition.
+
+Either fixing both or registering both closes criterion (b). The reviewer cannot write the ledger entries - `enforce-reviewer-readonly.sh` confines it to its own outputs, and that separation is what stops registration becoming laundering.
+
+## Where to stop
+
+The verdict and this drop are pinned to `eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`. Committing moves HEAD, at which point `.squad/.last-review-verdict` no longer matches and the commit gate blocks again - including for a commit carrying nothing but the fix. Stage whatever must ride with the changeset before the commit the next verdict will name, not after.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T060136Z-undo-redo-followups-round3 [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260908T060136Z-undo-redo-followups-round3
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-08T06:01:36Z
+commit: eace0087b1c78cfcda7bfaa5bd895e9dce76a52b
+targets:
+  - path: Picea.Abies.Presentation/content/demo/README.md
+    lines: "71-89"
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    lines: "12"
+  - path: .squad/design/undo-redo/04-realist-plan.md
+    lines: "1543"
+blockers: []
+high: []
+medium: []
+good:
+  - file: Picea.Abies.Presentation/content/demo/README.md
+    reason: >-
+      The scoped first-section check now runs clean. Executed verbatim as printed, from
+      content/demo/ on the untouched tree, it produces no output and exits 0. The head -n 39
+      boundary is exactly the first section (line 39 is the last checksum entry, 40 is blank, 41
+      is the comment header, 42 is the second-section entry). Every count in the surrounding
+      paragraph re-derived independently - 40 files under full and stops (19 plus 21), 40
+      checksum lines, 39 in the first section - and the whole-file trap re-reproduced at exactly
+      4 lines. The interpretation sentence now names the extra line as the second-section file
+      rather than offering the source-moved-on reading, which is what round 2 said had to become
+      true.
+  - file: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+    reason: >-
+      The comment reads "excerpted test methods (not compilation units)" and the plural is
+      correct - there are exactly two .cs fragments under content/. The claim that they are not
+      compilation units is verified - the Presentation project has 1 Compile item in total and 0
+      under content/, and dotnet build is clean at 0 warnings and 0 errors. The MSBuild item was
+      deliberately left untouched, which is a defensible scope call in a documentation changeset
+      that ships no executable change.
+  - file: .squad/design/undo-redo/04-realist-plan.md
+    reason: >-
+      The hard-limit citation at 1543 now reads pr-validation.yml 211 and 1930 already did.
+      Re-derived rather than quoted - grep puts "const hardLimit = 1500" at 211 and 210 is the
+      comment above it. This was the reviewer's own error from round 1, transcribed faithfully by
+      the author, and it is now closed. The plan delta this round is one line and only one.
+references:
+  - .squad/design/undo-redo-followups/09-review-verdict.md
+  - .squad/design/undo-redo-followups/08-review-blind.md
+  - .claude/docs/principles-enforcement.md
+---
+
+## Context
+
+Round 3 of the review of the `undo-redo-followups` changeset on branch
+`docs/0-undo-redo-followups`, at base commit `eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`. Rounds
+1 and 2 both returned NEEDS-CHANGES at this same commit; their drops are archived at
+`2026-09-08T05-31-09-review-eace0087.md` and `2026-09-08T05-48-17-review-eace0087-round2.md`.
+Round 2's four blockers were all closed; it blocked only on criterion (b) of the Merge
+Criterion, naming two unregistered warning-grade findings and one reviewer citation error.
+
+This round verified three fixes, all staged over the same HEAD. The round-2 baseline was
+recovered from unreachable git objects - blob `7bb9d343` for the README and `c217e360` for the
+realist plan - each confirmed to be neither the HEAD blob nor the current blob before use, so
+every delta was measured rather than inferred from a cumulative diff.
+
+## What was verified
+
+The scoped regeneration check was run verbatim and exits 0 with no output on the untouched
+tree, and a two-arm scratch-copy probe confirmed both the positive control and the one case the
+new interpretation sentence does not cover. `sha256sum -c SHA256SUMS` from `content/demo/`
+exits 0 with 40 of 40 OK and no warnings. `dotnet build` is clean at 0 warnings and 0 errors on
+both `Picea.Abies.Presentation` and `Picea.Abies.Tests`. MSBuild item state is unchanged - 0
+Compile items under `content/`, 43 None items out of 45 files, the two absentees being exactly
+the two .cs fragments.
+
+Nothing outside the three named files changed since round 2. A `find -newer` sweep returns only
+those three plus hook-written paths and this reviewer's own notebook entries;
+`00-warden-scan.md` has a newer mtime but is byte-unchanged against HEAD. One newer path sits
+in a nested scratch worktree under `.claude/worktrees/`, which is gitignored and untracked and
+cannot enter the changeset.
+
+## The one grading call
+
+Round 1's warning on the Presentation csproj comment was a compound - a count this changeset
+made wrong, and a second clause that was already wrong. The introduced half is fixed. The
+inherited half - that the .cs files stay visible as None items - remains false and is
+downgraded to a nitpick, on the record, for five stated reasons - the regression half is
+closed, the Boy Scout escalation was load-bearing only while the same sentence carried an
+introduced error, it matches the grade given to two structurally identical findings elsewhere
+in this same review, it has no verified consequence, and the fix costs the same after the merge
+as before it so it is not cap-forcing. The clause is not claimed to be true and stays open as a
+nitpick owned by `csharp-dev` on a future changeset.
+
+## Criterion and disposition
+
+Criterion (a) is green, criterion (c) is not applicable, and criterion (b) is met - there is no
+open finding at the red or warning grade left to register, so the ledger append round 2 offered
+as an alternative route is no longer owed. `.claude/enforcement/refutations.md` is byte-unchanged
+against HEAD, which is the correct state rather than a gap.
+
+This is round 3, past the cap of two, so the disposition is the split. The split is degenerate
+in the good direction - the whole changeset passes (a) to (c) and all of it ships. Nothing is
+carved out and no further round is requested. Five nitpicks are carried forward as advisory
+notes, not as conditions on this merge.
+
+## Where to stop
+
+This verdict and this drop are pinned to `eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`. Committing
+moves HEAD, at which point `.squad/.last-review-verdict` no longer matches and the commit gate
+blocks again, including for a commit carrying nothing but this verdict. All 19 paths are
+already staged and `git diff` is empty. Commit once, from here.
+

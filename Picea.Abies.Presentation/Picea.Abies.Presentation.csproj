@@ -9,7 +9,7 @@
     <ProjectReference Include="..\Picea.Abies.Browser\Picea.Abies.Browser.csproj" />
     <PackageReference Include="Praefixum" Version="2.0.1" />
   </ItemGroup>
-  <!-- content\demo\** includes one excerpted test method (not a compilation unit) that must never compile; the files stay visible as None items so the folder can still be presented -->
+  <!-- content\demo\** includes excerpted test methods (not compilation units) that must never compile; the files stay visible as None items so the folder can still be presented -->
   <ItemGroup>
     <Compile Remove="content\**" />
   </ItemGroup>
