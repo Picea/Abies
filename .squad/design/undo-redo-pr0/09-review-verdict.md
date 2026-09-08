@@ -738,3 +738,438 @@ resolve 🔴-5 and 🔴-6 in one amendment rather than two.
 - **Dimensions run:** 11/11. Security, Observability and Performance remain non-applicable —
   no runtime code, no attack surface, no hot path.
 - **Round:** 2 of 2 before the cap.
+
+---
+---
+
+# ⚖️ Re-review — round 3, the split round
+
+**Reviewed:** working tree on `test/0-undo-redo-spec`, uncommitted, over HEAD
+`3baa6015d3be3a4461ece23f87150100d63647cb`
+**Blind assessment:** `08-review-blind.md` (round 1; `reviewer-blind` does not re-run, and I
+re-read it before starting)
+**Round:** 3 — **past the cap.** `principles-enforcement.md` § *The Merge Criterion* : *"On the
+third review round of one changeset, the changeset is split — what passes under (a)–(c) ships, the
+rest is registered and becomes the next changeset."* Round count evidenced by two archived
+`reviewer-reconcile` drops for this changeset —
+`2026-09-07T13-46-42-review-undo-redo-pr0.md` (`commit: 3bd7af3d…`) and
+`2026-09-07T14-49-50-review-undo-redo-pr0-round2.md` (`commit: faafc8b1…`) — cross-checked against
+the two `**Round:** n` lines above.
+**Verdict:** ⚠️ Needs Human Review
+
+**Where to focus, in one sentence:** every substantive property this changeset states is green and
+verified by execution — the two round-2 blockers are closed, the transcription is byte-faithful, and
+⚠️-7 is fixed — and the only thing left is **one false date in `csharp-dev`'s own file header**,
+which the Lock explicitly assigns to `csharp-dev` to correct without an amendment or a re-approval.
+The decision the cap hands you is whether that one line is corrected in this working tree before the
+approval commit, or whether it ships and is corrected after.
+
+---
+
+## Reconciliation
+
+### 🔴-5 and 🔴-6, settled by execution with both controls
+
+Round 2's own opening was an apology for a one-sided probe, so this round's evidence is stated as
+seventeen executed test cases rather than as a reading. Two scratch projects against the pinned
+`TUnit 1.19.57` (the version in `Picea.Abies.Tests.csproj:14`), .NET 10.0.110, TUnit source-generated
+engine.
+
+**Probe A — the shape amendment 5 chose (17 cases, 17 passed).** `IsEquivalentTo(expected,
+CollectionOrdering.Matching)`:
+
+| control | subjects | outcome |
+|---|---|---|
+| **passing** — matching order must pass | `string[]`, `List<string>`, `IEnumerable<string>`, `IReadOnlyList<string>`, `ImmutableArray<string>`, `ImmutableList<string>`, `ICollection<string>` | **all 7 pass** |
+| **failing** — a permutation must fail | the first five of those | **all 5 throw `AssertionException`** |
+| A7's exact two-element shape | `["start:mag","stop:mag"]` vs. the same; then `["stop:mag","start:mag"]` vs. it | **passes; then fails** |
+| length differences | one element short, one element extra | **both fail** |
+| INV-7's deliberately **bare** `IsEquivalentTo` | permutation | **passes — still order-insensitive, as intended** |
+
+That last row matters as much as the others: amendment 4's note *"deliberately left as bare
+`IsEquivalentTo`"* on INV-7's assertions (1) and (4) is still true after amendment 5, so the
+`CollectionOrdering.Matching` change did not leak into the two sites that must stay
+order-insensitive. `UndoRedoSpec.cs:1043` and `:1059` are bare; `:301`, `:306` and `:381` carry the
+overload. Exactly three, exactly the three named.
+
+**The sweep is wider than the amendment's claim.** Amendment 5 states the shape was verified on
+`string[]`, `IEnumerable<string>` and `IReadOnlyList<string>`. I extended it to `List<string>`,
+`ImmutableArray<string>`, `ImmutableList<string>` and `ICollection<string>` because the support
+files are unlocked and `EditorLog.Timeline`'s return type is still `csharp-dev`'s to pick at step 6.
+**No plausible choice breaks it** — which is the opposite of what round 2 measured for `IsEqualTo`,
+where all six failed. So amendment 5's fix introduces **no new support-file obligation**, and the
+Lock table correctly stops at seven rows.
+
+**Probe B — every claim in the replacement locked paragraph (`:275-300`), five cases, five passed,
+with the evidence printed.** 🔴-6 was *"the locked paragraph states falsehoods as fact"*; a
+replacement paragraph that I accepted on reading would repeat the round-1 error that caused it. So
+each sentence was executed:
+
+| the locked paragraph now claims | probe output |
+|---|---|
+| bare `IsEquivalentTo` is order-**insensitive** (passed on a permutation) | `CLAIM1 bare-permutation=PASS bare-different-content=FAIL(AssertionException)` — order-insensitive **and** still content-sensitive |
+| `IsEqualTo` on a collection is **unsatisfiable**, swept across six subject types, *"all six fail on identical content"* | `CLAIM2 … string[] => FAIL` · `List<string> => FAIL` · `IEnumerable<string> => FAIL` · `IReadOnlyList<string> => FAIL` · `ImmutableArray<string> => FAIL` · `ImmutableList<string> => FAIL` — six for six, on **matching** content |
+| a bespoke `[CollectionBuilder]` type with correct `IEquatable<T>` fails *"while printing `equals-new=True` on the line before"* | `CLAIM4 actual=[a, b] equals-new=True` then `CLAIM4 IsEqualTo-with-collection-expression => FAIL(AssertionException)` — reproduced exactly, including the ordering of the two lines |
+| A7's paragraph: under bare `IsEquivalentTo` a *stop-then-start* *"passed identically"* | `CLAIM5 bare-IsEquivalentTo stop-then-start => PASS` |
+| `CollectionOrdering` is in `TUnit.Assertions.Enums` | resolves; and independently — see the build probe below — line 39's `using` produced **no** diagnostic when the file was put back into the compile set |
+
+**Every claim in the paragraph is true.** 🔴-6 is closed on its own terms, and the fix is the right
+kind: the measurements now sit beside the assertion, where step 6 reads them, instead of in a review
+nobody re-opens. One narrowing is recorded as 💡-1 below — the paragraph's *mechanism* sentence is
+slightly narrower than the behaviour, which I found only by running a control the paragraph does not
+claim.
+
+### The transcription
+
+**Byte-faithful to the six approved fences.** I re-extracted `06-spec.md`'s `csharp` fences at
+`361-897`, `987-1082`, `1113-1201`, `1244-1291`, `1304-1497` and `1522-1566` — six, and the line
+numbers all moved from round 2 because amendment 5 grew the artifact, so this was re-derived rather
+than carried. Reassembled, the diff against the working-tree file is **74 lines** and consists of
+exactly three things:
+
+- the 30-line header (`:1-29`), `csharp-dev`'s own text;
+- the 24-line bridge introducing the invariant layer (`:564-587`), also `csharp-dev`'s;
+- the class's closing `}` moved to the end of the file, correct because fences 2–6 are class-body
+  fragments.
+
+**No assertion, no claim from the fences, and no whitespace reflow.** The `file static class Gen`
+stub at `06-spec.md:914-954` is again correctly omitted — bodiless declarations that the Lock
+assigns to the unlocked support files. `csharp-dev`'s report of *"all six approved fences
+byte-present"* is confirmed mechanically, not accepted.
+
+**Both `using`s present, and the second one is load-bearing.**
+`Picea.Abies.Tests.GlobalUsings.g.cs` imports `TUnit.Assertions`, `TUnit.Assertions.Extensions` and
+`TUnit.Core` — **not** `TUnit.Assertions.Enums`. So the added `using TUnit.Assertions.Enums;` is
+required, is used by all three call sites, and is **not** at risk from `IDE0005`
+(`.editorconfig:268`, severity `warning`) the way `using Picea.Abies.History;` was. R-28's mechanism
+gains no new surface from amendment 5.
+
+**The build claims check out, both directions.** `dotnet build Picea.Abies.Tests.csproj` →
+**0 warnings, 0 errors**. With `<Compile Remove>` temporarily deleted → exactly one diagnostic,
+`UndoRedoSpec.cs(34,19): error CS0234: The type or namespace name 'History' does not exist in the
+namespace 'Picea.Abies'` — and **nothing at line 39**, which is the independent confirmation that
+`TUnit.Assertions.Enums` resolves in the real project and not only in a scratch one. csproj restored
+byte-identical (`git diff` unchanged at +10 lines).
+
+**The rest of the suite is unaffected.** `dotnet run` in `Picea.Abies.Tests` → **224 passed, 0
+failed, 0 skipped**.
+
+**The git-history property still holds.** `git log --all -- 'Picea.Abies.Tests/History/*'` returns
+nothing. The Lock's history check is still never waived — which is the single property PR 0's whole
+shape exists to buy.
+
+### ⚠️-7, closed
+
+Measured, not carried: `dotnet build Picea.Abies.Tests.csproj -getItem:None` now returns **one item**,
+`History\UndoRedoSpec.cs`, with `FullPath` resolving; `-getItem:Compile` still returns **20** and
+does not contain it. The file is in exactly one item group, which is what the finding asked for, and
+`<None Include=` is an established pattern in five other csprojs in this repository
+(`Picea.Abies`, `Picea.Abies.Browser`, `Picea.Abies.UI`, `Picea.Abies.Templates`,
+`Picea.Abies.Conduit.ReadStore.PostgreSQL`) — so this is codebase-consistent rather than invented.
+The `[R4-spec-commit]` token in the new comment is a real Realist tag
+(`04-realist-plan.md:1508, :1531, :1909`; `07-handoff.md:376, :399, :493`), not an unresolved
+placeholder. Adding a `None` item does not pull the file into `dotnet format`'s Roslyn workspace —
+that keys on documents, i.e. `Compile` items — so R-28's registered analysis is unchanged.
+
+### What I could not verify
+
+- **Whether the ten (case × direction) combinations INV-6 asserts are all reachable.** Unchanged
+  from round 2, and now correctly recorded *inside the spec* as amendment 5's INV-6 caveat, with the
+  right instruction attached: a red coverage assertion at step 6 is first a hypothesis about an
+  unreachable combination, not about `WithHistory`. Nothing further is knowable before step 6.
+- **Anything requiring the support files.** Seven obligations, still absent. Probe A narrows the
+  risk for (c) but cannot close (a), (d), (e), (f) or (g).
+- **Whether `[Timeout(30_000)]`'s ×10 margin is right on this project's CI.** Decision 5 stands, the
+  limits are recorded beside the value, and the residual is a step-6 observation.
+- **Whether the user considers a one-line header correction to be "the split" or a fourth round.**
+  That is the escalation, and it is the only thing between this changeset and ✅.
+
+---
+
+## Critic's accepted risks
+
+Round 1's and round 2's tables stand. I re-checked the six mitigations owed to this file against the
+re-transcribed text and every one is still at its assertion: **S25(a)** (`:271-288` equivalent, the
+transit-state test), **S26** (A3's preserved `Future.Count == 1`), **S27** (the alphabet partition —
+INV-6 is still `Gen.UserActions`, so amendment 5 moved nothing here), **S28** (no `Task.Delay`, no
+`Thread.Sleep` in the file), **B10** (the scope statement in both places), **🟡 7** (A10 present).
+
+| risk | stated mitigation | present in the code? |
+|---|---|---|
+| **🟡 4** — a change after the approval commit is a `// SPEC CONFLICT:` hand-back plus re-approval | the lock takes effect at the approval commit | ✅ **the condition is now met, and the amendment cost was paid twice.** Both defects that would have triggered it are resolved *before* the approval commit. Amendment 5's own § *What amendment 5 changes* names the reason explicitly — the round cap forbids splitting off a red stated property, so both blockers had to land together — and they did. This row closes. |
+
+---
+
+## Findings
+
+### 🔴 Must Fix (blocks merge)
+
+**None.** Both round-2 blockers are closed by execution, and the finding below did not rise to 🔴 —
+see *The merge criterion, applied* for why the grading is what it is rather than what round 1's
+precedent alone would suggest.
+
+---
+
+### ⚠️ Should Fix
+
+**⚠️-13 — `UndoRedoSpec.cs:1-2` records the wrong re-approval date for amendment 5. It says
+2026-09-07; it was 2026-09-08.** *(new; introduced by this re-transcription)*
+
+```
+// This file is the locked specification for undo/redo, approved by the user on
+// 2026-09-07 and re-approved as amended on 2026-09-07, first with amendment 4 and then
+// with amendment 5 …
+```
+
+*Evidence.* `06-spec.md:2137` — `## 🛑 Re-approval Request — amendment 5, **answered 2026-09-08**`.
+The artifact's own summary agrees at `:66-67`: *"answered and re-approved on **2026-09-08** with a
+plain yes to both specifics"*. Amendment **4**'s re-approval was 2026-09-07 (`:2023`), so the header
+is right about the first and wrong about the second. The likely cause is visible in the artifact:
+amendment 5's *section heading* carries `2026-09-07` — the date it was **drafted** — and the header
+appears to have taken the drafting date for the approval date.
+
+*Why it is ⚠️ and not 🔴, stated explicitly because round 1 graded a header defect 🔴.* Three things
+separate them, and the third is decisive:
+
+1. **Consequence.** Round 1's false sentence told the step-6 author that a hard compile error was
+   expected and attributable to missing types — it would have caused a wrong action. A wrong
+   re-approval date causes none: the header names the sections to read, and both carry the correct
+   date in their own headings, so the error self-corrects on one hop.
+2. **Ownership.** The Lock's consequence 3 (added by amendment 5, at this review's request) settles
+   it: `csharp-dev`'s transcription commentary is *"inside the lock from the approval commit, but
+   outside this file's approval, and therefore theirs to own and theirs to correct."*
+3. **Cost after the commit.** Round 1's and round 2's blockers all required a `spec-author`
+   amendment plus a user re-approval, so *"the last moment at which this is cheap"* was a real
+   argument. This one costs the same before and after the approval commit — one line, by
+   `csharp-dev`, no amendment, no re-approval. **The cap-forcing property is absent.**
+
+*The finding, not the remedy:* the header states a date that is not the date. Where it is corrected
+— now, in this working tree, or in the commit that follows — is the approver's call, and both routes
+are open by the file's own rule.
+
+**⚠️-14 — `04-realist-plan.md:1659` (step 6's Done-when) names one csproj item to remove; the tree
+now has two.** *(new; a consequence of ⚠️-7's fix, not a defect in it)*
+
+The plan's scope row (`:1508`) states the exception in as many words — *"one project file, one item,
+added once and removed once"* — and step 6's Done-when at `:1659` reads *"the `<Compile
+Remove="History\UndoRedoSpec.cs" />` item added to …"*. The working tree now carries a second item,
+`<None Include="History\UndoRedoSpec.cs" />`, which is correct and which I asked for. Left as-is,
+step 6 removes the `Compile Remove` per its checklist and the `None Include` survives as an inert
+stale item. Not a build error — once the `Compile` glob claims the file the SDK's default `None`
+glob excludes it, so no `NETSDK1022` duplicate — but it is a checklist that no longer matches the
+tree it checks.
+
+Two things narrow it: the csproj comment does say *"Carried as `<None>` in the meantime"*, which
+communicates the intent to a reader of the file itself; and the plan is a different artifact, owned
+by `realist`, not this changeset's to edit. **This is the clearest candidate for registration** —
+inherited-by-the-next-changeset rather than fixed here.
+
+**⚠️-11 (carried) — no PR exists for this branch.** `gh pr list --head test/0-undo-redo-spec` →
+empty. `04-realist-plan.md:1909` requires the PR body to state that the spec is deliberately
+excluded from compilation until step 6 and that this is what keeps the Lock's git-history check
+meaningful. Unchanged since round 1; satisfied at PR-open time, not registrable.
+
+**⚠️-12 (carried) — `.squad/log/` churn will ride along on a `git commit -a`.**
+`git status --porcelain` → ` M .squad/log/2026-09-08-session.md` alongside the three intended paths
+(` M Picea.Abies.Tests/Picea.Abies.Tests.csproj`, `?? Picea.Abies.Tests/History/`,
+`?? Picea.Abies.Tests/SpecAttribute.cs`). PR 0's whole shape is *three files and nothing else*, so
+stage explicitly. Unchanged since round 1; satisfied at commit time, not registrable.
+
+---
+
+### 💡 Nitpicks
+
+**💡-1 — the locked paragraph's *mechanism* sentence is narrower than the behaviour it explains.**
+`:284-288` attributes `IsEqualTo`'s unsatisfiability to the collection **expression**: *"The
+collection expression is target-typed to a `<>z__ReadOnlyArray<string>` and compared by `Equals`,
+i.e. by reference, so it fails on the MATCHING sequence too."* I ran the control the paragraph does
+not claim — `IsEqualTo` against a same-typed `string[]` **variable** with identical content — and it
+also fails (`CLAIM6 … => FAIL(AssertionException)`). So the collection expression is not the cause;
+`IsEqualTo` compares collection subjects by reference regardless. The paragraph's **conclusion** is
+true and its six-type sweep is true; a reader could nonetheless infer *"so pass a same-typed variable
+instead"*, which is false. Consequence is near-zero — the file no longer uses `IsEqualTo` anywhere,
+and the lock forbids reintroducing it — so this is a 💡, and it is recorded chiefly because 🔴-6 was
+about the accuracy of exactly this paragraph and a silent pass over it would repeat round 1's error.
+
+**💡-2 — the header's `<None Include>` citation points at a section that describes the finding as
+unfixed.** `:10-11` says *"carried as `<None Include>` … per 06-spec.md ⚠️-7"*. `06-spec.md` names
+⚠️-7 only in amendment 5's *"Not this file's, and unchanged"* paragraph, which records
+`-getItem:None` → `{"None": []}` and prescribes no remedy. The remedy is
+`09-review-verdict.md`'s ⚠️-7. The finding id resolves; the document pointer redirects.
+
+**💡-3 — `R-28` still cites `UndoRedoSpec.cs:13` for the restored `using`; it is now `:34`.** Round 2
+recorded `:23`; the header grew again. The ledger is append-only and the entry is otherwise accurate
+and verified. Noting it so a later reader does not conclude the `using` left the file.
+
+**💡-4 — amendment 5's re-approval blockquote says *"the same nine acceptance scenarios"*.** The
+acceptance layer has ten (A1–A10, and `06-spec.md:355` says *"Ten scenarios"*). Design artifact only;
+the code is unaffected — 17 `[Test]` methods across the ten scenarios, unchanged.
+
+---
+
+### ✅ What's Good
+
+- **Both blockers were resolved in one amendment, for the stated reason, and the reason was the
+  right one.** Amendment 5 opens by naming the round cap — *"three assertions that cannot go green
+  could not be split off into 'ships anyway'"* — and treats that as the argument for landing 🔴-5
+  and 🔴-6 together rather than as an inconvenience. That is the merge criterion being used as a
+  design constraint instead of being argued with.
+- **The evidence moved to where it will be read.** 🔴-6's remedy was not a correction notice; the
+  three shapes, what each does, and the exact `<>z__ReadOnlyArray` failure text now sit beside the
+  assertion at `:275-300`. Step 6 opens the file, not the review.
+- **The rejected alternative is recorded with its reason.** `SequenceEqual(…).IsTrue()` was verified
+  and declined because it throws away the diff in the failure message — *"a spec that fails without
+  saying how the order differed is a worse specification"*. A spec that records what it did **not**
+  choose is one a later reader cannot accidentally undo.
+- **The stricter evidence rule was adopted rather than apologised for.** § *How this spec first
+  fails, honestly* now carries *"a shape is verified only when a passing control and a failing
+  control have both been run"* — the general rule extracted from my round-1 error, written into the
+  artifact that outlives this review.
+- **⚠️-7 was fixed rather than registered, and fixed in the codebase's own idiom.** `<None Include>`
+  matches five sibling csprojs, the comment explains the lifecycle, and `-getItem:None` now answers
+  the question the finding asked.
+- **The three sites that had to change did, and the two that had to stay did.** `:301`, `:306`,
+  `:381` carry `CollectionOrdering.Matching`; INV-7's `:1043` and `:1059` are still bare, preserving
+  amendment 4's deliberate order-insensitivity note. A change of this shape usually over-applies.
+- **The ownership question I raised as a 💡 in round 2 was answered as a rule, not as a
+  sentence.** Lock consequence 3 now settles who owns `csharp-dev`'s commentary — and it is what
+  makes ⚠️-13 a one-line correction instead of a fourth amendment. The fix to the process arrived
+  before the case that needed it.
+
+---
+
+## The merge criterion, applied — and the split
+
+`principles-enforcement.md` § *The Merge Criterion — Continuous Improvement*:
+
+- **(a) the stated properties are green — ✅.** The stated properties for PR 0 are the three files as
+  § *The Lock* defines them, and every one is now measured rather than asserted: byte-faithful to
+  the six approved fences (74 diff lines, none of them an assertion or a fence claim); the three
+  amended assertions compile and discriminate order in **both** directions across seven subject
+  types; every claim in the replaced locked paragraph verified by execution; the git-history check
+  satisfied with no waiver; the build green with the exclusion and `CS0234`-only without it; the
+  file present in exactly one MSBuild item group; 224/224 existing tests passing. **Nothing here is
+  red.**
+- **(b) every non-regression finding registered — ⚠️, and this is the escalation.** As in round 2,
+  **(b) binds on 🔴 and ⚠️ here, not 💡.** Of the four ⚠️: ⚠️-11 and ⚠️-12 are satisfied at PR-open
+  and commit time rather than registered (they are preconditions, not residuals); **⚠️-14 is
+  inherited-shaped and is the clean registration** — owner `realist`, and it belongs in the next
+  changeset with step 6; **⚠️-13 is introduced by this changeset**, so under *"a deviation the
+  changeset introduces is a regression and blocks unconditionally"* it is **not registrable**.
+- **(c) nothing published above its computed level — ✅.** No level claim in the changeset.
+
+**Why this is ⚠️ Needs Human Review and not 🔴, and not ✅.**
+
+Not ✅: ⚠️-13 is a false statement introduced by this changeset into a file the process declares
+immutable, and Rule 1 of the charter's verdict-consistency rules is that any unregistered ⚠️ means
+the verdict is not ✅. I am not going to write PASS over a claim I have measured to be false.
+
+Not 🔴: the round cap is a verdict shape, not a severity dial, and a 🔴 here manufactures the fourth
+adversarial round the cap exists to prevent. The cap's own remedy — *split, what passes ships* — is
+degenerate for this changeset, because PR 0 is three files that the plan requires to land together
+and one sentence cannot be carved out of a file. And the property that made rounds 1 and 2 expensive
+is absent: ⚠️-13 costs one line before the approval commit and one line after it, by `csharp-dev`,
+with no `spec-author` amendment and no user re-approval, because Lock consequence 3 says so.
+
+So the cap's escalation is a question rather than a rejection, and it is yours:
+
+1. **Correct the date in this working tree, then commit.** One line, `csharp-dev`, no amendment, no
+   re-approval, no round. `⚠️-14` registers against `realist` for step 6. This closes PR 0.
+2. **Commit as-is and correct the header afterwards.** Also permitted by the Lock, and it ships a
+   known-false sentence in the approval trail's own file — in the one PR whose entire purpose is
+   that trail.
+
+I have no authority to choose, and the charter's rule is that when I am uncertain I escalate rather
+than guess. **My recommendation, stated as one:** route 1. The two routes differ by a single edit,
+and only one of them lets PR 0's file describe its own approval correctly on the day it is approved.
+
+**What must not happen:** a third `spec-author` amendment. Nothing in this round touches an
+approved fence, an assertion, or a claim inside one. `06-spec.md` is done.
+
+---
+
+## Metrics
+
+- **Files reviewed:** 3 — `Picea.Abies.Tests/History/UndoRedoSpec.cs` (1,068 lines, new, untracked),
+  `Picea.Abies.Tests/SpecAttribute.cs` (7 lines, new, untracked),
+  `Picea.Abies.Tests/Picea.Abies.Tests.csproj` (+10). ~1,085 changed lines against
+  `pr-validation.yml`'s 1,500 limit.
+- **Tests in the changeset:** 25 `[Test]` — 17 acceptance across A1–A10, 8 invariant; 8
+  `[Property("Invariant", …)]`, INV-2 twice and every other id once, matching the bridge comment's
+  own claim.
+- **Executable coverage of new code:** 0%, deliberately — `-getItem:Compile` → 20 items, without it.
+- **Probes run this round: 2 scratch projects, 22 executed test cases, all with both controls** —
+  17 on `CollectionOrdering.Matching` across seven subject types plus A7's exact shape, length
+  mismatches, and bare `IsEquivalentTo`'s preserved order-insensitivity; 5 re-verifying every claim
+  in the replaced locked paragraph, with printed evidence including the `equals-new=True` line. Plus
+  a six-fence extract-and-diff (74 lines), three repository builds (with the exclusion, without it,
+  and restored), two `-getItem` measurements, a full `dotnet run` of the test project (224/224), a
+  `GlobalUsings.g.cs` inspection, a `git log --all` history check, a `<None Include=` idiom sweep
+  across the repository's csprojs, and an archived-drop round count.
+- **Round-2 findings closed:** 🔴-5 ✅, 🔴-6 ✅, ⚠️-7 ✅, ⚠️-9 ✅ (Lock row (g)), ⚠️-8 ✅ (caveat
+  recorded, Decision 5). Carried: ⚠️-11, ⚠️-12. New: ⚠️-13, ⚠️-14, 💡-1…💡-4.
+- **Dimensions run:** 11/11. Security, Observability and Performance remain non-applicable — no
+  runtime code, no attack surface, no hot path.
+- **Round:** 3 — the split round, resolved as an escalation because the split is degenerate and the
+  one open item is not cap-forcing.
+
+---
+
+# ✅ Confirmation — route 1 taken, ⚠️-13 closed
+
+**Verdict:** ✅ Approved. **Scope:** the four claims below and nothing else — this is a targeted
+confirmation, not a fourth round, and it re-derives no finding the cap ruled out.
+**Reviewed:** working tree on `test/0-undo-redo-spec`, uncommitted, over HEAD
+`3baa6015d3be3a4461ece23f87150100d63647cb` — the same HEAD as round 3 (`commit:` of the archived
+drop `2026-09-08T04-53-06-review-undo-redo-pr0-round3.md`), so the comparison is like-for-like.
+
+1. **⚠️-13 is closed.** `UndoRedoSpec.cs:1-3` now reads *"approved by the user on 2026-09-07 and
+   re-approved as amended twice: on 2026-09-07 with amendment 4, then on 2026-09-08 with amendment
+   5."* All three dates check out against `06-spec.md` at HEAD: original approval `:1831`
+   (*"answered 2026-09-07"*), amendment 4's re-approval `:2023` (*"answered 2026-09-07"*), amendment
+   5's re-approval `:2137` (*"amendment 5, answered 2026-09-08"*), corroborated at `:66-67`
+   (*"re-approved on 2026-09-08 with a plain yes to both specifics"*). The header is now right about
+   both re-approvals where before it was right about the first and wrong about the second.
+2. **The six approved fences are unaltered — proven from the spec, not from my round-3 notes.** I
+   re-extracted `06-spec.md`'s six `csharp` fences at `361-897`, `987-1082`, `1113-1201`,
+   `1244-1291`, `1304-1497`, `1522-1566` (1,009 lines; the `Gen` stub at `914-954` correctly omitted
+   again) and diffed the reassembly against the file. **Exactly one line is removed — the class's
+   closing `}`, moved to the end because fences 2–6 are class-body fragments — and all 60 added
+   lines are `//` comments, blank lines, or that same brace; zero added lines are code.** So no
+   assertion, no claim inside a fence, and no whitespace reflow can have changed, whatever else did.
+3. **`SpecAttribute.cs` and the csproj are untouched since round 3.** Mtimes `06:42:26` and
+   `06:45:49` both precede this reviewer's round-3 drop (`created: 2026-09-08T04:50:02Z` = `06:50:02`
+   local); only `UndoRedoSpec.cs` postdates it, at `06:54:59`. Re-measured rather than carried:
+   `-getItem:Compile` still does not contain the spec, `-getItem:None` still does.
+4. **The change set is still exactly three files.** `git status --porcelain -uall --
+   Picea.Abies.Tests/` → ` M Picea.Abies.Tests.csproj`, `?? History/UndoRedoSpec.cs`,
+   `?? SpecAttribute.cs`. `History/` holds that one file and nothing else, and `git check-ignore`
+   clears both untracked paths, so neither will be skipped silently by `git add`.
+
+**Build, re-run rather than accepted.** `dotnet build Picea.Abies.Tests.csproj` → **succeeded, 0
+warnings, 0 errors**. Structurally it could not have gone otherwise — the edited file is a `None`
+item and a comment-only change — but the claim was reported to me, so it was measured.
+
+**Corrections to my own round-3 bookkeeping, recorded because ⚠️-13 was this same error class.**
+Round 3's transcription paragraph reports the extract-and-diff as *"74 lines"* and the bridge note
+at *":564-587"*. Today the identical extraction over the identical spec gives **69** normal-diff
+lines and the bridge at **:568-591**. The arithmetic settles which is wrong: the file is 1,068 lines
+(round 3's own metric) and the fences are 1,009, so the net must be +59 — 60 added, 1 removed — in
+both rounds, and the diff must have been 69 lines in both. Round 3's figures were carried prose, not
+re-derived measurements, exactly the stale-number failure ⚠️-13 named. The artifact did not change;
+my note about it was imprecise. `1,068` lines, `25 [Test]`, and 8 `[Property("Invariant", …)]` with
+INV-2 twice all reproduce unchanged, confirming the edit was line-for-line within the header.
+
+**What I did not re-examine:** ⚠️-11 (no PR yet) and ⚠️-12 (`.squad/log/` churn), both satisfied at
+PR-open rather than here, and ⚠️-14, registered against `realist` for step 6. None are this
+changeset's to close, and round 3 already ruled that way.
+
+**Where to stop.** The PASS is cached against `3baa6015`, which is HEAD *now* — so it authorises the
+commit of this working tree. Per ⚠️-12, stage the three paths explicitly (`git add
+Picea.Abies.Tests/Picea.Abies.Tests.csproj Picea.Abies.Tests/History/UndoRedoSpec.cs
+Picea.Abies.Tests/SpecAttribute.cs`) rather than `git commit -a`: this confirmation's own artifacts —
+this file, the merged `decisions.md`, `.squad/log/`, and my memory — are all dirty in the same tree
+and are not PR 0. Committing moves HEAD, which invalidates this cache by design; the push and the
+PR-open that follow are procedural, not a fourth review round.
+
+**Commit-boundary confirmation — 2026-09-08T05:04Z, ✅ PASS re-issued against `b39ac585036b344428a2202b522138ff29a3c8a9`.** The staging advice above was followed exactly: `b39ac58` has the single parent `3baa601`, `git diff --name-status 3baa601..b39ac58` is exactly `A Picea.Abies.Tests/History/UndoRedoSpec.cs`, `M Picea.Abies.Tests/Picea.Abies.Tests.csproj`, `A Picea.Abies.Tests/SpecAttribute.cs` (+1,085/−0), and all three committed blobs are byte-identical to the working-tree files this confirmation passed (`2d50430`, `42c8783`, `7d6502f` from `git rev-parse b39ac58:<path>` equal to `git hash-object <path>`), so the tree I verified is the tree that was committed and nothing was amended into it. The residue in the working tree is only hook-written state and review artifacts — `.claude/docs/decisions.md` and `.squad/decisions/archive/2026-09/` (merger), `.squad/log/2026-09-08-session.md` and `pass-cost.md` (session logger), this file and `.claude/agent-memory/reviewer-reconcile/` (mine) — no code-shaped path is dirty, and a `--ignored` sweep of `Picea.Abies.Tests/` finds nothing beyond `TestResults/`, so no spec content was left behind unstaged. `git log -- Picea.Abies.Tests/History/` is exactly `b39ac58 test(history): Lock the undo-redo executable specification`, one commit: the Lock's git-history baseline now exists, and any later touch of `UndoRedoSpec.cs` is a second commit on that path and therefore visible as a spec edit rather than as part of the approval commit. No dimension was re-run. **Where to stop, again:** the cache now records PASS for `b39ac58`, so `b39ac58` is the head the merge gate will accept. Committing the artifacts listed above onto this branch moves HEAD past `b39ac58` and re-blocks the merge with no review left to run — keep them out of PR 0, or expect to need a fresh drop for whatever HEAD the PR ends up at.

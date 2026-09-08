@@ -47,3 +47,5 @@ at the time and rewriting it would misrepresent the historical record.
 - [A copy outside the deny list defeats blindness](a-copy-outside-the-deny-list-defeats-blindness.md) — the hook denies `.squad/design/**`, not the byte-identical copy someone committed elsewhere.
 - [A negative control alone proves nothing](a-negative-control-alone-proves-nothing.md) — my one-sided probe sent an amendment to a shape that can never pass; run both controls, and never read CS0103 as an absent API.
 - [A Timeout attribute is not a hang guard](a-timeout-attribute-is-not-a-hang-guard.md) — TUnit0015 on every test, sync spins missed, and the orphaned body corrupts the next test on shared static state.
+- [The split can be degenerate](the-split-can-be-degenerate.md) — at the cap, grade by whether the fix is cap-forcing; escalate with numbered routes, don't manufacture a fourth 🔴.
+- [Arithmetic adjudicates a missing baseline](arithmetic-adjudicates-a-missing-baseline.md) — untracked files have no baseline; make the counts reconcile, and re-derive rather than quote last round.

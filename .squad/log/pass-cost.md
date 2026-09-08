@@ -76,3 +76,6 @@ still records that the phase ran.
 | 2026-09-07T14:50:50Z | undo-redo | `reviewer-reconcile` | 1642m 03s |
 | 2026-09-07T15:49:08Z | undo-redo | `spec-author` | 1712m 46s |
 | 2026-09-08T04:41:56Z | undo-redo | `spec-author` | 2488m 21s |
+| 2026-09-08T04:53:54Z | undo-redo | `reviewer-reconcile` | 2489m 36s |
+| 2026-09-08T05:02:18Z | undo-redo | `reviewer-reconcile` | 2502m 00s |
+| 2026-09-08T05:05:17Z | undo-redo | `reviewer-reconcile` | 2510m 18s |
