@@ -55,5 +55,21 @@ check to the changeset's own directory finds nothing by construction.
   index that no longer matches disk. Also confirm the negation did not leak —
   the previously-ignored logs elsewhere should still be reported ignored.
 
+- At the **commit boundary**, stop reasoning about which paths git would have
+  skipped and just check the object it actually built:
+  `git archive <sha> | tar -x -C <scratch>`, then run the bundle's own manifest
+  (`sha256sum -c SHA256SUMS`) inside the export. That subsumes every check above
+  in one step — an ignored file, a missed `git add`, a stale index row and a
+  mode change all show up as a missing or failing manifest line, and a green
+  result is evidence about the *commit* rather than about the disk it was made
+  from. Pair it with a two-way `comm` between the manifest's paths and
+  `find . -type f` in the export: entries with no file catch the loss, and files
+  with no entry catch payload the manifest never covered (in
+  `undo-redo-followups` that legitimately returned 5 — `README.md`,
+  `SHA256SUMS` itself, a `.gitkeep`, and two `timing/` files — so the gap is a
+  question to answer, not automatically a finding).
+
 Related: [[a-record-is-checkable-only-where-its-evidence-survives]] — the same
 family of defect, where the artifact is right and its surroundings lose it.
+[[a-confirmation-pass-invalidates-its-own-cache]] — the boundary check above is
+exactly the pass that must not then commit what it wrote.
