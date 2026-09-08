@@ -30,6 +30,27 @@ that merely read well. When there is a choice, take the plainest subject — a `
 line above beats any fluent continuation. And say in the artifact that the shapes are unverified by
 me, so the reviewer knows to probe them rather than assume the phase covered it.
 
+**"Already executed" is not enough — demand a passing control AND a failing control.** Round 2 of
+the same review corrected round 1 in both directions and cost a fifth amendment. `IsEqualTo` on a
+collection is not order-sensitive, it is **never satisfiable**: the collection expression is
+target-typed to `<>z__ReadOnlyArray<T>` and compared by reference, so it fails on the *matching*
+sequence too — across six collection types and even against a bespoke `IEquatable<T>` builder. Only
+the negative case had been probed, and *"a permutation fails"* is equally consistent with
+order-sensitive and with always-fails. Separately, `CollectionOrdering` **does** exist on 1.19.57 in
+`TUnit.Assertions.Enums`; the reported `CS0103` was a missing `using` read as an absent API. The
+verified ordering shape is `IsEquivalentTo(expected, CollectionOrdering.Matching)`.
+
+Two durable rules from that: **(1)** when a probe reports a failure, ask what *else* that failure is
+consistent with before promoting it to a fact; **(2)** a *green-whatever-happens* assertion is bad,
+and replacing it with a *red-whatever-happens* one is **worse** in this process — step 6's
+obligation is "observe red for the right reason, then make green", and a test no implementation can
+satisfy cannot close the step. Record the controls **beside the assertion**, not in a review: at
+step 6 nobody re-reads the review.
+
+Related lesson on the same file: a *round cap* exists (round 3 splits the changeset, and the split
+never ships a red stated property), so when two blockers are entangled, fix them in **one**
+amendment rather than two.
+
 **The second-order lesson, and it is the bigger one.** Three comments in that spec claimed coverage
 the code did not implement — including one that was the Lock's *own named closure mechanism* for
 that property, and one ("INV-2 runs twice, over both lenses") where the untested lens was the only

@@ -13,7 +13,7 @@
 - [What belongs in the lock](what-belongs-in-the-lock.md) — I parked a stated behaviour in a plan step on fixture-cost grounds; the user moved it back and the fixture cost was tiny
 
 ## Re-approval events
-- [Assertion shapes are not verified by me](assertion-shapes-are-not-verified-by-me.md) — `undo-redo` PR 0, 2026-09-07: `.Or` does not cross subjects, `IsEquivalentTo` ignores order, and three comments claimed coverage the code did not implement
+- [Assertion shapes are not verified by me](assertion-shapes-are-not-verified-by-me.md) — `undo-redo` PR 0, 2026-09-07, rounds 1 and 2: `.Or` does not cross subjects, `IsEquivalentTo` ignores order, `IsEqualTo` on a collection is unsatisfiable — demand a passing *and* a failing control
 
 Amendments **before** the lock took effect (not re-approvals, and much cheaper): `undo-redo`
 2026-09-07, three times — A9 (see [[what-belongs-in-the-lock]]), INV-2's second property

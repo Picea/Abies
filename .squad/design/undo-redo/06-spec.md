@@ -54,6 +54,18 @@ from the approval commit; INV-6 keeps its feedback interpreter, because narrowin
 old fixture would be adjusting the spec to the code; and `[Timeout]` lands before the commit,
 generous and sized from a measured seed run.
 
+**Amended a fifth time, because amendment 4's remedy for 🔴-2 was itself wrong.** PR 0's **round-2
+re-review** opened by correcting its own round-1 measurements in both directions: `IsEqualTo` on a
+collection is not order-sensitive but **unsatisfiable** (it fails on the matching sequence, across
+six collection types), and `CollectionOrdering` **does** exist on 1.19.57 — the reported `CS0103`
+was a missing `using`. So amendment 4 replaced three assertions that were green whatever happened
+with three that are red whatever happens, and wrote the bad evidence into the locked text as fact.
+Amendment 5 fixes both in one pass — `IsEquivalentTo(expected, CollectionOrdering.Matching)` with
+`using TUnit.Assertions.Enums;`, and the paragraph replaced by the verified measurements — plus a
+seventh support-file obligation, the `[Timeout]` caveat, and what the lock does and does not cover.
+§ *Amendment 5* carries the record and the 🛑 **re-approval question, which is open. This is the
+last round before the reviewer splits the changeset.**
+
 ---
 
 ## 🧪 TEST STRATEGY ROOM — undo/redo across the whole of an Abies application's state
@@ -346,6 +358,11 @@ user-recognisable behaviour.)
 namespace Picea.Abies.Tests.History;
 
 using Picea.Abies.History;
+// amendment 5 — required by the three `IsEquivalentTo(expected, CollectionOrdering.Matching)`
+// calls below. `CollectionOrdering` lives in `TUnit.Assertions.Enums` on the pinned 1.19.57; the
+// round-1 report of `CS0103: The name 'CollectionOrdering' does not exist` was a MISSING USING
+// read as an absent type, and this line is the whole of the fix.
+using TUnit.Assertions.Enums;
 
 [Spec("Undo and redo over the whole of an Abies application's state")]
 // ⚠️-6, amendment 4. `Picea.Abies.Tests` has no assembly-level parallel configuration and no
@@ -376,6 +393,29 @@ using Picea.Abies.History;
 //   nothing — a green suite never reaches the timeout — while under-shooting costs a
 //   false red on a loaded CI runner and a hand-back on the pass's most load-bearing file.
 //   Asymmetric, so round generously. If it ever fires, that is a real hang, not a slow machine.
+//
+//   WHAT IT DOES AND DOES NOT BUY (⚠️-8, measured on 1.19.57, amendment 5). The user's decision
+//   to include it stands; the limit is stated here rather than discovered at step 6.
+//     - It DOES fire on an await-shaped body: a `[Timeout(2_000)]` test awaiting
+//       `Task.Delay(6_000)` failed at 2 s with TUnit's `TimeoutException`, with no
+//       `CancellationToken` parameter present. The seed loops are await-dense and a real hang in
+//       them is async-shaped, so this is the case the attribute was chosen for.
+//     - It does NOT fire on a synchronous spin: a `[Timeout(2_000)]` test spinning 6 s PASSED.
+//       A property wedged in a tight non-awaiting loop is not covered by this attribute at all.
+//     - A timed-out body KEEPS RUNNING after TUnit records the failure — the probe printed
+//       `body completed after 5999 ms` well after the test was reported failed. On a class whose
+//       correctness rests on the process-wide static `EditorLog`, an orphaned body still
+//       dispatching into that log will corrupt whichever test runs next. `[NotInParallel]` does
+//       NOT prevent this: the orphan is a detached continuation, not a test. So a timeout here
+//       is a diagnosis of one hang, not a containment of it — treat the first red after a
+//       timeout as suspect rather than as a second independent failure.
+//     - Class-level `[Timeout]` on parameterless `[Test]` methods emits `TUnit0015: Missing
+//       TimeoutAttribute cancellation token parameter`, once per test method. Nothing sets
+//       `TreatWarningsAsErrors`, so step 6 gains 25 WARNINGS, not 25 errors — but round 1's
+//       "build is clean, 0 warnings" stops being true the moment the csproj exclusion comes off.
+//       The remedy is a `CancellationToken` parameter on each `[Test]`, which is a SIGNATURE
+//       change: neither an assertion nor a claim, therefore OUTSIDE Decision 1's lock and
+//       available to step 6 without a hand-back. Stated because that reading is not obvious.
 [Timeout(30_000)]
 public sealed class UndoRedoSpec
 {
@@ -558,20 +598,41 @@ public sealed class UndoRedoSpec
         await bare.Dispatch(new BeginBatch());
         var bareOrder = EditorLog.Timeline;
 
-        // 🔴-2, amendment 4. These were `IsEquivalentTo`, which is ORDER-INSENSITIVE on TUnit
-        // 1.19.57 — and the two expected sequences below are permutations of the same four
-        // strings, so both assertions passed whichever interleaving actually occurred. The test
-        // could not fail for the reason it exists. `IsEqualTo` on a collection IS
-        // order-sensitive on this version (the reviewer verified both by execution), and
-        // `IsEquivalentTo(expected, CollectionOrdering.Matching)` does not exist here — so the
-        // remedy is a different assertion, not a parameter.
-        await Assert.That(wrappedOrder).IsEqualTo([
+        // 🔴-2 (amendment 4) then 🔴-5 (amendment 5). The claim these two assertions make is an
+        // ORDERING claim: the two expected sequences are permutations of the same four strings,
+        // and the whole point of the test is which permutation occurred. Two shapes have been
+        // tried and only the third is right, so the facts are recorded here rather than the
+        // history — under Decision 1 this paragraph is a LOCKED CLAIM, and the previous version
+        // of it stated two falsehoods about TUnit as fact, on a review's authority.
+        //
+        // Verified on the pinned TUnit 1.19.57, each with BOTH a passing and a failing control:
+        //   - `IsEquivalentTo(expected)` is ORDER-INSENSITIVE. It passed on a permutation, so
+        //     these assertions could not fail for the reason they exist. (Round 1, upheld.)
+        //   - `IsEqualTo(expected)` on a collection compiles and is NOT order-sensitive — it is
+        //     UNSATISFIABLE. The collection expression is target-typed to a
+        //     `<>z__ReadOnlyArray<string>` and compared by `Equals`, i.e. by reference, so it
+        //     fails on the MATCHING sequence too:
+        //         `Expected to be equal to <>z__ReadOnlyArray`1[System.String]
+        //          but received <>z__ReadOnlyArray`1[System.String]`
+        //     Swept across `string[]`, `List<string>`, `IEnumerable<string>`,
+        //     `IReadOnlyList<string>`, `ImmutableArray<string>` and `ImmutableList<string>` —
+        //     all six fail on identical content — and against a bespoke `[CollectionBuilder]`
+        //     type with correct `IEquatable<T>` value equality, which fails while printing
+        //     `equals-new=True` on the line before. No support-file choice for
+        //     `EditorLog.Timeline` rescues it. (Round 2, 🔴-5.)
+        //   - `IsEquivalentTo(expected, CollectionOrdering.Matching)` — matching order passes,
+        //     permutation fails. Verified on `string[]`, `IEnumerable<string>` and
+        //     `IReadOnlyList<string>` subjects. `CollectionOrdering` is in
+        //     `TUnit.Assertions.Enums`, imported at the top of this file. THIS is the shape.
+        await Assert.That(wrappedOrder).IsEquivalentTo([
             "applied:BatchFirst", "applied:BatchSecond",
-            "interpreted:FailingCommand", "interpreted:MarkCommand"]);
+            "interpreted:FailingCommand", "interpreted:MarkCommand"],
+            CollectionOrdering.Matching);
 
-        await Assert.That(bareOrder).IsEqualTo([
+        await Assert.That(bareOrder).IsEquivalentTo([
             "applied:BatchFirst", "interpreted:FailingCommand",
-            "applied:BatchSecond", "interpreted:MarkCommand"]);
+            "applied:BatchSecond", "interpreted:MarkCommand"],
+            CollectionOrdering.Matching);
     }
 
     [Test]
@@ -636,12 +697,16 @@ public sealed class UndoRedoSpec
         // movement with no states passed through, so INV-7 is satisfied by definition and
         // the magnifier really does start and stop.
         //
-        // 🔴-2's third instance, amendment 4. This was `IsEquivalentTo` too, and *"reconcile
-        // twice"* is an ORDERING claim: under `IsEquivalentTo` a *stop then start* — the
+        // 🔴-2's third instance (amendment 4), corrected by 🔴-5 (amendment 5). *"Reconcile
+        // twice"* is an ORDERING claim: under bare `IsEquivalentTo` a *stop then start* — the
         // magnifier surviving the first press and being torn down on the second — passed
-        // identically. `IsEqualTo` pins the sequence.
-        await Assert.That(EditorLog.SubscriptionActivity).IsEqualTo([
-            $"start:{EditorLog.MagnifierKey}", $"stop:{EditorLog.MagnifierKey}"]);
+        // identically. Amendment 4 reached for `IsEqualTo`, which on a collection is not
+        // order-sensitive but UNSATISFIABLE; see A6 above for the measurements and both
+        // controls. The `CollectionOrdering.Matching` overload is the shape that discriminates
+        // order and can still go green.
+        await Assert.That(EditorLog.SubscriptionActivity).IsEquivalentTo([
+            $"start:{EditorLog.MagnifierKey}", $"stop:{EditorLog.MagnifierKey}"],
+            CollectionOrdering.Matching);
     }
 
     [Test]
@@ -1439,6 +1504,15 @@ settle. This file only records that no property here would go red on it.
 > direction* under `NoFeedback`, so the ten-combination claim could never have been met. That is
 > why this property now drives `LoadReturns("server")` through `Drive`: an unimplemented
 > coverage claim had been concealing an unreachable case.
+>
+> **One honest caveat for step 6, from round 2's review (amendment 5).** That fix was reached by
+> *reasoning*, not execution — I have no `Bash` and the file does not compile — so it is not
+> settled that all ten combinations are reachable; `BlockedBySupersedingAction` on the **backward**
+> edge is the one nobody has been able to check. If the coverage assertion goes red at step 6,
+> **the first hypothesis is an unreachable combination, not a bug in `WithHistory`**, and the route
+> is a `// SPEC CONFLICT:` hand-back naming the combination. That is the cost of converting
+> ⚠️-5(e) from *hoped for* into *fails loudly*, and it is the right trade — but it should not be
+> misdiagnosed as a feature defect.
 
 ```csharp
     // ── INV-7 ────────────────────────────────────────────────────────────────────
@@ -1563,11 +1637,20 @@ check neither the missing types nor the missing fixtures prevented — and found
 all and the other passes for the wrong reason forever. `reviewer-blind` put it exactly right:
 *"A file that has never been compiled is being frozen."* The two the reviewer proved are fixed
 above. **The honest residual: the rest of this file's assertion shapes are still unverified by me**
-— I have no `Bash`, and the verification that exists is the reviewer's six probes, not a build of
-this file. Where amendment 4 had a choice of shape it took the one the reviewer had already
-executed (`IsEqualTo` on a collection; a plain boolean subject) rather than a shape that merely
-looks reasonable. `csharp-dev`'s first act at step 6 is still to compile it and observe every test
-red for the right reason — but that is now the *second* line of defence, not the first.
+— I have no `Bash`, and the verification that exists is the reviewer's probes, not a build of this
+file. `csharp-dev`'s first act at step 6 is still to compile it and observe every test red for the
+right reason — but that is now the *second* line of defence, not the first.
+
+**And amendment 5 sharpened the rule, because amendment 4's version of it was not enough.**
+Amendment 4 said: *where there is a choice of shape, take the one the reviewer has already
+executed.* Round 2 established that the datum it took — *"`IsEqualTo` on a collection is
+order-sensitive"* — was **wrong in both directions**: the reviewer had probed only the negative
+case, and a permutation failing is equally consistent with *order-sensitive* and with *never
+satisfiable*. It was the latter. The rule that survives is therefore stricter: **a shape is
+verified only when someone has run a passing control AND a failing control.** One probe that
+fails proves nothing about a shape; it proves something about that input. Every assertion shape
+this file now relies on has both controls behind it, and where the shape matters the controls are
+recorded beside the assertion rather than in a review nobody reads at step 6.
 
 ---
 
@@ -1711,6 +1794,23 @@ against:
 | **(d)** | `Start<…>()` must **reset the static log**. | A1 asserts `EditorLog.CommandsInterpreted` is empty with no `Clear()` anywhere in the method — the only test in the file that relies on this. |
 | **(e)** | `Gen.Corpus` must actually reach **all five availability cases in both directions**, and `Gen.UserActionsAndNavigation` must reach a navigation with a non-empty `Future`. | Was unstated and unchecked. **Amendment 4 makes both checkable from inside the lock** — INV-6's coverage assertion and INV-2's two branch flags fail loudly rather than passing quietly. |
 | **(f)** | `EditorProgram.Transition` must return `Commands.None` for `MovementRefused`. | Stated at INV-5's loop. `pass` calls `sealTops(SealedByEffect(…))` on a non-silent command, which would stale that loop's once-taken `Both(…)` snapshot. |
+| **(g)** | `Keys(…)` and `EditorLog.ReportedKeySetsDuringHold` must yield a **value-equality element type**. | ⚠️-9, added by amendment 5, and it is a *seventh* obligation the round-1 table missed. INV-7's assertion (4) compares `ReportedKeySetsDuringHold.Distinct()` against `[anchorKeys]` with `IsEquivalentTo`, which compares **elements** by `Equals`. Round 1 cleared this site on reasoning — *"order-insensitive by intent, a one-element distinct set"* — which was right about ordering and silent about element equality. Measured on 1.19.57: with `HashSet<string>` or `string[]` **elements** it fails on identical content; with a `record` element it passes on a match and fails on a mismatch, both controls run. So the locked assertion is correct and the obligation is the fixture's. **`SingleReconciliation(…)` in assertion (1) is safe if it returns a flat `IEnumerable<string>`** and has the same problem if it returns a set of sets. |
+
+**On what the lock covers, said once so it is not argued at step 6 (💡, amendment 5).** Decision 1
+makes the file immutable **in its assertions and its claims**. Three consequences follow, and the
+third is the one that has already caused confusion:
+
+1. **Whitespace is outside.** See the paragraph below.
+2. **Signatures and attribute parameters are outside.** Adding a `CancellationToken` parameter to a
+   `[Test]` — the remedy for `TUnit0015` noted beside `[Timeout]` — changes neither an assertion nor
+   a claim, so step 6 may do it without a hand-back.
+3. **Commentary `csharp-dev` adds to the transcription is inside from the approval commit, and was
+   never approved here.** The review found two such blocks — the 18-line file header and a 15-line
+   bridge introducing the invariant layer — and verified every claim in both. They are welcome and
+   they are **`csharp-dev`'s to own**: the lock protects them from later silent edits, but this
+   file's approval does not extend to them, and a false sentence in one is `csharp-dev`'s to correct
+   rather than a `spec-author` amendment. That distinction is exactly what round 1's 🔴-1 header
+   defect turned on.
 
 **On byte-faithfulness (⚠️-8).** The lock is on the **assertions and their claims**, not on
 whitespace. `.claude/hooks/dotnet-format-on-save.sh` fires on every `.cs` write with no exclusion
@@ -1863,7 +1963,7 @@ fences verbatim rather than hand-patching the `.cs`.
 | id | Finding | Disposition here |
 |---|---|---|
 | **🔴-1** | `.Or.That(…)` — `error CS1061: 'OrContinuation<int>' does not contain a definition for 'That'`. TUnit's `.Or` continues on the **same** subject, so a disjunction across two different values is a wrong *shape*, not a wrong overload; it would still not compile after step 6 delivered every missing type. | **Taken.** INV-6's `Available` case computes one boolean — `runtime.Model.Present != h.Present \|\| CursorMoved(h, runtime.Model)` — and asserts it once. The claim is unchanged. The **file-header sentence** the reviewer also faults is `csharp-dev`'s, not approved text (`grep -c "Locked spec for undo/redo" 06-spec.md` → `0`); it is theirs to correct either way. |
-| **🔴-2** | A6's two `IsEquivalentTo` calls are order-insensitive and the two expected sequences are permutations of the same four strings, so the ordering test could not fail for the reason it exists. `CollectionOrdering` does not exist on 1.19.57; `IsEqualTo` on a collection **is** order-sensitive (both executed). | **Taken, and the third instance with them** — A7's second test asserts `["start:…","stop:…"]`, and *"reconcile twice"* is an ordering claim that *stop-then-start* satisfied. **Deliberately left as `IsEquivalentTo`:** INV-7's assertion (1) (a reconciliation **set**) and assertion (4) (a one-element **distinct** set). The reviewer explicitly does not flag those; they are order-insensitive *by intent*, and this note exists so nobody "fixes" them later. |
+| **🔴-2** | A6's two `IsEquivalentTo` calls are order-insensitive and the two expected sequences are permutations of the same four strings, so the ordering test could not fail for the reason it exists. | **Taken, and the third instance with them** — A7's second test asserts `["start:…","stop:…"]`, and *"reconcile twice"* is an ordering claim that *stop-then-start* satisfied. **⚠️ The remedy amendment 4 chose was wrong and amendment 5 replaces it** — round 1's supporting claims (*`IsEqualTo` on a collection is order-sensitive*; *`CollectionOrdering` does not exist*) were both false. See § *Amendment 5*. **Deliberately left as bare `IsEquivalentTo`:** INV-7's assertion (1) (a reconciliation **set**) and assertion (4) (a one-element **distinct** set). They are order-insensitive *by intent*, and this note exists so nobody "fixes" them later — though assertion (4) turned out to carry an element-equality obligation, now Lock table row **(g)**. |
 | **🔴-3(a)** | INV-6's comment claims a coverage assertion at the end of the loop. There is none. **This is the Lock's own named closure for this property.** | **Taken**, and it cost more than a line: writing the assertion showed that `BlockedByWorld` was **unreachable in either direction** under `NoFeedback`, so the ten-combination claim could never have been met by any seed. INV-6 therefore now drives `LoadReturns("server")` through `Drive`. The **alphabet is unchanged** — S27's partition table is untouched; only the interpreter moved. |
 | **🔴-3(b)** | *"INV-2 runs twice, over `Editor` and `ProjectedEditor`."* It ran once; `ProjectedEditor` appeared nowhere in the invariant layer. **The reviewer found this; `08` did not.** | **Taken by making the code true to the claim, not by weakening the claim.** The claim is load-bearing: under the whole-model lens the invariant holds *by construction*, so testing only that lens tests the half that cannot fail. The property now walks the script under both lenses against one reachable set, and the falsifier table gains a projection-specific mutation. |
 | **🔴-3(c)** | INV-2's second property claims *"not done until both branches have been observed"*. Neither branch was counted. | **Taken.** Two flags, two assertions after the loop. Without them the property's own second falsifier — *seal only the past edge* — could not turn it red on a corpus that never populated `Future`. |
@@ -1956,5 +2056,101 @@ this amendment introduces is a scheduled re-export rather than drift.
 **Nothing is committed by this file.** `Picea.Abies.Tests/History/UndoRedoSpec.cs` is `csharp-dev`'s
 to re-transcribe from the fences above, and the approval commit is theirs to make.
 
-Nothing is committed. The amendment is in this artifact only; `UndoRedoSpec.cs` is
-`csharp-dev`'s to re-transcribe from the fences above once you have answered.
+---
+
+## 🔧 Amendment 5 — PR 0's round-2 re-review, 2026-09-07
+
+**Amendment 4's remedy for 🔴-2 was wrong, and it was wrong because the evidence behind it was
+wrong.** `csharp-dev` re-transcribed the amended fences; `reviewer-reconcile` re-reviewed
+(`.squad/design/undo-redo-pr0/09-review-verdict.md` § *Re-review — round 2*, verdict 🔴 Changes
+Requested) and opened by correcting **its own round-1 measurements**, in both directions:
+
+| round 1 claimed | round 2 measured | how round 1 got it wrong |
+|---|---|---|
+| *"`IsEqualTo` on a collection **is** order-sensitive — my probe failed on a permutation, as it should."* | `IsEqualTo` on a collection fails on the **matching** sequence too. It is not order-sensitive; it is **never satisfiable**. | Only the **negative** control was run. A permutation failing is equally consistent with *order-sensitive* and with *always fails*. |
+| *"`IsEquivalentTo(expected, CollectionOrdering.Matching)` → `CS0103` … there is no option flag on this version."* | `CollectionOrdering` **exists** on 1.19.57, in `TUnit.Assertions.Enums`. `CS0103` was a **missing `using`**. | A name-resolution failure read as an API absence, without checking the assembly. `strings` on `TUnit.Assertions.dll` lists `CollectionOrdering` and `IsEquivalentToAssertion\`2`. |
+
+Amendment 4 had explicitly said it took *"the shape the reviewer had already executed"* rather than
+one that merely looked reasonable. That instinct was right and it was aimed at a bad datum, which
+is why § *How this spec first fails, honestly* now carries the stricter rule: **a shape is verified
+only when a passing control and a failing control have both been run.**
+
+### What amendment 5 changes — one amendment, both blockers
+
+The round cap makes this deliberate rather than tidy: **round 3 splits the changeset**, and *"the
+split never ships a red stated property"* — so three assertions that cannot go green could not be
+split off into "ships anyway". Both blockers had to land together.
+
+| id | Finding | Change |
+|---|---|---|
+| **🔴-5** | `Assert.That(<collection>).IsEqualTo([…])` **compiles and can never pass.** The collection expression is target-typed to `<>z__ReadOnlyArray<string>` and compared by `Equals` — reference equality — so subject and expectation are never equal whatever they contain. Swept across `string[]`, `List<string>`, `IEnumerable<string>`, `IReadOnlyList<string>`, `ImmutableArray<string>` and `ImmutableList<string>`: **all six fail on identical content**, and so does a bespoke `[CollectionBuilder]` type with correct `IEquatable<T>` value equality, whose probe prints `equals-new=True` on the line before the failure. **No support-file choice for `EditorLog.Timeline` rescues it.** Amendment 4 replaced three assertions that were green-whatever-happened with three that are red-whatever-happens — and step 6's obligation is *observe red for the right reason, then make green*, which three unsatisfiable tests can never close. | All three — A6's two and A7's one — become `IsEquivalentTo(expected, CollectionOrdering.Matching)`, the shape verified **both ways**: matching order passes, permutation fails, on `string[]`, `IEnumerable<string>` and `IReadOnlyList<string>` subjects. `using TUnit.Assertions.Enums;` added to the fence header, which is the whole of what `CS0103` was about. The alternative the reviewer also verified — `Assert.That(actual.SequenceEqual([…])).IsTrue()` — was **not** taken: it passes on a match but throws away the diff in the failure message, and a spec that fails without saying *how* the order differed is a worse specification. |
+| **🔴-6** | The A6 paragraph amendment 4 wrote records both false claims **as fact, inside the locked text, citing the review as authority** — and under Decision 1 the lock covers *claims*, so after the approval commit correcting it would itself be a hand-back. A7 carried the same claim in shorter form. | Both paragraphs replaced with the **verified** facts and the round-2 evidence: all three shapes, what each does, and the exact `<>z__ReadOnlyArray` failure text. The measurements now live **beside the assertion** rather than in a review nobody re-reads at step 6. |
+
+### Also taken
+
+- **Lock table row (g) — a seventh support-file obligation (⚠️-9).** INV-7's assertion (4) compares
+  `ReportedKeySetsDuringHold.Distinct()` against `[anchorKeys]` with `IsEquivalentTo`, which
+  compares **elements** by `Equals`. Round 1 cleared this site on reasoning — *"order-insensitive by
+  intent"* — which was right about ordering and silent about element equality. Measured: with
+  `HashSet<string>` or `string[]` elements it fails on identical content; with a `record` element it
+  passes on a match and fails on a mismatch. So the **locked assertion is correct** and the
+  obligation is the fixture's: `Keys(…)` must return a value-equality type. `SingleReconciliation(…)`
+  is safe if it returns a flat `IEnumerable<string>`.
+- **The `[Timeout(30_000)]` caveat (⚠️-8), recorded beside the value.** Decision 3 stands — the
+  attribute stays — and its **limit** is now stated: it fires on an await-shaped hang (verified: a
+  `[Timeout(2_000)]` test awaiting `Task.Delay(6_000)` failed at 2 s), it does **not** fire on a
+  synchronous spin (verified: a 6 s spin **passed**), and a timed-out body **keeps running** —
+  `body completed after 5999 ms`, long after the failure was recorded. On a class whose correctness
+  rests on the static `EditorLog` an orphaned body will corrupt the next test, and `[NotInParallel]`
+  cannot prevent it because the orphan is a detached continuation, not a test. So the first red
+  **after** a timeout is suspect, not independent. The `TUnit0015` warning (25 of them, non-fatal)
+  and its remedy are recorded there too.
+- **💡 — what the lock covers, said once.** § *The Lock* now states the three consequences of
+  Decision 1's *"assertions and claims"*: whitespace outside, **signatures and attribute parameters
+  outside** (so step 6 may add a `CancellationToken` parameter for `TUnit0015` without a hand-back),
+  and `csharp-dev`'s own transcription commentary — the file header and the invariant-layer bridge —
+  **inside the lock from the approval commit but outside this file's approval**, therefore theirs to
+  own and theirs to correct.
+- **One caveat at INV-6.** The review could not verify that all ten (case × direction) combinations
+  are reachable; amendment 4 fixed one unreachable case by reasoning, not execution. If the coverage
+  assertion goes red at step 6, the **first hypothesis is an unreachable combination, not a bug in
+  `WithHistory`**. Named so it is not misdiagnosed as a feature defect.
+
+**Not this file's, and unchanged:** ⚠️-7 — `History/UndoRedoSpec.cs` is still in no MSBuild item
+group (`-getItem:None` → `{"None": []}`). Amendment 4 assigned it to `csharp-dev`; it was neither
+done nor registered, and it is the only round-1 ⚠️ in that state. ⚠️-11 (no PR yet) and ⚠️-12
+(`.squad/log/` churn — stage explicitly) are also still open and also not mine.
+
+**What round 2 confirmed, which is worth keeping next to the failure:** six of the seven round-1
+findings that were amendment 4's to fix are fixed properly, the transcription is byte-faithful to
+the six fences (87 diff lines, none of them an assertion), the four `reached` floors all sit after
+the last guard and before the first assertion, and the two findings that mattered most — INV-2's
+projection lens and INV-6's interpreter — were fixed by making the code true to the claim rather
+than the claim true to the code.
+
+---
+
+## 🛑 Re-approval Request — amendment 5, **open**
+
+> **This file changed again, and this time because a correction was itself wrong. Three assertions
+> that amendment 4 made *unsatisfiable* now use the one shape verified in both directions on the
+> pinned TUnit — `IsEquivalentTo(expected, CollectionOrdering.Matching)` — and the paragraph that
+> recorded the bad evidence as fact, inside the lock, is replaced by the measurements. Nothing else
+> about what the spec claims has moved: the same ordering claims, the same nine acceptance
+> scenarios, the same eight properties.**
+>
+> **Do you re-approve? Two things I would look at specifically: (i) I chose the
+> `CollectionOrdering.Matching` overload over `Assert.That(actual.SequenceEqual([…])).IsTrue()`,
+> which also works — my reason is the failure message, since a spec that fails without saying *how*
+> the order differed is a worse specification; and (ii) the `[Timeout]` caveat is now recorded but
+> the attribute is unchanged, on your Decision 3 — an orphaned body after a timeout can corrupt the
+> next test through the static `EditorLog`, and no attribute available inside the lock prevents
+> that.**
+
+**This is round 2 of 2.** On round 3 the reviewer splits the changeset, and the split *never ships
+a red stated property* — so a still-broken A6/A7 could not be carved off as "ships anyway". That is
+the concrete reason both blockers are in one amendment, and the reason this is the last round in
+which a correction is cheap.
+
+Nothing is committed. The amendment is in this artifact only; `UndoRedoSpec.cs` is `csharp-dev`'s
+to re-transcribe from the fences above once you have answered.

@@ -45,3 +45,5 @@ at the time and rewriting it would misrepresent the historical record.
 - [Extract the spec fences and diff](extract-the-spec-fences-and-diff.md) — reassembling `06-spec.md`'s code blocks decides whether a defect is the spec-author's or the transcriber's.
 - [A locked file was never type-checked](a-locked-file-was-never-type-checked.md) — an excluded spec is frozen with its typos; compile-probe the assertion shapes before the approval commit closes the lock.
 - [A copy outside the deny list defeats blindness](a-copy-outside-the-deny-list-defeats-blindness.md) — the hook denies `.squad/design/**`, not the byte-identical copy someone committed elsewhere.
+- [A negative control alone proves nothing](a-negative-control-alone-proves-nothing.md) — my one-sided probe sent an amendment to a shape that can never pass; run both controls, and never read CS0103 as an absent API.
+- [A Timeout attribute is not a hang guard](a-timeout-attribute-is-not-a-hang-guard.md) — TUnit0015 on every test, sync spins missed, and the orphaned body corrupts the next test on shared static state.
