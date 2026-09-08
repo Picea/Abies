@@ -63,8 +63,12 @@ with three that are red whatever happens, and wrote the bad evidence into the lo
 Amendment 5 fixes both in one pass — `IsEquivalentTo(expected, CollectionOrdering.Matching)` with
 `using TUnit.Assertions.Enums;`, and the paragraph replaced by the verified measurements — plus a
 seventh support-file obligation, the `[Timeout]` caveat, and what the lock does and does not cover.
-§ *Amendment 5* carries the record and the 🛑 **re-approval question, which is open. This is the
-last round before the reviewer splits the changeset.**
+§ *Amendment 5* carries the record and the 🛑 **re-approval question — answered and re-approved on
+2026-09-08 with a plain yes to both specifics**: `CollectionOrdering.Matching` stays, over
+`SequenceEqual(…).IsTrue()`, because it keeps the diff in the failure message; and `[Timeout(30_000)]`
+stays unchanged with its limit recorded, since no attribute available inside the lock prevents an
+orphaned body from corrupting the next test. This was the last round before the reviewer would have
+split the changeset.
 
 ---
 
@@ -2130,7 +2134,7 @@ than the claim true to the code.
 
 ---
 
-## 🛑 Re-approval Request — amendment 5, **open**
+## 🛑 Re-approval Request — amendment 5, **answered 2026-09-08**
 
 > **This file changed again, and this time because a correction was itself wrong. Three assertions
 > that amendment 4 made *unsatisfiable* now use the one shape verified in both directions on the
@@ -2147,10 +2151,32 @@ than the claim true to the code.
 > next test through the static `EditorLog`, and no attribute available inside the lock prevents
 > that.**
 
-**This is round 2 of 2.** On round 3 the reviewer splits the changeset, and the split *never ships
-a red stated property* — so a still-broken A6/A7 could not be carved off as "ships anyway". That is
-the concrete reason both blockers are in one amendment, and the reason this is the last round in
-which a correction is cheap.
+**Re-approved, with a plain yes to both specifics.**
 
-Nothing is committed. The amendment is in this artifact only; `UndoRedoSpec.cs` is `csharp-dev`'s
-to re-transcribe from the fences above once you have answered.
+**Decision 4 — `CollectionOrdering.Matching`, not `SequenceEqual(…).IsTrue()`.** Both shapes are
+verified on 1.19.57 with a passing and a failing control; the overload stays because it keeps the
+**diff in the failure message**. A spec that fails without saying *how* the order differed is a
+worse specification, and A6's whole job is to say which interleaving occurred.
+
+**Decision 5 — `[Timeout(30_000)]` unchanged, with the caveat recorded.** Decision 3 stands
+untouched. The limit is now written beside the value rather than discovered at step 6: the attribute
+fires on await-shaped hangs and not on a synchronous spin, and a timed-out body **keeps running** —
+so an orphan can corrupt the next test through the static `EditorLog`, and `[NotInParallel]` cannot
+prevent it because the orphan is a detached continuation. **No attribute available inside the lock
+prevents that**, which is why the answer is *record the limit*, not *change the mechanism*. The
+practical consequence for step 6 is stated at the attribute: treat the first red **after** a timeout
+as suspect rather than as an independent failure.
+
+**Nothing else moved.** Decisions 1–3 stand as recorded under amendment 4: immutable in assertions
+and claims from the approval commit, INV-6 keeps its feedback interpreter, `[Timeout]` before the
+commit. The three items still not this file's are unchanged — ⚠️-7 (no MSBuild item group,
+`csharp-dev`'s), ⚠️-11 (no PR yet) and ⚠️-12 (`.squad/log/` churn — stage explicitly).
+
+**This was round 2 of 2.** On round 3 the reviewer splits the changeset, and the split *never ships
+a red stated property* — so a still-broken A6/A7 could not have been carved off as "ships anyway".
+That is why both blockers landed in one amendment, and why this was the last round in which a
+correction was cheap.
+
+**Nothing is committed by this file.** The amendment is in this artifact only;
+`Picea.Abies.Tests/History/UndoRedoSpec.cs` is `csharp-dev`'s to re-transcribe from the fences
+above, and the approval commit is theirs to make.
