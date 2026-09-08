@@ -4116,3 +4116,168 @@ moves HEAD, at which point `.squad/.last-review-verdict` no longer matches and t
 blocks again, including for a commit carrying nothing but this verdict. All 19 paths are
 already staged and `git diff` is empty. Commit once, from here.
 
+
+### 2026-09-08 — reviewer-reconcile-20260908T060604Z-undo-redo-followups-commit-boundary [reviewer-reconcile · PASS]
+
+---
+id: reviewer-reconcile-20260908T060604Z-undo-redo-followups-commit-boundary
+agent: reviewer-reconcile
+verdict: PASS
+scope: review
+created: 2026-09-08T06:06:04Z
+commit: 0d6b208ca012e9cbf6710fba64ffd44f62cc6c60
+targets:
+  - path: Picea.Abies.Presentation/content/demo/README.md
+  - path: Picea.Abies.Presentation/content/demo/SHA256SUMS
+  - path: Picea.Abies.Presentation/content/demo/stops/5.5-property.70d9ae5.cs
+  - path: Picea.Abies.Presentation/Picea.Abies.Presentation.csproj
+  - path: .squad/design/undo-redo/04-realist-plan.md
+  - path: .claude/agent-memory/realist/MEMORY.md
+  - path: .claude/agent-memory/realist/an-exception-named-by-element-has-four-sites.md
+blockers: []
+high: []
+medium:
+  - file: .squad/design/undo-redo-followups/09-review-verdict.md
+    reason: >-
+      This confirmation is itself uncommitted. Committing it moves HEAD off
+      0d6b208ca012e9cbf6710fba64ffd44f62cc6c60 and re-blocks the commit gate on a
+      commit carrying nothing but a confirmation. Merge from this HEAD; do not
+      commit the appended verdict line or this drop first.
+good:
+  - file: Picea.Abies.Presentation/content/demo/SHA256SUMS
+    reason: >-
+      The manifest survived the commit boundary intact - sha256sum -c re-run inside a
+      git archive export of the committed tree is 40/40 OK, exit 0, no warnings.
+references:
+  - reviewer-reconcile-20260908T060136Z-undo-redo-followups-round3
+---
+
+The round-3 PASS carries unchanged to `0d6b208ca012e9cbf6710fba64ffd44f62cc6c60`; the commit boundary added no reviewable content.
+
+## What this drop is
+
+Not a fourth review round and not a re-run of the eleven dimensions. The round-3
+verdict (`09-review-verdict.md`, ✅ Approved, drop
+`reviewer-reconcile-20260908T060136Z-undo-redo-followups-round3`) graded the tree at
+`eace0087b1c78cfcda7bfaa5bd895e9dce76a52b` and explicitly noted that committing would
+move HEAD and re-block `enforce-review-verdict.sh`. This drop re-pins that same PASS to
+the commit that boundary produced, on evidence that the commit changed no graded content.
+
+## What was verified
+
+- **Commit shape.** `0d6b208ca012e9cbf6710fba64ffd44f62cc6c60`, single parent
+  `eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`, 21 files, `+2266/−18`. `commit:` above read
+  live via `git rev-parse HEAD` in this checkout at the moment of writing, not copied.
+- **The 21 paths partition exactly, with no remainder.** 7 graded content paths (the
+  `targets` list) + 2 review artifacts (`08-review-blind.md`, `09-review-verdict.md`) + 6
+  `reviewer-reconcile` notebook paths (`MEMORY.md` and five entries) + 3 merged drops +
+  3 hook-written rows = 21.
+- **The three merged drops are mine and are the review's own history** - all three carry
+  `agent: reviewer-reconcile` and `commit: eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`
+  (`NEEDS-CHANGES`, `NEEDS-CHANGES`, `PASS` for rounds 1-3).
+- **`decisions.md` is a hook append, not a hand edit.** One hunk, `@@ -3823,3 +3823,296 @@`,
+  zero deleted lines, containing only the three scribe-merged entries whose ids match those
+  same three drops.
+- **Every graded path's committed blob equals what round 3 passed.** `README.md`
+  `f72871e6`, `04-realist-plan.md` `a590177f`, `.csproj` `624ca60a` - the round-3 baseline
+  table's "current" column verbatim - plus `SHA256SUMS` `a036722b`,
+  `stops/5.5-property.70d9ae5.cs` `6775d948`, `realist/MEMORY.md` `81c0d186`,
+  `realist/an-exception-named-by-element-has-four-sites.md` `db25b0f9`. Each also equals
+  `git hash-object` on the working-tree copy, so index, commit and working tree agree.
+- **The manifest is green in the committed tree, not merely in the working tree.**
+  `sha256sum -c SHA256SUMS` run inside a `git archive 0d6b208` export from
+  `content/demo/` - exit 0, 40 lines `OK`, zero non-OK lines, no warnings. The manifest's
+  40 entries cover every file under `content/demo/` except the 5 documented non-payload
+  paths (`README.md`, `SHA256SUMS`, `graphics/.gitkeep`, `timing/hooks-fired.log`,
+  `timing/pass-cost.md`), and no manifest entry lacks a file. The `SHA256SUMS` delta is
+  `+3/−0`: a blank line, a dated provenance comment, and the entry for the new excerpt.
+- **The working tree holds only hook-written state.** `git status --porcelain
+  --untracked-files=all` was empty when this pass opened; it now shows one path,
+  `.squad/log/2026-09-08-session.md` `+3/−0`, three `session-logger.sh` rows. No untracked
+  non-ignored file anywhere in the repository; no ignored file under `content/`; the
+  nested `.claude/worktrees/` checkout remains ignored and unindexed as recorded in
+  round 3.
+
+## Where to stop
+
+`.squad/.last-review-verdict` currently reads `PASS` / `eace0087b1c78cfcda7bfaa5bd895e9dce76a52b`
+and so does **not** match HEAD - the commit gate is blocked right now. This drop, consumed
+by `scribe-decision-merger.sh` on `SubagentStop`, is what rewrites the cache to
+`0d6b208ca012e9cbf6710fba64ffd44f62cc6c60` and unblocks it. Merge from this HEAD. The
+appended verdict line and this drop are uncommitted, and committing them would move HEAD
+again and re-block the gate on a commit carrying nothing but a confirmation.
+
+
+### 2026-09-08 — reviewer-reconcile-20260908T120946Z-undo-redo-pr1 [reviewer-reconcile · NEEDS-CHANGES]
+
+---
+id: reviewer-reconcile-20260908T120946Z-undo-redo-pr1
+agent: reviewer-reconcile
+verdict: NEEDS-CHANGES
+scope: review
+created: 2026-09-08T12:09:46Z
+commit: 77aa2ba5e80130b5fbfcbd8ddae0b618e77c49fe
+targets:
+  - path: Picea.Abies/History/History.cs
+    lines: "1-220"
+  - path: Picea.Abies/History/HistoryStack.cs
+    lines: "1-102"
+  - path: Picea.Abies.Tests/History/HistoryTests.cs
+    lines: "1-243"
+  - path: Picea.Abies.Tests/History/HistoryStackTests.cs
+    lines: "1-167"
+blockers:
+  - file: Picea.Abies/History/History.cs
+    line: 118
+    reason: "Present and Movement are public get/init on a public sealed record, so `with` is a public mutation channel that the internal constructor does not close. A probe compiled from an assembly outside InternalsVisibleTo, with EnablePreviewFeatures set as every adopter template sets it, moved Present while Past and Future stayed put. That is exactly the state the type's own XML doc at 107-112 says cannot be built, and it falsifies the plan's principles-gate resolution at 04-realist-plan.md 1470-1473 that all movement goes through the wrapper and that no deviation from Make Illegal States Unrepresentable is requested. Introduced by this changeset, so it is a regression and not registrable. The criterion is the rule, not the site list. Every public construction or mutation channel into History and Movement is closed to assemblies outside InternalsVisibleTo, demonstrated by a probe compiled from such an assembly with both controls. The locked UndoRedoSpec.cs contains no `with` expression at all, so narrowing these accessors cannot touch the lock."
+  - file: Picea.Abies/History/History.cs
+    line: 85
+    reason: "Movement.Held's constructor is public and its object-typed anchor is unvalidated, while the XML doc at 63-69 rests the whole soundness argument for the type erasure on the framework being the only thing that ever constructs one. The same external probe built Held with a System.String anchor. When step 6 reads the anchor back and casts it to TModel, a wrong anchor is an InvalidCastException inside framework code with no context about its origin. The plan specifies Held with a TModel anchor at 157, 982 and 1060, where a public constructor would be type-safe by construction; the shipped object erasure is what turns the public constructor into a defect. Anchor is also a public getter on a public type, and per R4-6 and Trust Boundary 7 the anchor is a deliberately unscrubbed live model whose exposure the security room bounded to the DEBUG snapshot path. Same criterion as the blocker above."
+high:
+  - file: Picea.Abies/History/HistoryStack.cs
+    reason: "History is a public record whose value equality and GetHashCode are reference-based on Past and Future, because HistoryStack overrides neither Equals nor GetHashCode and every operation returns a fresh instance. Verified by probe. Three narrative claims sit on top of this. The plan calls the history a value and cites ADR-008 for it, step 2's Done-when (a) says the round trip is value-equal end to end, and the locked UndoRedoSpec.cs compares whole History values at 226 and 851. Those spec assertions pass today only because the generated Equals opens with a reference check and the plan's Nothing branches return h itself, which is a property of step 6's implementation rather than of this type. A step-6 author who writes `h with { }` on a no-op path turns two locked properties red for a reason that looks like a wrapper bug. Not graded as a blocker because the plan's phrase is genuinely ambiguous between content equality and operator equality, and the change is forward-compatible. What should not ship is a public record with neither a structural equality nor a stated identity contract, and no test pinning either."
+  - file: Picea.Abies/History/History.cs
+    reason: "Step.Cause and Step.AtTicks are documented at 14 and 20-21 as belonging to this step, but StepBack at 161 and StepForward at 179 stamp the newly created step with the crossed step's cause and tick. The code follows the plan verbatim, so the code is right and both doc comments are wrong. The blind reviewer's reading, that these two fields name the edge whose identity survives being crossed in either direction, is the one the plan implements. It matters more than a stale comment usually would because Cause is SEC-2's redaction target and INV-6's refusal name, and step 6's author will read these two sentences to decide which message to redact and which to name. HistoryTests.cs 102-104 asserts the surprising behaviour and calls it correct, so no test will catch the doc."
+  - file: Picea.Abies/History/History.cs
+    reason: "Movement.Held with an object anchor is a shape change from the plan's Held with a TModel anchor, correctly forced by the locked spec and shipped without a flag. csharp-dev's stated reason verifies. UndoRedoSpec.cs 399 asserts IsTypeOf of Movement.Held non-generically, which cannot resolve if Movement is generic, and the lock outranks the plan. The erasure is the right call and is not being asked back. What is owed is the flag, because R4-6 at 04-realist-plan.md 980-1046, Trust Boundary 7's wording, the DEBUG-row bullet and step 8(m)'s Anchor_never_reaches_a_release_path_surface were all drafted against the un-erased shape. The erased shape changes at least three things none of them considered. A wrong-typed anchor is now constructible, the DEBUG JsonTypeInfo obligation for an object-typed property is not the obligation for a TModel-typed one, and the read surface is object rather than the model type. security-expert has not seen the erased shape. Owner architect at close-out or security-expert at step 16."
+  - file: Picea.Abies.Tests/History/HistoryStackTests.cs
+    reason: "Six sites across HistoryStackTests.cs 51-92 and HistoryTests.cs 152-171 assert exceptions with a hand-rolled try/catch/bool where TUnit's own idiom is available. Picea.Abies.Testing.Tests uses Assert.That(act).Throws at TestHarnessTests.cs 57, 71, 80, 89, 103 and 113 and TestHarnessVisualTests.cs 109 and 165, including for both InvalidOperationException and ArgumentOutOfRangeException, and both projects pin TUnit 1.19.57, so the remedy compiles as-is. This idiom appears nowhere else in Picea.Abies.Tests; these two files introduce it. Beyond consistency the hand-rolled form is weaker in three ways. It catches the base type, so an ObjectDisposedException would satisfy the InvalidOperationException test; it asserts nothing about the messages, which are deliberately written, good, and currently untested; and on failure it reports Expected True rather than naming the exception."
+  - file: Picea.Abies.Tests/History/HistoryTests.cs
+    reason: "Design-pass structure is embedded in shipped source at HistoryStackTests.cs 7 and HistoryTests.cs 11, 14-15 and 80 as Plan step 1, Plan step 2 and plan step 6's record. The new files contain no .squad paths; those are only in Picea.Abies.Tests.csproj 24-28, inherited from PR 0 and out of scope. Two costs. The plan-step references stop resolving the moment the pass closes and a contributor outside the squad cannot resolve them at all. More importantly, 08-review-blind.md names these lines as the reason its independence was weaker than the design intends, and there are five more PRs in this series whose blind half these headers will reach the same way. Stating the finding rather than the remedy, because this is a call the user may want to make once for the series. The long C# name-resolution comment at HistoryTests.cs 16-32 is a different thing entirely, is accurate, and should stay."
+medium:
+  - file: Picea.Abies/History/HistoryStack.cs
+    reason: "The summary at 8-18 rests its worst-case O(Depth) argument on the stacks being kept trimmed to a caller-supplied depth, in the present indicative, but Trim has no caller anywhere in Picea.Abies. Step 6's record is the intended one. Either the tense changes or Trim's contract names who is obliged to call it. Critic 🟡 b's why-the-Future-trim-is-safe sentence, which the Critic assigned to step 1 or step 6 and the author took to step 6, is the natural companion and is still owed."
+  - file: Picea.Abies/History/History.cs
+    reason: "The Crossable precondition on StepBack at 155 and StepForward at 173 is real, correct and written down nowhere. The plan puts the check in step 6's Transition, which is the right split, but these are internal methods with a safety-critical precondition documented in neither the exception block nor a Debug.Assert. Debug.Assert on the crossed edge being Crossable is what the pattern catalog asks for on internal invariants, costs nothing in release, and fails loudly in exactly the scenario the feature exists to prevent. Separately, SealTops at 202-207 has a deliberate last-writer-wins semantics settled by Critic 🟡 c and 🟡 6 and accepted by the user, documented nowhere and untested in either direction."
+  - file: Picea.Abies/History/History.cs
+    reason: "Step.AtTicks has no consumer in the code, the tests, the locked spec or the plan. Step 14's coalescing uses TPolicy.CoalesceWindow and TPolicy.Time at 04-realist-plan.md 1946-1951, not AtTicks. Implementing it is not a deviation, since the plan carries it in the type shape at 1057, which is why this is graded medium. But it is a field threaded through seven PRs with no stated reader, and the honest options are a one-line scaffolding note or a question to the architect at close-out."
+  - file: Picea.Abies.Tests/History/HistoryStackTests.cs
+    reason: "Coverage gaps, none of them Done-when items. Trim's documented identity no-op is unasserted, so a future edit to return a new instance would pass every test while breaking the documented contract. Trim(0) on a non-empty stack is untested; I verified the arithmetic is correct, so this is coverage rather than risk. SealTops with both stacks empty, Cleared on an already-empty history, and every exception message are untested. HistoryStackTests.cs 127-131 asserts inside a 10,000-iteration loop, which on failure will fail about 9,900 times."
+good:
+  - file: Picea.Abies/History/HistoryStack.cs
+    reason: "The summary argues its own O(n) rather than asserting it, and the argument is correct. A persistent linked list does not serve trim-from-the-far-end either, and the repo has System.Collections.Immutable available in the analyzers project, so ImmutableStack was passed on for a stated reason."
+  - file: Picea.Abies.Tests/History/HistoryTests.cs
+    reason: "StepBack_applies_restore_and_scrub_rather_than_assuming_whole_model_replacement is the best test in the changeset. Its restore delegate throws unless it sees both arguments correctly, so a StepBack that silently used one or the other cannot pass. A test built to fail for the right reason. Every Done-when for steps 1 and 2 is met and green, and the C# name-resolution comment at 16-32 correctly diagnoses a non-obvious constraint, correctly identifies it as a step-6 decision, and correctly declines to make that decision now."
+references: []
+---
+
+🔴 Changes Requested on undo-redo PR 1 — two introduced regressions against Make Illegal States Unrepresentable, both proven with an external-assembly probe carrying both controls, plus five registrable findings.
+
+## Verification performed
+
+- `dotnet build Picea.Abies.Tests` — succeeded, 0 warnings.
+- Full suite — 249/249 passed. csharp-dev's claim verified.
+- `dotnet format --verify-no-changes` on both new directories — clean, exit 0.
+- `git log` on `Picea.Abies.Tests/History/UndoRedoSpec.cs` — last touched by `70d9ae5` (PR #361). Unmodified by this changeset, so the Lock's git-history check passes.
+- `git diff HEAD --stat` — no csproj, no `Runtime.cs`, no `.js`. The plan's slip-signal row is honoured.
+- External-assembly probe `ExternalProbe`, outside `InternalsVisibleTo`. Positive control reproduced both blind findings; negative control (`h with { Past = … }`, `h.Origin`) returned CS0117 and CS1061, so internals really are out of reach and the positive results are not an artefact of probe privilege.
+- `Trim(0)` on a non-empty stack — arithmetic correct, no exception. Coverage gap, not a bug.
+
+## Reconciliation summary
+
+The blind reading held up: all three of its compiled probes reproduce independently. The narrative settled two of its findings **against** it — the hard-coded `Crossable` is step 2 Done-when (c), required, and the missing edge check is a step-6 obligation the plan already assigns; and `SealTops`' last-writer-wins is Critic-reviewed and user-accepted behaviour. The narrative made two of its findings **worse** — the plan's principles-gate resolution explicitly claims the invariant that the `with` channel breaks, and the plan specifies `Held(TModel Anchor)` where `Held(object Anchor)` shipped. The namespace collision is inherited from the plan's Namespace Plan and PR 0's locked spec, and both remedies the blind reviewer proposed are unavailable, because the shadowing is caused by the test namespace inside the locked file and because the locked spec also calls `History.Backward` and `History.Forward` on the static class.
+
+## Merge Criterion
+
+Criterion (a) holds — every step 1 and step 2 Done-when executes and passes. The verdict turns on (b): the two blockers are deviations this changeset **introduces**, which are regressions and are not registrable. Criterion (b) binds on the blocker and high grades only; the medium entries are advisory. Full detail in `.squad/design/undo-redo-pr1/09-review-verdict.md`.
+

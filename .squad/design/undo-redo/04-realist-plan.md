@@ -496,8 +496,11 @@ record: if Future is non-empty:
 
 `Forward(h)` then returns `BlockedBySupersedingAction(cause)` — computable in advance, from the
 value alone, in the same one function `Decide` and `Transition` both route on. *"Redo unavailable —
-superseded by `FastTick`"* is renderable **before** the press, which is what INV-6 exists for, and
-distinguishable from INV-4's no-op, which is what INV-5 exists for. This closes the last silent path
+superseded by `FastTick`"* — **the mechanism's cause, written out to show what the value carries,
+and not the sentence a person reads** (`[R4-ux]`: the rendered copy is step 10's template, *"Redo
+unavailable — your later action replaced this."*, with `FastTick` kept for telemetry) — is
+renderable **before** the press, which is what INV-6 exists for, and distinguishable from INV-4's
+no-op, which is what INV-5 exists for. This closes the last silent path
 in the design: **every** divergence now refuses with a reason, not only the world's.
 
 **What this does to gate 2, said plainly because it is a change to something settled.** The rule was
@@ -585,11 +588,15 @@ it, so it travels with the sentence wherever the sentence goes.
   application with no commands — a form, a wizard, Counter, the native demo — that is the whole
   session, and undo is complete.
 - At the point feedback last arrived: **both** directions refuse, both typed, both answerable from
-  the history value **before** the press (INV-6), both naming the message — so the chrome renders
-  *"Undo unavailable — the page changed (ProfileLoaded)"*.
+  the history value **before** the press (INV-6), both carrying the message that blocked them —
+  *"`BlockedByWorld(ProfileLoaded)`"*, which is what the **value** says. What the **chrome renders**
+  is step 10's template with the cause humanized: *"Undo unavailable — the page finished loading."*
+  (`[R4-ux]`).
 - If the user acts after undoing — including when the actor is a timer — the forward branch is
-  **preserved and sealed**, and redo refuses by name: *"Redo unavailable — superseded by
-  `FastTick`"*. Nothing is silently destroyed anywhere in the design.
+  **preserved and sealed**, and redo refuses carrying the superseding message —
+  *"`BlockedBySupersedingAction(FastTick)`"* in the value, rendered as *"Redo unavailable — your
+  later action replaced this."* (`[R4-ux]`; the identifier is the mechanism's cause and stays in
+  telemetry, never in the document). Nothing is silently destroyed anywhere in the design.
 - **On a `SubscriptionsDemo`-shaped application — a timer that moves the model — redo does not
   function.** Not "reach collapses to roughly one tick": every tick records a step and supersedes
   whatever branch the user was walking, so a user who presses undo three times and pauses finds redo
@@ -1492,7 +1499,7 @@ the *2026-03-29 `JsonPolymorphic`* obligation onto the application's message hie
 | `Picea.Abies.Tests/History/Generators.cs` | **new** — hand-rolled seeded generators, fixed seed corpus | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryInvariantTests.cs` | **new** — INV-1 … INV-6 | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryLensLawTests.cs` | **new** — L1 … L6, plus **`Scrub_overridden_alone_violates_L5`** (`[R4-5]`) | csharp-dev |
-| `Picea.Abies.Tests/History/HistorySecurityRegressionTests.cs` | **new** — SEC-3 (a) and (b), plus **`Anchor_never_reaches_a_release_path_surface`** as a third, explicitly-not-(b) test (`[R4-6]`) | csharp-dev |
+| `Picea.Abies.Tests/History/HistorySecurityRegressionTests.cs` | **new** — SEC-3 (a) and (b), plus **`Anchor_never_reaches_a_release_path_surface`** as a third, explicitly-not-(b) test (`[R4-6]`), plus **`Anchor_is_always_the_model_the_bracket_was_opened_against`** as a fourth — beside the third, not merged into it, and a correctness test rather than a confidentiality one (`[R4-anchor]`, step 8(o)) | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryMovementTests.cs` | **new** — INV-7 at runtime level, plus the malformed-bracket cases | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryCompositionTests.cs` | **new** — both `WithView` orders + the three-layer stack | csharp-dev |
 | `Picea.Abies.Benchmarks/HistoryDispatchBenchmarks.cs` | **new** — per-dispatch overhead, wrapped vs. bare | csharp-dev (design/analysis: performance-engineer) |
@@ -1659,6 +1666,18 @@ PR 0, and removed on schedule.
               spec line 2's reachability assumption. Note for the writer of this file that
               README.md:183-190 passes url => new UrlChangedTo(url), i.e. the shape that defeats
               the rule, while Conduit and every tutorial pass url => new UrlChanged(url);
+         (vii) [R4-ux] that "refuse BY NAME", in (v) and (vi), means the typed cause is CARRIED and
+              answerable in advance — NOT that the cause's type name is what a person reads. The
+              rendered default is one template across all three refusal cases and both directions,
+              "[Undo/Redo] unavailable — [reason].", with the reason clause humanized and
+              "something changed since then" as the fallback; a raw Cause.GetType().Name is never
+              default end-user text and stays in telemetry (SEC-4). The navigation case in (vi)
+              carries its OWN words, because the user performed it deliberately: "Undo unavailable
+              — you navigated away from this page." / "Redo unavailable — you navigated to a
+              different page." — and NOT the world-refusal sentence written for ProfileLoaded
+              (room-ux.md q7, q12, q13(b), q13(c), q9/q13(d)). Step 10 renders it, step 13 writes
+              it; this bullet exists so the file that defines the reasons does not read as though
+              the identifier were the message;
  6. [ ] → csharp-dev: WithHistory<TProgram, TPolicy, TModel, TArgument>. Decide (routing,
          terminal guard, single Enveloped event per decision, AND the delegated Err channel
          enveloped the same way — Err(e) -> Err(Enveloped(m, [e])), R4-1; the wrapper's own
@@ -1693,6 +1712,46 @@ PR 0, and removed on schedule.
          compiles and runs for the first time here and must be observed RED FOR THE RIGHT REASON
          before anything is made green — the exclusion coming off is what makes that observation
          possible, so it happens FIRST in the step, not last.
+         AND (R4-ns) ONE DECISION IS OWED BEFORE THE EXCLUSION COMES OFF, stated here rather
+         than left to the moment it goes red. The test namespace Picea.Abies.Tests.History
+         shares its trailing segment with the production static class
+         Picea.Abies.History.History. A using Picea.Abies.History; placed BEFORE a file-scoped
+         namespace declaration is consulted AFTER the enclosing Picea.Abies.Tests, whose member
+         namespace History wins, so the unqualified History.Start(...) / History.Backward(h)
+         fail to resolve (CS0234) rather than binding to the factory. Reproduced empirically in
+         PR 1 and derived independently by reviewer-reconcile (undo-redo-pr1/09-review-verdict.md,
+         P7, "the namespace collision — verified"). The locked UndoRedoSpec.cs avoids it the
+         other way: its using sits INSIDE the namespace body (:34, after the namespace at :32),
+         which resolves in the type's favour and is the placement .editorconfig:132
+         (csharp_using_directive_placement = outside_namespace:warning) asks against. The file
+         is immutable in its ASSERTIONS AND ITS CLAIMS and a using placement is neither
+         (06-spec.md § The Lock, amendment 5's item on what the lock covers) — but MOVING it is
+         not available, because moving it is what breaks resolution. PR 1's own tests take the
+         third route, qualifying as Abies.History.History.Start(...) (HistoryTests.cs:17-32),
+         which the spec cannot do to its own call sites without editing them. Both remedies
+         08-review-blind proposed are unavailable: the shadow comes from the TEST namespace,
+         which is inside the locked file, so moving the framework types neither removes it nor
+         leaves the locked using true; and History<TModel>.Start does not carry Backward/Forward,
+         which the spec also calls (:152, :193, :401, :417, :621). THE OPTIONS, WITH THEIR COST:
+         (1) an IDE0065 suppression scoped to that one file in .editorconfig — cheapest to write,
+             and it is a permanent style carve-out in a shared file, naming one test file;
+         (2) a format-check exclusion for the locked file — narrower to argue for, wider in
+             effect: it exempts the file from the whole formatter, not from the one rule;
+         (3) an architect ruling that a using placement is outside the lock — which by amendment
+             5's terms it ALREADY is, so the ruling alone changes nothing and still needs (1) or
+             (2) to make the format check pass; its value is that it removes any argument that
+             step 6 is editing a locked file.
+         WHERE THE CHECK ACTUALLY BITES, verified so the cost is neither overstated nor missed:
+         nothing in this repository sets TreatWarningsAsErrors or EnforceCodeStyleInBuild, so
+         IDE0065 does not fail the build; the enforcer is dotnet format, and pr-validation.yml's
+         lint job --includes only the .cs files CHANGED IN THE PR (:288, :317). PR 3 changes the
+         csproj and not UndoRedoSpec.cs, so CI can stay green here while an IDE and a repo-wide
+         dotnet format both flag the file, and the first later PR that touches it turns red.
+         reviewer-reconcile recorded the step-6 format prediction as a PREDICTION it could not
+         execute (the file is Compile Remove'd today); this bound is why. The decision is
+         therefore owed for the next author rather than to make PR 3 pass — which is the reason
+         to take it deliberately here. csharp-dev states the choice and its reason in the PR 3
+         body; reviewer-reconcile verifies it as a claim.
  7. [ ] → performance-engineer (csharp-dev implementing the harness): RE-SEQUENCED HERE, before
          8–11, so a bad number invalidates one step rather than four. BenchmarkDotNet A/B —
          wrapped vs. bare dispatch — with a per-dispatch budget DERIVED from the 5% figure rather
@@ -1781,6 +1840,29 @@ PR 0, and removed on schedule.
              URL, it models the browser as the last UrlChanged it dispatched, and it says why that
              is honest for this fixture.
              Pre-record navigation is NOT in this property's scope — it is R4-8b/S23 and unchanged.
+         (o) R4-anchor (room-security.md, 2026-09-08 follow-up):
+             HistorySecurityRegressionTests.Anchor_is_always_the_model_the_bracket_was_opened_against
+             — over a Held bracket opened by Hold(m), assert
+             held.Anchor is TModel recovered && ReferenceEquals(recovered, m), or value-equality
+             where the fixture's model is a record compared by value. Lettered (o) rather than
+             inserted after (m) so that (n)'s existing citations still resolve; it belongs in the
+             SAME FILE and BESIDE (m), and the two are DELIBERATELY NOT MERGED. (m) proves
+             CONFIDENTIALITY — the anchor's payload reaches no release-path surface. This one proves
+             IDENTITY — that what Hold stored is the model the bracket was opened against and not
+             some other object that merely happens not to leak through those three surfaces. One
+             mechanism per proof, named for what it proves, which is how the room has kept adjacent
+             tests apart throughout. It is a CORRECTNESS/AVAILABILITY regression test — it guards
+             an InvalidCastException and a silent misbinding — so it does NOT take SEC-3 (a)/(b)'s
+             naming convention and must not be filed under it.
+             WHY IT EXISTS NOW AND DID NOT BEFORE: Movement.Held ships carrying object, not TModel,
+             because the locked UndoRedoSpec.cs:399 asserts IsTypeOf<Movement.Held>() non-generically
+             and so forces Movement to stay non-generic (09-review-verdict.md finding 5). Under
+             Held(TModel Anchor) this identity was compiler-guaranteed and needed no test. Under
+             Held(object Anchor) "an anchor holding something that is not the model" is a compilable
+             program. An internal constructor (finding 1's criterion, this round) closes construction
+             from outside the assembly; it cannot close it from inside, because object accepts
+             anything and there is no TModel left to check against. This test is therefore what now
+             stands where the compiler used to stand, and step 16's new Open Risk names it by name.
          INV-3's property needs a document comparer that normalises handler command ids and a
          generator over the test program's message type — both are work items inside this step.
  9. [ ] → csharp-dev: INV-7 at runtime level. HistoryTestProgram with model-derived Subscriptions
@@ -1808,24 +1890,47 @@ PR 0, and removed on schedule.
          AND redo availability plus the sealing cause from the history value;
          WithHistory<WithView<…>, …> also compiles; the three-layer stack compiles. The rendered
          chrome MUST honour the full contract (R4-8c): it dispatches Settle on blur and on
-         pointercancel as well as on key-up/pointer-up. Done when: the rendered document shows a
-         typed reason for BOTH directions before any press is attempted — "blocked — the page
-         changed while you were editing (ProfileLoaded)" — which is INV-6 in use on the
-         BlockedByWorld path in both directions (S9); AND it shows the superseded reason —
-         "redo unavailable — superseded by FastTick" — on the BlockedBySupersedingAction path
-         (R4-2), which is the rendering that makes B9's silence visible; AND (S32) it shows the
-         NAVIGATION case in both directions after a post-record UrlChanged — the same
-         BlockedByWorld path, but the cause is a navigation the user performed DELIBERATELY, so
-         "the page changed while you were editing (UrlChanged)" is the wrong sentence for someone
-         who has just pressed Back, and the wording is ux-expert q13(b)'s to settle before this
-         step renders it; AND a blur delivered mid-bracket settles the run.
+         pointercancel as well as on key-up/pointer-up.
+         [R4-ux] THE CHROME CONTRACT GAINS TWO REQUIREMENTS, both render-only, both from
+         room-ux.md and neither previously specified: (i) the refusal reason renders as ADJACENT,
+         ALWAYS-VISIBLE TEXT — never a tooltip or title-only affordance, which fails on touch and
+         is announced inconsistently by screen readers — and the composition test asserts on that
+         VISIBLE TEXT, not merely on the disabled state or on MovementRefused's payload
+         (room-ux.md q1); (ii) while Movement is Held the chrome renders a VISIBLE
+         MOVEMENT-IN-PROGRESS state — a pressed/active affordance on whatever started the hold —
+         read from the same Movement value the chrome already reads for INV-6, and a static state
+         change rather than an animation (room-ux.md q11(a)).
+         [R4-ux] AND THE WORDING IS SETTLED, no longer illustrative. One template across all three
+         MovementAvailability refusal cases and both directions — "[Undo/Redo] unavailable —
+         [reason]." — varying only the verb and the reason clause, with the same control, position
+         and styling in all three cases (room-ux.md q7, q12, q13(c)). The reason clause is
+         HUMANIZED: an adopter-owned lookup from the cause's shape to plain language, falling back
+         to "something changed since then" where no entry exists. A RAW MESSAGE TYPE NAME IS NEVER
+         DEFAULT END-USER TEXT — no Cause.GetType().Name in the rendered document; the raw cause
+         stays where SEC-4 already puts it, in telemetry (step 11), and at most in a dev-facing
+         detail row that is not the primary text a screen reader announces first (room-ux.md
+         q13(b), q6).
+         Done when: the rendered document shows a typed reason for BOTH directions before any
+         press is attempted — "Undo unavailable — the page finished loading." / "Redo unavailable
+         — the page finished loading." on the BlockedByWorld path, which is INV-6 in use in both
+         directions (S9); AND it shows the superseded reason — "Redo unavailable — your later
+         action replaced this." — on the BlockedBySupersedingAction path (R4-2), which is the
+         rendering that makes B9's silence visible, and NOT "superseded by FastTick", which
+         room-ux.md q13(b) rules out as default copy; AND (S32) it shows the NAVIGATION case in
+         both directions after a post-record UrlChanged IN ITS OWN WORDS — "Undo unavailable — you
+         navigated away from this page." / "Redo unavailable — you navigated to a different page."
+         (room-ux.md q9/q13(d)) — the same BlockedByWorld path, but the cause is a navigation the
+         user performed DELIBERATELY, so "the page changed while you were editing (UrlChanged)"
+         MUST NOT SHIP; AND NO proactive signal fires at the moment of the seal — the
+         always-visible disabled-plus-reason state IS the signal (room-ux.md q13(d)); AND a blur
+         delivered mid-bracket settles the run.
 11. [ ] → csharp-dev: HistoryTelemetry — spans on undo, redo, hold, settle, clear and refusal
          only, never on the pass-through path; cause tags are Cause.GetType().Name only (SEC-4).
          Done when: an in-process ActivityListener shows one span per movement, one per settle,
          zero for a hundred ordinary dispatches, and no span tag contains a cause payload; and a
          refusal span carries the direction and the reason type name, so the whole-model policy's
          reach limit is diagnosable from traces without reading code (S10).
-12. [ ] → ux-expert: the thirteen questions below (q13 is new, from R4-2; q11 sharpened by R4-8a
+12. [x] → ux-expert: the thirteen questions below (q13 is new, from R4-2; q11 sharpened by R4-8a
          and R4-8c; q9 and q13(d) carry a CORRECTED PREMISE from R4-nav — S32 — and this step is
          dispatched in wave 0, BEFORE step 5 fixes the defaults, so the correction must travel
          with the dispatch and not follow it: no new question and no new spawn, the questions
@@ -1865,12 +1970,32 @@ PR 0, and removed on schedule.
            rule, and it is the front-page example an adopter copies. It is not itself a
            WithHistory adopter, so say which idiom is which rather than implying the README was
            broken;
-         - a note beside the refusal wording that a user who pressed Back changed the page ON
-           PURPOSE, so the world-refusal sentence written for ProfileLoaded does not carry over
-           unchanged — the rendered wording is ux-expert q13(b)'s (S32);
+         - [R4-ux] THE REFUSAL WORDING, settled by room-ux.md and no longer deferred to it. ONE
+           TEMPLATE across all three refusal causes and both directions — "[Undo/Redo] unavailable
+           — [reason]." — varying only the verb and the reason clause, with the same visual
+           treatment in all three cases (q7, q12, q13(c)). The reason clause is HUMANIZED, through
+           an adopter-supplied cause-to-string lookup, with "something changed since then" as the
+           honest fallback; the guide's worked example shows THAT pattern and not
+           Cause.GetType().Name, and any raw-identifier example that survives is annotated as
+           ILLUSTRATIVE OF MECHANISM, NOT RECOMMENDED PRODUCTION COPY (q6, q13(b)). A raw message
+           type name is never default end-user text: the raw cause is for telemetry (SEC-4, step
+           11) and at most a dev-facing detail row. "Superseded by FastTick" does not ship; the
+           default is "Redo unavailable — your later action replaced this." (q13(b)). And the
+           NAVIGATION refusal gets ITS OWN WORDS, because a user who pressed Back changed the page
+           ON PURPOSE and the sentence written for ProfileLoaded — "the page changed while you were
+           editing" — is a strange, faintly accusatory thing to say to them: "Undo unavailable —
+           you navigated away from this page." / "Redo unavailable — you navigated to a different
+           page." (q9, q13(d), S32). No proactive notice fires at the moment of the seal — the
+           always-visible disabled-plus-reason state is the signal, and interrupting every
+           back/forward press with a notice about a history feature is the failure mode this squad
+           pushes back on (q13(d));
          - the chrome's Hold/Settle contract and who owns it — INCLUDING blur and pointercancel,
            Clear as the one in-band rescue, and that two chromes cannot hold independently
-           (R4-8c, 🟡 2);
+           (R4-8c, 🟡 2); AND [R4-ux] the contract's two render-only additions that step 10 now
+           tests, stated in the same chrome-contract section: the refusal reason is adjacent,
+           always-visible text — never tooltip- or title-only, and in the accessible
+           name/description path (q1) — and a visible movement-in-progress state is rendered for as
+           long as a Held bracket is open, static rather than animated (q11(a));
          - that the anchor held during a bracket is never scrubbed, so closing promptly is a
            data-minimisation practice and not only a liveness one (R4-6);
          - the native head's lack of key-up/pointer-up, and — in the head-coverage table — that no
@@ -1900,9 +2025,31 @@ PR 0, and removed on schedule.
          bullet naming it as a distinct reachable site — same severity, same "⚠️ Partially
          mitigated" status, NOT a new row. Plus the hardening-backlog entries: SEC-7's
          SerializeMessageArgs retrofit, and the fast-follow serialization-boundary substitution for
-         Held<TModel> (R4-6), logged in the same register and not before the types land. Done when:
+         Held<TModel> (R4-6), logged in the same register and not before the types land.
+         R4-anchor (room-security.md, 2026-09-08 follow-up), TWO ADDITIONS AND EXPLICITLY NO ROW:
+         (i) TB7's Held(Anchor) clause gains a PROVENANCE sentence, appended to the clause R4-6
+             already puts there rather than replacing it — the anchor is held as object and not
+             TModel, because the locked spec's non-generic IsTypeOf<Movement.Held>() forces Movement
+             to stay non-generic (09-review-verdict.md finding 5); the "live model" property is
+             enforced by INTERNAL-ONLY CONSTRUCTION AND A SINGLE INTERNAL CALL SITE, not by the type
+             system, and is REGRESSION-TESTED RATHER THAN COMPILER-CHECKED (step 8(o)). The clause's
+             existing sentence stays true after the erasure; what it stops being is true BY
+             CONSTRUCTION, and a boundary that reads as compiler-backed when it is test-backed
+             over-promises. Same severity, same status — a provenance note on an existing clause,
+             not a new threat.
+         (ii) ONE NEW OPEN RISK, LOW SEVERITY, owner csharp-dev, stated explicitly rather than left
+             implicit: a future internal change to WithHistory could construct Movement.Held with a
+             value that is not the bracket's model, undetected by the compiler, caught only by
+             Anchor_is_always_the_model_the_bracket_was_opened_against if that test is written and
+             kept. Mitigated by that test rather than by a type-level fix, since re-introducing a
+             typed anchor is foreclosed by the locked spec.
+         NO NEW ROW IN THREATS AND MITIGATIONS, no change to SEC-3(b)'s text, and no change to the
+         S20 conclusion's wording — the exposure surfaces (View, telemetry, EdgeState, DEBUG export)
+         are unchanged by the erasure. What moved is the MECHANISM THAT KEEPS THE ANCHOR HONEST,
+         from the type system to a test, and (i) and (ii) are where that move is recorded. Done when:
          threat-model.md names the boundary and both threats, each with its mitigation and its
-         test, and the anchor appears as a named site rather than an implied one.
+         test, the anchor appears as a named site rather than an implied one, and TB7's anchor clause
+         says which of its guarantees is compiler-backed and which is test-backed.
 ```
 
 ---
@@ -1955,14 +2102,31 @@ Step 14 is its own PR if it survives; step 15 commits nothing.
 | 1 | **Nothing is measured**, and the CI gates cannot measure it: no demo adopts `WithHistory`, so js-framework-benchmark exercises a non-adopting application and its 5% threshold cannot regress on account of this work whatever it costs an adopter. | Step 7 — BenchmarkDotNet A/B with a **derived** budget, per-assembly IL, and a stated sentence that the CI gate is silent here. |
 | 2 | **Which `Past` representation is cheapest at Depth 100.** The *bound* is settled: a persistent structure cannot carry an amortised bound (Okasaki ch. 5–6) and this one **is** used persistently. Restated: array copy-on-write, worst-case O(Depth), Depth bounded, no `System.Collections.Immutable` dependency. What remains open is the constant. | Steps 1 and 7 together. |
 | 3 | **Property-testing tooling.** Settled: hand-rolled seeded generators, no new dependency. Determinism is closed by step 8(h). | Closed. |
-| 4 | **DOM-owned state** — accepted out of scope (INV-3 as amended). Re-opened only if `ux-expert` says the minimum bookmark is mandatory. | `ux-expert` q4. |
+| 4 | **DOM-owned state** — accepted out of scope (INV-3 as amended). Re-opened only if `ux-expert` says the minimum bookmark is mandatory. | **Closed — not re-opened.** `room-ux.md` q4: accept the exclusion for v1; a *partial* bookmark is worse than none, because it teaches a promise it then breaks unpredictably. One guide sentence follows, and it is step 13's. |
 | 5 | **`AutomatonRuntime.Reset` accessibility.** Changes nothing in this pass; changes the economics of the deferred H2 pass. | Step 15. |
 | 6 | ~~INV-7's scope clause~~ | **Closed.** `00-scope.md`'s **INV-7** already carries the `abies:history:` clause (cited by id, not by line — 🟡 3 of the confirmation pass), and this revision no longer needs it: the framework declares no subscription, so INV-7 holds unqualified. Two *new* amendments are proposed instead — INV-7's definition of a movement, and INV-1's availability precondition — both worded above for lifting. |
-| 7 | ~~Whether the default `SettleWindow` of 250 ms is right~~ | **Closed by deletion.** There is no window. What replaces it is `ux-expert` q11: what a bracketed run should look like to a person, and whether the chrome should show that one is open. |
+| 7 | ~~Whether the default `SettleWindow` of 250 ms is right~~ | **Closed by deletion, and its successor is now answered.** There is no window. `ux-expert` q11 replaced it and `room-ux.md` q11 answers both halves: (a) keep the `blur`/`pointercancel` auto-settle **and** render the open bracket visibly for its duration; (b) per-press reconciliation is acceptable for the chrome this pass actually ships — do not re-open the architecture question. Both land in step 10 as `[R4-ux]`. |
 | 8 | ~~Whether the effect-interleaving change for multi-event decisions is acceptable~~ | **Closed.** Attacked by the Critic at S18 and it survived; the user accepted it. What the attack surfaced is a **second** difference — a failing command no longer prevents later events from being applied — which is now spec line 7 and step 6's Done-when (`[R4-4]`), and which the user is asked to confirm in the pause because they accepted the ordering half without it. |
-| 9 | **Whether a refusal naming a message type is legible to a person.** `[R4-2]` makes *"superseded by `FastTick`"* the default redo refusal in any application with a model-mutating subscription, and `FastTick` is an identifier the user has never seen. This is the same question q6 half-answered for step labels, arriving now at the refusal. | `ux-expert` q13(b). It changes the guide's wording, not the mechanism — `Cause` is retained either way. |
+| 9 | **Whether a refusal naming a message type is legible to a person.** `[R4-2]` makes *"superseded by `FastTick`"* the default redo refusal in any application with a model-mutating subscription, and `FastTick` is an identifier the user has never seen. This is the same question q6 half-answered for step labels, arriving now at the refusal. | **Answered: no** — `room-ux.md` q13(b), with q7 and q6. A raw `Cause.GetType().Name` is never default end-user text; the default is a humanized reason clause under one template, with *"something changed since then"* as the fallback, and the raw cause kept for telemetry (SEC-4) and dev-facing detail only. It changes the wording in steps 5, 10 and 13 — tagged `[R4-ux]` at each — and not the mechanism: `Cause` is retained either way. |
 
-**What `ux-expert` must answer** (step 12) — six from revision 1, five from the Critic, two mine:
+**What `ux-expert` must answer** (step 12) — six from revision 1, five from the Critic, two mine.
+
+> **`[R4-ux]` Step 12 is ANSWERED.** Dispatched in wave 0 and returned 2026-09-08 as
+> `.squad/design/undo-redo/room-ux.md`, against the corrected `[R4-nav]`/S32 premise for q9 and
+> q13(d). Twelve answered, q10 withdrawn. **Two 🔴 overrides**, folded in above as `[R4-ux]`: the
+> illustrative post-navigation sentence *"the page changed while you were editing (`UrlChanged`)"*
+> **must not ship** — the navigation refusal gets its own direction-specific words, with no
+> proactive signal at the seal (q9/q13(d), steps 5(vii), 10, 13); and a raw message type name —
+> *"superseded by `FastTick`"*, or any `Cause.GetType().Name` — is **never default end-user text**,
+> the default being a humanized reason clause with the raw cause kept for telemetry per SEC-4
+> (q13(b)/q7/q6, steps 5(vii), 10, 13). **Two additions to step 10's chrome contract**, both
+> render-only: the refusal reason as adjacent always-visible text, never tooltip-only (q1), and a
+> visible movement-in-progress state for the duration of a `Held` bracket (q11(a)). Everything else
+> is **confirmed as designed**. The step's own Done-when is met: defaults for steps 5, 6 and 14 are
+> settled — **step 14's coalescing stays off by default** (q5, unchanged) and step 14 names no
+> user-facing wording, so it is untouched by this fold — and the guide has its keyboard-affordance
+> guidance (q3). The questions below are left as asked, so `room-ux.md`'s answers read against the
+> premise they were answered on.
 
 1. What the effect boundary looks like to a user — *before* the attempt (the disabled/annotated
    affordance driven by `BlockedByEffect(Cause)`) and *at* the attempt (`MovementRefused`).
@@ -2263,8 +2427,10 @@ narrower than the words you gave me, and I would rather ask than assume.
    Preserving a redo branch instead of clearing it means models the user walked back through, and
    can now never return to, stay alive until they are trimmed. I have bounded it — `Future` trims to
    `Depth` exactly as `Past` does, so the ceiling moves from 100 retained models to 200 — and step
-   7 measures it. You are buying diagnosability with it: *"redo unavailable — superseded by
-   `FastTick`"*, answerable before the press, instead of silence. Worth knowing, though: **it buys
+   7 measures it. You are buying diagnosability with it: a refusal that carries `FastTick` in the
+   value and reads as *"Redo unavailable — your later action replaced this."* on screen
+   (`[R4-ux]`; the identifier is the mechanism's cause, not the copy), answerable before the press,
+   instead of silence. Worth knowing, though: **it buys
    diagnosability, not reach.** An application with a model-mutating subscription still needs a
    projection for redo to *work*; what changes is that it is now told so by name rather than finding
    out. Is that the trade you meant?
