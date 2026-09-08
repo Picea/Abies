@@ -1499,7 +1499,7 @@ the *2026-03-29 `JsonPolymorphic`* obligation onto the application's message hie
 | `Picea.Abies.Tests/History/Generators.cs` | **new** — hand-rolled seeded generators, fixed seed corpus | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryInvariantTests.cs` | **new** — INV-1 … INV-6 | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryLensLawTests.cs` | **new** — L1 … L6, plus **`Scrub_overridden_alone_violates_L5`** (`[R4-5]`) | csharp-dev |
-| `Picea.Abies.Tests/History/HistorySecurityRegressionTests.cs` | **new** — SEC-3 (a) and (b), plus **`Anchor_never_reaches_a_release_path_surface`** as a third, explicitly-not-(b) test (`[R4-6]`) | csharp-dev |
+| `Picea.Abies.Tests/History/HistorySecurityRegressionTests.cs` | **new** — SEC-3 (a) and (b), plus **`Anchor_never_reaches_a_release_path_surface`** as a third, explicitly-not-(b) test (`[R4-6]`), plus **`Anchor_is_always_the_model_the_bracket_was_opened_against`** as a fourth — beside the third, not merged into it, and a correctness test rather than a confidentiality one (`[R4-anchor]`, step 8(o)) | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryMovementTests.cs` | **new** — INV-7 at runtime level, plus the malformed-bracket cases | csharp-dev |
 | `Picea.Abies.Tests/History/HistoryCompositionTests.cs` | **new** — both `WithView` orders + the three-layer stack | csharp-dev |
 | `Picea.Abies.Benchmarks/HistoryDispatchBenchmarks.cs` | **new** — per-dispatch overhead, wrapped vs. bare | csharp-dev (design/analysis: performance-engineer) |
@@ -1712,6 +1712,46 @@ PR 0, and removed on schedule.
          compiles and runs for the first time here and must be observed RED FOR THE RIGHT REASON
          before anything is made green — the exclusion coming off is what makes that observation
          possible, so it happens FIRST in the step, not last.
+         AND (R4-ns) ONE DECISION IS OWED BEFORE THE EXCLUSION COMES OFF, stated here rather
+         than left to the moment it goes red. The test namespace Picea.Abies.Tests.History
+         shares its trailing segment with the production static class
+         Picea.Abies.History.History. A using Picea.Abies.History; placed BEFORE a file-scoped
+         namespace declaration is consulted AFTER the enclosing Picea.Abies.Tests, whose member
+         namespace History wins, so the unqualified History.Start(...) / History.Backward(h)
+         fail to resolve (CS0234) rather than binding to the factory. Reproduced empirically in
+         PR 1 and derived independently by reviewer-reconcile (undo-redo-pr1/09-review-verdict.md,
+         P7, "the namespace collision — verified"). The locked UndoRedoSpec.cs avoids it the
+         other way: its using sits INSIDE the namespace body (:34, after the namespace at :32),
+         which resolves in the type's favour and is the placement .editorconfig:132
+         (csharp_using_directive_placement = outside_namespace:warning) asks against. The file
+         is immutable in its ASSERTIONS AND ITS CLAIMS and a using placement is neither
+         (06-spec.md § The Lock, amendment 5's item on what the lock covers) — but MOVING it is
+         not available, because moving it is what breaks resolution. PR 1's own tests take the
+         third route, qualifying as Abies.History.History.Start(...) (HistoryTests.cs:17-32),
+         which the spec cannot do to its own call sites without editing them. Both remedies
+         08-review-blind proposed are unavailable: the shadow comes from the TEST namespace,
+         which is inside the locked file, so moving the framework types neither removes it nor
+         leaves the locked using true; and History<TModel>.Start does not carry Backward/Forward,
+         which the spec also calls (:152, :193, :401, :417, :621). THE OPTIONS, WITH THEIR COST:
+         (1) an IDE0065 suppression scoped to that one file in .editorconfig — cheapest to write,
+             and it is a permanent style carve-out in a shared file, naming one test file;
+         (2) a format-check exclusion for the locked file — narrower to argue for, wider in
+             effect: it exempts the file from the whole formatter, not from the one rule;
+         (3) an architect ruling that a using placement is outside the lock — which by amendment
+             5's terms it ALREADY is, so the ruling alone changes nothing and still needs (1) or
+             (2) to make the format check pass; its value is that it removes any argument that
+             step 6 is editing a locked file.
+         WHERE THE CHECK ACTUALLY BITES, verified so the cost is neither overstated nor missed:
+         nothing in this repository sets TreatWarningsAsErrors or EnforceCodeStyleInBuild, so
+         IDE0065 does not fail the build; the enforcer is dotnet format, and pr-validation.yml's
+         lint job --includes only the .cs files CHANGED IN THE PR (:288, :317). PR 3 changes the
+         csproj and not UndoRedoSpec.cs, so CI can stay green here while an IDE and a repo-wide
+         dotnet format both flag the file, and the first later PR that touches it turns red.
+         reviewer-reconcile recorded the step-6 format prediction as a PREDICTION it could not
+         execute (the file is Compile Remove'd today); this bound is why. The decision is
+         therefore owed for the next author rather than to make PR 3 pass — which is the reason
+         to take it deliberately here. csharp-dev states the choice and its reason in the PR 3
+         body; reviewer-reconcile verifies it as a claim.
  7. [ ] → performance-engineer (csharp-dev implementing the harness): RE-SEQUENCED HERE, before
          8–11, so a bad number invalidates one step rather than four. BenchmarkDotNet A/B —
          wrapped vs. bare dispatch — with a per-dispatch budget DERIVED from the 5% figure rather
@@ -1800,6 +1840,29 @@ PR 0, and removed on schedule.
              URL, it models the browser as the last UrlChanged it dispatched, and it says why that
              is honest for this fixture.
              Pre-record navigation is NOT in this property's scope — it is R4-8b/S23 and unchanged.
+         (o) R4-anchor (room-security.md, 2026-09-08 follow-up):
+             HistorySecurityRegressionTests.Anchor_is_always_the_model_the_bracket_was_opened_against
+             — over a Held bracket opened by Hold(m), assert
+             held.Anchor is TModel recovered && ReferenceEquals(recovered, m), or value-equality
+             where the fixture's model is a record compared by value. Lettered (o) rather than
+             inserted after (m) so that (n)'s existing citations still resolve; it belongs in the
+             SAME FILE and BESIDE (m), and the two are DELIBERATELY NOT MERGED. (m) proves
+             CONFIDENTIALITY — the anchor's payload reaches no release-path surface. This one proves
+             IDENTITY — that what Hold stored is the model the bracket was opened against and not
+             some other object that merely happens not to leak through those three surfaces. One
+             mechanism per proof, named for what it proves, which is how the room has kept adjacent
+             tests apart throughout. It is a CORRECTNESS/AVAILABILITY regression test — it guards
+             an InvalidCastException and a silent misbinding — so it does NOT take SEC-3 (a)/(b)'s
+             naming convention and must not be filed under it.
+             WHY IT EXISTS NOW AND DID NOT BEFORE: Movement.Held ships carrying object, not TModel,
+             because the locked UndoRedoSpec.cs:399 asserts IsTypeOf<Movement.Held>() non-generically
+             and so forces Movement to stay non-generic (09-review-verdict.md finding 5). Under
+             Held(TModel Anchor) this identity was compiler-guaranteed and needed no test. Under
+             Held(object Anchor) "an anchor holding something that is not the model" is a compilable
+             program. An internal constructor (finding 1's criterion, this round) closes construction
+             from outside the assembly; it cannot close it from inside, because object accepts
+             anything and there is no TModel left to check against. This test is therefore what now
+             stands where the compiler used to stand, and step 16's new Open Risk names it by name.
          INV-3's property needs a document comparer that normalises handler command ids and a
          generator over the test program's message type — both are work items inside this step.
  9. [ ] → csharp-dev: INV-7 at runtime level. HistoryTestProgram with model-derived Subscriptions
@@ -1962,9 +2025,31 @@ PR 0, and removed on schedule.
          bullet naming it as a distinct reachable site — same severity, same "⚠️ Partially
          mitigated" status, NOT a new row. Plus the hardening-backlog entries: SEC-7's
          SerializeMessageArgs retrofit, and the fast-follow serialization-boundary substitution for
-         Held<TModel> (R4-6), logged in the same register and not before the types land. Done when:
+         Held<TModel> (R4-6), logged in the same register and not before the types land.
+         R4-anchor (room-security.md, 2026-09-08 follow-up), TWO ADDITIONS AND EXPLICITLY NO ROW:
+         (i) TB7's Held(Anchor) clause gains a PROVENANCE sentence, appended to the clause R4-6
+             already puts there rather than replacing it — the anchor is held as object and not
+             TModel, because the locked spec's non-generic IsTypeOf<Movement.Held>() forces Movement
+             to stay non-generic (09-review-verdict.md finding 5); the "live model" property is
+             enforced by INTERNAL-ONLY CONSTRUCTION AND A SINGLE INTERNAL CALL SITE, not by the type
+             system, and is REGRESSION-TESTED RATHER THAN COMPILER-CHECKED (step 8(o)). The clause's
+             existing sentence stays true after the erasure; what it stops being is true BY
+             CONSTRUCTION, and a boundary that reads as compiler-backed when it is test-backed
+             over-promises. Same severity, same status — a provenance note on an existing clause,
+             not a new threat.
+         (ii) ONE NEW OPEN RISK, LOW SEVERITY, owner csharp-dev, stated explicitly rather than left
+             implicit: a future internal change to WithHistory could construct Movement.Held with a
+             value that is not the bracket's model, undetected by the compiler, caught only by
+             Anchor_is_always_the_model_the_bracket_was_opened_against if that test is written and
+             kept. Mitigated by that test rather than by a type-level fix, since re-introducing a
+             typed anchor is foreclosed by the locked spec.
+         NO NEW ROW IN THREATS AND MITIGATIONS, no change to SEC-3(b)'s text, and no change to the
+         S20 conclusion's wording — the exposure surfaces (View, telemetry, EdgeState, DEBUG export)
+         are unchanged by the erasure. What moved is the MECHANISM THAT KEEPS THE ANCHOR HONEST,
+         from the type system to a test, and (i) and (ii) are where that move is recorded. Done when:
          threat-model.md names the boundary and both threats, each with its mitigation and its
-         test, and the anchor appears as a named site rather than an implied one.
+         test, the anchor appears as a named site rather than an implied one, and TB7's anchor clause
+         says which of its guarantees is compiler-backed and which is test-backed.
 ```
 
 ---

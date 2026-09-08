@@ -800,3 +800,132 @@ password-reset/magic-link token in the query string or fragment of any URL that 
 framework's `UrlChanged` — undo/redo will surface it back to the screen. A flow that must carry such
 a token in the URL should dispatch its own navigation message rather than rely on `UrlChanged`, so
 it can be marked `SensitiveCause`.
+
+---
+
+## Follow-up — 2026-09-08, prompted by `09-review-verdict.md` finding 5 (PR 1's `Movement.Held` object erasure)
+
+Scope of this section only: whether `Held(object Anchor)` — shipped in place of the plan's
+`Held(TModel Anchor)` because the locked `UndoRedoSpec.cs:399` asserts
+`IsTypeOf<Movement.Held>()` non-generically — changes SEC-3(b), Trust Boundary 7's wording, the
+S20 anchor conclusion, or step 8(m)'s `Anchor_never_reaches_a_release_path_surface`, and what
+step 16 must add as a result. Per the task: wording only. Read `09-review-verdict.md` (findings 1,
+2 and 5) and `Picea.Abies/History/History.cs` as it stands in the working tree (`Held` at `:85`,
+its doc at `:63-69`) for this pass; did not re-read the rest of revision 4 or re-open any earlier
+follow-up. I am not proposing a mechanism, not reopening B9(b), S19, or S20's recommendation
+against scrubbing, and not widening SEC-3(b)'s reachability set.
+
+### What the erasure is, precisely, and what the coming fix does and does not restore
+
+`Held(TModel Anchor)` gave the anchor a compiler-enforced identity with the model: any value
+constructible as `Anchor` was, by the type system, an instance of the exact `TModel` the bracket
+belongs to. `Held(object Anchor)` — forced by the locked spec's non-generic
+`IsTypeOf<Movement.Held>()` — removes that. Finding 2's probe demonstrates the consequence while
+the constructor is public: `P2 Anchor runtime type: System.String`, a value the plan never
+intended to be constructible. Making the constructor internal (this round, per finding 1's
+criterion) closes exactly one of the two things the typed constructor used to guarantee: it
+restores "no assembly outside `InternalsVisibleTo` can construct a wrong-typed anchor." It does
+**not** restore the other: inside the assembly, nothing stops a future internal call site from
+writing `new Movement.Held(someWrongThing)`, because `object` accepts anything and the compiler has
+no `TModel` to check it against. Before the erasure, that second guarantee was free — the type
+system carried it. After, it is carried only by there being exactly one internal call site (`Hold`)
+that constructs a `Held`, and by nobody changing that later without noticing. That is a weaker kind
+of guarantee than the one SEC-3(b), TB7 and S20 were each drafted against, even though none of the
+three names the anchor's *construction* as their subject.
+
+### Does it change SEC-3(b)?
+
+**No wording change — the reachability set was never conditioned on the anchor's type, and the
+erasure does not open a route into it.** SEC-3(b) (the 2026-09-07 (II) restatement, held since) is
+scoped to "any field value the model's `Scrub` is defined to remove, reachable via any
+`Step.Model`" — `Past`/`Future` only. S20 answer 2 already excluded `Movement.Held(Anchor)` from
+this clause on grounds that have nothing to do with typing: scrubbing the anchor is *actively
+wrong* because `Subscriptions` needs the unprojected model (INV-7), not because the anchor was
+typed `TModel` at the time. That argument is unaffected by which C# type spells "the model" at the
+call site. Confirmed: no change to SEC-3(b)'s text or reachability set.
+
+### Does it change Trust Boundary 7's wording?
+
+**One clause should be added, not to describe a new exposure but to stop the boundary's existing
+sentence over-promising.** The 2026-09-07 (III) wording says the boundary carries "a bounded,
+unscrubbed **live model** retained in `Movement.Held(Anchor)` for the duration of a bracket." That
+sentence is true of what the framework's own `Hold` call site actually stores, and remains true
+after the erasure — but it is no longer true *by construction*. Under `Held(TModel Anchor)` a
+reader could trust the sentence because the compiler enforced it; under `Held(object Anchor)`, even
+with the constructor internal, the sentence is true only because exactly one internal call site is
+disciplined to keep it so, and that discipline is not itself checked anywhere the boundary can
+point to until step 8(m)'s test carries the weight (see below). TB7 should say this plainly,
+appended to the existing `Held(Anchor)` clause:
+
+> — held as `object`, not `TModel`, because the locked spec's non-generic
+> `IsTypeOf<Movement.Held>()` forces `Movement` to stay non-generic (`09-review-verdict.md`
+> finding 5); the "live model" property is enforced by internal-only construction and a single
+> internal call site, not by the type system, and is regression-tested rather than compiler-checked
+> (step 8(m)).
+
+Same severity, same status as everything else in TB7 — this is a provenance note on an existing
+clause, not a new threat.
+
+### Does it change the S20 anchor conclusion?
+
+**No — the conclusion holds, and for the same reasons it held before.** Do-not-scrub rests on
+INV-7 (`Subscriptions` needs the unprojected model); do-not-build-a-serialization-substitute rests
+on ADR-025's "total separation" and the Critic's "no new mechanism, and nothing outside this list"
+constraint; the accepted bound is the `Hold`/`Settle` contract plus `Clear`. None of those three
+arguments reads the anchor's declared type anywhere in its reasoning — they are about what the
+anchor is *for* (answering `Subscriptions` for the bracket's duration) and about *how long* it is
+held, not about what C# type spells its container. The erasure changes nothing the conclusion
+depended on. It does sharpen why item 3 (the test) matters more than it looked like it did when S20
+was written: with a typed anchor, a defect that stored the wrong value would have been a compile
+error; with an erased one, it is a runtime `InvalidCastException` at best and a silent wrong-anchor
+at worst, and the regression test is now the *only* thing standing where the compiler used to
+stand.
+
+### Does it change step 8(m)'s test?
+
+**Yes — one assertion should be added; nothing already specified should be removed.**
+`Anchor_never_reaches_a_release_path_surface` as scoped in the 2026-09-07 (II) follow-up proves the
+anchor's *payload* does not reach View, telemetry, or `EdgeState`/`MovementAvailability` — a
+confidentiality property. It says nothing about the anchor's *identity*: that what `Hold` stored is
+in fact the same model instance (or an equal one) the bracket was opened against, rather than some
+other object that happens not to leak through those three surfaces. Under `Held(TModel Anchor)`
+that identity was compiler-guaranteed and needed no test. Under `Held(object Anchor)` it needs one,
+because "an `object` anchor can hold something that is not the model" is now a compilable program,
+foreclosed only by `Hold`'s own implementation. Add, to the same file, beside it rather than folded
+into it:
+
+> `Anchor_is_always_the_model_the_bracket_was_opened_against` — over a `Held` bracket opened by
+> `Hold(m)`, assert `held.Anchor is TModel recovered && ReferenceEquals(recovered, m)` (or
+> value-equality if the fixture's model is a record compared by value) — i.e., prove by test what
+> the erased type no longer proves by construction.
+
+This is a correctness/availability regression test (it guards against `InvalidCastException` and
+silent misbinding), not a confidentiality one — it does not belong under SEC-3(a)/(b)'s naming
+convention and should not adopt it, but it belongs beside
+`Anchor_never_reaches_a_release_path_surface` in step 8 for the same reason the room has kept
+adjacent-but-distinct tests apart throughout this file: one mechanism per proof, named for what it
+proves.
+
+### What step 16 must add
+
+1. TB7's `Held(Anchor)` clause gains the provenance sentence above (erased type, internal-only
+   construction, regression-tested rather than compiler-checked).
+2. A new Open Risk, low severity, naming it explicitly rather than leaving it implicit: "a future
+   internal change to `WithHistory` could construct `Movement.Held` with a value that is not the
+   bracket's model, undetected by the compiler, caught only by
+   `Anchor_is_always_the_model_the_bracket_was_opened_against` if that test is written and kept."
+   Owner `csharp-dev`, mitigated by the test above rather than by a type-level fix, since
+   re-introducing a typed anchor is foreclosed by the locked spec (finding 5's own conclusion,
+   unchanged here).
+3. No change to SEC-3(b)'s text, no change to the S20 conclusion's wording, no new row in the
+   Threats And Mitigations table — the exposure surfaces (View, telemetry, `EdgeState`, DEBUG
+   export) are unchanged by the erasure; only the *mechanism that keeps the anchor honest* moved
+   from the type system to a test, and that move is what TB7's added clause and the new test above
+   both record.
+
+Net effect: no security-relevant exposure is introduced by the `object` erasure itself — findings
+1/2's public-constructor problem was the exposure, and making the constructor internal closes it
+per the Merge Criterion's own two-sided probe requirement. What the erasure removes is a
+compile-time guarantee TB7, S20 and (implicitly) step 8(m) had all been quietly relying on without
+naming it; this follow-up names it, points TB7 and step 8(m) at the one place that now has to carry
+it, and leaves SEC-3(b) and the S20 conclusion exactly as they stood.

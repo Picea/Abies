@@ -91,3 +91,7 @@ still records that the phase ran.
 | 2026-09-08T11:30:17Z | undo-redo | `realist` | 2892m 52s |
 | 2026-09-08T11:31:28Z | undo-redo | `realist` | 2897m 20s |
 | 2026-09-08T11:32:29Z | undo-redo | `realist` | 2898m 28s |
+| 2026-09-08T11:56:34Z | undo-redo | `reviewer-blind` | 2914m 40s |
+| 2026-09-08T12:11:56Z | undo-redo | `reviewer-reconcile` | 2923m 41s |
+| 2026-09-08T12:15:24Z | undo-redo | `realist` | 2939m 47s |
+| 2026-09-08T12:17:24Z | undo-redo | `realist` | 2942m 39s |

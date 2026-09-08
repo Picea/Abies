@@ -54,3 +54,5 @@ at the time and rewriting it would misrepresent the historical record.
 - [Recover the round-1 baseline from unreachable blobs](recover-the-round-1-baseline-from-unreachable-blobs.md) — same-HEAD re-reviews have no diff baseline; `git fsck --unreachable` still holds the previous index.
 - [A blocker can be reduced rather than closed](a-blocker-can-be-reduced-rather-than-closed.md) — a scoping fix left a 1-line residue where there were 4; three conditions decide the downgrade.
 - [Grade a compound finding by which half survives](grade-a-compound-finding-by-which-half-survives.md) — introduced half fixed, inherited half left; regrade on the criterion's own line and write the argument down.
+- [init accessors defeat internal constructors](init-accessors-defeat-internal-constructors.md) — a passing "no public constructor" test while `with` is still a public construction expression.
+- [A lock can force a shape the plan forbade](a-lock-can-force-a-shape-the-plan-forbade.md) — not a deviation, but it silently invalidates every analysis written against the plan's shape.
