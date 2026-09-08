@@ -1,11 +1,13 @@
 # Conference demo — undo/redo design record
 
-Index for `content/demo/`. Every excerpt and copy in this tree is sourced from a
+Index for `content/demo/`. Every excerpt and copy in this tree **defaults** to a
 single commit, `07607bf71152ef8d224352e2d2a737d8312dcb2d` on `main` (the merged
 undo-redo design record, PR #359 plus its round-2 residue), read with
 `git show 07607bf:<path>` so line numbers below refer to that commit, not the
-working tree. Nothing under `.squad/` was moved, edited, or deleted to build
-this tree — everything here is a copy.
+working tree — **except where a row states its own pin.** One fragment,
+`stops/5.5-property.70d9ae5.cs`, is pinned to `70d9ae58b142039f274d4f124902a9a60b6a6186`
+(PR #361) instead; see its row in the fragment index below. Nothing under `.squad/`
+was moved, edited, or deleted to build this tree — everything here is a copy.
 
 ## `full/` — unedited copies
 
@@ -49,8 +51,8 @@ Empty; SVGs are added by hand. `.gitkeep` present so the directory exists in git
 
 ## `SHA256SUMS` — generated, not an excerpt
 
-**Added 2026-09-07, review finding ⚠️-3.** Checksums of all 39 files under `full/` and
-`stops/` (19 + 20), generated with:
+**Added 2026-09-07, review finding ⚠️-3.** Checksums of the 39 files that existed under
+`full/` and `stops/` **at that time** (19 + 20), generated with:
 
 ```bash
 find full stops -type f | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
@@ -64,16 +66,49 @@ cheaply re-checkable after the fact — including by `reviewer-blind`, which is 
 directly. It is a **snapshot at generation time**, not a live guarantee: `full/refutations.md`
 copies a ledger the design process keeps appending to, and several `full/` artifacts copy
 files the design process is documented to overwrite in place (`00-warden.md`, `05-critic.md`'s
-own revision history). Re-run the command above and diff against this file to check the tree
-is still what it claims to be; a mismatch does not by itself mean the copy was edited — it
-may mean the *source* moved on and the copy, correctly, did not follow. Verify with
-`sha256sum -c SHA256SUMS` from `content/demo/`.
+own revision history).
+
+**To check the first section only** (the 39 files above, all still pinned to `07607bf`):
+run the command below — the command above, plus one exclusion — and diff its output
+against the manifest's first section:
+
+```bash
+find full stops -type f ! -name '5.5-property.70d9ae5.cs' | LC_ALL=C sort | xargs sha256sum \
+  | diff - <(head -n 39 SHA256SUMS)
+```
+
+The exclusion is required, not cosmetic: `find full stops` on its own now lists 40 files,
+one more than the first section's 39, so an unqualified regenerate-and-diff reports a
+permanent extra line even when nothing has changed — and that extra line is not "the
+source moved on," it is `5.5-property.70d9ae5.cs` correctly belonging to the *second*
+section, not the first. Run as shown, the command's diff is empty on an intact tree
+(verified). A non-empty diff here means one of the 39 first-section copies no longer
+matches its `07607bf` source. **Do not diff the regenerated output against the whole
+file**: the second section (below) is hand-appended, not produced by that command, and
+`LC_ALL=C sort` orders `stops/5.5-property.70d9ae5.cs` before `stops/5.5-property.cs`, so
+a whole-file diff reports a permanent 4-line mismatch on an
+otherwise-intact tree — the diff-based check cannot reproduce the second section
+byte-identically no matter how current the tree is. **To check the whole tree** (both
+sections, either commit), use `sha256sum -c SHA256SUMS` from `content/demo/` instead —
+this is the check this bundle treats as authoritative, and it passes independent of
+generation order.
+
+**Added 2026-09-08, second section.** The manifest now has **two pinned sections** and
+covers **40 files total** under `full/` and `stops/` (19 + 21, up from 19 + 20). The first
+section (above) is unchanged — its own 39 lines, all still pinned to `07607bf`. A second
+section, headed by a `#`-comment naming its commit, was appended for the one file the count
+grew by: `stops/5.5-property.70d9ae5.cs`, pinned to
+`70d9ae58b142039f274d4f124902a9a60b6a6186` (PR #361) rather than `07607bf`, because that is
+the commit the fragment is a verbatim excerpt of — see the `5.5-property.70d9ae5.cs` row in
+the fragment index below for why. `sha256sum -c SHA256SUMS` verifies all **40** lines in one
+pass; `sha256sum` ignores `#`-prefixed lines, so the second header does not need special
+handling to check.
 
 ## `stops/` — fragment index
 
 One row per fragment. "Why" explains why this span and not a longer or shorter one.
 
-| File | Stop | Screen state | Source @ `07607bf` (lines) | Why this excerpt |
+| File | Stop | Screen state | Source @ pinned commit — defaults to `07607bf` unless a row states its own (lines) | Why this excerpt |
 |---|---|---|---|---|
 | `5.1-degrees-of-freedom.md` | 5.1 | Bulleted list, scope excerpt | `.squad/design/undo-redo/00-scope.md:215-232` | The full "Degrees of freedom" section, verbatim — the pass's five genuinely open questions, in the scope's own words, before any design work happens. |
 | `5.1-invariants-four.md` | 5.1 | Invariant catalogue | `.squad/design/undo-redo/00-scope.md:128-168` | INV-1 through INV-4 together (not one) — the contract Gate 1 clears Track A to read, shown at the size it actually is. |
@@ -93,6 +128,7 @@ One row per fragment. "Why" explains why this span and not a longer or shorter o
 | `5.4-critic-finding-B9.md` | 5.4 | Blocker card | Drop `2026-09-07T06-34-07-critic-undo-redo.md:18-20` | The fullest surviving statement of B9, with the `Runtime.cs:288-291` / `:332` citations that show a subscription tick and a user click share one delegate. `05-critic.md`'s own third-pass wording was overwritten by the fourth pass; the ledger drop is the only place this finding's original wording and citations survive. |
 | `5.5-invariant.md` | 5.5 | Invariant text | `.squad/design/undo-redo/00-scope.md:153-163` | INV-3 in full — the invariant the paired property claims to test. |
 | `5.5-property.cs` | 5.5 | Code block (not a compilation unit — `content/**` is excluded from the project's compile glob) | `.squad/design/undo-redo/06-spec.md:1034-1072` | `INV_3_redo_after_undo_restores_the_model_the_document_and_all_subsequent_behaviour`, through assertion (iii) — the smallest span that shows all three of INV-3's promises (model equality, document equality up to handler-id renaming, behavioural equality) actually asserted, not just described. |
+| `5.5-property.70d9ae5.cs` | 5.5 | Code block (not a compilation unit — `content/**` is excluded from the project's compile glob; second pin, see manifest note above) | `Picea.Abies.Tests/History/UndoRedoSpec.cs:779-826` **@ `70d9ae58b142039f274d4f124902a9a60b6a6186`** (PR #361, "Lock the undo-redo executable specification" — off the bundle's `07607bf` default pin; this row states its own, per the table header) | Pairs against `5.5-property.cs` above rather than replacing it — the same property text, carried from `06-spec.md`'s spec prose (that fragment's source) into `UndoRedoSpec.cs`'s test source (this fragment's source); `reviewer-reconcile` verified the two full methods are byte-identical apart from what amendment 4 added, so the join holds. Same span through assertion (iii), extended through end-of-method to also carry amendment 4's addition — at method scope, **3 statements over 7 added lines**: `var reached = 0;` plus a blank line, `reached++;`, and a blank line plus the 3-line closing floor assertion `Assert.That(reached > 0)...`; at fragment scope, **+9 lines (39 → 48)**, because the older excerpt stops brace-unbalanced at the inner `foreach`'s closing brace rather than reaching the method's end. **Neither text has ever run, and this row makes no claim that either has:** `UndoRedoSpec.cs` did not exist at `07607bf`; at `70d9ae5` and at HEAD, `Picea.Abies.Tests.csproj` excludes it from `Compile`; and `Picea.Abies.History`, the namespace the property references, does not exist anywhere in the repository. What the row does claim is about the two *texts*: as approved at `07607bf`, the text describes a property that could pass having asserted nothing — every seed takes an unguarded `continue` on the `MovementAvailability` checks, so nothing in the text requires the loop body, assertions (i)–(iii) included, to execute. The review found this before the lock (`06-spec.md`, "Amendment 4 — the PR-0 review"). The amended text at `70d9ae5` adds the floor: if no seed ever reached the round trip, `reached` would stay `0`, which the new assertion is written to catch. Both are true on their own commit — the row exists to show what the floor changed, not to declare the older text wrong. |
 | `5.5-inv-coverage.md` | 5.5 | Coverage statement | `.squad/design/undo-redo/06-spec.md:1269-1270`, cut at "...already states." | The "none" statement and its reason, cut before the sentence that opens a different point (two invariants flagged as narrower than they read) — that belongs to a different stop, not this one. |
 | `5.6-review-headers.composite.md` | 5.6 | Two document headers | `.squad/design/undo-redo-design-record/08-review-blind.md:1-10` and `09-review-verdict.md:1-10` | The first ten lines of each, as requested. Neither header carries a literal timestamp field — no line was invented to supply one. The closest verified timestamp is **not** `07607bf`'s own author date — `2026-09-07T11:56:59+02:00` (`= 09:56:59Z`, per `08-review-blind.md:105`) is the author date of `66379e7`, the pre-squash branch commit `08-review-blind.md` was reviewing when it wrote that sentence. `07607bf` itself, the commit this whole bundle is pinned to, is authored `2026-09-07T13:00:00+02:00` (verified: `git show -s --format='%aI' 66379e7 07607bf`). Citable separately if the slide needs a clock reading, with the correct commit attached — the squash rewriting the timestamp the blind reviewer cited is the same overwrite-in-place theme stop 5.1 already exists to make. **Self-containment note (added 2026-09-07, review finding, blocker 2d):** the source slug is `undo-redo-design-record`, a *different* design directory from `undo-redo` (the slug every other `full/` copy in this bundle is drawn from). Neither `08-review-blind.md` nor `09-review-verdict.md` for that slug is copied into `full/`, and until this note the README never named the slug at all. Stops 5.1–5.5 are checkable entirely from files this bundle carries in `full/`; 5.6 is not — verifying it requires `git show 07607bf:.squad/design/undo-redo-design-record/<file>` against the working tree, the same way every fragment in this index was originally verified, but without a local copy to check it against. Not fixed by copying the two files in, per the runbook's copies-only-what-was-asked-for scope; recorded here instead, to the same standard the excluded PR #358 decision drop already gets above. |
 | `5.6-round-2-escalation.composite.md` | 5.6 | Verdict + decision paragraph (composite, one file, two spans) | `.squad/design/undo-redo-design-record/09-review-verdict.md:475-487` and `:735-748` | The round-2 ⚠️ Needs Human Review verdict line and the "two honest paths" paragraph are ~250 lines apart in the source; both are needed to show the chain surfacing a proportionality call to the human rather than the human having to go around the chain to get one. **Same self-containment note as `5.6-review-headers.composite.md` above** — sourced from `undo-redo-design-record`, not copied into `full/`. |

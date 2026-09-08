@@ -49,3 +49,8 @@ at the time and rewriting it would misrepresent the historical record.
 - [A Timeout attribute is not a hang guard](a-timeout-attribute-is-not-a-hang-guard.md) — TUnit0015 on every test, sync spins missed, and the orphaned body corrupts the next test on shared static state.
 - [The split can be degenerate](the-split-can-be-degenerate.md) — at the cap, grade by whether the fix is cap-forcing; escalate with numbered routes, don't manufacture a fourth 🔴.
 - [Arithmetic adjudicates a missing baseline](arithmetic-adjudicates-a-missing-baseline.md) — untracked files have no baseline; make the counts reconcile, and re-derive rather than quote last round.
+- ["Landed as" retro-dates the whole sentence](landed-as-retro-dates-the-whole-sentence.md) — an as-landed anchor converts every neighbouring prediction; run `gh pr checks` against the gate the passage claims.
+- [A restated mechanism can arrive inverted](a-restated-mechanism-can-arrive-inverted.md) — the operative instruction survives, the justification clause flips a state qualifier; both controls settle it.
+- [Recover the round-1 baseline from unreachable blobs](recover-the-round-1-baseline-from-unreachable-blobs.md) — same-HEAD re-reviews have no diff baseline; `git fsck --unreachable` still holds the previous index.
+- [A blocker can be reduced rather than closed](a-blocker-can-be-reduced-rather-than-closed.md) — a scoping fix left a 1-line residue where there were 4; three conditions decide the downgrade.
+- [Grade a compound finding by which half survives](grade-a-compound-finding-by-which-half-survives.md) — introduced half fixed, inherited half left; regrade on the criterion's own line and write the argument down.
